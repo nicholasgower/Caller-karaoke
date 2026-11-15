@@ -1,3 +1,5 @@
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 fn main() -> eframe::Result {
     contra_app::run_desktop()

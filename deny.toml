@@ -1,12 +1,8 @@
 [graph]
 all-features = true
 
-[output]
-deny = "warn"
-severity-threshold = "warning"
-
 [licenses]
-version = "2"
+version = 2
 allow = [
   "MIT",
   "Apache-2.0",
@@ -19,6 +15,7 @@ allow = [
   "Unicode-DFS-2016",
   "Unlicense",
   "CC0-1.0",
+  "CDLA-Permissive-2.0",
   "OFL-1.1",
   "Ubuntu-font-1.0",
   "MPL-2.0",
@@ -32,9 +29,17 @@ wildcards = "deny"
 highlight = "all"
 
 [advisories]
-version = "2"
+version = 2
 yanked = "warn"
-ignore = []
+# These are transitive "unmaintained" notices from winit/accesskit's Linux
+# accessibility stack, not vulnerabilities. Track upstream rather than pinning
+# an older egui/winit stack.
+ignore = [
+  "RUSTSEC-2026-0192", # ttf-parser (winit sctk-adwaita)
+  "RUSTSEC-2026-0371", # zbus_names (accesskit)
+  "RUSTSEC-2026-0370", # zvariant (accesskit)
+  "RUSTSEC-2026-0372", # zvariant_derive (accesskit)
+]
 
 [sources]
 unknown-registry = "deny"

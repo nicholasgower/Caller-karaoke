@@ -11,5 +11,5 @@ repository.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-contra-app = { path = "../app" }
+contra-app = { version = "0.1.0", path = "../app" }
 wasm-bindgen = "0.2"

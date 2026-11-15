@@ -18,9 +18,9 @@ path = "src/main.rs"
 
 [dependencies]
 arc-swap.workspace = true
-contra-core = { path = "../core" }
-contra-music = { path = "../music" }
-contra-sources = { path = "../sources" }
+contra-core = { version = "0.1.0", path = "../core" }
+contra-music = { version = "0.1.0", path = "../music" }
+contra-sources = { version = "0.1.0", path = "../sources" }
 cpal.workspace = true
 directories.workspace = true
 eframe.workspace = true

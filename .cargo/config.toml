@@ -1,0 +1,4 @@
+[target.x86_64-pc-windows-msvc]
+# Ship a self-contained portable executable without requiring the VC++
+# redistributable to be installed separately.
+rustflags = ["-C", "target-feature=+crt-static"]
