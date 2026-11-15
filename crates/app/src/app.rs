@@ -247,6 +247,9 @@ pub struct ContraApp {
     /// True for `contra-headless`: ignore global shortcuts so the renderer can
     /// hold an arbitrary screen and state.
     headless: bool,
+    /// Keeps the window's logical size when it moves to a monitor with a
+    /// different display scale.
+    scale_guard: crate::window::ScaleGuard,
     /// The About window is open. It is a modal over every screen.
     about_open: bool,
     dance: Dance,
@@ -446,6 +449,7 @@ impl ContraApp {
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
             headless: false,
+            scale_guard: crate::window::ScaleGuard::default(),
             about_open: false,
             dance,
             tune,
@@ -743,6 +747,7 @@ impl ContraApp {
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
             headless: true,
+            scale_guard: crate::window::ScaleGuard::default(),
             about_open: false,
             dance,
             tune,
@@ -1225,6 +1230,11 @@ impl ContraApp {
 impl eframe::App for ContraApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if !self.headless && self.scale_guard.update(&ctx) {
+            // The sheet music texture is rasterized at the density it was
+            // rendered for and would be blurry on the new monitor.
+            self.tune_sheet = None;
+        }
         theme::apply(&ctx, self.prefs.theme, self.prefs.animations_enabled);
         self.handle_source_events();
 

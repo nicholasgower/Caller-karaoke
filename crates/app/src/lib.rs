@@ -13,6 +13,7 @@ mod theme;
 mod tts;
 #[cfg(target_arch = "wasm32")]
 mod web_store;
+mod window;
 
 pub use app::ContraApp;
 
