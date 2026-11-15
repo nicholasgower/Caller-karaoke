@@ -1001,7 +1001,13 @@ dependencies = [
 name = "contra-mcp"
 version = "0.1.0"
 dependencies = [
+ "accesskit",
+ "accesskit_consumer",
+ "egui",
  "egui_mcp",
+ "rmcp",
+ "schemars",
+ "serde",
  "serde_json",
  "tokio",
  "tracing-subscriber",

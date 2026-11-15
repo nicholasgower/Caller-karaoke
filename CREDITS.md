@@ -42,7 +42,9 @@ and build tools used by the project.
 | `image` | MIT OR Apache-2.0 | PNG output for docs screenshots (development only) |
 | `egui_inspection` | MIT OR Apache-2.0 | Development-only inspection plugin (eframe feature) |
 | `egui_mcp` | MIT OR Apache-2.0 | MCP server for agent-driven UI testing |
-| `rmcp` | Apache-2.0 | MCP protocol implementation (via `egui_mcp`) |
+| `rmcp` | Apache-2.0 | MCP protocol implementation |
+| `schemars` | MIT | JSON schemas for MCP tool arguments |
+| `accesskit` / `accesskit_consumer` | MIT OR Apache-2.0 | Accessibility tree read by the session MCP tools (development only) |
 | `tokio` | MIT | Async runtime for the MCP server |
 | `tracing-subscriber` | MIT | MCP server logging |
 

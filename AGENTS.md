@@ -355,6 +355,12 @@ engine.
   error.
 - Space = play/pause, R = restart, Esc = close sheet.
 - All controls need labels/accessibility names.
+- **Every user input must be emulatable through the MCP server.** If a person
+  can click, type, drag, scroll, or press a key on a control, an agent must be
+  able to do the same over `contra-mcp`: give the control an accessible name so
+  the generic tools can find it, and add a session tool when the state or value
+  is not visible in the widget tree. A new interaction is not done until an
+  agent has reproduced it; "it works when I click it" is not enough.
 - Avoid flashing faster than 3 Hz.
 - Do not use images for text or icons that could be rendered as text.
 
@@ -487,6 +493,8 @@ A change is done when:
 - [ ] `cargo fmt --check`, `clippy -D warnings`, and tests pass.
 - [ ] New settings are persisted with a schema version.
 - [ ] New UI follows the grey theme and is usable at phone width.
+- [ ] Every new user input can be emulated through the MCP server (see §9), and
+      the accessible name or session tool that makes it possible is documented.
 - [ ] Every screen, picker, modal, empty state, and error banner was inspected
       at 1280×800 and 390×844 (and at the 360-point minimum width), with no
       horizontal overflow and no 44 px touch target removed.

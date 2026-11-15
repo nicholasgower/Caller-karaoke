@@ -3,12 +3,15 @@
 //! It speaks MCP JSON-RPC over stdio. The app-driving tools (`screenshot`,
 //! `widget_tree`, `click`, `type_text`, `press_key`, …) work after `attach`
 //! connects to the inspection listener that a development build starts when
-//! `EGUI_INSPECTION` is set. The server is a thin wrapper around
-//! [`egui_mcp::server::run`], which owns the protocol and the tool set.
+//! `EGUI_INSPECTION` is set. On top of the generic egui tools it exposes
+//! session-tab tools (`session_state`, `session_action`, `session_set`,
+//! `session_wait`) that read AccessKit state the generic widget projection
+//! leaves out and drive the real session controls.
 //!
 //! Exit codes and stderr are diagnostics only; stdout is reserved for MCP.
 
-use egui_mcp::server;
+mod server;
+mod session;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_tracing();
