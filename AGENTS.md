@@ -103,6 +103,25 @@ Rules:
 - Prefer small modules with explicit public types over large "util" modules.
 - Do not add a crate if the standard library or an existing dependency is a
   reasonable fit.
+
+### Documentation is part of the change
+
+Agents must update the documentation whenever code changes user-visible
+behavior. Treat docs, screenshots, and the manifest as part of the same change,
+not as a follow-up:
+
+- update the relevant page under `website/docs/` in the same commit;
+- update `website/screenshots/manifest.json` and
+  `website/screenshots/emphasis.json` when a control, state, or screenshot
+  changes;
+- run the docs checks from `website/`: `npm test` for the manifest, callouts,
+  and unique screenshots, and `npm run check` for the production build;
+- if no existing page covers the behavior, add or extend a reference page
+  rather than leaving it undocumented.
+
+A refactor with no user-visible change does not need new prose, but an agent
+should still adjust stale docs it notices. Never merge a behavior change while
+the docs still describe the old behavior.
 - Add `#![forbid(unsafe_code)]` to `core`, `music`, and `sources`. `unsafe` is
   allowed only in narrow platform glue in `app`, with a safety comment.
 
@@ -422,7 +441,9 @@ A change is done when:
 - [ ] New settings are persisted with a schema version.
 - [ ] New UI follows the grey theme and is usable at phone width.
 - [ ] `CREDITS.md` is updated if dependencies/assets changed.
-- [ ] Docs are updated for user-visible behavior.
+- [ ] Website docs, screenshots, and the screenshot manifest/emphasis are
+      updated for every user-visible behavior change.
+- [ ] `npm test` and `npm run check` pass in `website/` after docs changes.
 - [ ] The 0.1.0 version is unchanged unless instructed.
 - [ ] No third-party content or soundfont was added to the repository.
 

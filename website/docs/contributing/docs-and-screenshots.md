@@ -7,6 +7,22 @@ sidebar_position: 1
 This page is for people changing the documentation site. User-facing guides
 live in `website/docs`; the internal plan is `docs/DOCS_WEBSITE_PLAN.md`.
 
+## Documentation follows code
+
+Update the docs in the same change as the code that alters user-visible
+behavior. Do not leave a follow-up docs task, and do not merge a behavior change
+while the guide still describes the old behavior.
+
+- Change the relevant page under `website/docs/`.
+- If a control, state, label, or screenshot changes, update
+  `website/screenshots/manifest.json` and `website/screenshots/emphasis.json`
+  too.
+- Run `npm test` and `npm run check` in `website/`.
+- If no page covers the new behavior, add or extend a reference page.
+
+A pure refactor does not need new prose, but stale text found along the way
+should still be fixed.
+
 ## Writing style
 
 - Second person, present tense.
