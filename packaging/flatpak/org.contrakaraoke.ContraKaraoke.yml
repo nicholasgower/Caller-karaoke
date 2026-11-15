@@ -21,6 +21,8 @@ modules:
       - cargo build --release --offline -p contra-app
       - install -Dm755 target/release/contra-karaoke /app/bin/contra-karaoke
       - install -Dm644 packaging/linux/contra-karaoke.desktop /app/share/applications/org.contrakaraoke.ContraKaraoke.desktop
+      - install -Dm644 assets/icons/contra-karaoke.svg /app/share/icons/hicolor/scalable/apps/contra-karaoke.svg
+      - install -Dm644 assets/icons/contra-karaoke-256.png /app/share/icons/hicolor/256x256/apps/contra-karaoke.png
       - install -Dm644 LICENSE /app/share/licenses/org.contrakaraoke.ContraKaraoke/LICENSE
       - install -Dm644 CREDITS.md /app/share/doc/org.contrakaraoke.ContraKaraoke/CREDITS.md
     sources:

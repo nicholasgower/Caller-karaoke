@@ -70,3 +70,24 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 - No soundfont at all (bundled and user fonts both unavailable): built-in synth
   remains active.
 - No TTS: disable the toggle and explain why.
+
+### 8.5 App icon
+
+The mark is a contra set seen from above, drawn in the app's own greys: a call
+bubble with three lines of speech above four couples, each couple joined by a
+hold, with dashed links joining the two couples that make a hands-four set.
+
+- Background `#141414`, ink `#e6e6e6`, a 512-unit grid with a 96-unit corner
+  radius. The tile, not the page, carries the corners: the PNG keeps
+  transparent corners, and the store and iOS copies are full-bleed squares
+  because those platforms apply their own mask.
+- Source art and exports live in `assets/icons/`; `contra-karaoke.vectorcraft`
+  is the editable master (one 512 × 512 artboard, named objects),
+  `contra-karaoke.svg` the vector export, and
+  `scripts/make-icon-ico.mjs` rebuilds the Windows `.ico` from the PNGs.
+- The desktop window embeds `contra-karaoke-256.png`; the web build copies the
+  SVG as its favicon; the Linux packages install the PNGs and the SVG under
+  `hicolor`; Android uses the `mipmap-*` launchers in `packaging/android/res/`.
+- Below 32 px the couples merge into a pattern. A simplified 16/32 px variant
+  (two couples, no set links) is still to be drawn; until then the favicon is
+  the detailed mark.

@@ -20,10 +20,14 @@ const ONNX_RUNTIME_DLL: &str = "onnxruntime-win-x64-1.31.0/lib/onnxruntime.dll";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=../../assets/icons/contra-karaoke.ico");
     println!("cargo:rerun-if-env-changed=CONTRA_ONNX_RUNTIME_DLL");
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    if target_os == "windows" {
+        embed_windows_resources();
+    }
     if target_os != "windows" || target_arch != "x86_64" {
         return;
     }
@@ -91,3 +95,27 @@ fn sha256_hex(bytes: &[u8]) -> String {
     let digest = Sha256::digest(bytes);
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
+
+/// Embed the app icon and version metadata in the Windows executable.
+///
+/// Explorer and the taskbar read the icon from the binary itself, so a pinned
+/// or portable copy shows the mark even though the running window also sets
+/// its own. `rc.exe` ships with the Windows SDK that rustc links against; if
+/// it cannot be found the build continues without the resources rather than
+/// failing, so a minimal toolchain still produces a working binary.
+#[cfg(windows)]
+fn embed_windows_resources() {
+    let mut resource = winres::WindowsResource::new();
+    resource.set_icon("../../assets/icons/contra-karaoke.ico");
+    resource.set("FileDescription", "Contra dance caller trainer");
+    resource.set("ProductName", "Contra Karaoke");
+    resource.set("LegalCopyright", "MIT licensed");
+    if let Err(error) = resource.compile() {
+        println!("cargo:warning=Windows icon and metadata not embedded: {error}");
+    }
+}
+
+/// Cross-compiling to Windows from another host leaves the resources to the
+/// toolchain that links the binary.
+#[cfg(not(windows))]
+fn embed_windows_resources() {}

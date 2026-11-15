@@ -33,13 +33,14 @@ and build tools used by the project.
 | `flate2` | MIT OR Apache-2.0 | ONNX Runtime archive decompression (Linux) |
 | `tar` | MIT OR Apache-2.0 | ONNX Runtime archive extraction (Linux) |
 | `zip` | MIT | Build-time extraction of the ONNX Runtime DLL |
+| `winres` | MIT | Build-time Windows icon and version metadata |
 | `arc-swap` | MIT OR Apache-2.0 | Real-time-safe audio buffer swaps |
 | `souvlaki` | MIT | OS media keys and media session (Windows, Linux) |
 | `raw-window-handle` | MIT OR Apache-2.0 | Native window handle for the Windows media session |
 | `env_logger` | MIT OR Apache-2.0 | Logging setup |
 | `thiserror` | MIT OR Apache-2.0 | Error types |
 | `egui_kittest` | MIT OR Apache-2.0 | Headless UI rendering for docs screenshots (development only) |
-| `image` | MIT OR Apache-2.0 | PNG output for docs screenshots (development only) |
+| `image` | MIT OR Apache-2.0 | PNG decoding for the window icon (and docs screenshot output) |
 | `egui_inspection` | MIT OR Apache-2.0 | Development-only inspection plugin (eframe feature) |
 | `egui_mcp` | MIT OR Apache-2.0 | MCP server for agent-driven UI testing |
 | `rmcp` | Apache-2.0 | MCP protocol implementation |

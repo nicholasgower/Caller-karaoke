@@ -56,6 +56,9 @@ Generate a backing track from the chord track:
 - 2/2: half-note bass/chord pattern.
 - 3/4: one chord per bar with a bass note on beat 1.
 - Respect melody/accompaniment volume settings; percussion has its own volume.
+- Keep the chordal accompaniment out of the melody's register: a chord tone
+  closer than a minor third to the tune is moved down an octave. The bass and
+  the countermelody already sit below the melody and are left alone.
 
 By default the arranger combines **two accompaniments with the melody**, forming
 a trio. The first is the chordal instrument above. The second is a countermelody

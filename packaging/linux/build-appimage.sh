@@ -15,10 +15,16 @@ if [ ! -x "$BIN" ]; then
 fi
 
 rm -rf "$APPDIR"
-mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications"
+mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
+         "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 cp "$BIN" "$APPDIR/usr/bin/contra-karaoke"
 cp "$ROOT/packaging/linux/contra-karaoke.desktop" \
    "$APPDIR/usr/share/applications/contra-karaoke.desktop"
+cp "$ROOT/assets/icons/contra-karaoke-256.png" \
+   "$APPDIR/usr/share/icons/hicolor/256x256/apps/contra-karaoke.png"
+# The AppImage tools also look for the icon at the bundle root.
+cp "$ROOT/assets/icons/contra-karaoke-256.png" "$APPDIR/contra-karaoke.png"
+cp "$ROOT/assets/icons/contra-karaoke-256.png" "$APPDIR/.DirIcon"
 
 cat > "$APPDIR/AppRun" <<'EOF'
 #!/bin/sh
