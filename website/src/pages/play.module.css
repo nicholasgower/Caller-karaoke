@@ -1,0 +1,66 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--ifm-navbar-height));
+  min-height: 36rem;
+  background: #141414;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+}
+
+.note {
+  margin: 0;
+  max-width: 62rem;
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.9rem;
+}
+
+.note code {
+  background: var(--ifm-code-background);
+}
+
+.open {
+  flex: none;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  color: var(--ifm-color-content);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.open:hover {
+  background: var(--ifm-color-primary-contrast-background);
+  color: var(--ifm-color-content);
+  text-decoration: none;
+}
+
+.frame {
+  flex: 1;
+  display: block;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #141414;
+}
+
+@media (max-width: 640px) {
+  .page {
+    height: auto;
+    min-height: 0;
+  }
+
+  .frame {
+    height: calc(100vh - var(--ifm-navbar-height) - 8rem);
+    min-height: 30rem;
+  }
+}

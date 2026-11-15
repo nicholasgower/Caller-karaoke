@@ -11,6 +11,7 @@
     "clear": "docusaurus clear",
     "check:shots": "node scripts/check-screenshots.mjs",
     "test": "node scripts/check-screenshots.mjs",
+    "build:app": "node scripts/build-web-app.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "annotate": "node scripts/annotate-screenshots.mjs",
     "check": "npm run check:shots && docusaurus build"

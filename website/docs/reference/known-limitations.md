@@ -13,7 +13,9 @@ development release. These are the limitations to know before relying on it.
   and TTS testing is incomplete. Nightly APKs use the debug keystore unless
   release signing secrets are configured.
 - The **web build** needs the included proxy for online search. Without it, only
-  the bundled defaults and previously cached content work.
+  the bundled defaults and previously cached content work. The hosted copy on
+  this site is rebuilt with the documentation from `main`, so it can lag the
+  nightly release.
 - There is **no stable signed release**. Nightly artifacts use version 0.1.0,
   may be replaced, and are not code-signed.
 - Flatpak is a source-tree packaging path, not a nightly artifact yet.

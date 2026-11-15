@@ -12,7 +12,8 @@ Android. Version **0.1.0** is the current development version.
 
 - Native desktop application (Windows and Linux) built with `eframe`/`egui`.
 - Browser build (WASM) with cpal WebAudio playback, localStorage prefs/cache,
-  and the same UI.
+  and the same UI. A hosted copy runs on the
+  [documentation site](https://storytold.github.io/Contra-karaoke/play/).
 - ContraDB dance search and HTML dance-card parsing.
 - ABC Session Tunes search and JSON tune parsing.
 - ABC → score → 64-beat arrangement → built-in synth playback.
@@ -168,6 +169,11 @@ rustup target add wasm32-unknown-unknown
 cargo install trunk --locked
 cd crates/web && trunk build --release
 ```
+
+The documentation site hosts a copy of this build at
+<https://storytold.github.io/Contra-karaoke/play/>. The docs workflow stages it
+under `website/static/app/` with `npm run build:app` in `website/`; that folder
+is generated and not committed.
 
 Android (requires the Android SDK/NDK, cargo-apk, and minSdk 26):
 

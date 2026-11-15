@@ -48,6 +48,11 @@ advertising, or third-party fonts. Search is compiled into the site, so queries
 do not leave the browser. GitHub, as the host, receives normal request logs;
 see GitHub's privacy statement for details.
 
+The [hosted browser copy](/play) is the same WASM application and follows the
+same privacy rules: preferences and cached source responses stay in this site's
+`localStorage`, and the app sends no telemetry. GitHub sees requests for the
+application files just as it sees requests for the rest of the site.
+
 ## Third-party content
 
 Dances and tunes remain the work of their contributors. The app caches them for

@@ -17,6 +17,7 @@ OS captures rather than app frames.
 
 ```sh
 npm install
+npm run build:app  # requires Rust + Trunk; stages the WASM app under static/app
 npm start      # http://localhost:3000/Contra-karaoke/
 npm test       # screenshot manifest, uniqueness, and emphasis regions
 npm run check  # npm test + production build
@@ -29,6 +30,16 @@ npm run clear
 
 The project base URL is `/Contra-karaoke/` for GitHub Pages. Test the built site
 under that path, not only at the server root.
+
+## Hosted browser app
+
+The site serves a copy of the WASM app at `/Contra-karaoke/app/`, embedded by
+the `/play` page. `npm run build:app` runs Trunk against `crates/web`, builds
+with the public URL `/Contra-karaoke/app/`, and copies `dist/web` to
+`static/app/`. That folder is generated and ignored by Git; the docs workflow
+builds it before `npm run check`, so a plain `npm run build` without Rust
+produces a site with a broken `/play` frame. Override the public URL with
+`CONTRA_WEB_PUBLIC_URL` if you deploy the site at a different base path.
 
 ## Screenshot manifest
 
