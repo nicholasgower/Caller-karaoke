@@ -64,9 +64,13 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo check -p contra-app --target wasm32-unknown-unknown
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: trunk
+      - name: Install Trunk
+        run: |
+          curl -L --fail --retry 3 \
+            -o trunk.tar.gz \
+            https://github.com/trunk-rs/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf trunk.tar.gz
+          sudo mv trunk /usr/local/bin/
       - run: cd crates/web && trunk build --release
 
   dependency-policy:
