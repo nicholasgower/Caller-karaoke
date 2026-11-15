@@ -54,6 +54,10 @@ being device-tested.
 - **Loop** — repeat the 64-beat music and dance loop.
 - **Count-in** — three accompaniment beats before the loop.
 - **Speak calls** — use the local neural voice (platform TTS on web/Android).
+- **Alternative call aliases** — off by default. When on, moves with more than
+  one caller wording randomly use one of them (for example “partner swing”
+  instead of “swing your partner”). The card and TTS use the chosen wording.
+  Add your own alternatives per move type in Preferences → Aliases.
 - **Select dance** — search ContraDB, preview the card, load it.
 - **Select Tune** — search ABC Session Tunes, preview the sheet music (or the
   ABC source), load it.
@@ -68,8 +72,8 @@ being device-tested.
   returns to preferences.
 - **1 / 2 / 3 / 4** — switch to Session, Select dance, Select Tune, or
   Preferences.
-- **Enter** — start a dance or tune search from any search field, or add a
-  custom alias from either alias field.
+- **Enter** — start a dance or tune search from any search field, add a
+  custom alias, or add an alternative call alias.
 
 Shortcuts are ignored while typing in a text field, so Space and R stay ordinary
 characters in search boxes. Hovering a tab, Play/Pause, Restart, Search, or Add
