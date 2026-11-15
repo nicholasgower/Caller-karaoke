@@ -1,5 +1,18 @@
 # Windows packaging
 
+The desktop build embeds ONNX Runtime 1.31.0 for the Kokoro voice. The build
+script downloads the official MIT-licensed runtime once and embeds
+`onnxruntime.dll` in the executable; the app writes it to the user cache on
+first use. For an offline or audited build, point the script at a local copy:
+
+```powershell
+$env:CONTRA_ONNX_RUNTIME_DLL = "C:\path\to\onnxruntime.dll"
+cargo build --release -p contra-app
+```
+
+The voice model itself is downloaded from Hugging Face on first use and cached;
+it is not part of the installer.
+
 Build the release binary first:
 
 ```powershell

@@ -179,6 +179,7 @@ impl ContraApp {
         let prefs_path = config_dir.join("preferences.json");
         let mut prefs = load_prefs(&prefs_path).unwrap_or_default();
         prefs.validate();
+        prefs.tts_voice = crate::tts::voice(&prefs.tts_voice).id.to_string();
 
         let cache = build_cache(&cache_dir);
         let source = SourceClient::new(
@@ -202,12 +203,17 @@ impl ContraApp {
             }
         };
 
-        let mut speech = Speech::new();
+        let mut speech = Speech::new(cache_dir.join("tts"), audio.0.sample_rate());
         speech.set_rate(prefs.tts_rate);
+        speech.set_voice(&prefs.tts_voice);
+        if prefs.tts_enabled {
+            speech.set_enabled(true);
+        }
 
         let dance = defaults::default_dance();
         let tune = defaults::default_tune();
         let timeline = build_timeline(&dance, &prefs).unwrap_or_else(|_| empty_timeline());
+        speech.prewarm(call_texts(&timeline));
         let length_warning = length_warning_for(&dance, &tune);
 
         let soundfont = prefs
@@ -371,6 +377,7 @@ impl ContraApp {
         match build_timeline(&self.dance, &self.prefs) {
             Ok(timeline) => {
                 self.timeline = timeline;
+                self.speech.prewarm(call_texts(&self.timeline));
                 self.last_spoken = None;
                 self.last_beat = 0.0;
             }
@@ -601,6 +608,7 @@ impl ContraApp {
     }
 
     fn update_speech(&mut self, beat: f64) {
+        self.speech.poll(&self.audio);
         if beat + 0.25 < self.last_beat {
             self.last_spoken = None;
         }
@@ -804,12 +812,13 @@ impl eframe::App for ContraApp {
             self.apply_audio_settings();
         }
 
-        if self.audio.is_playing() || self.render_loading {
+        if self.audio.is_playing() || self.render_loading || self.speech.is_busy() {
             ctx.request_repaint_after(Duration::from_millis(16));
         }
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.speech.stop();
         self.save_prefs();
     }
 }
@@ -988,6 +997,15 @@ fn empty_timeline() -> PracticeTimeline {
         music_loop_beats: 64.0,
         count_in_beats: 3.0,
     }
+}
+
+/// The rendered call texts, in timeline order, for the speech pre-synthesizer.
+fn call_texts(timeline: &PracticeTimeline) -> Vec<String> {
+    timeline
+        .calls
+        .iter()
+        .map(|call| call.text.clone())
+        .collect()
 }
 
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]

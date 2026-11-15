@@ -139,6 +139,7 @@ impl ContraApp {
                 .checkbox(&mut self.prefs.tts_enabled, "Speak calls")
                 .changed()
             {
+                self.speech.set_enabled(self.prefs.tts_enabled);
                 if !self.prefs.tts_enabled {
                     self.speech.stop();
                 }
@@ -187,11 +188,27 @@ impl ContraApp {
                 format!("Audio device: {error}"),
             );
         }
-        if self.prefs.tts_enabled && !self.speech.available() {
-            ui.colored_label(
-                theme::error(ui),
-                "Text-to-speech is not available on this system.",
-            );
+        if self.prefs.tts_enabled {
+            let status = self.speech.status();
+            if let Some(error) = &status.error {
+                ui.colored_label(
+                    theme::error(ui),
+                    format!("Neural voice: {error}. Using the platform voice."),
+                );
+            } else if !self.speech.available() {
+                ui.colored_label(
+                    theme::error(ui),
+                    "Text-to-speech is not available on this system.",
+                );
+            } else if let Some(progress) = status.progress {
+                ui.add(
+                    egui::ProgressBar::new(progress)
+                        .show_percentage()
+                        .text(status.message.clone()),
+                );
+            } else if !status.ready {
+                ui.label(egui::RichText::new(&status.message).small().color(theme::muted(ui)));
+            }
         }
 
         ui.add_space(6.0);
@@ -1263,7 +1280,56 @@ impl ContraApp {
             ui.separator();
 
             ui.heading("Text to speech");
-            ui.checkbox(&mut self.prefs.tts_enabled, "Speak calls");
+            if ui
+                .checkbox(&mut self.prefs.tts_enabled, "Speak calls")
+                .changed()
+            {
+                self.speech.set_enabled(self.prefs.tts_enabled);
+                if !self.prefs.tts_enabled {
+                    self.speech.stop();
+                }
+            }
+            ui.label(
+                egui::RichText::new(
+                    "Desktop builds use the local Kokoro neural voice and download the selected \
+                     voice once, then cache it. Web and Android use the platform voice.",
+                )
+                .small()
+                .color(theme::muted(ui)),
+            );
+            let neural = cfg!(all(
+                not(target_arch = "wasm32"),
+                not(target_os = "android")
+            ));
+            ui.horizontal(|ui| {
+                ui.label("Voice");
+                ui.add_enabled_ui(neural, |ui| {
+                    let selected = crate::tts::voice(&self.prefs.tts_voice);
+                    egui::ComboBox::from_id_salt("tts_voice")
+                        .selected_text(selected.label)
+                        .show_ui(ui, |ui| {
+                            for voice in crate::tts::VOICES {
+                                if ui
+                                    .selectable_label(self.prefs.tts_voice == voice.id, voice.label)
+                                    .clicked()
+                                {
+                                    self.prefs.tts_voice = voice.id.to_string();
+                                    self.speech.set_voice(&self.prefs.tts_voice);
+                                }
+                            }
+                        });
+                });
+            });
+            let selected = crate::tts::voice(&self.prefs.tts_voice);
+            ui.label(
+                egui::RichText::new(if neural {
+                    selected.detail
+                } else {
+                    "The platform voice is used in this build."
+                })
+                .small()
+                .color(theme::muted(ui)),
+            );
             ui.horizontal(|ui| {
                 ui.label("Rate");
                 if ui
@@ -1273,7 +1339,28 @@ impl ContraApp {
                     self.speech.set_rate(self.prefs.tts_rate);
                 }
             });
-            if !self.speech.available()
+            let status = self.speech.status().clone();
+            if let Some(progress) = status.progress {
+                ui.add(
+                    egui::ProgressBar::new(progress)
+                        .show_percentage()
+                        .text(status.message.clone()),
+                );
+            } else {
+                let color = if status.error.is_some() {
+                    theme::error(ui)
+                } else {
+                    theme::muted(ui)
+                };
+                ui.label(egui::RichText::new(&status.message).small().color(color));
+            }
+            if let Some(error) = &status.error {
+                ui.label(
+                    egui::RichText::new(format!("Using the platform voice: {error}"))
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            } else if !self.speech.available()
                 && let Some(error) = self.speech.error()
             {
                 ui.label(
@@ -1281,6 +1368,12 @@ impl ContraApp {
                         .small()
                         .color(theme::muted(ui)),
                 );
+            }
+            if status.error.is_some()
+                && self.speech.can_retry()
+                && ui.button("Retry neural voice").clicked()
+            {
+                self.speech.retry();
             }
             ui.checkbox(&mut self.prefs.loop_enabled, "Loop the dance and music");
             ui.checkbox(&mut self.prefs.count_in_enabled, "Three-beat count-in");
