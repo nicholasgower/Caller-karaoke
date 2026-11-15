@@ -4,9 +4,11 @@ description: Switch between the dark and light grey themes, and understand the c
 sidebar_position: 10
 ---
 
-Contra Karaoke uses a neutral grey interface with no accent colour. The active
-call is distinguished by contrast, weight, and border rather than a highlight
-colour.
+Contra Karaoke uses a neutral grey interface with limited colour. The large
+prompt card adds a glanceable cue: green while the caller must speak the shown
+call now, red while the card looks ahead to the next move, and grey for ready,
+count-in, dancing, and completion. The label text still says **CALL NOW** or
+**UPCOMING MOVE**, so the fill is never the only signal.
 
 ## Choose a theme
 

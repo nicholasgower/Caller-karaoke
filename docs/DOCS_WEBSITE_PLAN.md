@@ -1,7 +1,7 @@
 # Documentation Website and Automated Screenshot Plan
 
 **Status:** documentation complete; 69 in-app screenshots rendered headlessly
-**Baseline:** local `main` at `67ad921`
+**Baseline:** local `main` at `236b15d`
 **Date:** 2026-11-14
 **Owner:** docs track, running alongside app generation
 **Targets:** Docusaurus 3.10 · Node 24 LTS · `egui`/`eframe` 0.37 · `egui_kittest` 0.37 · Rust 1.95
@@ -56,7 +56,7 @@ that now exists on `main`.
 - Many inputs are not associated with their labels, and several labels repeat
   (`Preview`, `Reset to default`). The headless renderer disables the automatic
   accessibility check; a label pass remains future work.
-- The branch is rebased onto `main` at `67ad921`. The `mcp` crate and
+- The branch is rebased onto `main` at `236b15d`. The `mcp` crate and
   `inspection` feature add a live-app automation path; the docs screenshots use
   the separate headless binary instead.
 
@@ -184,7 +184,7 @@ real app.
 | Data | Bundled defaults + synthetic fixtures, offline | Deterministic, no network, no licensing surprises |
 | Storage | PNGs committed under `website/static/img/screens/` | Reviewable diffs, fast docs builds |
 | Instruction API | `<Step shot="id">` MDX component | Makes “instruction without screenshot” impossible |
-| App baseline | `67ad921`, headless renderer added | Library, `contra-headless`, sheet-music preview, keyboard shortcuts, Kokoro voices, and live MCP inspection exist |
+| App baseline | `236b15d`, headless renderer added | Library, `contra-headless`, sheet-music preview, keyboard shortcuts, Kokoro voices, and live MCP inspection exist |
 | Manual images | Windows/Android OS dialogs only | Automating OS UI is disproportionate for three images |
 | Analytics | None | Matches app privacy rules |
 
@@ -661,7 +661,7 @@ prefs are fixed.
 {
   "schemaVersion": 1,
   "appVersion": "0.1.0",
-  "appCommit": "67ad921",
+  "appCommit": "236b15d",
   "egui": "0.37.0",
   "renderer": "wgpu-vulkan-llvmpipe",
   "shots": {

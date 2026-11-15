@@ -56,8 +56,8 @@ states:
 | --- | --- | --- |
 | Ready | `READY`, `Press Play to begin` | Press **Play** to build the music. |
 | Count-in | `COUNT-IN`, a large number, and either **CALL NOW** or `Listen for the first chord` | Wait for the loop, or say the first call if it is already due. |
-| Calling | `CALL NOW` | Say the words now. The line below counts down to the execute beat. |
-| Executing | `UPCOMING MOVE`, the next call, and `call in N beats` | The figure is happening; prepare to say the next call. The dance card still highlights the figure in progress. |
+| Calling | `CALL NOW`, green card | Say the words now. The line below counts down to the execute beat. |
+| Executing | `UPCOMING MOVE`, red card, the next call, and `call in N beats` | The figure is happening; prepare to say the next call. The dance card still highlights the figure in progress. |
 | Finished | `Dance complete` | With looping off, press **Restart** to run again. |
 
 While a figure executes, the prompt switches to the move you must say next. The
