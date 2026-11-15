@@ -341,7 +341,10 @@ impl Speech {
     }
 
     pub fn set_rate(&mut self, rate: f32) {
-        self.rate = rate.clamp(0.5, 2.0);
+        self.rate = rate.clamp(
+            contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
+            contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+        );
         self.platform.set_rate(self.rate);
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
@@ -529,7 +532,10 @@ impl PlatformSpeech {
     }
 
     fn set_rate(&mut self, rate: f32) {
-        self.rate = rate.clamp(0.5, 2.0);
+        self.rate = rate.clamp(
+            contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
+            contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+        );
         self.apply_rate();
     }
 

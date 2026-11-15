@@ -233,7 +233,10 @@ impl Worker {
                     // this command, so in-flight synthesis is discarded.
                 }
                 Command::SetRate(rate) => {
-                    self.rate = rate.clamp(0.5, 2.0);
+                    self.rate = rate.clamp(
+                        contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
+                        contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+                    );
                     self.cache.clear();
                 }
                 Command::SetTone(tone) => {
@@ -412,7 +415,10 @@ impl Worker {
             }
             Command::Stop => PrewarmAction::Abort,
             Command::SetRate(rate) => {
-                self.rate = rate.clamp(0.5, 2.0);
+                self.rate = rate.clamp(
+                    contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
+                    contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+                );
                 self.cache.clear();
                 PrewarmAction::Abort
             }

@@ -31,7 +31,7 @@ eight, about four minutes at 240 BPM. Cyclic playback needs **Loop** on.
 
 Type into **Search saved** to filter the list. The search is local and matches
 the tune title, composer, key, meter, genre, and credits. Every word you type
-must match. Select **Preview** to read the metadata and engraved sheet music on
+must match. Select a saved tune to read its metadata and engraved sheet music on
 the right, or **Use** to load the tune.
 
 <Shot id="tune-library-search" />

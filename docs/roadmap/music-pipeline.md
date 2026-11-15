@@ -55,7 +55,7 @@ Generate a backing track from the chord track:
   the weak pulse.
 - 2/2: half-note bass/chord pattern.
 - 3/4: one chord per bar with a bass note on beat 1.
-- Respect melody/accompaniment volume settings.
+- Respect melody/accompaniment volume settings; percussion has its own volume.
 
 By default the arranger combines **two accompaniments with the melody**, forming
 a trio. The first is the chordal instrument above. The second is a countermelody
@@ -72,6 +72,21 @@ duo):
 - Derive it from the melody, key, and chord track only; the ABC needs no extra
   voice.
 - Mix it with the accompaniment volume, panned away from the melody.
+
+An optional percussion layer is off by default:
+
+- **Foot taps** place a soft tap on every dance beat, accented at bar starts.
+- **Drumset** adds kick, snare, and hi-hat. The hats subdivide each dance beat in
+  half for simple meters and in thirds for compound meters, so jigs keep their
+  lilt.
+- Percussion starts with the count-in when enabled and does not play through
+  the once-only slow ending.
+- Render it with small procedural voices rather than a soundfont preset, so the
+  bundled subset and user fonts both work.
+- Give it its own volume setting; it never changes the grid or the calls.
+- Give it a rhythm menu like the accompaniment: match style, basic, on the beat,
+  offbeats, half time, double time, shuffle, and train beat. The count-in stays
+  one clear note per beat.
 
 ### 6.4 Count-in
 
@@ -102,6 +117,11 @@ Rendering uses `rustysynth` (MIT) with one of two voice sets:
    - Piano: additive partials, inharmonicity, exponential decay, hammer noise.
    - Guitar: Karplus-Strong pluck and strum.
    - Used when neither font is available, so the app still plays.
+
+Percussion is always procedural, independent of the selected voice set: a soft
+foot-tap thump, a pitch-dropping kick, a noise-and-body snare, and a high-passed
+noise hi-hat. It is mixed into the rendered buffer after the melody and
+accompaniment, so it works with the bundled subset and any user font.
 
 Do not add a full soundfont bank to the repository. A new bundled soundfont
 must be permissively licensed, trimmed to the programs used, and attributed.
@@ -155,5 +175,6 @@ Soundfont file selection:
 - The once-only slow ending is a live transport action and is not exported.
 - Melody and accompaniment tracks, plus a countermelody track when the second
   accompaniment is on.
+- A percussion track on the General MIDI drum channel when percussion is on.
 - Include tempo, meter, key, and program changes.
 - The export must match what the synth plays.

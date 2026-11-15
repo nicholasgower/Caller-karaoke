@@ -413,19 +413,20 @@ impl ContraApp {
             ))
             .color(theme::muted(ui)),
         );
-        let instruments = match self.prefs.second_accompaniment.instrument() {
-            Some(second) => format!(
-                "Melody: {} · Accompaniment: {} · Second: {}",
-                self.prefs.melody.label(),
-                self.prefs.accompaniment.label(),
-                second.label()
-            ),
-            None => format!(
-                "Melody: {} · Accompaniment: {}",
-                self.prefs.melody.label(),
-                self.prefs.accompaniment.label()
-            ),
-        };
+        let mut instruments = format!(
+            "Melody: {} · Accompaniment: {}",
+            self.prefs.melody.label(),
+            self.prefs.accompaniment.label()
+        );
+        if let Some(second) = self.prefs.second_accompaniment.instrument() {
+            instruments.push_str(&format!(" · Second: {}", second.label()));
+        }
+        if self.prefs.percussion.is_enabled() {
+            instruments.push_str(&format!(" · Percussion: {}", self.prefs.percussion.label()));
+            if self.prefs.percussion_rhythm != PercussionRhythm::Auto {
+                instruments.push_str(&format!(" ({})", self.prefs.percussion_rhythm.label()));
+            }
+        }
         if compact {
             // Two deliberate lines instead of one wrapped line, so the tune
             // and the instrument summary never break mid-phrase at phone width.

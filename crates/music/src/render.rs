@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, PercussionRhythm,
+    SecondAccompaniment,
 };
 use rustysynth::SoundFont;
 
@@ -19,8 +20,14 @@ pub struct RenderRequest {
     /// The countermelody voice that completes the trio; [`SecondAccompaniment::Off`]
     /// renders a duo.
     pub second_accompaniment: SecondAccompaniment,
+    /// Optional percussion layer; [`Percussion::Off`] renders no percussion.
+    pub percussion: Percussion,
+    /// Rhythm used to place the percussion layer.
+    pub percussion_rhythm: PercussionRhythm,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
+    /// Level of the optional percussion layer.
+    pub percussion_volume: f32,
     pub count_in_beats: f64,
     pub sample_rate: u32,
     /// Number of 64-beat accompaniment passes to render back to back.
@@ -114,10 +121,11 @@ pub fn render(
     request: &RenderRequest,
     soundfont: Option<&Arc<SoundFont>>,
 ) -> Result<AudioBuffer, RenderError> {
-    let buffer = match soundfont {
+    let mut buffer = match soundfont {
         Some(soundfont) => crate::soundfont::render_soundfont(request, soundfont)?,
         None => crate::synth::render_builtin(request),
     };
+    crate::percussion::mix(&mut buffer, request);
     if buffer.samples.is_empty() {
         return Err(RenderError::Empty);
     }

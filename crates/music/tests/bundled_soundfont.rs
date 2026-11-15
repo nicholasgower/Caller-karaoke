@@ -38,8 +38,11 @@ fn request() -> RenderRequest {
         accompaniment: AccompanimentInstrument::Piano,
         accompaniment_rhythm: AccompanimentRhythm::Auto,
         second_accompaniment: SecondAccompaniment::Accordion,
+        percussion: contra_core::Percussion::Off,
+        percussion_rhythm: contra_core::PercussionRhythm::Auto,
         melody_volume: 0.75,
         accompaniment_volume: 0.65,
+        percussion_volume: 0.5,
         count_in_beats: COUNT_IN_BEATS,
         sample_rate: 24_000,
         variation_passes: 1,
@@ -91,6 +94,20 @@ fn every_second_accompaniment_choice_is_audible() {
             .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
         assert!(peak > 0.05, "{second:?} rendered at peak {peak}");
     }
+}
+
+#[test]
+fn percussion_mixes_with_the_bundled_font() {
+    let font = bundled();
+    let mut request = request();
+    request.percussion = contra_core::Percussion::Drumset;
+    let buffer = contra_music::render(&request, Some(&font)).expect("renders trio with drums");
+    let peak = buffer
+        .samples
+        .iter()
+        .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+    assert!(peak > 0.05, "drumset rendered at peak {peak}");
+    assert!(buffer.samples.iter().all(|sample| sample.abs() <= 1.0));
 }
 
 #[test]
