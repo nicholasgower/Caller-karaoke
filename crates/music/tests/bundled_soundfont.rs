@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use contra_core::{AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument};
+use contra_core::{AccompanimentInstrument, AccompanimentRhythm, COUNT_IN_BEATS, MelodyInstrument};
 use contra_music::soundfont::{load_soundfont, render_soundfont};
 use contra_music::{Arrangement, RenderRequest, parse_abc};
 use rustysynth::SoundFont;
@@ -36,7 +36,7 @@ fn request() -> RenderRequest {
         accompaniment_rhythm: AccompanimentRhythm::Auto,
         melody_volume: 0.75,
         accompaniment_volume: 0.65,
-        count_in_beats: 3.0,
+        count_in_beats: COUNT_IN_BEATS,
         sample_rate: 24_000,
         variation_passes: 1,
     }
@@ -78,7 +78,7 @@ fn bundled_font_renders_the_loop() {
     let request = request();
     let buffer = render_soundfont(&request, &font).expect("renders with the bundled font");
 
-    let expected_frames = 33.5 * request.sample_rate as f64;
+    let expected_frames = 34.0 * request.sample_rate as f64;
     assert!((buffer.frames() as f64 - expected_frames).abs() < 2.0);
     assert!(buffer.count_in_samples > 0);
     assert!(buffer.samples.iter().all(|sample| sample.is_finite()));

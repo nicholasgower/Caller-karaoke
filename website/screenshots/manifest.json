@@ -111,7 +111,7 @@
     {
       "id": "session-count-in",
       "alt": "The session screen during the count-in, showing a large 2, the label COUNT-IN, and either CALL NOW with the first call or Listen for the first chord.",
-      "caption": "The three-beat count-in sets the tempo before the 64-beat loop begins.",
+      "caption": "The four-beat count-in sets the tempo before the 64-beat loop begins.",
       "status": "ready",
       "width": 1280,
       "height": 800

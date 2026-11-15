@@ -27,7 +27,8 @@ pub use prefs::{
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};
 pub use timing::{
-    CallEvent, LEAD_PADDING_SECONDS, LeadSettings, MAX_PADDING_SECONDS, MIN_PADDING_SECONDS,
-    PhraseSpan, PracticeTimeline, ScheduledCall, TimelineConfig, TimelineError,
+    COUNT_IN_BEATS, CallEvent, LEAD_PADDING_SECONDS, LeadSettings, MAX_PADDING_SECONDS,
+    MIN_PADDING_SECONDS, PhraseSpan, PracticeTimeline, ScheduledCall, TimelineConfig,
+    TimelineError,
 };
 pub use tune::Tune;

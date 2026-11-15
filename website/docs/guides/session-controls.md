@@ -80,8 +80,8 @@ wording appears in small muted text next to the rendered call.
 
 <Shot id="session-count-in" />
 
-The count-in is three dance beats of accompaniment only. At 240 BPM that is
-1.5 seconds. The first call often starts during the count-in because its lead is
+The count-in is four dance beats of accompaniment only. At 240 BPM that is
+2.0 seconds. The first call often starts during the count-in because its lead is
 subtracted from beat 0. That is intentional: the caller needs to say the first
 figure before the dancers move on beat 0. When a call is already active during
 the count-in, the panel shows **CALL NOW** and the call text instead of

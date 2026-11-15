@@ -356,7 +356,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui) {
 
 fn playback(app: &mut ContraApp, ui: &mut egui::Ui) {
     ui.checkbox(&mut app.prefs.loop_enabled, "Loop the dance and music");
-    ui.checkbox(&mut app.prefs.count_in_enabled, "Three-beat count-in");
+    ui.checkbox(&mut app.prefs.count_in_enabled, "Four-beat count-in");
     ui.checkbox(
         &mut app.prefs.accompaniment_variations,
         "Vary the accompaniment on each loop",

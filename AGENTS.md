@@ -37,8 +37,8 @@ explicit instruction.
 2. **One dance beat is half a bar.** At BPM 240, one dance beat is 0.5 s, a
    standard 64-beat dance is 32 s, and a jig bar is 1.0 s. Keep reels and jigs
    equally danceable at the same BPM setting.
-3. **The count-in is three dance beats of accompaniment**, built from the
-   tune's first chord, before the loop.
+3. **The count-in is four dance beats of accompaniment** (“four potatoes”),
+   built from the tune's first chord, before the loop.
 4. **The music loop and dance share a 64-beat grid.** A standard 32-bar tune is
    one loop. Do not let them drift.
 5. **Parser separation.** Dance and tune fetching/parsing lives behind
@@ -241,7 +241,7 @@ These must remain true:
 
 ```
 seconds_per_dance_beat = 120 / bpm
-count_in_beats          = 3
+count_in_beats          = 4
 music_loop_beats        = 64
 tune_body_beats         = music_loop_beats        // excluding the pickup
 dance_total_beats       = tune_body_beats         // warn, do not rescale

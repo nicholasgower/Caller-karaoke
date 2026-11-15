@@ -11,6 +11,14 @@ use crate::dance::{Dance, DanceError};
 use crate::roles::RoleTerms;
 use crate::time::Tempo;
 
+/// The product count-in: four dance beats of accompaniment ("four potatoes").
+///
+/// Four beats is the contra convention and gives the first call more room than
+/// the earlier three-beat choice. The first call may still start before the
+/// count-in when its lead is longer than four beats; see
+/// [`PracticeTimeline::starting_call`].
+pub const COUNT_IN_BEATS: f64 = 4.0;
+
 /// Default flat safety padding added to every call, in seconds.
 ///
 /// This is deliberately outside the min/max speech-lead clamp: the padding is
@@ -172,7 +180,7 @@ pub struct TimelineConfig {
 impl Default for TimelineConfig {
     fn default() -> Self {
         Self {
-            count_in_beats: 3.0,
+            count_in_beats: COUNT_IN_BEATS,
             music_loop_beats: 64.0,
             shuffle_alternatives: false,
             alias_seed: 0,
@@ -420,7 +428,7 @@ impl PracticeTimeline {
     /// The first call to speak when a playback run starts at `beat`.
     ///
     /// The first call of a dance usually begins during the count-in. A lead can
-    /// be longer than the three-beat count-in, though, and the count-in can be
+    /// be longer than the four-beat count-in, though, and the count-in can be
     /// turned off entirely. In both cases the transport cannot reach the start
     /// of the call's lead, so [`ScheduledCall::is_calling`] is already false
     /// when playback begins and the first move would go uncalled. This returns
@@ -623,7 +631,28 @@ mod tests {
         .expect("timeline");
         assert_eq!(timeline.calls.len(), 7);
         assert_eq!(timeline.total_beats, 64.0);
-        assert_eq!(timeline.count_in_beats, 3.0);
+        assert_eq!(timeline.count_in_beats, COUNT_IN_BEATS);
+    }
+
+    #[test]
+    fn count_in_is_four_beats() {
+        // Four dance beats ("four potatoes") is a product decision, not a
+        // derived value. Pin it so a refactor cannot quietly return to three.
+        assert_eq!(COUNT_IN_BEATS, 4.0);
+        let timeline = PracticeTimeline::build(
+            &another_last_dance(),
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &LeadSettings::default(),
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+        assert_eq!(timeline.count_in_beats, 4.0);
+        assert!(
+            timeline.calls[0].call_start_beat >= -COUNT_IN_BEATS,
+            "the default first call should fit inside the four-beat count-in"
+        );
     }
 
     #[test]
@@ -702,7 +731,7 @@ mod tests {
         .expect("timeline");
         let first = &timeline.calls[0];
         // A one-beat manual lead plus the 0.5 s padding starts at beat -2,
-        // after the count-in has already begun.
+        // inside the four-beat count-in.
         assert_eq!(first.call_start_beat, -2.0);
 
         assert!(timeline.starting_call(-3.0).is_none());

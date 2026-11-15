@@ -18,7 +18,7 @@ Android. Version **0.1.0** is the current development version.
 - ABC Session Tunes search and JSON tune parsing.
 - ABC → score → 64-beat arrangement → sampled playback with the bundled
   Fluid R3 GM subset (MIT), or a user-supplied `.sf2`.
-- Three-beat accompaniment count-in built from the tune's first chord.
+- Four-beat accompaniment count-in built from the tune's first chord.
 - On by default: small accompaniment variations each time the loop repeats —
   extra emphasis notes and, now and then, a bar left to the melody alone.
 - Call timeline with syllable-based early calls, aliases, and role terms.
@@ -41,7 +41,7 @@ the audio and windowing development packages listed in `AGENTS.md` /
 `.github/workflows/ci.yml`.
 
 The app opens with the default dance and tune. Press **Play** to build and play
-the loop. The first three beats are the count-in; the first call may be spoken
+the loop. The first four beats are the count-in; the first call may be spoken
 during it.
 
 On the web, the browser needs a user gesture (the Play button) before it will
@@ -55,7 +55,7 @@ being device-tested.
 - **Play / Pause / Restart** — control the session.
 - **Tempo** — 120–320 BPM (default 240).
 - **Loop** — repeat the 64-beat music and dance loop.
-- **Count-in** — three accompaniment beats before the loop.
+- **Count-in** — four accompaniment beats before the loop.
 - **Speak calls** — use the local neural voice (platform TTS on web/Android).
 - **Alternative call aliases** — off by default. When on, moves with more than
   one caller wording randomly use one of them (for example “partner swing”
@@ -105,7 +105,7 @@ callback stay responsive.
 ## How call timing works
 
 One **dance beat** is half a bar. At 240 BPM it lasts 0.5 s, so a standard
-64-beat dance lasts 32 s. The count-in is three dance beats.
+64-beat dance lasts 32 s. The count-in is four dance beats.
 
 For each rendered call the app estimates syllables, converts the speech
 estimate to seconds, and starts the call that many beats before the figure. The

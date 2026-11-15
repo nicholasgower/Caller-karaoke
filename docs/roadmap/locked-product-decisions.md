@@ -12,6 +12,7 @@
 | Soundfont support | Bundled Fluid R3 GM subset by default; optional user-supplied SF2 |
 | Web data access | Small Cloudflare Worker CORS proxy; bundled defaults as fallback |
 | Theme | Dark grey by default; light grey option |
+| Count-in | Four dance beats ("four potatoes"), built from the tune's first chord |
 | Version until further notice | **0.1.0** |
 | Windows packaging | Inno Setup installer + portable ZIP |
 | Nightly releases | Every push to `dev`, dated tags plus a rolling `nightly` release |

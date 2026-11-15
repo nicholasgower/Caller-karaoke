@@ -31,7 +31,7 @@ The export contains:
 - the tempo, meter, key, and program changes;
 - the arranged 64-beat loop.
 
-The MIDI does **not** include the three-beat count-in or the pickup notes. It is
+The MIDI does **not** include the four-beat count-in or the pickup notes. It is
 the arranged loop, not the full playback buffer. Because the export re-parses
 the tune's stored ABC, edits made in the preview field are ignored.
 

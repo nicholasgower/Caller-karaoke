@@ -9,7 +9,7 @@ This note documents the critical timing rule implemented in
 - A standard 32-bar tune is 64 dance beats.
 - At `bpm = 240`, `seconds_per_dance_beat = 120 / 240 = 0.5 s`.
 - A standard 64-beat dance therefore lasts 32 s.
-- The count-in is three dance beats (1.5 s at 240 BPM).
+- The count-in is four dance beats (2.0 s at 240 BPM).
 
 The music sequencer converts ABC note lengths to dance beats using:
 
@@ -69,7 +69,7 @@ When the dance loops, the same call is scheduled again at
 the end of the loop so the first move of the next repetition is still called.
 
 The transport cannot always reach the start of that first lead. A lead can be
-longer than the three-beat count-in, and the count-in can be turned off, so
+longer than the four-beat count-in, and the count-in can be turned off, so
 playback may begin at or after the first call's execute beat. The TTS still
 speaks the first call as soon as a run starts (at the count-in, or at beat 0
 when there is no count-in); it is never dropped just because its lead window

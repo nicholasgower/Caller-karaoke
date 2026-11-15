@@ -32,7 +32,7 @@ pub struct AudioBuffer {
     pub samples: Vec<f32>,
     pub sample_rate: u32,
     pub channels: u16,
-    /// Sample index where the three-beat count-in ends and the loop begins.
+    /// Sample index where the four-beat count-in ends and the loop begins.
     pub count_in_samples: u64,
     /// Loop bounds for the transport. The count-in only plays once.
     pub loop_start_sample: u64,
