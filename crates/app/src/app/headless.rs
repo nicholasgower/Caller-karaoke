@@ -116,6 +116,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     {
         let app = harness.state_mut();
         app.audio.force_finished();
+        // The transport maps a loop-end position back to beat 0, so clear the
+        // schedule to render the completed state without an active call.
+        app.timeline.calls.clear();
+        app.started = true;
     }
     capture(&mut harness, out, "session-finished")?;
 
