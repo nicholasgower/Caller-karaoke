@@ -58,7 +58,8 @@ beside their controls, each field takes the remaining width, and the results and
 preview stack into one scrolling column instead of two narrow columns. Saved
 folders collapse behind a **Folders** summary row so the saved cards start on
 screen. Every button keeps the 44-pixel touch target, including **Preview**,
-**Use**, and the alias reset controls.
+**Use**, and the alias reset controls, and a saved card's body is itself one
+full-width target that previews that dance or tune.
 
 ## Keyboard
 
