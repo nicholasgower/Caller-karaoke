@@ -70,11 +70,11 @@ captured manually.
 | --- | --- |
 | Windows x64 | Desktop build; installer and portable ZIP in the nightly release |
 | Linux x86_64 | Desktop build; `.deb` and AppImage in the nightly release |
-| Web (WASM) | Browser build; needs a static server and a data proxy for online search and downloads |
+| Web (WASM) | Browser build; a hosted copy runs on this site, and the downloaded bundle needs a static server and a data proxy for online search and downloads |
 | Android | Configured with minSdk 26; APK build and real-device testing still in progress |
 
-Ready to try it? Continue to
-[Install on Windows](/docs/getting-started/install-windows),
+Ready to try it? [Play in your browser](/play) without installing anything, or
+continue to [Install on Windows](/docs/getting-started/install-windows),
 [Install on Linux](/docs/getting-started/install-linux),
 [Run in the browser](/docs/getting-started/install-web), or
 [build from source](/docs/getting-started/build-and-run). If you just want the

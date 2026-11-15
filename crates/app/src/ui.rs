@@ -150,6 +150,59 @@ fn upcoming_move_card(
 }
 
 impl ContraApp {
+    /// The About window: what the app is, who made it, and the project links.
+    ///
+    /// It is a modal over every screen so it can be opened from anywhere and
+    /// closes on its own button, a click outside, or Escape.
+    fn about_ui(&mut self, ctx: &egui::Context) {
+        if !self.about_open {
+            return;
+        }
+        let mut close = false;
+        // Keep the window inside a phone-width viewport: the modal area is not
+        // constrained to the screen by default.
+        let max_width = (ctx.content_rect().width() - 48.0).clamp(240.0, 440.0);
+        let response = egui::Modal::new(egui::Id::unique("about-window")).show(ctx, |ui| {
+            ui.set_max_width(max_width);
+            ui.heading("Contra Karaoke");
+            ui.label(
+                egui::RichText::new(format!("Version {}", env!("CARGO_PKG_VERSION")))
+                    .color(theme::muted(ui)),
+            );
+            ui.add_space(8.0);
+            ui.label(
+                "A contra dance caller trainer. It plays ABC-sourced music in sync with the \
+                 dance card and shows each call early enough that dancers hear it before they \
+                 move.",
+            );
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new("By Nicholas Gower").strong());
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new("Project links").strong());
+            ui.hyperlink_to(
+                egui::RichText::new("GitHub repository").underline(),
+                REPOSITORY_URL,
+            );
+            ui.hyperlink_to(
+                egui::RichText::new("Documentation").underline(),
+                DOCUMENTATION_URL,
+            );
+            ui.add_space(8.0);
+            ui.label(
+                egui::RichText::new("MIT licensed. Bundled defaults are attributed in CREDITS.md.")
+                    .small()
+                    .color(theme::muted(ui)),
+            );
+            ui.add_space(8.0);
+            if ui.button("Close").clicked() {
+                close = true;
+            }
+        });
+        if close || response.should_close() {
+            self.about_open = false;
+        }
+    }
+
     fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
         let animate = self.prefs.animations_enabled;
         let mut timeline_dirty = false;
@@ -1976,17 +2029,31 @@ impl ContraApp {
                         });
                     ui.end_row();
                     ui.label("Accompaniment");
-                    egui::ComboBox::from_id_salt("accompaniment")
-                        .selected_text(self.prefs.accompaniment.label())
-                        .show_ui(ui, |ui| {
-                            for option in AccompanimentInstrument::ALL {
-                                ui.selectable_value(
-                                    &mut self.prefs.accompaniment,
-                                    option,
-                                    option.label(),
-                                );
-                            }
-                        });
+                    ui.horizontal(|ui| {
+                        egui::ComboBox::from_id_salt("accompaniment")
+                            .selected_text(self.prefs.accompaniment.label())
+                            .show_ui(ui, |ui| {
+                                for option in AccompanimentInstrument::ALL {
+                                    ui.selectable_value(
+                                        &mut self.prefs.accompaniment,
+                                        option,
+                                        option.label(),
+                                    );
+                                }
+                            });
+                        ui.label("Rhythm");
+                        egui::ComboBox::from_id_salt("accompaniment_rhythm")
+                            .selected_text(self.prefs.accompaniment_rhythm.label())
+                            .show_ui(ui, |ui| {
+                                for option in AccompanimentRhythm::ALL {
+                                    ui.selectable_value(
+                                        &mut self.prefs.accompaniment_rhythm,
+                                        option,
+                                        option.label(),
+                                    );
+                                }
+                            });
+                    });
                     ui.end_row();
                 });
             ui.horizontal(|ui| {
@@ -2287,6 +2354,7 @@ impl ContraApp {
                 || self.prefs.accompaniment_variations != before.accompaniment_variations
                 || self.prefs.melody != before.melody
                 || self.prefs.accompaniment != before.accompaniment
+                || self.prefs.accompaniment_rhythm != before.accompaniment_rhythm
                 || self.prefs.melody_volume != before.melody_volume
                 || self.prefs.accompaniment_volume != before.accompaniment_volume
                 || self.prefs.soundfont != before.soundfont;

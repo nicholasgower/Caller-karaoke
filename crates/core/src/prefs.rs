@@ -63,6 +63,57 @@ impl AccompanimentInstrument {
     }
 }
 
+/// Rhythm pattern used to realise the accompaniment chords.
+///
+/// The pattern only decides when the chord and bass notes sound inside the
+/// 64-beat grid; it never changes the grid, the tempo, or the call timeline.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AccompanimentRhythm {
+    /// Use the pattern that suits the selected accompaniment instrument.
+    #[default]
+    Auto,
+    /// One sustained chord and bass note per dance beat.
+    Block,
+    /// Alternate bass and chord on each half beat (`oom-pah`).
+    BoomChuck,
+    /// Hold the bass and stab the chord off the beat.
+    Offbeat,
+    /// Broken-chord pattern in steady eighth notes.
+    Arpeggio,
+    /// Swung boom-chuck with a long-short feel.
+    Shuffle,
+    /// Continuous chord strums on every half beat.
+    Strum,
+    /// One chord per harmony, held as long as the changes allow.
+    Sustained,
+}
+
+impl AccompanimentRhythm {
+    pub const ALL: [Self; 8] = [
+        Self::Auto,
+        Self::Block,
+        Self::BoomChuck,
+        Self::Offbeat,
+        Self::Arpeggio,
+        Self::Shuffle,
+        Self::Strum,
+        Self::Sustained,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Auto => "Match instrument",
+            Self::Block => "Block chords",
+            Self::BoomChuck => "Boom-chuck",
+            Self::Offbeat => "Offbeat stabs",
+            Self::Arpeggio => "Arpeggio",
+            Self::Shuffle => "Shuffle",
+            Self::Strum => "Strum",
+            Self::Sustained => "Sustained",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Theme {
     #[default]
@@ -98,6 +149,8 @@ pub struct Preferences {
     pub aliases: AliasTable,
     pub melody: MelodyInstrument,
     pub accompaniment: AccompanimentInstrument,
+    /// Pattern used for the accompaniment chords; see [`AccompanimentRhythm`].
+    pub accompaniment_rhythm: AccompanimentRhythm,
     pub theme: Theme,
     /// Smooth transitions for tab changes, highlights, and screen entries.
     pub animations_enabled: bool,
@@ -133,11 +186,12 @@ fn default_tts_voice() -> String {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            schema_version: 5,
+            schema_version: 6,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
             accompaniment: AccompanimentInstrument::default(),
+            accompaniment_rhythm: AccompanimentRhythm::default(),
             theme: Theme::default(),
             animations_enabled: true,
             lead: LeadSettings::default(),
@@ -170,7 +224,7 @@ impl Preferences {
     /// Clamp values that came from a preference file or a UI control.
     pub fn validate(&mut self) {
         if self.schema_version == 0 {
-            self.schema_version = 5;
+            self.schema_version = 6;
         }
         if self.tts_voice.trim().is_empty() {
             self.tts_voice = default_tts_voice();
@@ -240,6 +294,12 @@ impl Preferences {
             }
             self.schema_version = 5;
         }
+        if self.schema_version < 6 {
+            // v6 adds the selectable accompaniment rhythm. `serde` supplies
+            // the instrument-matching default for older files, so only the
+            // version needs recording.
+            self.schema_version = 6;
+        }
     }
 }
 
@@ -254,6 +314,7 @@ mod tests {
         assert_eq!(prefs.role_terms.right_plural, "robins");
         assert_eq!(prefs.melody, MelodyInstrument::Fiddle);
         assert_eq!(prefs.accompaniment, AccompanimentInstrument::Piano);
+        assert_eq!(prefs.accompaniment_rhythm, AccompanimentRhythm::Auto);
         assert_eq!(prefs.theme, Theme::Dark);
         assert!(prefs.animations_enabled);
         assert_eq!(prefs.tempo_bpm, 240.0);
@@ -262,7 +323,7 @@ mod tests {
         assert!(prefs.accompaniment_variations);
         assert!(!prefs.tts_enabled);
         assert_eq!(prefs.tts_voice, "af_heart");
-        assert_eq!(prefs.schema_version, 5);
+        assert_eq!(prefs.schema_version, 6);
         assert!(!prefs.shuffle_alternatives);
     }
 
@@ -332,7 +393,7 @@ mod tests {
         let json = old.to_json().expect("serialize");
         let migrated = Preferences::from_json(&json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 5);
+        assert_eq!(migrated.schema_version, 6);
         assert_eq!(migrated.tts_voice, "af_heart");
         assert_eq!(migrated.lead.syllables_per_second, 4.0);
         assert_eq!(migrated.lead.max_beats, 5.0);
@@ -345,7 +406,7 @@ mod tests {
         let json = r#"{"schema_version":2,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 5);
+        assert_eq!(migrated.schema_version, 6);
         assert!(migrated.animations_enabled);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -355,7 +416,7 @@ mod tests {
         let json = r#"{"schema_version":3,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 5);
+        assert_eq!(migrated.schema_version, 6);
         assert!(migrated.accompaniment_variations);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -365,10 +426,31 @@ mod tests {
         let json = r#"{"schema_version":4,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 5);
+        assert_eq!(migrated.schema_version, 6);
         assert_eq!(migrated.tts_voice, "af_heart");
         assert!(!migrated.shuffle_alternatives);
         assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn v5_preferences_use_the_instrument_matching_rhythm() {
+        let json = r#"{"schema_version":5,"tempo_bpm":220.0}"#;
+        let migrated = Preferences::from_json(json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.accompaniment_rhythm, AccompanimentRhythm::Auto);
+        assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn accompaniment_rhythm_round_trips() {
+        let prefs = Preferences {
+            accompaniment_rhythm: AccompanimentRhythm::Shuffle,
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.accompaniment_rhythm, AccompanimentRhythm::Shuffle);
     }
 
     #[test]

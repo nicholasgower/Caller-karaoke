@@ -9,6 +9,22 @@ cpal's WebAudio backend, keeps preferences and source responses in
 `localStorage`, and needs a proxy for online search because the upstream sites
 do not allow browser requests from this origin.
 
+## Try the hosted copy
+
+A copy of the browser build is hosted on this site at
+[Play in your browser](/play). It is built from `main` together with the
+documentation, so it can lag the nightly release.
+
+- Press **Play** in the app once to allow audio; browsers block sound until you
+  interact with the page.
+- The bundled *Another Last Dance* and *Sandy Boys* work without any setup.
+- Online search still needs a data proxy, as described below.
+- Preferences and cached source responses are stored in this site's
+  `localStorage`, not shared with the desktop app or the downloaded bundle.
+
+To open the app without the documentation header, use the **Open full screen**
+link above the frame.
+
 ## Get the build
 
 Download `contra-karaoke-0.1.0-web.zip` from the

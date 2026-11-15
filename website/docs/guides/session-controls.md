@@ -23,8 +23,8 @@ volume settings.
 
 <Shot id="transport-tempo" />
 
-Changing tempo, count-in, an instrument, a melody/accompaniment volume, or a
-SoundFont marks the music for a rebuild. Playback settings apply without
+Changing tempo, count-in, an instrument, an accompaniment rhythm, a
+melody/accompaniment volume, or a SoundFont marks the music for a rebuild. Playback settings apply without
 restarting the music: release the control and the app re-renders the loop and
 keeps the current beat. The session master **Volume** applies immediately. If
 the session is not playing, it shows:
@@ -131,6 +131,18 @@ balances live in **Preferences → Instruments**. They are separate controls; a
 quiet master with a loud melody is still quiet overall.
 
 <Shot id="transport-volume" />
+
+## About and project links
+
+The **About** button sits in the top-right corner of the tab row on every
+screen. Select it to open a window with the program name, its version, a short
+description, the author (Nicholas Gower), and links to the GitHub repository and
+the documentation site. The project pages may not be live yet.
+
+<Shot id="about-window" />
+
+Close the window with **Close**, **Esc**, or a click outside it. While it is
+open, the transport and tab shortcuts are suspended.
 
 ## Narrow windows
 

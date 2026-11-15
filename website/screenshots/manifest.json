@@ -24,35 +24,33 @@
     },
     {
       "id": "dance-library",
-      "alt": "The Select dance screen with a saved-dance search field, a folder sidebar listing Warmups and Encores, three saved cards, and the Another Last Dance preview.",
+      "alt": "The Select dance screen with a saved-dance search field, a folder sidebar listing Warmups and Encores, three saved cards, and Another Last Dance selected for preview.",
       "caption": "Select dance lists your saved cards; search them, group them into folders, and load one without a network.",
-      "status": "ready",
-      "width": 1280,
-      "height": 800
+      "status": "pending"
     },
     {
       "id": "dance-library-search",
       "alt": "The Select dance screen with belle typed in the saved-dance search, the Warmups folder selected, one matching card, and its preview.",
       "caption": "Saved content is searched locally; the folder panel filters the list and offers rename and delete.",
-      "status": "ready",
-      "width": 1280,
-      "height": 800
+      "status": "pending"
     },
     {
       "id": "tune-library",
       "alt": "The Select tune screen with a saved-tune search field, a folder sidebar listing Reels and Jigs, three saved tunes, and Sandy Boys sheet music.",
       "caption": "Select tune lists your saved tunes with an offline sheet-music preview.",
-      "status": "ready",
-      "width": 1280,
-      "height": 800
+      "status": "pending"
     },
     {
       "id": "tune-library-search",
       "alt": "The Select tune screen with saint typed in the saved-tune search, the Reels folder selected, one matching tune, and its sheet music.",
       "caption": "The same saved-content search and folders apply to tunes.",
-      "status": "ready",
-      "width": 1280,
-      "height": 800
+      "status": "pending"
+    },
+    {
+      "id": "about-window",
+      "alt": "The About window over the session screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
+      "caption": "About shows the program version, its author, and the project links.",
+      "status": "pending"
     },
     {
       "id": "dance-picker-open",
@@ -89,7 +87,7 @@
     {
       "id": "tune-picker-open",
       "alt": "The Download tune screen with Search and Composer fields, Key, Meter, and Genre menus, and an empty results area.",
-      "caption": "Download tune searches ABC Session Tunes and previews the ABC text.",
+      "caption": "Download tune searches ABC Session Tunes and previews the sheet music.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -248,7 +246,7 @@
     },
     {
       "id": "prefs-instrument-melody",
-      "alt": "The Instruments section with the Melody menu set to Fiddle and the accompaniment menu and volume sliders visible.",
+      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment and rhythm menus, and the volume sliders visible.",
       "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
       "status": "ready",
       "width": 1280,
@@ -256,8 +254,8 @@
     },
     {
       "id": "prefs-instrument-accompaniment",
-      "alt": "The Accompaniment menu open with Piano, Guitar, and Accordion options.",
-      "caption": "Piano is the default accompaniment; Guitar and Accordion are available.",
+      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it.",
+      "caption": "Piano, Guitar, and Accordion are the accompaniment voices; the Rhythm menu chooses the backing pattern.",
       "status": "ready",
       "width": 1280,
       "height": 2250
@@ -312,15 +310,15 @@
     },
     {
       "id": "prefs-timing-bounds",
-      "alt": "The Calling lead section showing Minimum speech lead and Maximum speech lead sliders, the Speech rate slider, and the 0.5 s padding note.",
-      "caption": "The speech lead is clamped to one to five beats; every call then adds 0.5 s of safety padding.",
+      "alt": "The Calling lead section showing Minimum speech lead and Maximum speech lead sliders, the Speech rate slider, and the safety padding note.",
+      "caption": "The speech lead is clamped to one to five beats; every call then adds the safety padding, 0.5 s by default.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-timing-speech-rate",
-      "alt": "The Calling lead section with the Speech rate slider showing syllables per second and the padding note.",
+      "alt": "The Calling lead section with the Speech rate slider showing syllables per second and the safety padding note.",
       "caption": "A lower speech rate moves longer calls earlier.",
       "status": "ready",
       "width": 1280,
@@ -377,7 +375,7 @@
     {
       "id": "prefs-cache-cleared",
       "alt": "The Maintenance section after clearing the cache, with the status Cache cleared shown below the buttons.",
-      "caption": "Clearing the source cache does not remove the bundled default dance or tune.",
+      "caption": "Clearing the source cache does not remove saved dances, tunes, or the bundled defaults.",
       "status": "ready",
       "width": 1280,
       "height": 2250

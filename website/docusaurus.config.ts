@@ -6,6 +6,7 @@ const config: Config = {
   tagline: 'Learn to call contra dances in time with the music',
   favicon: 'img/favicon.svg',
   url: 'https://storytold.github.io',
+  // Keep in sync with the hosted app public URL in scripts/build-web-app.mjs.
   baseUrl: '/Contra-karaoke/',
   organizationName: 'storytold',
   projectName: 'Contra-karaoke',
@@ -66,6 +67,11 @@ const config: Config = {
         {
           to: '/download',
           label: 'Download',
+          position: 'left',
+        },
+        {
+          to: '/play',
+          label: 'Play',
           position: 'left',
         },
         {

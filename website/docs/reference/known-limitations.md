@@ -14,7 +14,8 @@ development release. These are the limitations to know before relying on it.
   release signing secrets are configured.
 - The **web build** needs the included proxy for online search and downloads.
   Without it, the bundled defaults and anything already in your saved library
-  still work.
+  still work. The hosted copy on this site is rebuilt with the documentation
+  from `main`, so it can lag the nightly release.
 - There is **no stable signed release**. Nightly artifacts use version 0.1.0,
   may be replaced, and are not code-signed.
 - Flatpak is a source-tree packaging path, not a nightly artifact yet.

@@ -107,21 +107,28 @@ Rules:
 ### Documentation is part of the change
 
 Agents must update the documentation whenever code changes user-visible
-behavior. Treat docs, screenshots, and the manifest as part of the same change,
-not as a follow-up:
+behavior. Prose and screenshots follow different cadences: prose changes with
+the code, while PNGs are refreshed in one pass when preparing a release.
 
 - update the relevant page under `website/docs/` in the same commit;
-- update `website/screenshots/manifest.json` and
-  `website/screenshots/emphasis.json` when a control, state, or screenshot
-  changes;
+- update `website/screenshots/manifest.json` when a shot is added or removed, or
+  its alt text or caption no longer matches; record a new in-app shot as
+  `pending` until the release refresh;
+- leave `website/screenshots/emphasis.json` and existing PNGs alone during
+  ordinary work; adjust them only as part of the release refresh, when the
+  rendered dimensions are known;
 - run the docs checks from `website/`: `npm test` for the manifest, callouts,
   and unique screenshots, and `npm run check` for the production build;
+- do not run `npm run screenshots` in a feature worktree. Regenerating every
+  image for every change is slow and produces review noise; image refresh is a
+  release step (see §13);
 - if no existing page covers the behavior, add or extend a reference page
   rather than leaving it undocumented.
 
 A refactor with no user-visible change does not need new prose, but an agent
 should still adjust stale docs it notices. Never merge a behavior change while
-the docs still describe the old behavior.
+the docs still describe the old behavior. Between releases a committed
+screenshot may lag the UI; the prose is the source of truth.
 - Add `#![forbid(unsafe_code)]` to `core`, `music`, and `sources`. `unsafe` is
   allowed only in narrow platform glue in `app`, with a safety comment.
 
@@ -153,8 +160,10 @@ EGUI_INSPECTION=127.0.0.1:5719 cargo run -p contra-app --features inspection
 cargo run -p contra-mcp
 ```
 
-Headless documentation screenshots (no window, audio device, or network; the
-`npm` script renders the raw PNGs and uses PhotoCraft to add the focus ring):
+Release-only documentation screenshots (no window, audio device, or network;
+the `npm` script renders the raw PNGs and uses PhotoCraft to add the focus
+ring). Run this when preparing a release, not in feature worktrees; `npm test`
+validates the manifest without rebuilding any PNG:
 
 ```sh
 cd website
@@ -392,6 +401,10 @@ test(music): cover 6/8 arrangement
 - Nightly releases build on every push to `main`, tagged
   `nightly-YYYYMMDD-<short-sha>` and refreshed under the rolling `nightly`
   release.
+- Before a release, refresh the documentation screenshots in one pass: run
+  `cd website && npm run screenshots`, review every changed image, update the
+  manifest dimensions and `emphasis.json` regions, and commit the refreshed
+  PNGs. Ordinary feature work does not regenerate them.
 - Release artifacts: Windows installer + portable ZIP; Linux `.deb`, AppImage,
   Flatpak; web ZIP; Android APK.
 - Do not publish a release, tag, or deploy the proxy without the owner's
@@ -441,8 +454,9 @@ A change is done when:
 - [ ] New settings are persisted with a schema version.
 - [ ] New UI follows the grey theme and is usable at phone width.
 - [ ] `CREDITS.md` is updated if dependencies/assets changed.
-- [ ] Website docs, screenshots, and the screenshot manifest/emphasis are
-      updated for every user-visible behavior change.
+- [ ] Website prose and the screenshot manifest are updated for every
+      user-visible behavior change; screenshots themselves are refreshed at
+      release prep, not in the feature worktree.
 - [ ] `npm test` and `npm run check` pass in `website/` after docs changes.
 - [ ] The 0.1.0 version is unchanged unless instructed.
 - [ ] No third-party content or soundfont was added to the repository.

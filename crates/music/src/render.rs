@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use contra_core::{AccompanimentInstrument, MelodyInstrument};
+use contra_core::{AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument};
 use rustysynth::SoundFont;
 
 use crate::arrange::Arrangement;
@@ -13,6 +13,7 @@ pub struct RenderRequest {
     pub bpm: f64,
     pub melody: MelodyInstrument,
     pub accompaniment: AccompanimentInstrument,
+    pub accompaniment_rhythm: AccompanimentRhythm,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
     pub count_in_beats: f64,

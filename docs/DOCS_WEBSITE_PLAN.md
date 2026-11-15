@@ -12,6 +12,12 @@ in-app instruction is paired with a screenshot generated from the real
 application. It replaces the first draft with a version aligned to the code
 that now exists on `main`.
 
+> **Screenshot cadence (2026-11-15):** Screenshots are regenerated in one pass
+> when preparing a release, not in every feature worktree. Prose and the
+> manifest still change with the code. CI validates the manifest and builds the
+> site; it does not regenerate PNGs. Sections below that describe a per-PR
+> screenshot diff workflow are superseded by this decision.
+
 ---
 
 ## 0. Baseline after the rebase
@@ -84,6 +90,10 @@ Still missing: the screenshot verification workflow, manual OS installer
 images, and the first Pages deployment. The app test seam and real in-app
 screenshots are now handled by the headless renderer below.
 
+The docs workflow also builds the WASM app and stages it at `/app/`, so the
+`/play` page can embed a hosted copy of the browser build without leaving the
+documentation site.
+
 ### 0.3 Headless renderer (implemented)
 
 `crates/app` has a `headless` feature and a `contra-headless` binary. It
@@ -120,7 +130,8 @@ remaining images are OS installer dialogs that are not part of the app. The old
 4. Generate those screenshots from the real `eframe` application with fixed
    viewports, themes, and fixture data. No mockups and no manual crops for
    in-app screens.
-5. Make stale screenshots fail CI rather than silently ship.
+5. Make the release screenshot refresh a deliberate, reviewed step while CI
+   validates the manifest and builds the site.
 6. Keep the site offline-friendly, private, accessible, and consistent with the
    app's grey theme.
 
@@ -131,7 +142,10 @@ remaining images are OS installer dialogs that are not part of the app. The old
 - Video or animated GIF tutorials.
 - Documenting features that are not in the build. The docs must not promise
   keyboard shortcuts, warning banners, or settings the UI does not have.
-- Publishing the web/WASM build from the docs workflow.
+- ~~Publishing the web/WASM build from the docs workflow.~~ Superseded: the docs
+  workflow now stages the WASM build under `/app/` and the `/play` page embeds
+  it. That build contains only the two attributed defaults; the docs site still
+  does not host a dance or tune database or a soundfont.
 - Redistributing third-party dances, tunes, or soundfonts. Screenshots use the
   two bundled defaults or synthetic fixtures only.
 - Replacing internal docs in `docs/`. Public docs live in `website/docs/`.
@@ -1036,12 +1050,15 @@ Use a muted Prism theme for code.
 - List expected artifact names; note nightly names include date/SHA.
 - Explain SmartScreen and unsigned nightly builds.
 - No GitHub API fetch at build/runtime.
-- Keep the web app decision separate from the docs site.
+- Offer a hosted browser copy on `/play` and link it from the download page and
+  landing page. The app itself is staged under `/app/` by the docs workflow;
+  keep the download bundle and the hosted copy built from the same sources.
 
 ### 6.8 Version banner
 
 “These docs track the 0.1.0 nightly build. Screenshots are regenerated from
-`main`.” One version constant; no dropdown until 1.0.
+`main` when a release is prepared.” One version constant; no dropdown until
+1.0.
 
 ---
 
@@ -1078,8 +1095,22 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: website/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Trunk
+        run: |
+          curl -L --fail --retry 3 \
+            -o trunk.tar.gz \
+            https://github.com/trunk-rs/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf trunk.tar.gz
+          sudo mv trunk /usr/local/bin/
       - run: npm ci
         working-directory: website
+      - name: Build the hosted browser app
+        working-directory: website
+        run: npm run build:app
       - run: npm run check
         working-directory: website
       - uses: actions/configure-pages@v5
@@ -1186,8 +1217,10 @@ WSL/Docker or via the CI artifact.
 ### 7.4 Cost
 
 - Rust cache + npm cache.
-- Docs build is Node-only; screenshots are committed.
-- Estimated: screenshots 4–8 min cold, 2–3 min warm; docs 1–2 min.
+- Docs build is Node-only; screenshots are committed and refreshed at release
+  prep.
+- Estimated: release screenshot refresh 4–8 min cold, 2–3 min warm; docs 1–2
+  min.
 
 ---
 
@@ -1295,7 +1328,7 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 | Synchronous music render | Play blocks; no “preparing” screen | Do not screenshot a state that does not exist; document the pending-rebuild message |
 | No paused/playing status label | Pause screenshot is ambiguous | Add a session status label before P1, or drop the shot |
 | Mobile two-column pickers | Cramped at 390 px; bad screenshots | Do a responsive pass or use full-width stacked layout |
-| UI churn | Every PR changes images | Focus crops, gallery, batch bless |
+| UI churn | Every release changes images | Focus crops, gallery, one release refresh |
 | GPU raster differences | Flaky checks | Linux + lavapipe, PREDICTABLE, tolerance, artifact |
 | Screenshot suite slow | Slow CI | Cache, `--filter`, parallel prefixes |
 | PNG bloat | Large clone | 2× only, 300 KB budget, lazy loading, LFS/artifacts if > 25 MB |

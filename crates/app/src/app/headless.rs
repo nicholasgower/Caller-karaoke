@@ -46,6 +46,17 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     }
     capture(&mut harness, out, "main-idle")?;
 
+    // About window over the session.
+    {
+        let app = harness.state_mut();
+        app.about_open = true;
+    }
+    capture(&mut harness, out, "about-window")?;
+    {
+        let app = harness.state_mut();
+        app.about_open = false;
+    }
+
     {
         let app = harness.state_mut();
         app.needs_render = false;
@@ -474,6 +485,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     {
         let app = harness.state_mut();
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
+        app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::BoomChuck;
     }
     capture(&mut harness, out, "prefs-instrument-accompaniment")?;
     {
@@ -484,6 +496,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     capture(&mut harness, out, "prefs-instrument-mix")?;
     {
         let app = harness.state_mut();
+        app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::Auto;
         app.prefs.accompaniment_variations = true;
     }
     capture(&mut harness, out, "prefs-accompaniment-variations")?;

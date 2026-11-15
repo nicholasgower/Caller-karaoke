@@ -19,7 +19,10 @@ export default function Home(): React.ReactElement {
             spoken early enough that the words finish before the dancers move.
           </p>
           <div className={styles.actions}>
-            <Link className="button button--primary button--lg" to="/docs/getting-started/first-session">
+            <Link className="button button--primary button--lg" to="/play">
+              Play in your browser
+            </Link>
+            <Link className="button button--secondary button--lg" to="/docs/getting-started/first-session">
               Run your first session
             </Link>
             <Link className="button button--secondary button--lg" to="/docs/intro">
@@ -27,8 +30,9 @@ export default function Home(): React.ReactElement {
             </Link>
           </div>
           <p className={styles.note}>
-            0.1.0 nightly builds for Windows, Linux, web, and Android. Android
-            audio and TTS are still being device-tested.
+            0.1.0 nightly builds for Windows, Linux, web, and Android. A hosted
+            browser copy is available on this site. Android audio and TTS are
+            still being device-tested.
           </p>
         </div>
       </header>

@@ -6,11 +6,21 @@ on:
     paths:
       - 'website/**'
       - 'docs/DOCS_WEBSITE_PLAN.md'
+      - 'crates/**'
+      - 'assets/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'website/**'
       - 'docs/DOCS_WEBSITE_PLAN.md'
+      - 'crates/**'
+      - 'assets/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -33,9 +43,23 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: website/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Trunk
+        run: |
+          curl -L --fail --retry 3 \
+            -o trunk.tar.gz \
+            https://github.com/trunk-rs/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf trunk.tar.gz
+          sudo mv trunk /usr/local/bin/
       - name: Install docs dependencies
         working-directory: website
         run: npm ci
+      - name: Build the hosted browser app
+        working-directory: website
+        run: npm run build:app
       - name: Check screenshots and build
         working-directory: website
         run: npm run check

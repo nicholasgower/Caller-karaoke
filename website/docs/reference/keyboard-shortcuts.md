@@ -12,7 +12,7 @@ not start or stop the music.
 | --- | --- | --- |
 | **Space** | Play or pause | If the music is playing, Space pauses; otherwise it starts or resumes. |
 | **R** | Restart | Returns to the count-in and resets the call state. |
-| **Esc** | Go back one screen | Returns **Download dance** and **Download tune** to their saved-content lists, and **Select dance**, **Select tune**, **Preferences**, and the alias editor to **Session**. Does nothing on the session screen. |
+| **Esc** | Close About, go back, or return to **Session** | Closes the **About** window. Otherwise returns **Download dance** and **Download tune** to their saved-content lists, and **Select dance**, **Select tune**, **Preferences**, and the alias editor to **Session**. |
 | **1–4** | Switch tabs | 1 Session, 2 Select dance, 3 Select tune, 4 Preferences. |
 | **Enter** | Submit | Starts a search from a search field, creates a folder from the folder-name field, or adds the custom alias when the alias fields are filled. |
 
@@ -24,7 +24,8 @@ not start or stop the music.
   from the count-in.
 - **Esc** does not replace **Use this dance** or **Use this tune**. Leaving a
   picker does not change the loaded dance or tune. From a **Download** screen,
-  Esc returns to the corresponding saved-content list.
+  Esc returns to the corresponding saved-content list. It also closes the
+  **About** window; the other shortcuts are suspended while that window is open.
 - **1–4** are ignored while a text field has focus, so typing a number does not
   change tabs.
 - **Enter** in a search field submits the current filters; in the folder-name

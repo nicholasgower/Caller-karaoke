@@ -13,15 +13,22 @@ Update the docs in the same change as the code that alters user-visible
 behavior. Do not leave a follow-up docs task, and do not merge a behavior change
 while the guide still describes the old behavior.
 
+Prose and screenshots have different cadences: prose changes with the code, and
+the PNGs are refreshed in one pass when a release is prepared.
+
 - Change the relevant page under `website/docs/`.
-- If a control, state, label, or screenshot changes, update
-  `website/screenshots/manifest.json` and `website/screenshots/emphasis.json`
-  too.
+- Add or remove shots in `website/screenshots/manifest.json`, and fix alt text
+  or captions that no longer match. Mark a new in-app shot `pending` until the
+  release refresh.
+- Leave existing PNGs, their dimensions, and `website/screenshots/emphasis.json`
+  alone during ordinary work.
 - Run `npm test` and `npm run check` in `website/`.
+- Do not run `npm run screenshots` for an ordinary change.
 - If no page covers the new behavior, add or extend a reference page.
 
 A pure refactor does not need new prose, but stale text found along the way
-should still be fixed.
+should still be fixed. Between releases a committed screenshot may lag the UI;
+the prose is the source of truth.
 
 ## Writing style
 
@@ -32,6 +39,22 @@ should still be fixed.
 - A step's screenshot shows the result of that action, not a mockup.
 - Do not include real tokens, usernames, device IDs, or third-party cards.
 
+## Hosted browser app
+
+The `/play` page embeds the WASM build that the docs workflow stages under
+`website/static/app/`. That folder is generated, so a local `npm run build`
+without Rust produces a site whose `/play` frame returns 404. To view the
+hosted app locally, build and stage it first:
+
+```sh
+cd website
+npm run build:app  # needs Rust, the wasm32 target, and Trunk
+npm start
+```
+
+The app is built with the public URL `/Contra-karaoke/app/`; keep that in step
+with `baseUrl` in `docusaurus.config.ts` or set `CONTRA_WEB_PUBLIC_URL`.
+
 ## Screenshots
 
 Screenshots are rendered by the real app through the headless entry point, then
@@ -39,6 +62,8 @@ annotated with PhotoCraft so the control a step talks about is visually marked.
 The renderer uses `egui_kittest` with a silent transport, in-memory source cache,
 and no preference file. It does not open a window, audio device, TTS voice, or
 network connection.
+
+Refresh them in one pass while preparing a release, not for every change:
 
 ```sh
 cd website
@@ -66,7 +91,7 @@ Until a shot is generated, `website/screenshots/manifest.json` marks it
 `pending`. The `<Shot>` component renders a labelled placeholder rather than a
 fake UI. Do not replace a placeholder with a screenshot of a mockup.
 
-When a shot is ready:
+At release prep, when a shot is ready:
 
 1. put the PNG at `website/static/img/screens/<id>.png`;
 2. set the manifest entry's `status` to `ready` and add its dimensions;
@@ -94,7 +119,8 @@ A page should not use a raw `<img>` for an in-app screenshot.
 - [ ] Every step has a shot or is an explicit command step.
 - [ ] No broken links or anchors.
 - [ ] No third-party content or real credentials.
-- [ ] Screenshots match the current UI.
+- [ ] Any new or removed shot is recorded in the manifest; existing PNGs are not
+      regenerated in this change.
 - [ ] Dark and light themes both read correctly.
 - [ ] `npm run build` passes in `website/`.
 

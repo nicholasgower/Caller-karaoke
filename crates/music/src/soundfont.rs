@@ -94,7 +94,11 @@ pub fn render_soundfont(
         }
         let accompaniment = request
             .arrangement
-            .accompaniment_notes_for_pass(request.accompaniment, pass);
+            .accompaniment_notes_for_pass_with_rhythm(
+                request.accompaniment,
+                request.accompaniment_rhythm,
+                pass,
+            );
         schedule_notes(&mut scheduled, &accompaniment, 1, offset, samples_per_beat);
     }
     schedule_count_in(&mut scheduled, request, samples_per_beat, count_in_samples);

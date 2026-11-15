@@ -43,7 +43,8 @@ export default function Download(): React.ReactElement {
           <div className="col col--6 margin-bottom--lg">
             <h2>Web</h2>
             <p>
-              Download <code>contra-karaoke-0.1.0-web.zip</code> and serve the
+              <Link to="/play">Play the hosted copy</Link> in your browser, or
+              download <code>contra-karaoke-0.1.0-web.zip</code> and serve the
               bundle over HTTP. Online search needs the included proxy. See{' '}
               <Link to="/docs/getting-started/install-web">Run in the browser</Link>.
             </p>
