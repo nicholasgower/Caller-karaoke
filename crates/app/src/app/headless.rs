@@ -86,12 +86,14 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         app.prefs.tempo_bpm = 240.0;
         app.prefs.melody = contra_core::MelodyInstrument::Accordion;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
+        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
     }
     capture(harness, out, "transport-summary")?;
     {
         let app = harness.state_mut();
         app.prefs.melody = contra_core::MelodyInstrument::Fiddle;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Piano;
+        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
         app.prefs.master_volume = 0.5;
     }
     capture(harness, out, "transport-volume")?;
@@ -517,8 +519,10 @@ fn preference_shots(
     }
     capture(harness, out, "prefs-alias-reset-all")?;
 
-    // Preferences sections that sit below the fold at 1280x800.
-    harness.set_size(Vec2::new(1280.0, 2250.0));
+    // Preferences sections that sit below the fold at 1280x800. The height
+    // leaves room for the whole form; `npm run screenshots` records the actual
+    // size for the manifest at release time.
+    harness.set_size(Vec2::new(1280.0, 2400.0));
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
@@ -542,6 +546,12 @@ fn preference_shots(
     capture(harness, out, "prefs-instrument-accompaniment")?;
     {
         let app = harness.state_mut();
+        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
+    }
+    capture(harness, out, "prefs-instrument-second")?;
+    {
+        let app = harness.state_mut();
+        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
         app.prefs.melody_volume = 0.5;
         app.prefs.accompaniment_volume = 0.5;
     }

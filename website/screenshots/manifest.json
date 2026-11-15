@@ -246,7 +246,7 @@
     },
     {
       "id": "prefs-instrument-melody",
-      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment and rhythm menus, and the volume sliders visible.",
+      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment, rhythm, and second-accompaniment menus below it, and the volume sliders visible.",
       "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
       "status": "ready",
       "width": 1280,
@@ -254,16 +254,22 @@
     },
     {
       "id": "prefs-instrument-accompaniment",
-      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it.",
-      "caption": "Piano, Guitar, and Accordion are the accompaniment voices; the Rhythm menu chooses the backing pattern.",
+      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it, above the Second accompaniment row.",
+      "caption": "Piano, Guitar, and Accordion are the chordal accompaniment voices; the Rhythm menu chooses the backing pattern.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
+      "id": "prefs-instrument-second",
+      "alt": "The Instruments section with the Second accompaniment menu set to Fiddle and the countermelody note beside it.",
+      "caption": "The default trio adds an accordion countermelody; Fiddle gives a second fiddle, and Off leaves a duo.",
+      "status": "pending"
+    },
+    {
       "id": "prefs-instrument-mix",
       "alt": "The Instruments section showing the Melody volume and Accompaniment volume sliders.",
-      "caption": "Balance the melody against the accompaniment before starting a session.",
+      "caption": "Balance the melody against the accompaniment; the second accompaniment follows the accompaniment volume.",
       "status": "ready",
       "width": 1280,
       "height": 2250
@@ -519,14 +525,14 @@
     {
       "id": "transport-volume",
       "alt": "The session controls with the Volume slider visible beside the transport buttons.",
-      "caption": "Master volume is separate from the melody and accompaniment volumes in Preferences.",
+      "caption": "Master volume is separate from the melody and accompaniment balances in Preferences.",
       "status": "ready",
       "width": 1280,
       "height": 800
     },
     {
       "id": "transport-summary",
-      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, and accompaniment.",
+      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, accompaniment, and second accompaniment.",
       "caption": "The summary confirms what will play before you start.",
       "status": "ready",
       "width": 1280,

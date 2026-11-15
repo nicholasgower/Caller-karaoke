@@ -23,11 +23,11 @@ volume settings.
 
 <Shot id="transport-tempo" />
 
-Changing tempo, count-in, an instrument, an accompaniment rhythm, a
-melody/accompaniment volume, or a SoundFont marks the music for a rebuild. Playback settings apply without
-restarting the music: release the control and the app re-renders the loop and
-keeps the current beat. The session master **Volume** applies immediately. If
-the session is not playing, it shows:
+Changing tempo, count-in, an instrument or second-accompaniment choice, an
+accompaniment rhythm, melody/accompaniment volume, or a SoundFont marks the music
+for a rebuild. Playback settings apply without restarting the music: release the
+control and the app re-renders the loop and keeps the current beat. The session
+master **Volume** applies immediately. If the session is not playing, it shows:
 
 > Press Play to prepare the music with these settings.
 
@@ -128,8 +128,9 @@ See [Text to speech](/docs/guides/text-to-speech) for availability and rate.
 ## Volume
 
 The session **Volume** slider is the master level. The melody and accompaniment
-balances live in **Preferences → Instruments**. They are separate controls; a
-quiet master with a loud melody is still quiet overall.
+balances live in **Preferences → Instruments**; the second accompaniment follows
+the accompaniment balance. They are separate controls; a quiet master with a loud
+melody is still quiet overall.
 
 <Shot id="transport-volume" />
 

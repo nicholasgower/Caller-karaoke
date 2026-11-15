@@ -268,6 +268,118 @@ impl Arrangement {
         notes
     }
 
+    /// The second accompaniment voice: a countermelody under the tune.
+    ///
+    /// This is what makes the default session a trio. It places one note per
+    /// dance beat, a diatonic third below the melody note sounding at that beat,
+    /// snapped to a nearby chord tone, and leaves the beat open rather than
+    /// repeating a pitch. It is derived from the melody, key, and chord track
+    /// only, so it stays on the same 64-beat grid and adds no new timing.
+    pub fn countermelody_notes(&self) -> Vec<NoteEvent> {
+        self.countermelody_notes_for_pass(0)
+    }
+
+    /// The countermelody for one loop pass.
+    ///
+    /// When the accompaniment rests a bar on a variation pass, the
+    /// countermelody rests with it so the melody really is alone.
+    pub fn countermelody_notes_for_pass(&self, pass: u32) -> Vec<NoteEvent> {
+        if self.melody.is_empty() {
+            return Vec::new();
+        }
+        let rest_bar = self.variation_rest_bar(pass);
+        let mut notes = Vec::new();
+        let mut previous = None;
+        let mut beat = 0.0;
+        while beat < self.loop_beats - 1e-9 {
+            let step = 0.5_f64.min(self.loop_beats - beat);
+            let resting = rest_bar.is_some_and(|bar| {
+                let start = bar as f64 * 2.0;
+                beat >= start - 1e-9 && beat < start + 2.0 - 1e-9
+            });
+            if resting {
+                // Re-enter cleanly after the melody-only bar.
+                previous = None;
+                beat += step;
+                continue;
+            }
+            if let Some(melody) = self.melody_note_at(beat)
+                && let Some(midi) = self.counter_pitch(&self.chord_at(beat), melody.midi)
+            {
+                if Some(midi) == previous {
+                    // Leave the beat open rather than re-articulating the same
+                    // pitch; the line places notes, it does not drone.
+                    previous = None;
+                } else {
+                    notes.push(NoteEvent {
+                        start_beat: beat,
+                        duration_beats: (step * 0.9).min(self.loop_beats - beat),
+                        midi,
+                        velocity: 62,
+                    });
+                    previous = Some(midi);
+                }
+            }
+            beat += step;
+        }
+        notes
+    }
+
+    /// The melody note sounding at `beat`, or the next one inside the step.
+    fn melody_note_at(&self, beat: f64) -> Option<&NoteEvent> {
+        self.melody
+            .iter()
+            .find(|note| beat >= note.start_beat - 1e-9 && beat < note.end_beat() - 1e-9)
+            .or_else(|| {
+                self.melody
+                    .iter()
+                    .find(|note| note.start_beat > beat && note.start_beat < beat + 0.5)
+            })
+    }
+
+    /// A diatonic third below `melody`, snapped to the chord when a chord tone
+    /// is within a whole tone. The line therefore moves with the tune instead of
+    /// holding a pedal while the melody passes by.
+    fn counter_pitch(&self, chord: &Chord, melody: u8) -> Option<u8> {
+        let scale = self.key.mode.intervals();
+        let relative = (melody as i32 - self.key.tonic_pitch_class).rem_euclid(12);
+        let Some(degree) = scale.iter().position(|interval| *interval == relative) else {
+            return self.chord_tone_below(chord, melody);
+        };
+        // Two scale degrees down, wrapping into the octave below for the tonic
+        // and second degrees.
+        let offset = if degree >= 2 {
+            scale[degree] - scale[degree - 2]
+        } else {
+            scale[degree] + 12 - scale[degree + 5]
+        };
+        let mut midi = melody as i32 - offset;
+        let tones = chord_tone_classes(chord);
+        if !tones.contains(&midi.rem_euclid(12)) {
+            for delta in [1, -1, 2, -2] {
+                let candidate = midi + delta;
+                if candidate <= melody as i32 - 3
+                    && (45..=86).contains(&candidate)
+                    && tones.contains(&candidate.rem_euclid(12))
+                {
+                    midi = candidate;
+                    break;
+                }
+            }
+        }
+        ((45..=86).contains(&midi) && midi <= melody as i32 - 3).then_some(midi as u8)
+    }
+
+    /// The highest chord tone within an octave below a melody note that is not
+    /// on the key's scale.
+    fn chord_tone_below(&self, chord: &Chord, melody: u8) -> Option<u8> {
+        let tones = chord_tone_classes(chord);
+        (melody as i32 - 12..=melody as i32 - 3)
+            .rev()
+            .find(|midi| (45..=86).contains(midi) && tones.contains(&midi.rem_euclid(12)))
+            .map(|midi| midi as u8)
+    }
+
     fn plain_accompaniment(
         &self,
         instrument: AccompanimentInstrument,
@@ -390,15 +502,7 @@ impl Arrangement {
         let mut rng = VariationRng::new(self.variation_seed(), pass);
         let bars = self.bars().floor() as i64;
 
-        // Rarely leave one bar to the melody. Skip the opening bars so the
-        // dancers always get a clear start.
-        let rest_bar = if pass >= 2 && bars > 7 && rng.chance(3) {
-            let first = 4;
-            let last = bars - 3;
-            Some(first + rng.below((last - first + 1) as u64) as i64)
-        } else {
-            None
-        };
+        let rest_bar = self.variation_rest_bar(pass);
         if let Some(bar) = rest_bar {
             let rest_start = bar as f64 * 2.0;
             let rest_end = (rest_start + 2.0).min(self.loop_beats);
@@ -427,6 +531,25 @@ impl Arrangement {
                 });
             }
         }
+    }
+
+    /// The bar whose accompaniment drops out on `pass`, if any.
+    ///
+    /// Rarely leave one bar to the melody. Skip the opening bars so the
+    /// dancers always get a clear start. The choice is deterministic and shared
+    /// by the accompaniment and the countermelody.
+    fn variation_rest_bar(&self, pass: u32) -> Option<i64> {
+        let bars = self.bars().floor() as i64;
+        if pass < 2 || bars <= 7 {
+            return None;
+        }
+        let mut rng = VariationRng::new(self.variation_seed(), pass);
+        if !rng.chance(3) {
+            return None;
+        }
+        let first = 4;
+        let last = bars - 3;
+        Some(first + rng.below((last - first + 1) as u64) as i64)
     }
 
     fn chord_at(&self, beat: f64) -> Chord {
@@ -459,6 +582,16 @@ impl Arrangement {
         }
         hash
     }
+}
+
+/// Pitch classes of a chord's tones, relative to C.
+fn chord_tone_classes(chord: &Chord) -> Vec<i32> {
+    chord
+        .quality
+        .intervals()
+        .iter()
+        .map(|interval| (chord.root + interval).rem_euclid(12))
+        .collect()
 }
 
 /// Add one accompaniment note, clipped to the harmony's end.
@@ -640,6 +773,109 @@ mod tests {
                 .map(|chord| chord.start_beat)
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn countermelody_fills_the_loop_below_the_tune() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let notes = arrangement.countermelody_notes();
+        assert!(!notes.is_empty(), "the second accompaniment must play");
+        assert!(
+            notes
+                .iter()
+                .all(|note| { note.start_beat >= 0.0 && note.end_beat() <= 64.0 + 1e-6 })
+        );
+        assert!(
+            notes
+                .iter()
+                .all(|note| { (note.start_beat * 2.0).fract().abs() < 1e-6 }),
+            "the countermelody sits on the dance-beat grid"
+        );
+        for note in &notes {
+            let melody = arrangement
+                .melody
+                .iter()
+                .find(|melody| {
+                    note.start_beat >= melody.start_beat - 1e-9
+                        && note.start_beat < melody.end_beat() - 1e-9
+                })
+                .or_else(|| {
+                    arrangement.melody.iter().find(|melody| {
+                        melody.start_beat > note.start_beat
+                            && melody.start_beat < note.start_beat + 0.5
+                    })
+                })
+                .expect("every countermelody note has a melody note");
+            assert!(
+                melody.midi as i32 - note.midi as i32 >= 3,
+                "countermelody note {} must sit below melody {}",
+                note.midi,
+                melody.midi
+            );
+        }
+    }
+
+    #[test]
+    fn countermelody_sits_on_the_tunes_scale_and_moves() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let notes = arrangement.countermelody_notes();
+        let key = &arrangement.key;
+        let scale = key.mode.intervals();
+        for note in &notes {
+            let relative = (note.midi as i32 - key.tonic_pitch_class).rem_euclid(12);
+            let absolute = (note.midi as i32).rem_euclid(12);
+            let chord = chord_tone_classes(&arrangement.chord_at(note.start_beat));
+            assert!(
+                scale.contains(&relative) || chord.contains(&absolute),
+                "countermelody note {} should belong to {} or its chord",
+                note.midi,
+                key.tonic_name
+            );
+        }
+        assert!(
+            notes.windows(2).any(|pair| pair[0].midi != pair[1].midi),
+            "the countermelody must move with the tune"
+        );
+    }
+
+    #[test]
+    fn countermelody_handles_a_compound_meter() {
+        let abc = "X:1\nT:Jig\nM:6/8\nL:1/8\nK:D\n\"D\"A2 A A2 A | \"G\"B2 B B2 B |\n";
+        let score = crate::abc::parse_abc(abc).expect("parse jig");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let notes = arrangement.countermelody_notes();
+        assert!(!notes.is_empty());
+        assert!(notes.iter().all(|note| {
+            note.start_beat >= 0.0
+                && note.end_beat() <= arrangement.loop_beats + 1e-6
+                && (note.start_beat * 2.0).fract().abs() < 1e-6
+        }));
+    }
+
+    #[test]
+    fn countermelody_is_deterministic_and_rests_with_the_variations() {
+        let first = Arrangement::from_score(&simple_score(), 64.0);
+        let second = Arrangement::from_score(&simple_score(), 64.0);
+        let mut saw_rest = false;
+        for pass in 0..16 {
+            assert_eq!(
+                first.countermelody_notes_for_pass(pass),
+                second.countermelody_notes_for_pass(pass),
+            );
+            let Some(bar) = first.variation_rest_bar(pass) else {
+                continue;
+            };
+            saw_rest = true;
+            let start = bar as f64 * 2.0;
+            assert!(
+                first
+                    .countermelody_notes_for_pass(pass)
+                    .iter()
+                    .all(|note| note.start_beat < start - 1e-9 || note.start_beat >= start + 2.0),
+                "pass {pass} must leave bar {bar} to the melody"
+            );
+        }
+        assert!(saw_rest, "the variation pass set should include a rest bar");
     }
 
     #[test]
@@ -918,6 +1154,10 @@ mod tests {
             "the final 2-beat bar should begin at beat 63, not {last_start}"
         );
         assert_eq!(arrangement.count_in_chord().symbol(), "A");
+        assert!(
+            !arrangement.countermelody_notes().is_empty(),
+            "the bundled tune must produce the trio's second accompaniment"
+        );
     }
 
     #[test]

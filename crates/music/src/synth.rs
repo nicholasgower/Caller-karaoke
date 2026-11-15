@@ -40,7 +40,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         sample_rate,
     );
 
-    let melody_timbre = melody_timbre(request.melody);
+    let melody_voice = melody_timbre(request.melody);
     let accompaniment_timbre = accompaniment_timbre(request.accompaniment);
     for pass in 0..passes {
         let offset = count_in_samples as i64 + pass as i64 * pass_samples as i64;
@@ -48,7 +48,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             render_notes(
                 &mut samples,
                 &request.arrangement.pickup,
-                melody_timbre,
+                melody_voice,
                 request.melody_volume,
                 offset,
                 samples_per_beat,
@@ -59,7 +59,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         render_notes(
             &mut samples,
             &request.arrangement.melody,
-            melody_timbre,
+            melody_voice,
             request.melody_volume,
             offset,
             samples_per_beat,
@@ -84,6 +84,22 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             sample_rate,
             0.10,
         );
+
+        // Second accompaniment: a countermelody on a melody instrument, mixed a
+        // little quieter and to the other side so the trio stays legible.
+        if let Some(second) = request.second_accompaniment.instrument() {
+            let countermelody = request.arrangement.countermelody_notes_for_pass(pass);
+            render_notes(
+                &mut samples,
+                &countermelody,
+                melody_timbre(second),
+                request.accompaniment_volume * 0.8,
+                offset,
+                samples_per_beat,
+                sample_rate,
+                0.30,
+            );
+        }
     }
 
     apply_fades(&mut samples, sample_rate, total_samples as usize);
@@ -452,6 +468,7 @@ mod tests {
             melody: MelodyInstrument::Fiddle,
             accompaniment: AccompanimentInstrument::Piano,
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
+            second_accompaniment: contra_core::SecondAccompaniment::Accordion,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             count_in_beats: 3.0,
@@ -497,6 +514,27 @@ mod tests {
         let beat = buffer.beat_at_sample(buffer.loop_start_sample + buffer.loop_pass_samples + 1);
         assert!((0.0..0.1).contains(&beat), "beat {beat}");
         assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
+    }
+
+    #[test]
+    fn second_accompaniment_adds_a_third_voice() {
+        let mut trio = request();
+        let with = render_builtin(&trio);
+        trio.second_accompaniment = contra_core::SecondAccompaniment::Off;
+        let without = render_builtin(&trio);
+
+        assert_eq!(with.frames(), without.frames());
+        let difference = with
+            .samples
+            .iter()
+            .zip(&without.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-3,
+            "the second accompaniment should change the mix, not {difference}"
+        );
+        assert!(with.samples.iter().all(|sample| sample.is_finite()));
+        assert!(with.samples.iter().all(|sample| sample.abs() <= 1.0));
     }
 
     #[test]

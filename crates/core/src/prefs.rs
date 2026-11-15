@@ -65,6 +65,50 @@ impl AccompanimentInstrument {
     }
 }
 
+/// The second accompaniment voice, which turns the duo into a trio.
+///
+/// The melody and [`AccompanimentInstrument`] provide two voices. The second
+/// accompaniment is a countermelody played by a melody instrument underneath
+/// the tune, so the default session sounds like a small contra band rather than
+/// a solo with a backing track. Set it to [`Self::Off`] for a duo.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SecondAccompaniment {
+    /// An accordion countermelody under the tune (the default trio).
+    #[default]
+    Accordion,
+    /// A second fiddle playing the countermelody.
+    Fiddle,
+    /// No second voice; play the melody and one accompaniment.
+    Off,
+}
+
+impl SecondAccompaniment {
+    /// Every choice, in display order.
+    pub const ALL: [Self; 3] = [Self::Accordion, Self::Fiddle, Self::Off];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Accordion => "Accordion",
+            Self::Fiddle => "Fiddle",
+            Self::Off => "Off",
+        }
+    }
+
+    /// The melody instrument that plays the countermelody, if it is enabled.
+    pub fn instrument(self) -> Option<MelodyInstrument> {
+        match self {
+            Self::Accordion => Some(MelodyInstrument::Accordion),
+            Self::Fiddle => Some(MelodyInstrument::Fiddle),
+            Self::Off => None,
+        }
+    }
+
+    /// General MIDI program for the countermelody voice, if it is enabled.
+    pub fn gm_program(self) -> Option<u8> {
+        self.instrument().map(MelodyInstrument::gm_program)
+    }
+}
+
 /// Rhythm pattern used to realise the accompaniment chords.
 ///
 /// The pattern only decides when the chord and bass notes sound inside the
@@ -150,9 +194,13 @@ pub struct Preferences {
     pub role_terms: RoleTerms,
     pub aliases: AliasTable,
     pub melody: MelodyInstrument,
+    /// The chordal accompaniment voice.
     pub accompaniment: AccompanimentInstrument,
     /// Pattern used for the accompaniment chords; see [`AccompanimentRhythm`].
     pub accompaniment_rhythm: AccompanimentRhythm,
+    /// The countermelody voice that completes the default trio; see
+    /// [`SecondAccompaniment`].
+    pub second_accompaniment: SecondAccompaniment,
     pub theme: Theme,
     /// Smooth transitions for tab changes, highlights, and screen entries.
     pub animations_enabled: bool,
@@ -194,7 +242,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 6;
+pub const CURRENT_SCHEMA_VERSION: u32 = 7;
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -234,6 +282,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "accompaniment-rhythm-v6",
         version: 6,
         apply: migrate_v5_accompaniment_rhythm,
+    },
+    Migration {
+        tag: "second-accompaniment-v7",
+        version: 7,
+        apply: migrate_v6_second_accompaniment,
     },
 ];
 
@@ -278,6 +331,12 @@ fn migrate_v5_accompaniment_rhythm(_prefs: &mut Preferences) {
     // padding; `serde` supplies the defaults for older files.
 }
 
+fn migrate_v6_second_accompaniment(_prefs: &mut Preferences) {
+    // v7 adds the second accompaniment. Older files have no value, so `serde`
+    // supplies the default (Accordion), which gives every session the trio
+    // sound. A file that stores `Off` keeps it.
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -316,6 +375,7 @@ impl Default for Preferences {
             melody: MelodyInstrument::default(),
             accompaniment: AccompanimentInstrument::default(),
             accompaniment_rhythm: AccompanimentRhythm::default(),
+            second_accompaniment: SecondAccompaniment::default(),
             theme: Theme::default(),
             animations_enabled: true,
             lead: LeadSettings::default(),
@@ -432,6 +492,7 @@ impl Preferences {
                 || self.melody != old.melody
                 || self.accompaniment != old.accompaniment
                 || self.accompaniment_rhythm != old.accompaniment_rhythm
+                || self.second_accompaniment != old.second_accompaniment
                 || self.melody_volume != old.melody_volume
                 || self.accompaniment_volume != old.accompaniment_volume
                 || self.soundfont != old.soundfont,
@@ -452,6 +513,11 @@ mod tests {
         assert_eq!(prefs.melody, MelodyInstrument::Fiddle);
         assert_eq!(prefs.accompaniment, AccompanimentInstrument::Piano);
         assert_eq!(prefs.accompaniment_rhythm, AccompanimentRhythm::Auto);
+        assert_eq!(prefs.second_accompaniment, SecondAccompaniment::Accordion);
+        assert!(
+            prefs.second_accompaniment.instrument().is_some(),
+            "the default session is a trio"
+        );
         assert_eq!(prefs.theme, Theme::Dark);
         assert!(prefs.animations_enabled);
         assert_eq!(prefs.tempo_bpm, 240.0);
@@ -460,7 +526,7 @@ mod tests {
         assert!(prefs.accompaniment_variations);
         assert!(!prefs.tts_enabled);
         assert_eq!(prefs.tts_voice, "af_heart");
-        assert_eq!(prefs.schema_version, 6);
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
         assert!(!prefs.shuffle_alternatives);
     }
 
@@ -531,7 +597,7 @@ mod tests {
         let json = old.to_json().expect("serialize");
         let migrated = Preferences::from_json(&json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(migrated.tts_voice, "af_heart");
         assert_eq!(migrated.lead.syllables_per_second, 4.0);
         assert_eq!(migrated.lead.max_beats, 5.0);
@@ -544,7 +610,7 @@ mod tests {
         let json = r#"{"schema_version":2,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert!(migrated.animations_enabled);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -554,7 +620,7 @@ mod tests {
         let json = r#"{"schema_version":3,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert!(migrated.accompaniment_variations);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -564,7 +630,7 @@ mod tests {
         let json = r#"{"schema_version":4,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(migrated.tts_voice, "af_heart");
         assert!(!migrated.shuffle_alternatives);
         assert_eq!(migrated.tempo_bpm, 220.0);
@@ -575,7 +641,7 @@ mod tests {
         let json = r#"{"schema_version":5,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(migrated.accompaniment_rhythm, AccompanimentRhythm::Auto);
         assert_eq!(migrated.lead.padding_seconds, LEAD_PADDING_SECONDS);
         assert_eq!(migrated.tempo_bpm, 220.0);
@@ -590,6 +656,43 @@ mod tests {
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
         assert_eq!(restored.accompaniment_rhythm, AccompanimentRhythm::Shuffle);
+    }
+
+    #[test]
+    fn second_accompaniment_can_be_turned_off_and_round_trips() {
+        let prefs = Preferences {
+            second_accompaniment: SecondAccompaniment::Off,
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.second_accompaniment, SecondAccompaniment::Off);
+        assert_eq!(restored.second_accompaniment.instrument(), None);
+    }
+
+    #[test]
+    fn second_accompaniment_uses_a_melody_instrument() {
+        assert_eq!(
+            SecondAccompaniment::Accordion.instrument(),
+            Some(MelodyInstrument::Accordion)
+        );
+        assert_eq!(
+            SecondAccompaniment::Fiddle.instrument(),
+            Some(MelodyInstrument::Fiddle)
+        );
+        assert_eq!(SecondAccompaniment::Off.gm_program(), None);
+        assert_eq!(
+            SecondAccompaniment::Accordion.gm_program(),
+            Some(MelodyInstrument::Accordion.gm_program())
+        );
+    }
+
+    #[test]
+    fn older_files_get_the_default_trio() {
+        let json = r#"{"schema_version": 6}"#;
+        let prefs = Preferences::from_json(json).expect("deserialize");
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(prefs.second_accompaniment, SecondAccompaniment::Accordion);
     }
 
     #[test]
@@ -734,6 +837,16 @@ mod tests {
         melody.melody = MelodyInstrument::Accordion;
         assert_eq!(
             melody.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: true
+            }
+        );
+
+        let mut second = base.clone();
+        second.second_accompaniment = SecondAccompaniment::Off;
+        assert_eq!(
+            second.changes_since(&base),
             ChangeSet {
                 timeline: false,
                 audio: true

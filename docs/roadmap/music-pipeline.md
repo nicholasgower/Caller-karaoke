@@ -57,6 +57,22 @@ Generate a backing track from the chord track:
 - 3/4: one chord per bar with a bass note on beat 1.
 - Respect melody/accompaniment volume settings.
 
+By default the arranger combines **two accompaniments with the melody**, forming
+a trio. The first is the chordal instrument above. The second is a countermelody
+played by a melody instrument (accordion by default, fiddle optional; Off gives a
+duo):
+
+- One note per dance beat on the same 64-beat grid, so it introduces no new
+  timing.
+- Voice it a diatonic third below the melody note sounding at that beat, snapped
+  to a nearby chord tone, so the line follows the tune instead of holding a
+  pedal. Skip the beat rather than repeat a pitch, which leaves space.
+- Rest in the same bar as the first accompaniment on a variation pass, so a
+  "melody alone" bar really is alone.
+- Derive it from the melody, key, and chord track only; the ABC needs no extra
+  voice.
+- Mix it with the accompaniment volume, panned away from the melody.
+
 ### 6.4 Count-in
 
 - Three dance beats before the loop.
@@ -114,6 +130,7 @@ Soundfont file selection:
 ### 6.7 MIDI export
 
 - Export the arranged 64-beat loop as a Standard MIDI File using `midly`.
-- Two tracks: melody and accompaniment.
+- Melody and accompaniment tracks, plus a countermelody track when the second
+  accompaniment is on.
 - Include tempo, meter, key, and program changes.
 - The export must match what the synth plays.

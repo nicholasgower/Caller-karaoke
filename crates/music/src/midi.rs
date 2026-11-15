@@ -1,12 +1,15 @@
 //! Standard MIDI File export.
 //!
 //! The exported file is the arranged 64-beat loop (not the count-in), with a
-//! melody track and an accompaniment track.
+//! melody track, an accompaniment track, and — when the second accompaniment
+//! is on — a countermelody track.
 
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
-use contra_core::{AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument};
+use contra_core::{
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, SecondAccompaniment,
+};
 
 use crate::arrange::Arrangement;
 use crate::score::NoteEvent;
@@ -20,12 +23,13 @@ pub fn export_midi(
     melody: MelodyInstrument,
     accompaniment: AccompanimentInstrument,
     accompaniment_rhythm: AccompanimentRhythm,
+    second_accompaniment: SecondAccompaniment,
     bpm: f64,
 ) -> Vec<u8> {
     let accompaniment_notes =
         arrangement.accompaniment_notes_with_rhythm(accompaniment, accompaniment_rhythm);
 
-    let tracks = vec![
+    let mut tracks = vec![
         build_track(
             0,
             melody.gm_program(),
@@ -45,6 +49,17 @@ pub fn export_midi(
             arrangement,
         ),
     ];
+    if let Some(instrument) = second_accompaniment.instrument() {
+        tracks.push(build_track(
+            2,
+            instrument.gm_program(),
+            "Second accompaniment",
+            &arrangement.countermelody_notes(),
+            false,
+            bpm,
+            arrangement,
+        ));
+    }
 
     let smf = Smf {
         header: Header::new(
@@ -196,6 +211,7 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
+            SecondAccompaniment::Off,
             240.0,
         );
         assert!(bytes.starts_with(b"MThd"));
@@ -227,6 +243,7 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Block,
+            SecondAccompaniment::Off,
             240.0,
         );
         let sustained = export_midi(
@@ -234,6 +251,7 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Sustained,
+            SecondAccompaniment::Off,
             240.0,
         );
         assert_ne!(
@@ -251,6 +269,7 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
+            SecondAccompaniment::Accordion,
             240.0,
         );
         let second = export_midi(
@@ -258,8 +277,38 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
+            SecondAccompaniment::Accordion,
             240.0,
         );
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn trio_exports_a_second_accompaniment_track() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let trio = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Accordion,
+            240.0,
+        );
+        let smf = Smf::parse(&trio).expect("parse midi");
+        assert_eq!(smf.tracks.len(), 3);
+        let counter_notes = smf.tracks[2]
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event.kind,
+                    TrackEventKind::Midi {
+                        channel,
+                        message: MidiMessage::NoteOn { vel, .. },
+                    } if channel.as_int() == 2 && vel.as_int() > 0
+                )
+            })
+            .count();
+        assert!(counter_notes > 0, "the second accompaniment must sound");
     }
 }

@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use contra_core::{AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument};
+use contra_core::{
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, SecondAccompaniment,
+};
 use rustysynth::SoundFont;
 
 use crate::arrange::Arrangement;
@@ -14,6 +16,9 @@ pub struct RenderRequest {
     pub melody: MelodyInstrument,
     pub accompaniment: AccompanimentInstrument,
     pub accompaniment_rhythm: AccompanimentRhythm,
+    /// The countermelody voice that completes the trio; [`SecondAccompaniment::Off`]
+    /// renders a duo.
+    pub second_accompaniment: SecondAccompaniment,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
     pub count_in_beats: f64,

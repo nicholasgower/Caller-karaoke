@@ -261,9 +261,22 @@ impl ContraApp {
             ))
             .color(theme::muted(ui)),
         );
+        let instruments = match self.prefs.second_accompaniment.instrument() {
+            Some(second) => format!(
+                "Melody: {} · Accompaniment: {} · Second: {}",
+                self.prefs.melody.label(),
+                self.prefs.accompaniment.label(),
+                second.label()
+            ),
+            None => format!(
+                "Melody: {} · Accompaniment: {}",
+                self.prefs.melody.label(),
+                self.prefs.accompaniment.label()
+            ),
+        };
         if compact {
             // Two deliberate lines instead of one wrapped line, so the tune
-            // and the instrument pair never break mid-phrase at phone width.
+            // and the instrument summary never break mid-phrase at phone width.
             ui.label(
                 egui::RichText::new(format!(
                     "Tune: {} · {} · {}",
@@ -273,14 +286,7 @@ impl ContraApp {
                 ))
                 .strong(),
             );
-            ui.label(
-                egui::RichText::new(format!(
-                    "Melody: {} · Accompaniment: {}",
-                    self.prefs.melody.label(),
-                    self.prefs.accompaniment.label()
-                ))
-                .color(theme::muted(ui)),
-            );
+            ui.label(egui::RichText::new(&instruments).color(theme::muted(ui)));
         } else {
             ui.horizontal_wrapped(|ui| {
                 ui.label("Tune:");
@@ -293,14 +299,7 @@ impl ContraApp {
                     ))
                     .strong(),
                 );
-                ui.label(
-                    egui::RichText::new(format!(
-                        "Melody: {} · Accompaniment: {}",
-                        self.prefs.melody.label(),
-                        self.prefs.accompaniment.label()
-                    ))
-                    .color(theme::muted(ui)),
-                );
+                ui.label(egui::RichText::new(&instruments).color(theme::muted(ui)));
             });
         }
 

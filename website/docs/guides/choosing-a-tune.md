@@ -108,7 +108,9 @@ The arranger turns the tune into a **32-bar, 64-dance-beat loop**:
 - pickup notes are preserved around the loop seam;
 - short fades avoid clicks at the start and end of the rendered buffer;
 - the accompaniment follows the quoted chords, or an inferred progression if
-  the ABC has no chord symbols, using the selected rhythm.
+  the ABC has no chord symbols, using the selected rhythm;
+- the second accompaniment adds a countermelody derived from the melody and that
+  chord track.
 
 The UI does not show an extended/trimmed warning in the tune preview. The
 arranger's warning appears on the session screen after the music is rendered.

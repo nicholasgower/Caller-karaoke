@@ -1,13 +1,14 @@
 ---
 title: Instruments and soundfonts
-description: Choose the melody and accompaniment voices and rhythm, balance the mix, and load an optional user-supplied SF2 SoundFont.
+description: Choose the melody, accompaniment, and second-accompaniment voices and rhythm, balance the mix, and load an optional user-supplied SF2 SoundFont.
 sidebar_position: 6
 ---
 
-Contra Karaoke imitates a small contra band: a melody instrument and a chordal
-accompaniment. Playback uses sampled instruments from a bundled subset of the
-Fluid R3 GM soundfont, so the app sounds like a band on first launch without any
-downloads.
+Contra Karaoke imitates a small contra band. By default it plays a trio: a
+melody instrument, a chordal accompaniment, and a second accompaniment that is a
+melody instrument playing a countermelody under the tune. Playback uses sampled
+instruments from a bundled subset of the Fluid R3 GM soundfont, so the app sounds
+like a band on first launch without any downloads.
 
 ## Choose instruments
 
@@ -20,9 +21,26 @@ downloads.
     Set **Accompaniment** to **Piano** (default), **Guitar**, or **Accordion**,
     then choose a **Rhythm** from the menu beside it.
   </Step>
+  <Step shot="prefs-instrument-second">
+    Leave **Second accompaniment** at **Accordion** for the default trio, choose
+    **Fiddle** for a second fiddle, or choose **Off** for a duo.
+  </Step>
 </Steps>
 
-The session's tune summary shows the selected pair above the call prompt.
+The session's tune summary shows the selected parts above the call prompt.
+
+## The second accompaniment
+
+The second accompaniment is not another chord track. It is a countermelody
+generated from the tune: one note per dance beat, voiced a diatonic third below
+whichever melody note is sounding and snapped to a nearby chord tone. It follows
+the tune's contour instead of holding a pedal, and it leaves a beat open rather
+than repeating a pitch.
+
+It stays on the same 64-beat grid, adds no new timing, and is mixed at the
+**Accompaniment volume** level a little to the other side of the stereo field.
+During a variation pass it rests in the same bar as the accompaniment, so a
+"melody alone" bar really is alone.
 
 ## Choose an accompaniment rhythm
 
@@ -48,7 +66,8 @@ progression when the ABC has none. Only its rhythm changes.
 <Steps>
   <Step shot="prefs-instrument-mix">
     Adjust **Melody volume** and **Accompaniment volume**. Both range from 0 to
-    1.5, with defaults of 0.75 and 0.65.
+    1.5, with defaults of 0.75 and 0.65. The second accompaniment follows the
+    accompaniment volume.
   </Step>
 </Steps>
 
@@ -66,7 +85,7 @@ The session **Volume** control is a master level applied on top of this mix.
 
 The variation is deterministic for a given tune and arrangement; it builds on
 the selected rhythm and does not change the dance timing or the 64-beat loop
-length.
+length. On a melody-alone bar the second accompaniment rests too.
 
 ## Apply the change
 
@@ -80,10 +99,10 @@ Session **Volume** changes apply immediately to the existing buffer.
 
 **Bundled: Fluid R3 GM** is the default. It is a trimmed subset of Frank Wen's
 Fluid R3 General MIDI soundfont, which is MIT licensed; `CREDITS.md` records the
-full notice. The subset contains only the four programs in the table below
-(accordion serves both parts), which is why it is about 15 MB instead of the
-141 MB full bank. It needs no network access and is available on every platform,
-including the browser and Android builds.
+full notice. The subset contains only the four programs in the table below (the
+melody and second-accompaniment choices share two of them), which is why it is
+about 15 MB instead of the 141 MB full bank. It needs no network access and is
+available on every platform, including the browser and Android builds.
 
 If you have a `.sf2` file on Windows or Linux, you can load it to replace the
 bundled instruments for the session. The browser and Android builds cannot load
@@ -111,6 +130,8 @@ The chosen instruments map to General MIDI programs in either font:
 | Piano (accompaniment) | 0 — Acoustic Grand Piano | Yes |
 | Guitar (accompaniment) | 25 — Acoustic Guitar (steel) | Yes |
 | Accordion (accompaniment) | 21 — Accordion | Yes |
+| Accordion (second accompaniment) | 21 — Accordion | Yes |
+| Fiddle (second accompaniment) | 40 — Violin | Yes |
 
 If a font you load does not contain one of those programs, the result depends on
 the file and may be silent for that part. Choose **Use bundled** to go back to
@@ -130,7 +151,8 @@ screenshots. The screenshots show the resulting Preferences state.
 The melody follows the ABC note stream. The accompaniment follows quoted chord
 symbols when the ABC has them; otherwise a simple progression is inferred from
 the key and strong-beat melody notes. The selected rhythm decides which notes
-sound on which part of the beat. Short fades and peak normalization are applied
-to the rendered buffer.
+sound on which part of the beat. The second accompaniment is derived from the
+melody and that chord track, so it never needs symbols of its own. Short fades
+and peak normalization are applied to the rendered buffer.
 
 Next: [Timing and lead](/docs/guides/timing-and-lead).

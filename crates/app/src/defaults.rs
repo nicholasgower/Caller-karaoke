@@ -57,6 +57,11 @@ mod tests {
                     .iter()
                     .map(|instrument| instrument.gm_program()),
             )
+            .chain(
+                contra_core::SecondAccompaniment::ALL
+                    .iter()
+                    .filter_map(|instrument| instrument.gm_program()),
+            )
             .collect();
         programs.sort_unstable();
         programs.dedup();

@@ -157,7 +157,35 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui) {
                     });
             });
             ui.end_row();
+            ui.label("Second accompaniment");
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_id_salt("second_accompaniment")
+                    .selected_text(app.prefs.second_accompaniment.label())
+                    .show_ui(ui, |ui| {
+                        for option in SecondAccompaniment::ALL {
+                            ui.selectable_value(
+                                &mut app.prefs.second_accompaniment,
+                                option,
+                                option.label(),
+                            );
+                        }
+                    });
+                ui.label(
+                    egui::RichText::new("countermelody")
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            });
+            ui.end_row();
         });
+    ui.label(
+        egui::RichText::new(
+            "The melody, the chordal accompaniment, and a countermelody make the default trio. \
+             Choose Off for a duo; the countermelody follows the accompaniment volume.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     ui.horizontal(|ui| {
         ui.label("Melody volume");
         ui.add(egui::Slider::new(&mut app.prefs.melody_volume, 0.0..=1.5));

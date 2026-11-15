@@ -73,6 +73,16 @@ pub fn render_soundfont(
         7,
         (request.accompaniment_volume.clamp(0.0, 1.0) * 110.0) as i32,
     );
+    if let Some(program) = request.second_accompaniment.gm_program() {
+        synth.process_midi_message(2, 0xC0, program as i32, 0);
+        synth.process_midi_message(
+            2,
+            0xB0,
+            7,
+            (request.accompaniment_volume.clamp(0.0, 1.0) * 88.0) as i32,
+        );
+        synth.process_midi_message(2, 0xB0, 10, 80); // a little right of centre
+    }
 
     let mut scheduled = Vec::new();
     for pass in 0..passes {
@@ -101,6 +111,11 @@ pub fn render_soundfont(
                 pass,
             );
         schedule_notes(&mut scheduled, &accompaniment, 1, offset, samples_per_beat);
+
+        if request.second_accompaniment.instrument().is_some() {
+            let countermelody = request.arrangement.countermelody_notes_for_pass(pass);
+            schedule_notes(&mut scheduled, &countermelody, 2, offset, samples_per_beat);
+        }
     }
     schedule_count_in(&mut scheduled, request, samples_per_beat, count_in_samples);
 

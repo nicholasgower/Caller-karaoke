@@ -8,7 +8,7 @@
 | Desktop UI toolkit | `eframe` / `egui` |
 | Audio I/O | `cpal` |
 | ABC parsing | `abc-parser` plus a project-owned sequencer |
-| Default instruments | Fiddle (melody) and piano (accompaniment) |
+| Default instruments | Fiddle (melody), piano (accompaniment), accordion (second accompaniment / countermelody) |
 | Soundfont support | Bundled Fluid R3 GM subset by default; optional user-supplied SF2 |
 | Web data access | Small Cloudflare Worker CORS proxy; bundled defaults as fallback |
 | Theme | Dark grey by default; light grey option |

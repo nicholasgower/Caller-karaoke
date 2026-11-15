@@ -14,7 +14,9 @@
 
 use std::sync::Arc;
 
-use contra_core::{AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument};
+use contra_core::{
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, SecondAccompaniment,
+};
 use contra_music::soundfont::{load_soundfont, render_soundfont};
 use contra_music::{Arrangement, RenderRequest, parse_abc};
 use rustysynth::SoundFont;
@@ -34,6 +36,7 @@ fn request() -> RenderRequest {
         melody: MelodyInstrument::Fiddle,
         accompaniment: AccompanimentInstrument::Piano,
         accompaniment_rhythm: AccompanimentRhythm::Auto,
+        second_accompaniment: SecondAccompaniment::Accordion,
         melody_volume: 0.75,
         accompaniment_volume: 0.65,
         count_in_beats: 3.0,
@@ -70,6 +73,22 @@ fn bundled_font_is_small() {
         "bundled font grew to {} bytes",
         FONT.len()
     );
+}
+
+#[test]
+fn every_second_accompaniment_choice_is_audible() {
+    let font = bundled();
+    for second in SecondAccompaniment::ALL {
+        let mut request = request();
+        request.second_accompaniment = second;
+        let buffer =
+            render_soundfont(&request, &font).unwrap_or_else(|error| panic!("{second:?}: {error}"));
+        let peak = buffer
+            .samples
+            .iter()
+            .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+        assert!(peak > 0.05, "{second:?} rendered at peak {peak}");
+    }
 }
 
 #[test]
