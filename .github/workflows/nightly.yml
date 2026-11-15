@@ -61,7 +61,8 @@ jobs:
             libgl1-mesa-dev libgtk-3-dev libspeechd-dev speech-dispatcher
       - name: Build release
         run: cargo build --release -p contra-app
-      - uses: taiki-e/install-action@cargo-deb
+      - name: Install cargo-deb
+        run: cargo install cargo-deb --locked
       - name: Debian package
         run: cargo deb -p contra-app --no-build
       - name: AppImage
@@ -135,6 +136,11 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      - name: Checksums
+        shell: bash
+        run: |
+          cd artifacts
+          sha256sum * > SHA256SUMS.txt
       - name: Release notes
         shell: bash
         run: |
