@@ -1,7 +1,7 @@
 ---
 title: Privacy
 description: What Contra Karaoke stores, what it sends, and what it does not collect.
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 Contra Karaoke has no accounts, no telemetry, and no analytics. The application

@@ -1,7 +1,7 @@
 ---
 title: How calls are timed
 description: The dance-beat model, the lead formula, worked examples, and what happens at the first call and at loop boundaries.
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 This page is the reference behind [Timing and lead](/docs/guides/timing-and-lead).
