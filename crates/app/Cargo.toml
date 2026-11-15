@@ -26,3 +26,16 @@ rfd.workspace = true
 rustysynth.workspace = true
 serde_json.workspace = true
 tts.workspace = true
+
+[package.metadata.deb]
+maintainer = "Nicholas Gower <nicholasgower01@gmail.com>"
+copyright = "2026, Nicholas Gower"
+license-file = ["../../LICENSE", "0"]
+extended-description = "Contra dance caller trainer with ABC music playback, early call timing, aliases, and role terms."
+depends = "$auto"
+section = "sound"
+priority = "optional"
+assets = [
+  ["target/release/contra-karaoke", "usr/bin/", "755"],
+  ["packaging/linux/contra-karaoke.desktop", "usr/share/applications/", "644"],
+]

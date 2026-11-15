@@ -1,0 +1,7 @@
+name = "contra-karaoke-proxy"
+main = "src/index.js"
+compatibility_date = "2026-11-14"
+
+# Optional: set a token with
+#   wrangler secret put PROXY_TOKEN
+# and enter the same token under Preferences -> Web data proxy.

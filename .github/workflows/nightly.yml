@@ -1,0 +1,103 @@
+name: Nightly
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - CHANGELOG.md
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  VERSION: 0.1.0
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release
+        run: cargo build --release -p contra-app
+      - name: Portable ZIP
+        shell: pwsh
+        run: |
+          $name = "ContraKaraoke-$env:VERSION-windows-x64-portable"
+          New-Item -ItemType Directory -Force dist/portable | Out-Null
+          Copy-Item target/release/contra-karaoke.exe dist/portable
+          Copy-Item LICENSE,README.md,CREDITS.md,CHANGELOG.md dist/portable
+          Compress-Archive -Path dist/portable/* -DestinationPath "dist/$name.zip"
+      - name: Installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            packaging/windows/contra-karaoke.iss `
+            "/DAppVersion=$env:VERSION" `
+            "/DOutputBaseFilename=ContraKaraoke-$env:VERSION-windows-x64-setup"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev libxkbcommon-dev libssl-dev \
+            libx11-dev libxcursor-dev libxi-dev libxrandr-dev \
+            libgl1-mesa-dev libgtk-3-dev libspeechd-dev speech-dispatcher
+      - name: Build release
+        run: cargo build --release -p contra-app
+      - uses: taiki-e/install-action@cargo-deb
+      - name: Debian package
+        run: cargo deb -p contra-app --no-build
+      - name: AppImage
+        run: VERSION="$VERSION" bash packaging/linux/build-appimage.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            target/debian/*.deb
+            dist/*.AppImage
+
+  release:
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Release notes
+        shell: bash
+        run: |
+          {
+            echo "Nightly build of Contra Karaoke $VERSION."
+            echo ""
+            echo "- commit: \`$GITHUB_SHA\`"
+            echo "- built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+            echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)."
+          } > release-notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly (${{ github.sha }})
+          prerelease: true
+          body_path: release-notes.md
+          files: artifacts/**/*
+          fail_on_unmatched_files: false

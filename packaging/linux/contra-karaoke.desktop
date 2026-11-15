@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Contra Karaoke
+Comment=Contra dance caller trainer
+Exec=contra-karaoke
+Icon=contra-karaoke
+Terminal=false
+Categories=AudioVideo;Audio;Education;
+Keywords=contra;dance;caller;music;ABC;
+StartupWMClass=contra-karaoke

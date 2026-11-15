@@ -388,4 +388,22 @@ mod tests {
         assert!(arrangement.melody.iter().all(|note| note.start_beat >= 0.0));
         assert_eq!(arrangement.loop_beats, 64.0);
     }
+
+    #[test]
+    fn bundled_sandy_boys_arranges_to_a_full_loop() {
+        let abc = include_str!("../../../assets/defaults/sandy_boys.abc");
+        let score = crate::abc::parse_abc(abc).expect("parse bundled tune");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        assert_eq!(arrangement.loop_beats, 64.0);
+        assert!(!arrangement.pickup.is_empty(), "Sandy Boys has a pickup");
+        assert!(!arrangement.melody.is_empty());
+        assert!(!arrangement.chords.is_empty());
+        assert!(
+            arrangement
+                .melody
+                .iter()
+                .all(|note| note.start_beat >= 0.0 && note.start_beat < 64.0)
+        );
+        assert_eq!(arrangement.count_in_chord().symbol(), "A");
+    }
 }
