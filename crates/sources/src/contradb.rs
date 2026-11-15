@@ -97,7 +97,7 @@ impl DanceProvider for ContraDb {
                     ("box the gnat", "Box the gnat"),
                     ("swat the flea", "Swat the flea"),
                     ("roll away", "Roll away"),
-                    ("slide", "Slide"),
+                    ("slide along set", "Slide along set"),
                 ]),
             },
         ]
@@ -122,7 +122,7 @@ impl DanceProvider for ContraDb {
             clauses.push(json!(["hook", query.hook]));
         }
         if let Some(formation) = query.formation.as_deref().filter(|value| !value.is_empty()) {
-            clauses.push(json!(["formation", formation]));
+            clauses.push(json!(["formation", formation_clause(formation)]));
         }
         if query.verified {
             clauses.push(json!([
@@ -149,10 +149,16 @@ impl DanceProvider for ContraDb {
             clauses.push(json!(["figure", "*"]));
         }
 
+        // ContraDB takes boolean expressions in flat variadic form:
+        // `["and", clause, clause, ...]`. Nesting the clauses in a second
+        // array (`["and", [clauses]]`) makes the endpoint answer HTTP 500.
         let filter = if clauses.len() == 1 {
             clauses.remove(0)
         } else {
-            json!(["and", clauses])
+            let mut expression = Vec::with_capacity(clauses.len() + 1);
+            expression.push(json!("and"));
+            expression.extend(clauses);
+            json!(expression)
         };
 
         let sort_by = match query.sort {
@@ -313,6 +319,19 @@ fn clean_text(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Translates the picker's formation value into the literal ContraDB accepts.
+///
+/// The endpoint matches formations case-sensitively and only recognises the
+/// values its own search form sends. Becket is stored with variants such as
+/// "Becket (ccw)", hence the wildcard. Any other value answers HTTP 500 instead
+/// of an empty page, so this must stay in step with `filter_specs`.
+fn formation_clause(value: &str) -> &str {
+    match value {
+        "becket" => "Becket *",
+        other => other,
+    }
+}
+
 fn strip_prefix_case_insensitive(text: &str, prefix: &str) -> String {
     let trimmed = text.trim();
     if trimmed
@@ -415,6 +434,61 @@ mod tests {
         assert!(text.contains("title"));
         assert!(text.contains("improper"));
         assert!(text.contains("custom"));
+    }
+
+    #[test]
+    fn builds_flat_and_filter() {
+        let query = DanceQuery {
+            title: "last".into(),
+            formation: Some("improper".into()),
+            figure_text: "swing".into(),
+            ..DanceQuery::default()
+        };
+        let request = CONTRADB.search(&query);
+        let body: Value = serde_json::from_slice(request.body.as_ref().unwrap()).unwrap();
+        let clauses = body["filter"].as_array().expect("filter is an array");
+
+        // ContraDB accepts ["and", clause, ...]. Nesting the clauses in a
+        // second array makes the live endpoint answer HTTP 500.
+        assert_eq!(clauses[0], "and");
+        assert_eq!(clauses.len(), 4);
+        for clause in &clauses[1..] {
+            let clause = clause.as_array().expect("each operand is its own array");
+            assert!(clause[0].is_string(), "operand starts with an operator");
+        }
+    }
+
+    #[test]
+    fn leaves_a_single_clause_unwrapped() {
+        let query = DanceQuery {
+            figure_move: Some("swing".into()),
+            ..DanceQuery::default()
+        };
+        let request = CONTRADB.search(&query);
+        let body: Value = serde_json::from_slice(request.body.as_ref().unwrap()).unwrap();
+        assert_eq!(body["filter"], json!(["figure", "swing"]));
+    }
+
+    #[test]
+    fn maps_formation_to_the_values_contradb_accepts() {
+        let formation = |value: &str| {
+            let query = DanceQuery {
+                formation: Some(value.into()),
+                ..DanceQuery::default()
+            };
+            let request = CONTRADB.search(&query);
+            let body: Value = serde_json::from_slice(request.body.as_ref().unwrap()).unwrap();
+            body["filter"].clone()
+        };
+
+        assert_eq!(
+            formation("becket"),
+            json!(["and", ["formation", "Becket *"], ["figure", "*"]])
+        );
+        assert_eq!(
+            formation("improper"),
+            json!(["and", ["formation", "improper"], ["figure", "*"]])
+        );
     }
 
     #[test]

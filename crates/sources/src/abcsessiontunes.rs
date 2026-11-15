@@ -1,7 +1,7 @@
 //! ABC Session Tunes provider: JSON search and tune detail.
 
 use contra_core::{SourceRef, Tune};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use url::Url;
 
 use crate::provider::{
@@ -228,31 +228,31 @@ fn default_limit() -> usize {
 #[derive(Debug, Deserialize)]
 struct SearchTune {
     id: u64,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     title: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     composer: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     key_signature: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     meter: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     rhythm: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct TuneResponse {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     title: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     composer: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     key_signature: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     meter: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     rhythm: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     abc_content: String,
     #[serde(default)]
     source_url: Option<String>,
@@ -260,6 +260,19 @@ struct TuneResponse {
     notes: Option<String>,
     #[serde(default)]
     transcribed_by: Option<String>,
+}
+
+/// Treats an explicit `null` like a missing field.
+///
+/// The API stores unknown metadata as JSON `null`; `#[serde(default)]` alone
+/// only covers absent keys, so one tune without a composer would otherwise fail
+/// the whole search page or detail response.
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 #[cfg(test)]
@@ -306,6 +319,61 @@ mod tests {
         assert!(tune.abc.contains("K:A mix"));
         assert!(tune.credits.contains("A transcriber"));
         assert_eq!(tune.source.url, "https://example.invalid/sandy");
+    }
+
+    #[test]
+    fn parses_search_response_with_null_metadata() {
+        // The live API returns JSON null for unknown composer/key/meter/rhythm.
+        let body = br#"{
+          "tunes": [{
+            "id": 29920,
+            "title": "10-Na",
+            "composer": null,
+            "key_signature": null,
+            "meter": "9/8",
+            "rhythm": null
+          }],
+          "pagination": {"page": 1, "limit": 25, "total": 1, "pages": 1}
+        }"#;
+        let page = ABC_SESSION_TUNES
+            .parse_search(body, &TuneQuery::default())
+            .unwrap();
+        assert_eq!(page.total, 1);
+        assert_eq!(page.tunes[0].title, "10-Na");
+        assert_eq!(page.tunes[0].composer, "");
+        assert_eq!(page.tunes[0].key, "");
+        assert_eq!(page.tunes[0].meter, "9/8");
+        assert_eq!(page.tunes[0].rhythm, "");
+    }
+
+    #[test]
+    fn parses_tune_detail_with_null_metadata() {
+        let body = br#"{
+          "id": 29920,
+          "title": "10-Na",
+          "composer": null,
+          "key_signature": null,
+          "meter": null,
+          "rhythm": null,
+          "abc_content": "X:1\nT:10-Na\nK:Ador\n",
+          "source_url": null,
+          "notes": null,
+          "transcribed_by": null
+        }"#;
+        let tune = ABC_SESSION_TUNES.parse_tune(body, "29920").unwrap();
+        assert_eq!(tune.title, "10-Na");
+        assert_eq!(tune.composer, "");
+        assert_eq!(tune.key, "");
+        assert_eq!(tune.meter, "");
+        assert!(tune.abc.contains("K:Ador"));
+        assert_eq!(tune.source.url, "https://abcsessiontunes.com/tunes/29920");
+    }
+
+    #[test]
+    fn rejects_detail_without_abc_content() {
+        let body = br#"{"id": 1, "title": "Empty", "abc_content": null}"#;
+        let error = ABC_SESSION_TUNES.parse_tune(body, "1").unwrap_err();
+        assert!(error.to_string().contains("no ABC content"));
     }
 
     #[test]

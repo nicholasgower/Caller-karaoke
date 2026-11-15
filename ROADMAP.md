@@ -565,7 +565,16 @@ Filter expressions observed:
 | Verified | `["tag", "verified"]` |
 | Boolean combination | `["and", ...]`, `["or", ...]` |
 
+Boolean operands are variadic and flat: `["and", clause, clause, ...]`. Nesting
+them as `["and", [clause, clause]]` makes the endpoint answer HTTP 500.
+
 Sort values use `<column><A|D>`, e.g. `titleA`, `titleD`.
+
+Formation text is case-sensitive and validated server-side. The accepted values
+are `improper`, `proper`, `everything else`, and `Becket *` (the wildcard covers
+stored variants such as `Becket (ccw)`). An unrecognised value answers HTTP 500
+rather than an empty page. Figure names are validated the same way (for example
+`slide along set`, not `slide`).
 
 Detail:
 
@@ -635,7 +644,9 @@ GET /api/tunes/{id}
 ```
 
 Returns metadata plus `abc_content` (the ABC text), `source_url`, `notes`, and
-transcription credit.
+transcription credit. Unknown metadata is sent as JSON `null` (for example
+`composer`, `key_signature`, `meter`, `rhythm`), so parsers must treat `null`
+like an empty field.
 
 Filter option lists:
 
