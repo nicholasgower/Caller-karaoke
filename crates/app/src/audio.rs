@@ -20,6 +20,9 @@ struct Shared {
     looping: AtomicBool,
     finished: AtomicBool,
     volume: AtomicU32,
+    speech: ArcSwapOption<Vec<f32>>,
+    speech_position: AtomicU64,
+    speech_playing: AtomicBool,
 }
 
 impl AudioEngine {
@@ -70,6 +73,24 @@ impl AudioEngine {
         self.shared.finished.store(false, Ordering::Relaxed);
     }
 
+    /// Mix a mono speech buffer into the next output frames. The buffer is
+    /// already at the device sample rate. Replacing a playing buffer starts
+    /// the new call immediately.
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    pub fn play_speech(&self, samples: Vec<f32>) {
+        if samples.is_empty() {
+            return;
+        }
+        self.shared.speech.store(Some(Arc::new(samples)));
+        self.shared.speech_position.store(0, Ordering::Relaxed);
+        self.shared.speech_playing.store(true, Ordering::Relaxed);
+    }
+
+    pub fn stop_speech(&self) {
+        self.shared.speech_playing.store(false, Ordering::Relaxed);
+        self.shared.speech_position.store(0, Ordering::Relaxed);
+    }
+
     pub fn play(&self) {
         if self.shared.finished.load(Ordering::Relaxed) {
             self.shared.position.store(0, Ordering::Relaxed);
@@ -83,17 +104,20 @@ impl AudioEngine {
 
     pub fn pause(&self) {
         self.shared.playing.store(false, Ordering::Relaxed);
+        self.stop_speech();
     }
 
     pub fn stop(&self) {
         self.shared.playing.store(false, Ordering::Relaxed);
         self.shared.position.store(0, Ordering::Relaxed);
         self.shared.finished.store(false, Ordering::Relaxed);
+        self.stop_speech();
     }
 
     pub fn restart(&self) {
         self.shared.position.store(0, Ordering::Relaxed);
         self.shared.finished.store(false, Ordering::Relaxed);
+        self.stop_speech();
         self.play();
     }
 
@@ -154,6 +178,9 @@ impl Shared {
             looping: AtomicBool::new(true),
             finished: AtomicBool::new(false),
             volume: AtomicU32::new(1.0f32.to_bits()),
+            speech: ArcSwapOption::empty(),
+            speech_position: AtomicU64::new(0),
+            speech_playing: AtomicBool::new(false),
         }
     }
 }
@@ -185,45 +212,70 @@ fn write_data<T>(data: &mut [T], channels: usize, shared: &Shared)
 where
     T: cpal::Sample + cpal::FromSample<f32>,
 {
-    for sample in data.iter_mut() {
-        *sample = T::from_sample(0.0);
-    }
-
-    let buffer = shared.buffer.load();
-    let Some(buffer) = buffer.as_ref() else {
-        return;
-    };
-    if !shared.playing.load(Ordering::Relaxed) {
-        return;
-    }
-
+    let channels = channels.max(1);
     let volume = f32::from_bits(shared.volume.load(Ordering::Relaxed));
-    let mut position = shared.position.load(Ordering::Relaxed);
+    let music_buffer = shared.buffer.load();
+    let music_playing = shared.playing.load(Ordering::Relaxed);
+    let music = music_buffer
+        .as_ref()
+        .filter(|_| music_playing)
+        .map(|buffer| buffer.as_ref());
     let looping = shared.looping.load(Ordering::Relaxed);
     // The buffer holds one pass, or several when the accompaniment varies.
     // One-shot playback plays the first pass, not every variation.
-    let end_sample = if looping {
-        buffer.loop_end_sample
-    } else {
-        buffer
-            .loop_start_sample
-            .saturating_add(buffer.loop_pass_samples)
-            .min(buffer.loop_end_sample)
-    };
-    let mut finished = false;
-
-    for frame in data.chunks_mut(channels.max(1)) {
-        if position >= end_sample {
+    let end_sample = music
+        .map(|buffer| {
             if looping {
-                position = buffer.loop_start_sample;
+                buffer.loop_end_sample
             } else {
-                finished = true;
-                break;
+                buffer
+                    .loop_start_sample
+                    .saturating_add(buffer.loop_pass_samples)
+                    .min(buffer.loop_end_sample)
+            }
+        })
+        .unwrap_or(0);
+    let loop_start = music.map(|buffer| buffer.loop_start_sample).unwrap_or(0);
+    let mut music_position = shared.position.load(Ordering::Relaxed);
+    let mut music_finished = false;
+
+    let speech_buffer = shared.speech.load();
+    let mut speech_playing = shared.speech_playing.load(Ordering::Relaxed);
+    let speech = speech_buffer.as_ref().map(|samples| samples.as_slice());
+    let mut speech_position = shared.speech_position.load(Ordering::Relaxed);
+
+    for frame in data.chunks_mut(channels) {
+        let (mut left, mut right) = (0.0f32, 0.0f32);
+
+        if let Some(buffer) = music {
+            if music_position >= end_sample {
+                if looping {
+                    music_position = loop_start;
+                } else {
+                    music_finished = true;
+                }
+            }
+            if !music_finished {
+                let index = music_position as usize * 2;
+                left = buffer.samples.get(index).copied().unwrap_or(0.0) * volume;
+                right = buffer.samples.get(index + 1).copied().unwrap_or(left) * volume;
+                music_position += 1;
             }
         }
-        let index = position as usize * 2;
-        let left = buffer.samples.get(index).copied().unwrap_or(0.0) * volume;
-        let right = buffer.samples.get(index + 1).copied().unwrap_or(left) * volume;
+
+        if speech_playing && let Some(samples) = speech {
+            if let Some(sample) = samples.get(speech_position as usize) {
+                let sample = sample * volume;
+                left += sample;
+                right += sample;
+                speech_position += 1;
+            } else {
+                speech_playing = false;
+            }
+        }
+
+        left = left.clamp(-1.0, 1.0);
+        right = right.clamp(-1.0, 1.0);
         match frame.len() {
             0 => {}
             1 => frame[0] = T::from_sample((left + right) * 0.5),
@@ -235,14 +287,19 @@ where
                 }
             }
         }
-        position += 1;
     }
 
-    shared.position.store(position, Ordering::Relaxed);
-    if finished {
+    shared.position.store(music_position, Ordering::Relaxed);
+    if music_finished {
         shared.playing.store(false, Ordering::Relaxed);
         shared.finished.store(true, Ordering::Relaxed);
     }
+    shared
+        .speech_position
+        .store(speech_position, Ordering::Relaxed);
+    shared
+        .speech_playing
+        .store(speech_playing, Ordering::Relaxed);
 }
 
 // Keep `cpal::Sample` in scope for the generic conversion above.
@@ -291,5 +348,32 @@ mod tests {
 
         audio.seek_beat(1_000.0);
         assert_eq!(audio.position_samples(), 2_999);
+    }
+
+    #[test]
+    fn speech_is_mixed_without_music() {
+        let shared = Shared::new();
+        shared
+            .speech
+            .store(Some(Arc::new(vec![0.5, -0.5, 0.25, 0.0])));
+        shared.speech_playing.store(true, Ordering::Relaxed);
+        let mut data = [0.0f32; 10];
+        write_data(&mut data, 2, &shared);
+        assert!(data[0] > 0.4);
+        assert!(data[1] > 0.4);
+        assert!(data[2] < -0.4);
+        assert_eq!(data[6], 0.0);
+        assert!(!shared.speech_playing.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn stopping_speech_clears_the_playback_position() {
+        let engine = AudioEngine::silent(48_000);
+        engine.shared.speech.store(Some(Arc::new(vec![0.5, 0.5])));
+        engine.shared.speech_playing.store(true, Ordering::Relaxed);
+        engine.shared.speech_position.store(1, Ordering::Relaxed);
+        engine.stop_speech();
+        assert!(!engine.shared.speech_playing.load(Ordering::Relaxed));
+        assert_eq!(engine.shared.speech_position.load(Ordering::Relaxed), 0);
     }
 }

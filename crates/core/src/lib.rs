@@ -7,6 +7,7 @@
 pub mod alias;
 pub mod dance;
 pub mod prefs;
+pub mod pronounce;
 pub mod roles;
 pub mod syllables;
 pub mod time;

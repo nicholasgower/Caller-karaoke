@@ -19,5 +19,7 @@ flatpak build-bundle repo \
   org.contrakaraoke.ContraKaraoke
 ```
 
-The manifest runs Cargo offline against the generated sources. The runtime
-needs Speech Dispatcher for TTS on Linux; the finish args expose the service.
+The manifest runs Cargo offline against the generated sources. The desktop voice
+downloads ONNX Runtime (about 11 MB) and the Kokoro model on first use; the
+manifest already has network access for dance and tune sources. Speech
+Dispatcher is the platform-TTS fallback; the finish args expose the service.

@@ -131,7 +131,7 @@ Advanced settings:
 
 - Calling lead: automatic or manual, minimum/maximum beats, syllables per
   second, word gap, extra pause.
-- TTS voice and rate.
+- TTS voice (Kokoro Heart, Bella, Nicole, Michael, or Fenrir on desktop) and rate.
 - Count-in on/off (default on), loop (default on).
 - Accompaniment variations on each loop (default on): a few added emphasis
   notes and an occasional bar of melody alone, chosen deterministically from
@@ -142,6 +142,13 @@ Advanced settings:
 ### 3.5 TTS
 
 - Optional setting: speak the alias text at the computed call time.
+- The desktop build prefers the local Kokoro-82M neural voice. The model and
+  voice style files are downloaded once, verified, and cached; the platform TTS
+  backend remains the fallback (and the only backend on web/Android).
+- Preferences offers five Kokoro voices: Heart, Bella, and Nicole (US female),
+  and Michael and Fenrir (US male).
+- Dance terms that the neural G2P mispronounces are corrected by a reviewed
+  lexicon and pinned by tests (`docs/pronunciation.md`).
 - The visual prompt still appears when TTS is enabled.
 - If TTS is unavailable, the toggle is disabled with an explanation.
 - Pausing/stopping stops speech immediately.

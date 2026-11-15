@@ -20,7 +20,8 @@ Android. Version **0.1.0** is the current development version.
 - On by default: small accompaniment variations each time the loop repeats —
   extra emphasis notes and, now and then, a bar left to the melody alone.
 - Call timeline with syllable-based early calls, aliases, and role terms.
-- Optional text-to-speech through the platform TTS backend.
+- Local Kokoro-82M neural voice on desktop, with a platform TTS fallback on
+  web/Android and a reviewed dance-term pronunciation lexicon.
 - User-supplied `.sf2` soundfont support via `rustysynth`.
 - MIDI export of the arranged loop.
 - Source cache with TTLs and offline fallback.
@@ -52,7 +53,7 @@ being device-tested.
 - **Tempo** — 120–320 BPM (default 240).
 - **Loop** — repeat the 64-beat music and dance loop.
 - **Count-in** — three accompaniment beats before the loop.
-- **Speak calls** — use platform TTS instead of reading the prompt.
+- **Speak calls** — use the local neural voice (platform TTS on web/Android).
 - **Select dance** — search ContraDB, preview the card, load it.
 - **Select Tune** — search ABC Session Tunes, preview the sheet music (or the
   ABC source), load it.
@@ -73,6 +74,24 @@ being device-tested.
 Shortcuts are ignored while typing in a text field, so Space and R stay ordinary
 characters in search boxes. Hovering a tab, Play/Pause, Restart, Search, or Add
 alias control shows its shortcut.
+
+### Voice
+
+On Windows and Linux, **Speak calls** uses a local Kokoro-82M neural voice. The
+default is **Heart** (US female); Preferences also offers **Bella** and
+**Nicole** (US female), and **Michael** and **Fenrir** (US male). The first
+use of a voice downloads the model and that voice’s style file into the app
+cache; later runs use the cache. The shared model is about 92 MB and each voice
+style is about 0.5 MB; Linux also fetches the ONNX Runtime library (about
+11 MB). The voice is phonemized with Misaki's pure-Rust
+G2P, and the dance terms that the model mispronounced are corrected with a
+reviewed lexicon (see `docs/pronunciation.md`). If the model cannot be
+downloaded or loaded, the app falls back to the platform TTS backend and shows
+the reason in Preferences.
+
+The web and Android builds use the platform voice. Speech is pre-synthesized on
+a worker thread and mixed into the existing audio stream, so the UI and audio
+callback stay responsive.
 
 ## How call timing works
 

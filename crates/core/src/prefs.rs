@@ -105,6 +105,8 @@ pub struct Preferences {
     pub tempo_bpm: f64,
     pub tts_enabled: bool,
     pub tts_rate: f32,
+    #[serde(default = "default_tts_voice")]
+    pub tts_voice: String,
     pub loop_enabled: bool,
     pub count_in_enabled: bool,
     /// Add small, deterministic variations to the accompaniment on later loop
@@ -121,10 +123,14 @@ pub struct Preferences {
     pub last_tune: Option<SourceRef>,
 }
 
+fn default_tts_voice() -> String {
+    "af_heart".to_string()
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            schema_version: 4,
+            schema_version: 5,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
@@ -135,6 +141,7 @@ impl Default for Preferences {
             tempo_bpm: Tempo::DEFAULT_BPM,
             tts_enabled: false,
             tts_rate: 1.0,
+            tts_voice: default_tts_voice(),
             loop_enabled: true,
             count_in_enabled: true,
             accompaniment_variations: true,
@@ -159,7 +166,10 @@ impl Preferences {
     /// Clamp values that came from a preference file or a UI control.
     pub fn validate(&mut self) {
         if self.schema_version == 0 {
-            self.schema_version = 4;
+            self.schema_version = 5;
+        }
+        if self.tts_voice.trim().is_empty() {
+            self.tts_voice = default_tts_voice();
         }
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
@@ -217,6 +227,14 @@ impl Preferences {
             // the enabled default for older files.
             self.schema_version = 4;
         }
+        if self.schema_version < 5 {
+            // v5 adds the selectable TTS voice. Existing files keep the
+            // previous default voice.
+            if self.tts_voice.trim().is_empty() {
+                self.tts_voice = default_tts_voice();
+            }
+            self.schema_version = 5;
+        }
     }
 }
 
@@ -238,6 +256,8 @@ mod tests {
         assert!(prefs.count_in_enabled);
         assert!(prefs.accompaniment_variations);
         assert!(!prefs.tts_enabled);
+        assert_eq!(prefs.tts_voice, "af_heart");
+        assert_eq!(prefs.schema_version, 5);
     }
 
     #[test]
@@ -288,7 +308,8 @@ mod tests {
         let json = old.to_json().expect("serialize");
         let migrated = Preferences::from_json(&json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 4);
+        assert_eq!(migrated.schema_version, 5);
+        assert_eq!(migrated.tts_voice, "af_heart");
         assert_eq!(migrated.lead.syllables_per_second, 4.0);
         assert_eq!(migrated.lead.max_beats, 5.0);
         assert_eq!(migrated.lead.word_gap_seconds, 0.0);
@@ -300,7 +321,7 @@ mod tests {
         let json = r#"{"schema_version":2,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 4);
+        assert_eq!(migrated.schema_version, 5);
         assert!(migrated.animations_enabled);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -310,8 +331,18 @@ mod tests {
         let json = r#"{"schema_version":3,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 4);
+        assert_eq!(migrated.schema_version, 5);
         assert!(migrated.accompaniment_variations);
+        assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn v4_preferences_use_the_default_tts_voice() {
+        let json = r#"{"schema_version":4,"tempo_bpm":220.0}"#;
+        let migrated = Preferences::from_json(json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, 5);
+        assert_eq!(migrated.tts_voice, "af_heart");
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
 

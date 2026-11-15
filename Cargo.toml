@@ -30,6 +30,8 @@ ehttp = "0.7"
 env_logger = "0.11"
 epaint_default_fonts = "0.37"
 midly = "0.5"
+misaki-rs = { version = "0.3", default-features = false }
+ort = { version = "=2.0.0-rc.15", default-features = false }
 percent-encoding = "2"
 regex = "1"
 resvg = { version = "0.48", default-features = false, features = ["text"] }
@@ -43,6 +45,7 @@ thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tts = "0.26"
+ureq = "3"
 url = "2"
 
 [profile.release]
