@@ -192,7 +192,7 @@
     },
     {
       "id": "prefs-alias-placeholders",
-      "alt": "The top of the Dance move aliases screen showing the supported placeholders: actor, actor_singular, actor_object, direction, and count.",
+      "alt": "The top of the Dance move aliases screen showing the supported placeholders: actor, actor_singular, actor_plural, actor_object, actor_object_plural, direction, and count.",
       "caption": "Placeholders are filled from the card phrase; unknown placeholders are left as text.",
       "status": "ready",
       "width": 1280,

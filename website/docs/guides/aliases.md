@@ -49,13 +49,15 @@ The defaults are examples, not rules. A few from the current table:
 
 <Shot id="prefs-alias-placeholders" />
 
-The editor supports five placeholders:
+The editor supports seven placeholders:
 
 | Placeholder | Filled with |
 | --- | --- |
 | `{actor}` | The actor as written on the card, using your role terms (`neighbors`, `larks`, `partners`). |
 | `{actor_singular}` | A singular form (`neighbor`, `lark`, `partner`). |
-| `{actor_object}` | A possessive object form (`your neighbor`, `your partner`). |
+| `{actor_plural}` | A plural form (`neighbors`, `larks`, `partners`). |
+| `{actor_object}` | A singular possessive object form (`your neighbor`, `your partner`). |
+| `{actor_object_plural}` | A plural possessive object form (`your neighbors`, `your partners`). |
 | `{direction}` | The direction parsed from the card (`left`, `right`, `across`). |
 | `{count}` | The count parsed from the card (`once`, `twice`, `three places`, `1½`). |
 
