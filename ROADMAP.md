@@ -72,7 +72,9 @@ The default tune is **Sandy Boys** (ABC Session Tunes tune 75815).
   - Title, choreographer, formation, source link.
   - Dance card grouped by A1/A2/B1/B2 with beat counts.
   - Large "current call" prompt, next-call preview, and a lead countdown.
-  - Karaoke states: *upcoming*, *call now*, *executing*.
+  - Karaoke states: *upcoming*, *call now*, *executing*. Once a figure is
+    executing, the prompt becomes an *upcoming move* box naming the move to
+    call next.
   - Beat/progress bar and a 3-2-1 count-in display.
 - On narrow screens the current call is pinned; the card scrolls below it.
 

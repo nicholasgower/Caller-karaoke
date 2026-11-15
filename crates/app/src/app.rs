@@ -837,6 +837,30 @@ mod tests {
     }
 
     #[test]
+    fn executing_figure_prompts_the_upcoming_move() {
+        assert_eq!(
+            card_state(Some(CallPhase::Executing), true),
+            CardMode::UpcomingMove
+        );
+    }
+
+    #[test]
+    fn executing_figure_without_a_following_call_stays_on_the_figure() {
+        assert_eq!(
+            card_state(Some(CallPhase::Executing), false),
+            CardMode::FinalMove
+        );
+    }
+
+    #[test]
+    fn calls_that_are_upcoming_or_being_spoken_stay_on_the_call_card() {
+        for phase in [Some(CallPhase::Upcoming), Some(CallPhase::Calling), None] {
+            assert_eq!(card_state(phase, true), CardMode::CurrentCall);
+            assert_eq!(card_state(phase, false), CardMode::CurrentCall);
+        }
+    }
+
+    #[test]
     fn color_lerp_moves_between_endpoints_and_clamps() {
         use egui::Color32;
         assert_eq!(

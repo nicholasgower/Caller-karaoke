@@ -17,6 +17,68 @@ fn phase_at(call: &contra_core::ScheduledCall, beat: f64) -> CallPhase {
     }
 }
 
+/// What the large prompt card is showing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CardMode {
+    /// The call the caller is about to speak or is speaking now.
+    CurrentCall,
+    /// The figure is already being danced, so the card shows the move the
+    /// caller must say next.
+    UpcomingMove,
+    /// The figure is being danced and there is no following move to call.
+    FinalMove,
+}
+
+/// Pick the card content from the active call's phase and whether another
+/// call follows it.
+///
+/// A caller looks ahead while the dancers are executing, so the card must stop
+/// describing the figure in progress and start prompting the next move.
+fn card_state(phase: Option<CallPhase>, has_next: bool) -> CardMode {
+    match phase {
+        Some(CallPhase::Executing) if has_next => CardMode::UpcomingMove,
+        Some(CallPhase::Executing) => CardMode::FinalMove,
+        _ => CardMode::CurrentCall,
+    }
+}
+
+/// Prompt the caller with the move they must call next while the current
+/// figure is being danced.
+fn upcoming_move_card(
+    ui: &mut egui::Ui,
+    next: &contra_core::ScheduledCall,
+    beat: f64,
+    show_original: bool,
+) {
+    ui.label(
+        egui::RichText::new("UPCOMING MOVE")
+            .small()
+            .color(theme::muted(ui)),
+    );
+    ui.label(
+        egui::RichText::new(&next.call.text)
+            .size(34.0)
+            .strong()
+            .color(theme::on_card(ui)),
+    );
+    ui.horizontal_wrapped(|ui| {
+        ui.label(
+            egui::RichText::new(format!(
+                "call in {:.1} beats",
+                (next.start_beat - beat).max(0.0)
+            ))
+            .color(theme::muted(ui)),
+        );
+        if show_original {
+            ui.label(
+                egui::RichText::new(format!("· {}", next.call.original_text))
+                    .small()
+                    .color(theme::muted(ui)),
+            );
+        }
+    });
+}
+
 impl ContraApp {
     fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
         let animate = self.prefs.animations_enabled;
@@ -166,6 +228,10 @@ impl ContraApp {
         } else {
             None
         };
+        let card_mode = card_state(
+            active.as_ref().map(|call| phase_at(call, beat)),
+            next.is_some(),
+        );
 
         egui::Frame::group(ui.style())
             .fill(theme::call_active_bg(ui))
@@ -228,51 +294,92 @@ impl ContraApp {
                         });
                     });
                 } else if let Some(call) = &active {
-                    let phase = phase_at(call, beat);
-                    let label = match phase {
-                        CallPhase::Upcoming => "UPCOMING",
-                        CallPhase::Calling => "CALL NOW",
-                        CallPhase::Executing => "DANCING",
-                    };
-                    ui.label(
-                        egui::RichText::new(label)
-                            .small()
-                            .color(if phase == CallPhase::Calling {
-                                theme::on_card(ui)
-                            } else {
-                                theme::muted(ui)
-                            }),
-                    );
-                    ui.label(
-                        egui::RichText::new(&call.call.text)
-                            .size(34.0)
-                            .strong()
-                            .color(if phase == CallPhase::Executing {
-                                theme::muted(ui)
-                            } else {
-                                theme::on_card(ui)
-                            }),
-                    );
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(
-                            egui::RichText::new(if phase == CallPhase::Executing {
-                                "figure in progress".to_string()
-                            } else {
-                                format!(
-                                    "executes in {:.1} beats",
-                                    (call.execute_beat - beat).max(0.0)
-                                )
-                            })
-                            .color(theme::muted(ui)),
-                        );
-                        if self.prefs.show_original {
+                    match card_mode {
+                        CardMode::UpcomingMove => {
+                            if let Some(upcoming) = &next {
+                                upcoming_move_card(ui, upcoming, beat, self.prefs.show_original);
+                            }
+                        }
+                        CardMode::FinalMove => {
                             ui.label(
-                                egui::RichText::new(format!("· {}", call.call.original_text))
+                                egui::RichText::new("DANCING")
                                     .small()
                                     .color(theme::muted(ui)),
                             );
+                            ui.label(
+                                egui::RichText::new(&call.call.text)
+                                    .size(34.0)
+                                    .strong()
+                                    .color(theme::muted(ui)),
+                            );
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(
+                                    egui::RichText::new("final figure")
+                                        .color(theme::muted(ui)),
+                                );
+                                if self.prefs.show_original {
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "· {}",
+                                            call.call.original_text
+                                        ))
+                                        .small()
+                                        .color(theme::muted(ui)),
+                                    );
+                                }
+                            });
                         }
-                    });
+                        CardMode::CurrentCall => {
+                            let phase = phase_at(call, beat);
+                            let label = match phase {
+                                CallPhase::Upcoming => "UPCOMING",
+                                CallPhase::Calling => "CALL NOW",
+                                CallPhase::Executing => "DANCING",
+                            };
+                            ui.label(
+                                egui::RichText::new(label)
+                                    .small()
+                                    .color(if phase == CallPhase::Calling {
+                                        theme::on_card(ui)
+                                    } else {
+                                        theme::muted(ui)
+                                    }),
+                            );
+                            ui.label(
+                                egui::RichText::new(&call.call.text)
+                                    .size(34.0)
+                                    .strong()
+                                    .color(if phase == CallPhase::Executing {
+                                        theme::muted(ui)
+                                    } else {
+                                        theme::on_card(ui)
+                                    }),
+                            );
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(
+                                    egui::RichText::new(if phase == CallPhase::Executing {
+                                        "figure in progress".to_string()
+                                    } else {
+                                        format!(
+                                            "executes in {:.1} beats",
+                                            (call.execute_beat - beat).max(0.0)
+                                        )
+                                    })
+                                    .color(theme::muted(ui)),
+                                );
+                                if self.prefs.show_original {
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "· {}",
+                                            call.call.original_text
+                                        ))
+                                        .small()
+                                        .color(theme::muted(ui)),
+                                    );
+                                }
+                            });
+                        }
+                    }
                 } else if self.audio.is_finished() {
                     ui.label(egui::RichText::new("Dance complete").size(28.0).strong());
                     ui.label("Press Restart to run it again.");
@@ -293,7 +400,9 @@ impl ContraApp {
                 }
             });
 
-        if let Some(next) = &next {
+        if let Some(next) = &next
+            && card_mode != CardMode::UpcomingMove
+        {
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new("Next:").color(theme::muted(ui)));
                 ui.label(egui::RichText::new(&next.call.text).strong());

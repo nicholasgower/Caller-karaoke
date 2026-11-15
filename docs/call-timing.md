@@ -72,6 +72,10 @@ the end of the loop so the first move of the next repetition is still called.
   length, excluding the pickup, and shows a warning when they differ. It does
   not rescale either one.
 - The UI has three states: upcoming, call now, executing.
+- While the dancers execute a figure, the large prompt switches to an
+  **upcoming move** box that names the move the caller must say next and how
+  many beats remain until the call starts. The dance card still highlights the
+  figure in progress.
 
 ## Tests
 
