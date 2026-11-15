@@ -62,7 +62,7 @@ The default tune is **Sandy Boys** (ABC Session Tunes tune 75815).
 
 ### 3.1 Main session screen
 
-- Top tab row: **Select dance**, **Select Tune**, **Preferences**.
+- Top tab row: **Select dance**, **Select tune**, **Preferences**.
 - Session controls directly below the tabs:
   - Tempo (default 240 BPM), with stepper and slider.
   - Play/pause, restart, loop toggle.
@@ -80,31 +80,43 @@ The default tune is **Sandy Boys** (ABC Session Tunes tune 75815).
 
 ### 3.2 Select dance
 
-A search screen modelled on ContraDB:
+The saved-dance library, available offline:
 
-- Text filters: title, choreographer, user, hook.
-- Verified filter.
-- Formation filter: improper, becket, proper, everything else.
-- Figure filter: a move selector plus a "figure contains words" search.
-- Sorting, page size (10/30/100), and pagination.
-- Results show title, choreographer, formation, and hook.
-- Selecting a result opens a preview of its parsed figures and a
-  **Use this dance** action.
-- The default dance is loaded on first run and remains usable offline.
+- Local search over title, choreographer, formation, and figure text.
+- Flat user folders: create, rename, delete, and move cards; deleting a folder
+  keeps its cards as unfiled.
+- A **Download dance** submenu opens the ContraDB search screen:
+  - Text filters: title, choreographer, user, hook.
+  - Verified filter.
+  - Formation filter: improper, becket, proper, everything else.
+  - Figure filter: a move selector plus a "figure contains words" search.
+  - Sorting and pagination.
+  - Results show title, choreographer, formation, and hook, plus a downloaded
+    marker.
+  - Selecting a result opens a preview of its parsed figures, a **Download
+    dance** action, and a **Use this dance** action that saves and loads.
+- The default dance is downloaded on first run and remains usable offline.
+- Downloads are stored separately from the HTTP source cache; clearing the
+  cache keeps them.
 
 ### 3.3 Select tune
 
-A search screen modelled on ABC Session Tunes:
+The saved-tune library, available offline:
 
-- Free-text search across title and composer.
-- Composer, key, meter, and genre filters.
-- Pagination and result counts.
-- Results show title, composer, key, meter, and rhythm.
-- Selecting a result shows metadata and a rendered sheet-music preview, with a
-  **Show ABC** / **Show sheet music** toggle for the source and a **Use this
-  tune** action. The sheet is the default view; if it cannot be engraved the
-  source remains available in the ABC view.
-- The default tune is loaded on first run and remains usable offline.
+- Local search over title, composer, key, meter, genre, and credits.
+- The same flat folders and folder actions as dances.
+- A **Download tune** submenu opens the ABC Session Tunes search screen:
+  - Free-text search across title and composer.
+  - Composer, key, meter, and genre filters.
+  - Pagination and result counts.
+  - Results show title, composer, key, meter, and rhythm, plus a downloaded
+    marker.
+  - Selecting a result shows metadata and a rendered sheet-music preview, with
+    a **Show ABC** / **Show sheet music** toggle for the source, a **Download
+    tune** action, and a **Use this tune** action that saves and loads. The
+    sheet is the default view; if it cannot be engraved the source remains
+    available in the ABC view.
+- The default tune is downloaded on first run and remains usable offline.
 
 ### 3.4 Preferences
 

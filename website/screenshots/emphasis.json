@@ -26,6 +26,62 @@
         ]
       ]
     },
+    "dance-library": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          190,
+          232,
+          205
+        ]
+      ]
+    },
+    "dance-library-search": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          146,
+          430,
+          32
+        ]
+      ]
+    },
+    "tune-library": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          190,
+          232,
+          205
+        ]
+      ]
+    },
+    "tune-library-search": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          146,
+          430,
+          32
+        ]
+      ]
+    },
     "main-dance-loaded": {
       "size": [
         1280,

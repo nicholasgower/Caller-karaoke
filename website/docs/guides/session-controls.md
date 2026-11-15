@@ -39,10 +39,11 @@ changes rebuild the call timeline without re-rendering the music.
 
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
-- **Esc** returns to the session from a picker, Preferences, or the alias
-  editor.
-- **1–4** switch between Session, Select dance, Select Tune, and Preferences.
-- **Enter** starts a search from a search field or adds a custom alias.
+- **Esc** returns from a download screen to its saved-content list, and from a
+  picker or Preferences to the session.
+- **1–4** switch between Session, Select dance, Select tune, and Preferences.
+- **Enter** starts a search from a search field, creates a folder, or adds a
+  custom alias.
 
 Shortcuts are ignored while a text field has focus. See
 [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).

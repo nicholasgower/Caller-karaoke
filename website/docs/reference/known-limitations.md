@@ -12,8 +12,9 @@ development release. These are the limitations to know before relying on it.
 - **Android** is configured and buildable with minSdk 26, but real-device audio
   and TTS testing is incomplete. Nightly APKs use the debug keystore unless
   release signing secrets are configured.
-- The **web build** needs the included proxy for online search. Without it, only
-  the bundled defaults and previously cached content work.
+- The **web build** needs the included proxy for online search and downloads.
+  Without it, the bundled defaults and anything already in your saved library
+  still work.
 - There is **no stable signed release**. Nightly artifacts use version 0.1.0,
   may be replaced, and are not code-signed.
 - Flatpak is a source-tree packaging path, not a nightly artifact yet.
@@ -31,10 +32,12 @@ development release. These are the limitations to know before relying on it.
   network connection falls back to the platform voice. Web and Android always
   use the platform voice. Visual calls continue if no voice is available.
 - **Page size** is fixed at ten results; there is no page-size selector.
-- There is no offline “using cached content” banner; stale cache is used
-  silently.
-- There is no cache-size display or manual refresh; clearing the cache is the
-  only maintenance action.
+- Folders are a flat list. There are no nested folders and no sync between
+  devices.
+- There is no offline “using cached search results” banner; stale cache is used
+  silently. The saved-dance and saved-tune lists always work offline.
+- There is no cache-size or library-size display, and no manual source refresh;
+  clearing the cache and downloading an item again are the maintenance actions.
 - The first **Play** renders the music synchronously. There is no progress bar
   or cancel control while it runs.
 
@@ -57,7 +60,7 @@ Screen-reader support is incomplete.
 
 ## Data and privacy
 
-- Dance and tune data belong to their contributors. The app caches responses
+- Dance and tune data belong to their contributors. The app stores downloads
   locally but does not redistribute a database.
 - There is no telemetry, account, or cloud sync.
 - The docs describe the current `main`/nightly build; there are no versioned

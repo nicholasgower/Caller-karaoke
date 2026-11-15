@@ -6,6 +6,7 @@
 
 pub mod alias;
 pub mod dance;
+pub mod library;
 pub mod prefs;
 pub mod pronounce;
 pub mod roles;
@@ -16,6 +17,9 @@ pub mod tune;
 
 pub use alias::{Actor, ActorRef, AliasTable, ClassifiedMove, MoveKind, MoveParams, RenderedCall};
 pub use dance::{Dance, Figure, SourceRef};
+pub use library::{
+    FolderError, FolderFilter, LIBRARY_SCHEMA_VERSION, Library, LibraryEntry, LibraryItem,
+};
 pub use prefs::{AccompanimentInstrument, MelodyInstrument, Preferences, SoundFontSetting, Theme};
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};

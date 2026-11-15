@@ -37,8 +37,9 @@ highlighted card row.
 - An audio output device for the rendered music. In a browser, press Play once
   to satisfy the autoplay gesture. If no output device is available the app
   still opens with a silent engine and explains the problem.
-- A network connection the first time you search ContraDB or ABC Session
-  Tunes. The bundled defaults work offline.
+- A network connection the first time you download a dance or tune from
+  ContraDB or ABC Session Tunes. The bundled defaults and anything already in
+  your saved library work offline.
 - Optionally, a system text-to-speech voice and, on desktop, a user-supplied
   `.sf2` SoundFont.
 
@@ -51,7 +52,7 @@ The app is useful immediately. It starts with:
   Josh Larios and chords from Sarah Comer.
 
 Both are bundled with the application and attributed on this site. Other dances
-and tunes are fetched on demand and cached locally; the project does not
+and tunes are downloaded on demand and saved locally; the project does not
 redistribute a dance or tune database.
 
 ## Current status
@@ -69,7 +70,7 @@ captured manually.
 | --- | --- |
 | Windows x64 | Desktop build; installer and portable ZIP in the nightly release |
 | Linux x86_64 | Desktop build; `.deb` and AppImage in the nightly release |
-| Web (WASM) | Browser build; needs a static server and a data proxy for online search |
+| Web (WASM) | Browser build; needs a static server and a data proxy for online search and downloads |
 | Android | Configured with minSdk 26; APK build and real-device testing still in progress |
 
 Ready to try it? Continue to

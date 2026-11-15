@@ -7,6 +7,7 @@
 use std::error::Error;
 use std::path::Path;
 
+use contra_core::{Dance, FolderFilter, Library, LibraryEntry, SourceRef, Tune};
 use contra_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary};
 use eframe::egui::{self, Vec2};
 use egui_kittest::Harness;
@@ -179,10 +180,39 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.started = false;
     }
 
-    // Dance picker, empty and with fixture results.
+    // Saved-dance library: all saved cards with a preview, then a search
+    // narrowed to one folder.
     {
         let app = harness.state_mut();
+        app.dance_library = library_dances();
+        app.dance_library_query.clear();
+        app.dance_library_folder = FolderFilter::All;
+        app.dance_preview = app
+            .dance_library
+            .get("contradb", "2409")
+            .map(|entry| entry.item.clone());
+        app.dance_selected = None;
         app.screen = Screen::DancePicker;
+        app.error = None;
+    }
+    capture(&mut harness, out, "dance-library")?;
+    {
+        let app = harness.state_mut();
+        app.dance_library_query = "belle".into();
+        app.dance_library_folder = FolderFilter::Folder("Warmups".into());
+        app.dance_preview = app
+            .dance_library
+            .get("contradb", "2154")
+            .map(|entry| entry.item.clone());
+    }
+    capture(&mut harness, out, "dance-library-search")?;
+
+    // Download dance keeps the existing ContraDB search and preview UI.
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::DanceDownload;
+        app.dance_library_query.clear();
+        app.dance_library_folder = FolderFilter::All;
         app.dance_results = None;
         app.dance_preview = None;
         app.dance_query.title.clear();
@@ -273,15 +303,47 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     }
     capture(&mut harness, out, "session-length-warning")?;
 
-    // Tune picker and preview.
+    // Saved-tune library: all saved tunes with a sheet-music preview, then a
+    // search narrowed to one folder.
     {
         let app = harness.state_mut();
+        app.tune_library = library_tunes();
+        app.tune_library_query.clear();
+        app.tune_library_folder = FolderFilter::All;
+        app.tune_preview = app
+            .tune_library
+            .get("abcsessiontunes", "75815")
+            .map(|entry| entry.item.clone());
+        app.tune_sheet = None;
+        app.tune_selected = None;
         app.screen = Screen::TunePicker;
+    }
+    capture(&mut harness, out, "tune-library")?;
+    {
+        let app = harness.state_mut();
+        app.tune_library_query = "saint".into();
+        app.tune_library_folder = FolderFilter::Folder("Reels".into());
+        app.tune_preview = app
+            .tune_library
+            .get("abcsessiontunes", "75412")
+            .map(|entry| entry.item.clone());
+        app.tune_sheet = None;
+    }
+    capture(&mut harness, out, "tune-library-search")?;
+
+    // Download tune keeps the existing search and sheet-music preview UI.
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::TuneDownload;
+        app.tune_library_query.clear();
+        app.tune_library_folder = FolderFilter::All;
         app.dance = super::defaults::default_dance();
         app.rebuild_timeline();
         app.length_warning = super::length_warning_for(&app.dance, &app.tune);
         app.tune_results = None;
         app.tune_preview = None;
+        app.tune_selected = None;
+        app.tune_sheet = None;
     }
     capture(&mut harness, out, "tune-picker-open")?;
     {
@@ -539,7 +601,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     {
         let app = harness.state_mut();
         app.prefs.theme = contra_core::Theme::Dark;
-        app.screen = Screen::DancePicker;
+        app.screen = Screen::DanceDownload;
         app.speech = crate::tts::Speech::stub();
         app.prefs.tts_enabled = true;
         app.error = Some("HTTP 500 Internal Server Error".into());
@@ -555,19 +617,19 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     {
         let app = harness.state_mut();
         app.audio_error = None;
-        app.screen = Screen::TunePicker;
+        app.screen = Screen::TuneDownload;
         app.error = Some("could not parse source response: unexpected token".into());
     }
     capture(&mut harness, out, "error-parse")?;
     {
         let app = harness.state_mut();
-        app.screen = Screen::DancePicker;
+        app.screen = Screen::DanceDownload;
         app.error = Some("HTTP 503 Service Unavailable".into());
     }
     capture(&mut harness, out, "error-dance-load")?;
     {
         let app = harness.state_mut();
-        app.screen = Screen::TunePicker;
+        app.screen = Screen::TuneDownload;
     }
     capture(&mut harness, out, "error-tune-load")?;
 
@@ -698,5 +760,98 @@ fn tune_results() -> TuneSearchPage {
                 rhythm: "reel".into(),
             },
         ],
+    }
+}
+
+fn library_dances() -> Library<Dance> {
+    let mut library = Library::default();
+    let _ = library.create_folder("Warmups");
+    let _ = library.create_folder("Encores");
+    library.entries = vec![
+        saved_dance(
+            "2409",
+            "Another Last Dance",
+            "Erik Hoffman",
+            "improper",
+            None,
+        ),
+        saved_dance(
+            "2154",
+            "Belle of the Ball",
+            "Ralph Sweet",
+            "proper",
+            Some("Warmups"),
+        ),
+        saved_dance(
+            "2380",
+            "Allison's Favorite",
+            "Bob Isaacs",
+            "improper",
+            Some("Encores"),
+        ),
+    ];
+    library
+}
+
+fn saved_dance(
+    id: &str,
+    title: &str,
+    choreographer: &str,
+    formation: &str,
+    folder: Option<&str>,
+) -> LibraryEntry<Dance> {
+    let mut dance = super::defaults::default_dance();
+    dance.source = SourceRef::new("contradb", id, format!("https://contradb.com/dances/{id}"));
+    dance.title = title.into();
+    dance.choreographer = choreographer.into();
+    dance.formation = formation.into();
+    LibraryEntry {
+        item: dance,
+        folder: folder.map(str::to_string),
+        downloaded_at: 0,
+    }
+}
+
+fn library_tunes() -> Library<Tune> {
+    let mut library = Library::default();
+    let _ = library.create_folder("Reels");
+    let _ = library.create_folder("Jigs");
+    library.entries = vec![
+        saved_tune("75815", "Sandy Boys", "", "A mix", "reel", None),
+        saved_tune("75412", "Saint Anne's Reel", "", "D", "reel", Some("Reels")),
+        saved_tune(
+            "1279",
+            "Banish Misfortune",
+            "Traditional",
+            "D mix",
+            "jig",
+            Some("Jigs"),
+        ),
+    ];
+    library
+}
+
+fn saved_tune(
+    id: &str,
+    title: &str,
+    composer: &str,
+    key: &str,
+    rhythm: &str,
+    folder: Option<&str>,
+) -> LibraryEntry<Tune> {
+    let mut tune = super::defaults::default_tune();
+    tune.source = SourceRef::new(
+        "abcsessiontunes",
+        id,
+        format!("https://thesession.org/tunes/{id}"),
+    );
+    tune.title = title.into();
+    tune.composer = composer.into();
+    tune.key = key.into();
+    tune.rhythm = rhythm.into();
+    LibraryEntry {
+        item: tune,
+        folder: folder.map(str::to_string),
+        downloaded_at: 0,
     }
 }

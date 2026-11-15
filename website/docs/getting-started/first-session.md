@@ -13,8 +13,8 @@ first, then shows how to replace them.
   [Build and run](/docs/getting-started/build-and-run).
 - Have an audio output device available. In a browser, press Play once to allow
   audio.
-- The first time you search, the app needs network access to ContraDB and ABC
-  Session Tunes. The defaults do not.
+- The first time you download a dance or tune, the app needs network access to
+  ContraDB and ABC Session Tunes. The bundled defaults do not.
 
 ## 1. Look at the starting screen
 
@@ -34,46 +34,56 @@ The first **Play** renders the arrangement and starts the count-in.
 
 ## 2. Choose a dance
 
-The dance picker is a search screen for ContraDB. It opens in place of the
-session; the current dance is not replaced until you choose **Use this dance**.
+**Select dance** lists the dances saved on this device. The bundled default is
+already there, and the current dance is not replaced until you choose **Use**.
 
 <Steps>
+  <Step shot="dance-library">
+    Select **Select dance** in the top tab row. Search saved content, preview a
+    card, and press **Use** to load it.
+  </Step>
   <Step shot="dance-picker-open">
-    Select **Select dance** in the top tab row.
+    To add another dance, select **Download dance**. This opens the ContraDB
+    search screen; previewing a result does not save it.
   </Step>
   <Step shot="dance-picker-search">
     Type part of a title in **Title** and select **Search dances**. The default
     results are ten per page; use **Next** and **Previous** to page.
   </Step>
   <Step shot="dance-picker-preview">
-    Select **Preview** on a result. Read the figure list and the beat total in
-    the right column, then select **Use this dance**.
+    Select **Preview** on a result, read the figure list and beat total, then
+    select **Download dance** to keep it or **Use this dance** to download and
+    load it immediately.
   </Step>
 </Steps>
 
 You can also filter by **Choreographer**, **User**, **Hook**, **Formation**,
 **Figure type**, or **Figure contains**, show only **Verified only** dances, and
 change **Sort**. See [Choosing a dance](/docs/guides/choosing-a-dance) for the
-full search reference.
+full search and folder reference.
 
 ## 3. Choose a tune
 
-The tune picker searches ABC Session Tunes. It behaves like the dance picker:
-preview on the right, load on the left.
+**Select tune** lists the tunes saved on this device. Its search and folder
+panel work like the dance library.
 
 <Steps>
+  <Step shot="tune-library">
+    Select **Select tune** in the top tab row.
+  </Step>
   <Step shot="tune-picker-open">
-    Select **Select Tune** in the top tab row.
+    Select **Download tune** to search ABC Session Tunes for another melody.
   </Step>
   <Step shot="tune-picker-preview">
     Search by title or composer, optionally filter by **Key**, **Meter**, or
-    **Genre**, then select **Preview** and **Use this tune**.
+    **Genre**, then select **Preview**. **Download tune** saves the tune and
+    **Use this tune** saves and loads it.
   </Step>
 </Steps>
 
-The preview shows the ABC text. It is for inspection; edits in the preview field
-are not saved and do not change the tune. The preview also links to the tune on
-ABC Session Tunes when a source URL is available.
+The preview engraves the ABC as sheet music. **Show ABC** switches to the source
+text; edits there are not saved and do not change the tune. The preview also
+links to the tune on ABC Session Tunes when a source URL is available.
 
 <Shot id="main-dance-loaded" />
 

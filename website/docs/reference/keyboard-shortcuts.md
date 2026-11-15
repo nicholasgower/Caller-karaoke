@@ -12,9 +12,9 @@ not start or stop the music.
 | --- | --- | --- |
 | **Space** | Play or pause | If the music is playing, Space pauses; otherwise it starts or resumes. |
 | **R** | Restart | Returns to the count-in and resets the call state. |
-| **Esc** | Return to **Session** | Works from **Select dance**, **Select Tune**, **Preferences**, and the alias editor. Does nothing on the session screen. |
-| **1–4** | Switch tabs | 1 Session, 2 Select dance, 3 Select Tune, 4 Preferences. |
-| **Enter** | Submit | Starts a search from a search field, or adds the custom alias when the alias fields are filled. |
+| **Esc** | Go back one screen | Returns **Download dance** and **Download tune** to their saved-content lists, and **Select dance**, **Select tune**, **Preferences**, and the alias editor to **Session**. Does nothing on the session screen. |
+| **1–4** | Switch tabs | 1 Session, 2 Select dance, 3 Select tune, 4 Preferences. |
+| **Enter** | Submit | Starts a search from a search field, creates a folder from the folder-name field, or adds the custom alias when the alias fields are filled. |
 
 ## Details
 
@@ -23,11 +23,13 @@ not start or stop the music.
 - **R** restarts even while paused; it clears the last-spoken call and starts
   from the count-in.
 - **Esc** does not replace **Use this dance** or **Use this tune**. Leaving a
-  picker does not change the loaded dance or tune.
+  picker does not change the loaded dance or tune. From a **Download** screen,
+  Esc returns to the corresponding saved-content list.
 - **1–4** are ignored while a text field has focus, so typing a number does not
   change tabs.
-- **Enter** in a search field submits the current filters; in the custom alias
-  or alternative-call fields it adds the entry when both fields are filled.
+- **Enter** in a search field submits the current filters; in the folder-name
+  field it creates the folder; in the custom alias or alternative-call fields it
+  adds the entry when both fields are filled.
 - On a browser, click the app once before using Space so the canvas has focus.
   If the page scrolls instead, click the session background and try again.
 

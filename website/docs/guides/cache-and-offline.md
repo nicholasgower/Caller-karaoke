@@ -4,9 +4,12 @@ description: How Contra Karaoke caches dances, tunes, and searches, how stale co
 sidebar_position: 9
 ---
 
-Contra Karaoke fetches dances from ContraDB and tunes from ABC Session Tunes,
-then caches the raw responses locally: files on the desktop and Android, and
-`localStorage` in the browser. The two bundled defaults work without a network.
+Contra Karaoke fetches dances from ContraDB and tunes from ABC Session Tunes.
+Content you **download** in **Select dance → Download dance** or **Select tune
+→ Download tune** is saved to your local library and works offline. Separately,
+the app caches the raw search and detail responses: files on the desktop and
+Android, and `localStorage` in the browser. The two bundled defaults are in the
+library from first launch.
 
 On desktop, the Kokoro neural voice is cached separately: the model and the
 selected voice style file are downloaded once and reused offline. The platform
@@ -26,8 +29,12 @@ and may replace the entry.
 
 ## What happens offline
 
-If a request fails, the app looks for a stale cache entry. If one exists, it
-parses and uses that content. **There is no offline banner in 0.1.0**; the
+**Select dance** and **Select tune** search your downloaded library, so those
+lists keep working with no network. Downloading a new card or tune, or running a
+new ContraDB or ABC Session Tunes search, needs a connection.
+
+If a search request fails, the app looks for a stale cache entry. If one exists,
+it parses and uses that content. **There is no offline banner in 0.1.0**; the
 fallback is silent.
 
 If no cached content exists, the error appears in a red panel at the bottom of
@@ -36,9 +43,9 @@ stay in place.
 
 <Shot id="error-network" />
 
-The bundled **Another Last Dance** and **Sandy Boys** are always available. Other
-dances and tunes are only available offline if they were fetched and cached
-earlier.
+The bundled **Another Last Dance** and **Sandy Boys** are always in the library.
+Other dances and tunes are available offline once they have been downloaded
+from the **Download dance** or **Download tune** screen.
 
 ## Clear the source cache
 
@@ -52,11 +59,12 @@ earlier.
   </Step>
 </Steps>
 
-Clearing the cache does not remove preferences, the bundled defaults, a loaded
-SoundFont, or the cached neural voice files.
+Clearing the cache does not remove preferences, saved dances and tunes, the
+bundled defaults, a loaded SoundFont, or the cached neural voice files.
 
 There is no cache-size display or manual refresh button in the current UI. Use
-the normal search action to fetch fresh content after clearing.
+the normal search action to fetch fresh content after clearing. To refresh a
+saved dance or tune, download it again from its **Download** screen.
 
 ## Web data proxy
 
@@ -80,5 +88,7 @@ with your preferences; do not share a screenshot of a real token.
 - Audio renders are not stored; the app re-renders on Play after a change.
 - Your current transport position is not persisted.
 - A failed response is not cached as a valid result.
+- Saved dances and tunes are stored in the library, not in the source cache;
+  clearing the cache leaves them in place.
 
 Next: [Themes and accessibility](/docs/guides/themes-and-accessibility).

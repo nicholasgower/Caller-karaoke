@@ -58,9 +58,11 @@ being device-tested.
   one caller wording randomly use one of them (for example “partner swing”
   instead of “swing your partner”). The card and TTS use the chosen wording.
   Add your own alternatives per move type in Preferences → Aliases.
-- **Select dance** — search ContraDB, preview the card, load it.
-- **Select Tune** — search ABC Session Tunes, preview the sheet music (or the
-  ABC source), load it.
+- **Select dance** — search saved dances, organise them into folders, and load
+  one. **Download dance** searches ContraDB, previews the card, and saves it.
+- **Select tune** — search saved tunes, organise them into folders, and load
+  one. **Download tune** searches ABC Session Tunes and previews the sheet
+  music (or the ABC source).
 - **Preferences** — role terms, aliases, instruments, theme, animations, lead
   settings, TTS, soundfont, proxy, cache tools, and accompaniment variations.
 
@@ -68,12 +70,12 @@ being device-tested.
 
 - **Space** — play or pause.
 - **R** — restart from the beginning.
-- **Esc** — leave a picker or preferences screen; from the alias editor it
-  returns to preferences.
-- **1 / 2 / 3 / 4** — switch to Session, Select dance, Select Tune, or
+- **Esc** — return from a download screen to its saved-content list, or leave a
+  picker or preferences screen; from the alias editor it returns to preferences.
+- **1 / 2 / 3 / 4** — switch to Session, Select dance, Select tune, or
   Preferences.
-- **Enter** — start a dance or tune search from any search field, add a
-  custom alias, or add an alternative call alias.
+- **Enter** — start a dance or tune search from any search field, create a
+  folder, add a custom alias, or add an alternative call alias.
 
 Shortcuts are ignored while typing in a text field, so Space and R stay ordinary
 characters in search boxes. Hovering a tab, Play/Pause, Restart, Search, or Add
