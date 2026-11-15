@@ -30,7 +30,7 @@ required-features = ["headless"]
 # Off by default so release artifacts do not carry the inspection listener.
 inspection = ["eframe/inspection"]
 # Development-only: renders the real app without a window or audio device.
-headless = ["dep:egui_kittest", "dep:image"]
+headless = ["dep:egui_kittest"]
 
 [dependencies]
 acorde.workspace = true
@@ -45,7 +45,6 @@ eframe.workspace = true
 egui_kittest = { workspace = true, optional = true }
 ehttp.workspace = true
 epaint_default_fonts.workspace = true
-image = { workspace = true, optional = true }
 percent-encoding.workspace = true
 resvg.workspace = true
 rustysynth.workspace = true
@@ -73,8 +72,13 @@ sha2.workspace = true
 ureq.workspace = true
 zip = { version = "9", default-features = false, features = ["deflate"] }
 
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
 [target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))'.dependencies]
 env_logger.workspace = true
+# Decodes the bundled window icon; the headless renderer also saves PNGs.
+image.workspace = true
 rfd.workspace = true
 
 [target.'cfg(target_os = "android")'.dependencies]
@@ -107,4 +111,11 @@ priority = "optional"
 assets = [
   ["target/release/contra-karaoke", "usr/bin/", "755"],
   ["packaging/linux/contra-karaoke.desktop", "usr/share/applications/", "644"],
+  ["assets/icons/contra-karaoke-16.png", "usr/share/icons/hicolor/16x16/apps/contra-karaoke.png", "644"],
+  ["assets/icons/contra-karaoke-32.png", "usr/share/icons/hicolor/32x32/apps/contra-karaoke.png", "644"],
+  ["assets/icons/contra-karaoke-48.png", "usr/share/icons/hicolor/48x48/apps/contra-karaoke.png", "644"],
+  ["assets/icons/contra-karaoke-64.png", "usr/share/icons/hicolor/64x64/apps/contra-karaoke.png", "644"],
+  ["assets/icons/contra-karaoke-128.png", "usr/share/icons/hicolor/128x128/apps/contra-karaoke.png", "644"],
+  ["assets/icons/contra-karaoke-256.png", "usr/share/icons/hicolor/256x256/apps/contra-karaoke.png", "644"],
+  ["assets/icons/contra-karaoke.svg", "usr/share/icons/hicolor/scalable/apps/contra-karaoke.svg", "644"],
 ]

@@ -7,7 +7,9 @@
   an experienced caller.
 - Permission/attribution wording for the bundled default dance and tune.
 - Windows code signing (not required for nightly; note SmartScreen warnings).
-- Exact app icon and final visual polish.
+- A simplified 16/32 px app icon variant; the detailed mark (four couples,
+  set links) turns into a pattern below 32 px.
+- Final visual polish.
 - Flatpak runtime/SDK version pinning.
 - Autonomous-caller default support level and whether performance mode is a
   separate setting (§17 C5/C11).
