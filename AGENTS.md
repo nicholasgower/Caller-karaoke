@@ -65,6 +65,7 @@ crates/music     ABC parsing/sequencing, arrangement, synth, MIDI
 crates/sources   provider traits, ContraDB, ABC Session Tunes, HTTP, cache
 crates/app       egui UI, transport, TTS, platform glue
 crates/web       WASM entry point and Trunk page
+crates/mcp       development-only MCP server for agent-driven UI testing
 xtask            packaging/changelog helpers
 scripts          Scripts to aid agents in development
 assets           bundled defaults and icons only
@@ -79,9 +80,15 @@ Allowed dependencies:
 app -> sources -> core
 app -> music   -> core
 app -> core
+mcp -> egui_mcp (development tool; no dependency on the app crates)
 ```
 
 Rules:
+
+- `mcp` is a development/QA tool. It must not be needed to build or run the
+  shipped app, and the app's `inspection` feature must stay off by default.
+  Inspection binds to loopback only and has no authentication; never enable it
+  in a release artifact.
 
 - `core` must not depend on `egui`, `cpal`, `reqwest`/`ehttp`, `tts`, `std::fs`,
   or any platform API. It is pure domain logic.
@@ -116,6 +123,13 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo check --workspace
 cargo run -p contra-app
+```
+
+Development-only UI automation (see `docs/automation.md`):
+
+```sh
+EGUI_INSPECTION=127.0.0.1:5719 cargo run -p contra-app --features inspection
+cargo run -p contra-mcp
 ```
 
 Web:

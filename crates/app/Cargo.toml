@@ -16,6 +16,11 @@ crate-type = ["cdylib", "lib"]
 name = "contra-karaoke"
 path = "src/main.rs"
 
+[features]
+# Development-only: lets `contra-mcp` attach to a running app and drive it.
+# Off by default so release artifacts do not carry the inspection listener.
+inspection = ["eframe/inspection"]
+
 [dependencies]
 arc-swap.workspace = true
 contra-core = { version = "0.1.0", path = "../core" }

@@ -25,6 +25,11 @@ and build tools used by the project.
 | `arc-swap` | MIT OR Apache-2.0 | Real-time-safe audio buffer swaps |
 | `env_logger` | MIT OR Apache-2.0 | Logging setup |
 | `thiserror` | MIT OR Apache-2.0 | Error types |
+| `egui_inspection` | MIT OR Apache-2.0 | Development-only inspection plugin (eframe feature) |
+| `egui_mcp` | MIT OR Apache-2.0 | MCP server for agent-driven UI testing |
+| `rmcp` | Apache-2.0 | MCP protocol implementation (via `egui_mcp`) |
+| `tokio` | MIT | Async runtime for the MCP server |
+| `tracing-subscriber` | MIT | MCP server logging |
 
 Transitive dependencies retain their own licenses; `Cargo.lock` records exact
 versions. Run `cargo deny check` before a release.

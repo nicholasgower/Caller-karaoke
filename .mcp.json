@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "contra-karaoke": {
+      "command": "cargo",
+      "args": ["run", "--quiet", "-p", "contra-mcp"]
+    }
+  }
+}

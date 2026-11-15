@@ -6,6 +6,7 @@ crates/music     ABC parsing, chords, arrangement, synth, MIDI, render
 crates/sources   provider traits, ContraDB, ABC Session Tunes, cache
 crates/app       eframe UI, cpal transport, TTS, platform storage
 crates/web       WASM entry point and Trunk page
+crates/mcp       development-only MCP server for agent-driven UI testing
 ```
 
 The data flow is:
@@ -24,5 +25,8 @@ Rules:
 - `music` is deterministic and offline.
 - `sources` parses bytes; it never touches `egui`.
 - `app` is the only crate that performs I/O, audio, or speech.
+- `mcp` is a development/QA tool. It drives a development build through the
+  `inspection` feature (off by default) and is not part of a release artifact.
 
-See `AGENTS.md` for the full dependency and coding rules.
+See `AGENTS.md` for the full dependency and coding rules, and
+`docs/automation.md` for the MCP workflow.

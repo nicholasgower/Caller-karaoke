@@ -137,11 +137,38 @@ Windows installer and portable archive are built from
 `packaging/windows/`; Linux `.deb`, AppImage, and Flatpak files live under
 `packaging/linux/` and `packaging/flatpak/`.
 
+## Agent automation (MCP)
+
+The desktop app can expose a loopback inspection endpoint so an MCP client can
+read the widget tree, synthesize input, and take screenshots. This is a
+development tool: the `inspection` feature is off by default, and release builds
+do not carry the listener.
+
+```sh
+# bash
+EGUI_INSPECTION=127.0.0.1:5719 cargo run -p contra-app --features inspection
+cargo run -p contra-mcp
+```
+
+```powershell
+# PowerShell
+$env:EGUI_INSPECTION = "127.0.0.1:5719"
+cargo run -p contra-app --features inspection
+cargo run -p contra-mcp
+```
+
+`contra-mcp` speaks MCP over stdio. The repository's `.mcp.json` registers it
+for clients that read that file. Call `attach` in the client, then use
+`screenshot`, `widget_tree`, `click`, `type_text`, `press_key`, `wait_for`, and
+the other tools. See `docs/automation.md` for client configuration, the tool
+list, and safety notes.
+
 ## Project documents
 
 - `ROADMAP.md` — full product and milestone plan.
 - `AGENTS.md` — architecture, code, testing, and release rules.
 - `docs/INITIAL_PROMPT.md` — original project request.
+- `docs/automation.md` — driving a development build from an MCP agent.
 - `CREDITS.md` — libraries, fonts, data, and tools.
 - `CHANGELOG.md` — change history.
 

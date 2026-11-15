@@ -1,0 +1,21 @@
+[package]
+name = "contra-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "MCP server that lets an agent inspect, drive, and screenshot Contra Karaoke"
+
+[[bin]]
+name = "contra-mcp"
+path = "src/main.rs"
+
+[dependencies]
+egui_mcp.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
