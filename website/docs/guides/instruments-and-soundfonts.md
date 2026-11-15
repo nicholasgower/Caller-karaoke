@@ -197,7 +197,9 @@ on the beat with a lighter upstroke off the beat, so the guitar sounds strummed
 up and down rather than in one direction. The second accompaniment is derived
 from the melody and that chord track, so it never needs symbols of its own. The
 optional percussion follows the selected percussion rhythm, the meter, and the
-dance-beat grid. Short fades and peak normalization are applied to the rendered
-buffer.
+dance-beat grid. When a chord tone would sit closer than a minor third to the
+melody note sounding at the same time, the arranger moves that accompaniment
+note down an octave so the tune stays clear of its backing. Short fades and peak
+normalization are applied to the rendered buffer.
 
 Next: [Timing and lead](/docs/guides/timing-and-lead).
