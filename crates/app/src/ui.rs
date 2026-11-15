@@ -85,7 +85,7 @@ impl ContraApp {
         if self.needs_render {
             ui.horizontal(|ui| {
                 ui.label(
-                    egui::RichText::new("Changes pending — press Play to rebuild the music.")
+                    egui::RichText::new("Press Play to prepare the music with these settings.")
                         .color(theme::MUTED),
                 );
             });
@@ -139,21 +139,43 @@ impl ContraApp {
         });
 
         ui.add_space(8.0);
-        let active = self
-            .timeline
-            .calls
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, call)| beat >= call.call_start_beat && beat < call.end_beat)
-            .map(|(index, call)| (index, call.clone()));
-        let next = self.timeline.next_call(beat).cloned();
+        let active = if self.started {
+            self.timeline
+                .calls
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, call)| beat >= call.call_start_beat && beat < call.end_beat)
+                .map(|(index, call)| (index, call.clone()))
+        } else {
+            None
+        };
+        let next = if self.started {
+            self.timeline.next_call(beat).cloned()
+        } else {
+            None
+        };
 
         egui::Frame::group(ui.style())
             .fill(theme::CALL_ACTIVE_BG)
             .inner_margin(egui::Margin::same(12))
             .show(ui, |ui| {
-                if beat < -0.001 {
+                if !self.started {
+                    ui.label(
+                        egui::RichText::new("READY")
+                            .small()
+                            .color(theme::MUTED),
+                    );
+                    ui.label(egui::RichText::new("Press Play to begin").size(30.0).strong());
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "{} calls · {} beats · three-beat count-in",
+                            self.timeline.calls.len(),
+                            self.timeline.music_loop_beats
+                        ))
+                        .color(theme::MUTED),
+                    );
+                } else if beat < -0.001 {
                     ui.label(
                         egui::RichText::new("COUNT-IN")
                             .small()
@@ -166,14 +188,28 @@ impl ContraApp {
                                 .strong(),
                         );
                         ui.vertical(|ui| {
-                            ui.label(
-                                egui::RichText::new("Listen for the first chord").size(20.0),
-                            );
-                            if let Some(next) = &next {
+                            if let Some((_, call)) = &active {
                                 ui.label(
-                                    egui::RichText::new(format!("First call: {}", next.text))
-                                        .color(theme::MUTED),
+                                    egui::RichText::new("CALL NOW")
+                                        .small()
+                                        .color(egui::Color32::WHITE),
                                 );
+                                ui.label(
+                                    egui::RichText::new(&call.text)
+                                        .size(26.0)
+                                        .strong()
+                                        .color(egui::Color32::WHITE),
+                                );
+                            } else {
+                                ui.label(
+                                    egui::RichText::new("Listen for the first chord").size(20.0),
+                                );
+                                if let Some(next) = &next {
+                                    ui.label(
+                                        egui::RichText::new(format!("First call: {}", next.text))
+                                            .color(theme::MUTED),
+                                    );
+                                }
                             }
                         });
                     });
@@ -205,10 +241,14 @@ impl ContraApp {
                     );
                     ui.horizontal_wrapped(|ui| {
                         ui.label(
-                            egui::RichText::new(format!(
-                                "executes in {:.1} beats",
-                                (call.execute_beat - beat).max(0.0)
-                            ))
+                            egui::RichText::new(if phase == CallPhase::Executing {
+                                "figure in progress".to_string()
+                            } else {
+                                format!(
+                                    "executes in {:.1} beats",
+                                    (call.execute_beat - beat).max(0.0)
+                                )
+                            })
                             .color(theme::MUTED),
                         );
                         if self.prefs.show_original {
@@ -344,6 +384,7 @@ impl ContraApp {
         if music_dirty {
             self.needs_render = true;
             self.audio.stop();
+            self.started = false;
             self.last_spoken = None;
         }
         match action {
@@ -1027,10 +1068,32 @@ impl ContraApp {
 
         self.prefs.validate();
         if self.prefs != before {
-            self.needs_render = true;
-            self.audio.stop();
-            self.rebuild_timeline();
-            self.last_spoken = None;
+            let timeline_changed = self.prefs.role_terms != before.role_terms
+                || self.prefs.aliases != before.aliases
+                || self.prefs.lead != before.lead
+                || self.prefs.tempo_bpm != before.tempo_bpm
+                || self.prefs.count_in_enabled != before.count_in_enabled;
+            let audio_changed = self.prefs.tempo_bpm != before.tempo_bpm
+                || self.prefs.count_in_enabled != before.count_in_enabled
+                || self.prefs.melody != before.melody
+                || self.prefs.accompaniment != before.accompaniment
+                || self.prefs.melody_volume != before.melody_volume
+                || self.prefs.accompaniment_volume != before.accompaniment_volume
+                || self.prefs.soundfont != before.soundfont;
+            if timeline_changed {
+                self.rebuild_timeline();
+                self.last_spoken = None;
+            }
+            if audio_changed {
+                self.needs_render = true;
+                self.audio.stop();
+                self.started = false;
+            }
+            if !self.prefs.tts_enabled {
+                self.speech.stop();
+            }
+            self.audio.set_looping(self.prefs.loop_enabled);
+            self.audio.set_volume(self.prefs.master_volume);
             self.save_prefs();
         }
     }

@@ -7,10 +7,10 @@ The planned route is `cargo-apk` with the eframe Android native-activity
 backend (`eframe` features `glow` + `android-native-activity`) and `cpal`'s
 AAudio backend. `tts` also requires minSdk 26 for its Android callback bridge.
 
-The app crate needs `crate-type = ["cdylib", "lib"]` and an `android_main` entry
-point before `cargo apk build --release --lib` can produce the APK. This is
-tracked in Milestone M5/M6 of `ROADMAP.md`; the desktop build does not require
-it.
+The app crate now exposes `crate-type = ["cdylib", "lib"]` and an
+`android_main` entry point. The remaining work is device testing and CI
+packaging. This is tracked in Milestone M5/M6 of `ROADMAP.md`; the desktop
+build does not require it.
 
 Build environment:
 

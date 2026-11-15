@@ -7,6 +7,10 @@ authors.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 
+[lib]
+name = "contra_app"
+crate-type = ["cdylib", "lib"]
+
 [[bin]]
 name = "contra-karaoke"
 path = "src/main.rs"
@@ -20,12 +24,33 @@ cpal.workspace = true
 directories.workspace = true
 eframe.workspace = true
 ehttp.workspace = true
-env_logger.workspace = true
 percent-encoding.workspace = true
-rfd.workspace = true
 rustysynth.workspace = true
 serde_json.workspace = true
 tts.workspace = true
+
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))'.dependencies]
+env_logger.workspace = true
+rfd.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.15"
+winit = "0.30"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+cpal = { workspace = true, features = ["wasm-bindgen"] }
+log = "0.4"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Document", "HtmlCanvasElement", "Storage", "Window"] }
+
+[package.metadata.android]
+build_targets = ["armv7-linux-androideabi", "aarch64-linux-android"]
+
+[package.metadata.android.sdk]
+min_sdk_version = 26
+target_sdk_version = 35
 
 [package.metadata.deb]
 maintainer = "Nicholas Gower <nicholasgower01@gmail.com>"

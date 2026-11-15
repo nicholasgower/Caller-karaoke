@@ -73,8 +73,30 @@ jobs:
             target/debian/*.deb
             dist/*.AppImage
 
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+      - name: Build web app
+        run: trunk build --release
+      - name: Package web app
+        run: |
+          cd dist
+          zip -r "contra-karaoke-$VERSION-web.zip" web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: dist/*-web.zip
+
   release:
-    needs: [windows, linux]
+    needs: [windows, linux, web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

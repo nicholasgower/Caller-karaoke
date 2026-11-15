@@ -55,6 +55,16 @@ jobs:
             libgl1-mesa-dev libgtk-3-dev libspeechd-dev speech-dispatcher
       - run: cargo test --workspace
 
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p contra-app --target wasm32-unknown-unknown
+
   dependency-policy:
     runs-on: ubuntu-latest
     steps:

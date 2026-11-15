@@ -1,6 +1,6 @@
 //! Application state and UI.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
@@ -10,9 +10,11 @@ use contra_core::{
     Preferences, RolePreset, RoleTerms, Theme, TimelineConfig, Tune,
 };
 use contra_music::{Arrangement, RenderRequest, export_midi, parse_abc, render};
+#[cfg(not(target_arch = "wasm32"))]
+use contra_sources::FileCache;
 use contra_sources::{
-    Cache, DanceQuery, DanceSearchPage, DanceSort, DanceSummary, FileCache, TuneQuery,
-    TuneSearchPage, TuneSummary,
+    Cache, DanceQuery, DanceSearchPage, DanceSort, DanceSummary, TuneQuery, TuneSearchPage,
+    TuneSummary,
 };
 use eframe::egui;
 use rustysynth::SoundFont;
@@ -49,6 +51,7 @@ pub struct ContraApp {
     soundfont_error: Option<String>,
     needs_render: bool,
     render_loading: bool,
+    started: bool,
     dance_query: DanceQuery,
     tune_query: TuneQuery,
     dance_results: Option<DanceSearchPage>,
@@ -85,15 +88,10 @@ impl ContraApp {
         let _ = std::fs::create_dir_all(&config_dir);
         let _ = std::fs::create_dir_all(&cache_dir);
         let prefs_path = config_dir.join("preferences.json");
-        let mut prefs = std::fs::read_to_string(&prefs_path)
-            .ok()
-            .and_then(|json| Preferences::from_json(&json).ok())
-            .unwrap_or_default();
+        let mut prefs = load_prefs(&prefs_path).unwrap_or_default();
         prefs.validate();
 
-        let cache = FileCache::new(cache_dir.join("sources"))
-            .map(Cache::new)
-            .unwrap_or_else(|_| Cache::new(contra_sources::MemoryCache::default()));
+        let cache = build_cache(&cache_dir);
         let source = SourceClient::new(
             source_tx,
             cache,
@@ -148,6 +146,7 @@ impl ContraApp {
             soundfont_error: None,
             needs_render: true,
             render_loading: false,
+            started: false,
             dance_query: DanceQuery {
                 page_size: 10,
                 ..DanceQuery::default()
@@ -177,7 +176,15 @@ impl ContraApp {
 
     fn save_prefs(&self) {
         if let Ok(json) = self.prefs.to_json() {
-            let _ = std::fs::write(&self.prefs_path, json);
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let _ = std::fs::write(&self.prefs_path, json);
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                let _ = &self.prefs_path;
+                crate::web_store::write_prefs(&json);
+            }
         }
     }
 
@@ -243,6 +250,7 @@ impl ContraApp {
         self.ensure_ready();
         if self.audio.has_buffer() {
             self.audio.play();
+            self.started = true;
             self.status = "Playing".into();
         }
     }
@@ -258,6 +266,7 @@ impl ContraApp {
         self.last_spoken = None;
         self.last_beat = 0.0;
         self.audio.restart();
+        self.started = true;
         self.status = "Playing".into();
     }
 
@@ -270,6 +279,7 @@ impl ContraApp {
         self.screen = Screen::Session;
         self.needs_render = true;
         self.audio.stop();
+        self.started = false;
         self.rebuild_timeline();
         self.save_prefs();
         self.status = "Dance selected".into();
@@ -284,6 +294,7 @@ impl ContraApp {
         self.screen = Screen::Session;
         self.needs_render = true;
         self.audio.stop();
+        self.started = false;
         self.save_prefs();
         self.status = "Tune selected".into();
     }
@@ -370,57 +381,73 @@ impl ContraApp {
     }
 
     fn export_midi(&mut self) {
-        let Some(arrangement) = &self.arrangement else {
-            self.error = Some("Render the music before exporting MIDI".into());
-            return;
-        };
-        let default_name = format!("{}.mid", safe_filename(&self.tune.title));
-        let Some(path) = rfd::FileDialog::new()
-            .set_file_name(default_name)
-            .add_filter("MIDI", &["mid"])
-            .save_file()
-        else {
-            return;
-        };
-        let bytes = export_midi(
-            arrangement,
-            self.prefs.melody,
-            self.prefs.accompaniment,
-            self.prefs.tempo_bpm,
-        );
-        match std::fs::write(&path, bytes) {
-            Ok(()) => self.status = format!("Saved MIDI to {}", path.display()),
-            Err(error) => self.error = Some(format!("Could not save MIDI: {error}")),
+        #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+        {
+            let _ = export_midi;
+            self.error = Some("MIDI export is not available in this build yet.".into());
+        }
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        {
+            let Some(arrangement) = &self.arrangement else {
+                self.error = Some("Render the music before exporting MIDI".into());
+                return;
+            };
+            let default_name = format!("{}.mid", safe_filename(&self.tune.title));
+            let Some(path) = rfd::FileDialog::new()
+                .set_file_name(default_name)
+                .add_filter("MIDI", &["mid"])
+                .save_file()
+            else {
+                return;
+            };
+            let bytes = export_midi(
+                arrangement,
+                self.prefs.melody,
+                self.prefs.accompaniment,
+                self.prefs.tempo_bpm,
+            );
+            match std::fs::write(&path, bytes) {
+                Ok(()) => self.status = format!("Saved MIDI to {}", path.display()),
+                Err(error) => self.error = Some(format!("Could not save MIDI: {error}")),
+            }
         }
     }
 
     fn load_soundfont(&mut self) {
-        let Some(path) = rfd::FileDialog::new()
-            .add_filter("SoundFont", &["sf2", "sf3"])
-            .pick_file()
-        else {
-            return;
-        };
-        match std::fs::read(&path) {
-            Ok(bytes) => match contra_music::soundfont::load_soundfont(&bytes) {
-                Ok(soundfont) => {
-                    let name = path
-                        .file_stem()
-                        .and_then(|name| name.to_str())
-                        .unwrap_or("SoundFont")
-                        .to_string();
-                    self.soundfont = Some(soundfont);
-                    self.prefs.soundfont = Some(contra_core::SoundFontSetting {
-                        name,
-                        path: Some(path.to_string_lossy().to_string()),
-                    });
-                    self.needs_render = true;
-                    self.soundfont_error = None;
-                    self.save_prefs();
-                }
+        #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+        {
+            self.soundfont_error =
+                Some("Loading a SoundFont from a file is not available in this build yet.".into());
+        }
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        {
+            let Some(path) = rfd::FileDialog::new()
+                .add_filter("SoundFont", &["sf2", "sf3"])
+                .pick_file()
+            else {
+                return;
+            };
+            match std::fs::read(&path) {
+                Ok(bytes) => match contra_music::soundfont::load_soundfont(&bytes) {
+                    Ok(soundfont) => {
+                        let name = path
+                            .file_stem()
+                            .and_then(|name| name.to_str())
+                            .unwrap_or("SoundFont")
+                            .to_string();
+                        self.soundfont = Some(soundfont);
+                        self.prefs.soundfont = Some(contra_core::SoundFontSetting {
+                            name,
+                            path: Some(path.to_string_lossy().to_string()),
+                        });
+                        self.needs_render = true;
+                        self.soundfont_error = None;
+                        self.save_prefs();
+                    }
+                    Err(error) => self.soundfont_error = Some(error.to_string()),
+                },
                 Err(error) => self.soundfont_error = Some(error.to_string()),
-            },
-            Err(error) => self.soundfont_error = Some(error.to_string()),
+            }
         }
     }
 
@@ -437,6 +464,25 @@ impl eframe::App for ContraApp {
         let ctx = ui.ctx().clone();
         theme::apply(&ctx, self.prefs.theme);
         self.handle_source_events();
+
+        if !ctx.egui_wants_keyboard_input() {
+            if ui.input(|input| input.key_pressed(egui::Key::Space)) {
+                if self.audio.is_playing() {
+                    self.pause();
+                } else {
+                    self.play();
+                }
+            }
+            if ui.input(|input| input.key_pressed(egui::Key::R)) {
+                self.restart();
+            }
+            if ui.input(|input| input.key_pressed(egui::Key::Escape))
+                && self.screen != Screen::Session
+            {
+                self.screen = Screen::Session;
+            }
+        }
+
         let beat = self.current_beat();
         self.update_speech(beat);
 
@@ -457,15 +503,6 @@ impl eframe::App for ContraApp {
                     }
                     if tab(ui, self.screen == Screen::Preferences, "Preferences") {
                         self.screen = Screen::Preferences;
-                    }
-                    if ui.button("Play").clicked() {
-                        self.play();
-                    }
-                    if ui.button("Pause").clicked() {
-                        self.pause();
-                    }
-                    if ui.button("Restart").clicked() {
-                        self.restart();
                     }
                 });
             });
@@ -503,6 +540,34 @@ fn tab(ui: &mut egui::Ui, active: bool, label: &str) -> bool {
     ui.selectable_label(active, label).clicked()
 }
 
+fn load_prefs(path: &Path) -> Option<Preferences> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::fs::read_to_string(path)
+            .ok()
+            .and_then(|json| Preferences::from_json(&json).ok())
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = path;
+        crate::web_store::read_prefs().and_then(|json| Preferences::from_json(&json).ok())
+    }
+}
+
+fn build_cache(cache_dir: &Path) -> Cache {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        FileCache::new(cache_dir.join("sources"))
+            .map(Cache::new)
+            .unwrap_or_else(|_| Cache::new(contra_sources::MemoryCache::default()))
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = cache_dir;
+        Cache::new(crate::web_store::LocalStorageCache)
+    }
+}
+
 fn build_timeline(dance: &Dance, prefs: &Preferences) -> Result<PracticeTimeline, String> {
     PracticeTimeline::build(
         dance,
@@ -528,6 +593,7 @@ fn empty_timeline() -> PracticeTimeline {
     }
 }
 
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 fn safe_filename(title: &str) -> String {
     title
         .chars()

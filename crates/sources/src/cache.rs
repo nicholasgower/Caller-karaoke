@@ -114,8 +114,9 @@ impl Cache {
     }
 
     pub fn put(&mut self, key: &str, value: &[u8]) -> Result<(), String> {
-        let mut bytes = Vec::with_capacity(value.len() + 8);
-        bytes.extend_from_slice(&now_seconds().to_be_bytes());
+        // A text-safe header keeps the entry usable from `localStorage` as
+        // well as from the filesystem.
+        let mut bytes = format!("{}\n", now_seconds()).into_bytes();
         bytes.extend_from_slice(value);
         self.store.write(key, &bytes)
     }
@@ -130,12 +131,9 @@ impl Cache {
 }
 
 fn split_entry(bytes: &[u8]) -> Option<(u64, &[u8])> {
-    if bytes.len() < 8 {
-        return None;
-    }
-    let mut timestamp = [0u8; 8];
-    timestamp.copy_from_slice(&bytes[..8]);
-    Some((u64::from_be_bytes(timestamp), &bytes[8..]))
+    let newline = bytes.iter().position(|byte| *byte == b'\n')?;
+    let timestamp = std::str::from_utf8(&bytes[..newline]).ok()?.parse().ok()?;
+    Some((timestamp, &bytes[newline + 1..]))
 }
 
 fn now_seconds() -> u64 {
