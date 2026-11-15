@@ -54,8 +54,8 @@ being device-tested.
 - **Select dance** — search ContraDB, preview the card, load it.
 - **Select Tune** — search ABC Session Tunes, preview the sheet music (or the
   ABC source), load it.
-- **Preferences** — role terms, aliases, instruments, theme, lead settings,
-  TTS, soundfont, proxy, and cache tools.
+- **Preferences** — role terms, aliases, instruments, theme, animations, lead
+  settings, TTS, soundfont, proxy, and cache tools.
 
 ## How call timing works
 

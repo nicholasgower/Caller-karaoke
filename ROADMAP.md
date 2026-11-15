@@ -122,6 +122,8 @@ Listed in this order:
    - Melody/accompaniment volume.
    - Soundfont: None (built-in synth) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.
+5. **Interface animations** — smooth tab and screen transitions, on by
+   default; can be turned off to reduce motion.
 
 Advanced settings:
 
@@ -878,6 +880,7 @@ Optional **`pages.yml`** deploys the web build to GitHub Pages.
 - Small-screen layout and soft keyboard.
 - Offline start and cached content.
 - Soundfont load/remove/fallback.
+- Tab and screen animations, including with **Smooth animations** turned off.
 
 ---
 

@@ -19,6 +19,7 @@ fn phase_at(call: &contra_core::ScheduledCall, beat: f64) -> CallPhase {
 
 impl ContraApp {
     fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
+        let animate = self.prefs.animations_enabled;
         let mut timeline_dirty = false;
         let mut music_dirty = false;
         let mut save = false;
@@ -86,7 +87,7 @@ impl ContraApp {
             ui.horizontal(|ui| {
                 ui.label(
                     egui::RichText::new("Press Play to prepare the music with these settings.")
-                        .color(theme::MUTED),
+                        .color(theme::muted(ui)),
                 );
             });
         }
@@ -95,24 +96,24 @@ impl ContraApp {
                 ui.label(
                     egui::RichText::new(warning)
                         .strong()
-                        .color(theme::WARNING),
+                        .color(theme::warning(ui)),
                 );
             });
         }
         if let Some(arrangement) = &self.arrangement {
             for warning in &arrangement.warnings {
-                ui.label(egui::RichText::new(warning).small().color(theme::MUTED));
+                ui.label(egui::RichText::new(warning).small().color(theme::muted(ui)));
             }
         }
         if let Some(error) = &self.audio_error {
             ui.colored_label(
-                egui::Color32::from_rgb(210, 140, 140),
+                theme::error(ui),
                 format!("Audio device: {error}"),
             );
         }
         if self.prefs.tts_enabled && !self.speech.available() {
             ui.colored_label(
-                egui::Color32::from_rgb(210, 140, 140),
+                theme::error(ui),
                 "Text-to-speech is not available on this system.",
             );
         }
@@ -129,7 +130,7 @@ impl ContraApp {
                 empty_label(&self.dance.formation, "formation unknown"),
                 self.dance.total_beats()
             ))
-            .color(theme::MUTED),
+            .color(theme::muted(ui)),
         );
         ui.horizontal_wrapped(|ui| {
             ui.label("Tune:");
@@ -148,7 +149,7 @@ impl ContraApp {
                     self.prefs.melody.label(),
                     self.prefs.accompaniment.label()
                 ))
-                .color(theme::MUTED),
+                .color(theme::muted(ui)),
             );
         });
 
@@ -167,14 +168,14 @@ impl ContraApp {
         };
 
         egui::Frame::group(ui.style())
-            .fill(theme::CALL_ACTIVE_BG)
+            .fill(theme::call_active_bg(ui))
             .inner_margin(egui::Margin::same(12))
             .show(ui, |ui| {
                 if !self.started {
                     ui.label(
                         egui::RichText::new("READY")
                             .small()
-                            .color(theme::MUTED),
+                            .color(theme::muted(ui)),
                     );
                     ui.label(egui::RichText::new("Press Play to begin").size(30.0).strong());
                     ui.label(
@@ -183,13 +184,13 @@ impl ContraApp {
                             self.timeline.calls.len(),
                             self.timeline.music_loop_beats
                         ))
-                        .color(theme::MUTED),
+                        .color(theme::muted(ui)),
                     );
                 } else if beat < -0.001 {
                     ui.label(
                         egui::RichText::new("COUNT-IN")
                             .small()
-                            .color(theme::MUTED),
+                            .color(theme::muted(ui)),
                     );
                     ui.horizontal(|ui| {
                         ui.label(
@@ -202,13 +203,13 @@ impl ContraApp {
                                 ui.label(
                                     egui::RichText::new("CALL NOW")
                                         .small()
-                                        .color(egui::Color32::WHITE),
+                                        .color(theme::on_card(ui)),
                                 );
                                 ui.label(
                                     egui::RichText::new(&call.call.text)
                                         .size(26.0)
                                         .strong()
-                                        .color(egui::Color32::WHITE),
+                                        .color(theme::on_card(ui)),
                                 );
                             } else {
                                 ui.label(
@@ -220,7 +221,7 @@ impl ContraApp {
                                             "First call: {}",
                                             next.call.text
                                         ))
-                                        .color(theme::MUTED),
+                                        .color(theme::muted(ui)),
                                     );
                                 }
                             }
@@ -237,9 +238,9 @@ impl ContraApp {
                         egui::RichText::new(label)
                             .small()
                             .color(if phase == CallPhase::Calling {
-                                egui::Color32::WHITE
+                                theme::on_card(ui)
                             } else {
-                                theme::MUTED
+                                theme::muted(ui)
                             }),
                     );
                     ui.label(
@@ -247,9 +248,9 @@ impl ContraApp {
                             .size(34.0)
                             .strong()
                             .color(if phase == CallPhase::Executing {
-                                theme::MUTED
+                                theme::muted(ui)
                             } else {
-                                egui::Color32::WHITE
+                                theme::on_card(ui)
                             }),
                     );
                     ui.horizontal_wrapped(|ui| {
@@ -262,13 +263,13 @@ impl ContraApp {
                                     (call.execute_beat - beat).max(0.0)
                                 )
                             })
-                            .color(theme::MUTED),
+                            .color(theme::muted(ui)),
                         );
                         if self.prefs.show_original {
                             ui.label(
                                 egui::RichText::new(format!("· {}", call.call.original_text))
                                     .small()
-                                    .color(theme::MUTED),
+                                    .color(theme::muted(ui)),
                             );
                         }
                     });
@@ -287,14 +288,14 @@ impl ContraApp {
                             self.timeline.calls.len(),
                             self.timeline.music_loop_beats
                         ))
-                        .color(theme::MUTED),
+                        .color(theme::muted(ui)),
                     );
                 }
             });
 
         if let Some(next) = &next {
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("Next:").color(theme::MUTED));
+                ui.label(egui::RichText::new("Next:").color(theme::muted(ui)));
                 ui.label(egui::RichText::new(&next.call.text).strong());
                 ui.label(
                     egui::RichText::new(format!(
@@ -302,7 +303,7 @@ impl ContraApp {
                         next.execute_beat, next.start_beat
                     ))
                     .small()
-                    .color(theme::MUTED),
+                    .color(theme::muted(ui)),
                 );
             });
         }
@@ -332,6 +333,12 @@ impl ContraApp {
                 for (figure_index, figure) in self.dance.figures.iter().enumerate() {
                     let figure_end = cursor + figure.beats;
                     let active_figure = beat >= cursor && beat < figure_end;
+                    let active_t = animate_amount(
+                        ui.ctx(),
+                        ("figure-active", figure_index),
+                        active_figure,
+                        animate,
+                    );
                     let calls: Vec<(usize, contra_core::CallEvent)> = self
                         .timeline
                         .calls
@@ -340,11 +347,11 @@ impl ContraApp {
                         .filter(|(_, call)| call.figure_index == figure_index)
                         .map(|(index, call)| (index, call.clone()))
                         .collect();
-                    let fill = if active_figure {
-                        theme::CALL_ACTIVE_BG
-                    } else {
-                        theme::CALL_UPCOMING_BG
-                    };
+                    let fill = lerp_color(
+                        theme::call_upcoming_bg(ui),
+                        theme::call_active_bg(ui),
+                        active_t,
+                    );
                     egui::Frame::group(ui.style())
                         .fill(fill)
                         .inner_margin(egui::Margin::same(8))
@@ -355,16 +362,16 @@ impl ContraApp {
                                         egui::RichText::new(phrase)
                                             .strong()
                                             .color(if active_figure {
-                                                egui::Color32::WHITE
+                                                theme::on_card(ui)
                                             } else {
-                                                theme::MUTED
+                                                theme::muted(ui)
                                             }),
                                     );
                                 }
                                 ui.label(
                                     egui::RichText::new(format!("{} beats", figure.beats))
                                         .small()
-                                        .color(theme::MUTED),
+                                        .color(theme::muted(ui)),
                                 );
                             });
                             for (index, call) in &calls {
@@ -379,9 +386,9 @@ impl ContraApp {
                                     .map(|scheduled| phase_at(scheduled, beat))
                                     .unwrap_or(CallPhase::Upcoming);
                                 let color = match phase {
-                                    CallPhase::Upcoming => theme::MUTED,
-                                    CallPhase::Calling => egui::Color32::WHITE,
-                                    CallPhase::Executing => egui::Color32::from_gray(180),
+                                    CallPhase::Upcoming => theme::muted(ui),
+                                    CallPhase::Calling => theme::on_card(ui),
+                                    CallPhase::Executing => theme::executing(ui),
                                 };
                                 ui.label(
                                     egui::RichText::new(&call.text)
@@ -392,7 +399,7 @@ impl ContraApp {
                                     ui.label(
                                         egui::RichText::new(&call.original_text)
                                             .small()
-                                            .color(egui::Color32::from_gray(120)),
+                                            .color(theme::subtle(ui)),
                                     );
                                 }
                             }
@@ -423,6 +430,7 @@ impl ContraApp {
     }
 
     fn dance_picker_ui(&mut self, ui: &mut egui::Ui) {
+        let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui.button("← Back to session").clicked() {
                 self.screen = Screen::Session;
@@ -431,7 +439,7 @@ impl ContraApp {
         });
         ui.label(
             egui::RichText::new("Search ContraDB and preview the dance card before loading it.")
-                .color(theme::MUTED),
+                .color(theme::muted(ui)),
         );
         ui.add_space(6.0);
 
@@ -554,7 +562,7 @@ impl ContraApp {
             }
             if let Some(results) = &self.dance_results {
                 ui.label(
-                    egui::RichText::new(format!("{} matches", results.total)).color(theme::MUTED),
+                    egui::RichText::new(format!("{} matches", results.total)).color(theme::muted(ui)),
                 );
             }
         });
@@ -573,12 +581,18 @@ impl ContraApp {
                             .dance_selected
                             .as_ref()
                             .is_some_and(|value| value.id == dance.id);
+                        let selected_t = animate_amount(
+                            ui.ctx(),
+                            ("dance-selected", &dance.id),
+                            selected,
+                            animate,
+                        );
                         egui::Frame::group(ui.style())
-                            .fill(if selected {
-                                theme::CALL_ACTIVE_BG
-                            } else {
-                                theme::CALL_UPCOMING_BG
-                            })
+                            .fill(lerp_color(
+                                theme::call_upcoming_bg(ui),
+                                theme::call_active_bg(ui),
+                                selected_t,
+                            ))
                             .inner_margin(egui::Margin::same(8))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -591,7 +605,7 @@ impl ContraApp {
                                                 empty_label(&dance.formation, "unknown")
                                             ))
                                             .small()
-                                            .color(theme::MUTED),
+                                            .color(theme::muted(ui)),
                                         );
                                     });
                                     if ui.small_button("Preview").clicked() {
@@ -621,7 +635,7 @@ impl ContraApp {
                                 empty_label(&dance.choreographer, "unknown"),
                                 empty_label(&dance.formation, "unknown")
                             ))
-                            .color(theme::MUTED),
+                            .color(theme::muted(ui)),
                         );
                         ui.label(
                             egui::RichText::new(format!(
@@ -630,7 +644,7 @@ impl ContraApp {
                                 dance.total_beats()
                             ))
                             .small()
-                            .color(theme::MUTED),
+                            .color(theme::muted(ui)),
                         );
                         ui.hyperlink_to("Open on ContraDB", &dance.source.url);
                         ui.separator();
@@ -649,7 +663,7 @@ impl ContraApp {
                     } else if !self.preview_loading {
                         ui.label(
                             egui::RichText::new("Preview a dance to see its card.")
-                                .color(theme::MUTED),
+                                .color(theme::muted(ui)),
                         );
                     }
                 });
@@ -658,6 +672,7 @@ impl ContraApp {
     }
 
     fn tune_picker_ui(&mut self, ui: &mut egui::Ui) {
+        let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui.button("← Back to session").clicked() {
                 self.screen = Screen::Session;
@@ -668,7 +683,7 @@ impl ContraApp {
             egui::RichText::new(
                 "Search ABC Session Tunes and preview the sheet music before loading it.",
             )
-            .color(theme::MUTED),
+            .color(theme::muted(ui)),
         );
         ui.add_space(6.0);
 
@@ -739,7 +754,7 @@ impl ContraApp {
             }
             if let Some(results) = &self.tune_results {
                 ui.label(
-                    egui::RichText::new(format!("{} matches", results.total)).color(theme::MUTED),
+                    egui::RichText::new(format!("{} matches", results.total)).color(theme::muted(ui)),
                 );
             }
         });
@@ -758,12 +773,18 @@ impl ContraApp {
                             .tune_selected
                             .as_ref()
                             .is_some_and(|value| value.id == tune.id);
+                        let selected_t = animate_amount(
+                            ui.ctx(),
+                            ("tune-selected", &tune.id),
+                            selected,
+                            animate,
+                        );
                         egui::Frame::group(ui.style())
-                            .fill(if selected {
-                                theme::CALL_ACTIVE_BG
-                            } else {
-                                theme::CALL_UPCOMING_BG
-                            })
+                            .fill(lerp_color(
+                                theme::call_upcoming_bg(ui),
+                                theme::call_active_bg(ui),
+                                selected_t,
+                            ))
                             .inner_margin(egui::Margin::same(8))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -777,7 +798,7 @@ impl ContraApp {
                                                 tune.meter
                                             ))
                                             .small()
-                                            .color(theme::MUTED),
+                                            .color(theme::muted(ui)),
                                         );
                                     });
                                     if ui.small_button("Preview").clicked() {
@@ -808,12 +829,12 @@ impl ContraApp {
                                 tune.display_key(),
                                 tune.display_meter()
                             ))
-                            .color(theme::MUTED),
+                            .color(theme::muted(ui)),
                         );
                         ui.label(
                             egui::RichText::new(&tune.credits)
                                 .small()
-                                .color(theme::MUTED),
+                                .color(theme::muted(ui)),
                         );
                         ui.horizontal_wrapped(|ui| {
                             ui.hyperlink_to("Open on ABC Session Tunes", &tune.source.url);
@@ -836,14 +857,14 @@ impl ContraApp {
                                                 egui::RichText::new(format!(
                                                     "Could not render sheet music: {error}"
                                                 ))
-                                                .color(theme::WARNING),
+                                                .color(theme::warning(ui)),
                                             );
                                             ui.label(
                                                 egui::RichText::new(
                                                     "The tune still loads; switch to ABC to read or copy the source.",
                                                 )
                                                 .small()
-                                                .color(theme::MUTED),
+                                                .color(theme::muted(ui)),
                                             );
                                         }
                                     }
@@ -866,7 +887,7 @@ impl ContraApp {
                     } else if !self.preview_loading {
                         ui.label(
                             egui::RichText::new("Preview a tune to see its sheet music.")
-                                .color(theme::MUTED),
+                                .color(theme::muted(ui)),
                         );
                     }
                 });
@@ -932,7 +953,7 @@ impl ContraApp {
         });
         ui.label(
             egui::RichText::new("Changes are saved automatically. Role and alias changes rebuild the call timeline; instrument and tempo changes apply on the next Play.")
-                .color(theme::MUTED),
+                .color(theme::muted(ui)),
         );
         ui.add_space(8.0);
 
@@ -975,7 +996,7 @@ impl ContraApp {
                     "ladles allemande left 1½; gentlespoons do si do once",
                 ))
                 .italics()
-                .color(theme::MUTED),
+                .color(theme::muted(ui)),
             );
             if ui.button("Edit dance move aliases…").clicked() {
                 self.screen = Screen::Aliases;
@@ -1035,6 +1056,15 @@ impl ContraApp {
                     ui.selectable_value(&mut self.prefs.theme, option, option.label());
                 }
             });
+            ui.heading("Interface");
+            ui.checkbox(&mut self.prefs.animations_enabled, "Smooth animations");
+            ui.label(
+                egui::RichText::new(
+                    "Fade and slide between screens and animate tabs and highlights. Turn off to reduce motion.",
+                )
+                .small()
+                .color(theme::muted(ui)),
+            );
             ui.separator();
 
             ui.heading("Calling lead");
@@ -1076,7 +1106,7 @@ impl ContraApp {
             ui.label(
                 egui::RichText::new("Every call also gets a flat 0.5 s safety padding.")
                     .small()
-                    .color(theme::MUTED),
+                    .color(theme::muted(ui)),
             );
             if ui.button("Rebuild call timing").clicked() {
                 self.rebuild_timeline();
@@ -1102,7 +1132,7 @@ impl ContraApp {
                 ui.label(
                     egui::RichText::new(format!("TTS unavailable: {error}"))
                         .small()
-                        .color(theme::MUTED),
+                        .color(theme::muted(ui)),
                 );
             }
             ui.checkbox(&mut self.prefs.loop_enabled, "Loop the dance and music");
@@ -1119,7 +1149,7 @@ impl ContraApp {
                 .unwrap_or_else(|| "None (built-in synth)".into());
             ui.label(current);
             if let Some(error) = &self.soundfont_error {
-                ui.colored_label(egui::Color32::from_rgb(210, 140, 140), error);
+                ui.colored_label(theme::error(ui), error);
             }
             ui.horizontal(|ui| {
                 if ui.button("Load .sf2…").clicked() {
@@ -1135,7 +1165,7 @@ impl ContraApp {
             ui.label(
                 egui::RichText::new("Only needed by the web build. Desktop and Android fetch sources directly.")
                     .small()
-                    .color(theme::MUTED),
+                    .color(theme::muted(ui)),
             );
             let mut proxy = self.prefs.web_proxy_url.clone().unwrap_or_default();
             let mut token = self.prefs.web_proxy_token.clone().unwrap_or_default();
@@ -1183,7 +1213,7 @@ impl ContraApp {
                     self.cache_clear_confirm = true;
                 }
             });
-            ui.label(egui::RichText::new(&self.status).small().color(theme::MUTED));
+            ui.label(egui::RichText::new(&self.status).small().color(theme::muted(ui)));
         });
 
         self.prefs.validate();
@@ -1228,7 +1258,7 @@ impl ContraApp {
         });
         ui.label(
             egui::RichText::new("These are the words shown and spoken during a session. Placeholders: {actor}, {actor_singular}, {actor_object}, {direction}, {count}.")
-                .color(theme::MUTED),
+                .color(theme::muted(ui)),
         );
         ui.add_space(6.0);
         ui.horizontal(|ui| {
@@ -1265,7 +1295,7 @@ impl ContraApp {
                                     ui.label(
                                         egui::RichText::new("overridden")
                                             .small()
-                                            .color(theme::MUTED),
+                                            .color(theme::muted(ui)),
                                     );
                                 }
                             });
@@ -1298,7 +1328,7 @@ impl ContraApp {
         ui.label(
             egui::RichText::new("Use this for figures the classifier does not recognise.")
                 .small()
-                .color(theme::MUTED),
+                .color(theme::muted(ui)),
         );
         let custom = self.prefs.aliases.custom.clone();
         for (key, alias) in custom {

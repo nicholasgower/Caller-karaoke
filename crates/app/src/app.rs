@@ -68,6 +68,10 @@ pub struct ContraApp {
     source: SourceClient,
     source_rx: Receiver<SourceEvent>,
     screen: Screen,
+    /// Progress (0..1) of the fade/slide used when the active screen changes.
+    screen_anim: f32,
+    /// The screen the animation progress belongs to; a mismatch restarts it.
+    screen_anim_screen: Screen,
     dance: Dance,
     tune: Tune,
     timeline: PracticeTimeline,
@@ -166,7 +170,7 @@ impl ContraApp {
             .and_then(|path| std::fs::read(path).ok())
             .and_then(|bytes| contra_music::soundfont::load_soundfont(&bytes).ok());
 
-        theme::apply(&cc.egui_ctx, prefs.theme);
+        theme::apply(&cc.egui_ctx, prefs.theme, prefs.animations_enabled);
 
         Self {
             prefs,
@@ -177,6 +181,8 @@ impl ContraApp {
             source,
             source_rx,
             screen: Screen::Session,
+            screen_anim: 1.0,
+            screen_anim_screen: Screen::Session,
             dance,
             tune,
             timeline,
@@ -214,6 +220,24 @@ impl ContraApp {
             custom_key: String::new(),
             custom_alias: String::new(),
         }
+    }
+
+    /// Advance the screen-entry animation and return its eased progress.
+    fn screen_transition(&mut self, ctx: &egui::Context) -> f32 {
+        if self.screen_anim_screen != self.screen {
+            self.screen_anim_screen = self.screen;
+            self.screen_anim = 0.0;
+        }
+        if !self.prefs.animations_enabled {
+            self.screen_anim = 1.0;
+            return 1.0;
+        }
+        if self.screen_anim < 1.0 {
+            let dt = ctx.input(|input| input.stable_dt).clamp(0.0, 0.05);
+            self.screen_anim = (self.screen_anim + dt / SCREEN_ANIM_SECONDS).min(1.0);
+            ctx.request_repaint();
+        }
+        ease_out_cubic(self.screen_anim)
     }
 
     fn save_prefs(&self) {
@@ -523,7 +547,7 @@ impl ContraApp {
 impl eframe::App for ContraApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        theme::apply(&ctx, self.prefs.theme);
+        theme::apply(&ctx, self.prefs.theme, self.prefs.animations_enabled);
         self.handle_source_events();
 
         if !ctx.egui_wants_keyboard_input() {
@@ -550,19 +574,35 @@ impl eframe::App for ContraApp {
         egui::Panel::top("tabs")
             .frame(egui::Frame::default().inner_margin(egui::Margin::symmetric(12, 8)))
             .show(ui, |ui| {
+                let animate = self.prefs.animations_enabled;
                 ui.horizontal_wrapped(|ui| {
                     ui.heading("Contra Karaoke");
                     ui.add_space(12.0);
-                    if tab(ui, self.screen == Screen::Session, "Session") {
+                    if tab(ui, self.screen == Screen::Session, "Session", animate) {
                         self.screen = Screen::Session;
                     }
-                    if tab(ui, self.screen == Screen::DancePicker, "Select dance") {
+                    if tab(
+                        ui,
+                        self.screen == Screen::DancePicker,
+                        "Select dance",
+                        animate,
+                    ) {
                         self.screen = Screen::DancePicker;
                     }
-                    if tab(ui, self.screen == Screen::TunePicker, "Select Tune") {
+                    if tab(
+                        ui,
+                        self.screen == Screen::TunePicker,
+                        "Select Tune",
+                        animate,
+                    ) {
                         self.screen = Screen::TunePicker;
                     }
-                    if tab(ui, self.screen == Screen::Preferences, "Preferences") {
+                    if tab(
+                        ui,
+                        self.screen == Screen::Preferences,
+                        "Preferences",
+                        animate,
+                    ) {
                         self.screen = Screen::Preferences;
                     }
                 });
@@ -571,7 +611,7 @@ impl eframe::App for ContraApp {
         if let Some(error) = self.error.clone() {
             egui::Panel::bottom("error").show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    ui.colored_label(egui::Color32::from_rgb(220, 120, 120), error);
+                    ui.colored_label(theme::error(ui), error);
                     if ui.button("Dismiss").clicked() {
                         self.error = None;
                     }
@@ -579,12 +619,21 @@ impl eframe::App for ContraApp {
             });
         }
 
-        egui::CentralPanel::default().show(ui, |ui| match self.screen {
-            Screen::Session => self.session_ui(ui, beat),
-            Screen::DancePicker => self.dance_picker_ui(ui),
-            Screen::TunePicker => self.tune_picker_ui(ui),
-            Screen::Preferences => self.preferences_ui(ui),
-            Screen::Aliases => self.aliases_ui(ui),
+        let screen_progress = self.screen_transition(&ctx);
+        egui::CentralPanel::default().show(ui, |ui| {
+            if self.prefs.animations_enabled {
+                // Fade and slide the new screen in. The offset shrinks to zero
+                // as the progress approaches one.
+                ui.add_space((1.0 - screen_progress) * 12.0);
+                ui.set_opacity(0.15 + 0.85 * screen_progress);
+            }
+            match self.screen {
+                Screen::Session => self.session_ui(ui, beat),
+                Screen::DancePicker => self.dance_picker_ui(ui),
+                Screen::TunePicker => self.tune_picker_ui(ui),
+                Screen::Preferences => self.preferences_ui(ui),
+                Screen::Aliases => self.aliases_ui(ui),
+            }
         });
 
         if self.audio.is_playing() || self.render_loading {
@@ -597,8 +646,109 @@ impl eframe::App for ContraApp {
     }
 }
 
-fn tab(ui: &mut egui::Ui, active: bool, label: &str) -> bool {
-    ui.selectable_label(active, label).clicked()
+/// Duration of the fade/slide when the active screen changes.
+const SCREEN_ANIM_SECONDS: f32 = 0.22;
+/// Duration of a tab's selected/hover background and text fade.
+const TAB_ANIM_SECONDS: f32 = 0.16;
+/// Duration used for animating card and result highlights.
+const HIGHLIGHT_ANIM_SECONDS: f32 = 0.22;
+
+fn ease_out_cubic(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    1.0 - (1.0 - t).powi(3)
+}
+
+/// Animate toward `target`, or snap instantly when animations are disabled.
+fn animate_amount(
+    ctx: &egui::Context,
+    id: impl std::hash::Hash + std::fmt::Debug,
+    target: bool,
+    animate: bool,
+) -> f32 {
+    if !animate {
+        return if target { 1.0 } else { 0.0 };
+    }
+    ctx.animate_bool_with_time(egui::Id::unique(id), target, HIGHLIGHT_ANIM_SECONDS)
+}
+
+fn lerp_color(from: egui::Color32, to: egui::Color32, t: f32) -> egui::Color32 {
+    from.lerp_to_gamma(to, t.clamp(0.0, 1.0))
+}
+
+/// A top-row tab with an animated selected background and text colour.
+///
+/// `tab()` is used instead of `selectable_label` so the selected state can
+/// fade in and out; egui's selectable label switches instantly.
+fn tab(ui: &mut egui::Ui, active: bool, label: &str, animate: bool) -> bool {
+    let ctx = ui.ctx().clone();
+    let id = ui.make_persistent_id(("tab", label));
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let galley = ui
+        .painter()
+        .layout_no_wrap(label.to_owned(), font, egui::Color32::PLACEHOLDER);
+    let desired = egui::vec2(
+        galley.size().x + 24.0,
+        (galley.size().y + 16.0).max(ui.spacing().interact_size.y),
+    );
+    let (rect, response) = ui.allocate_exact_size(desired, egui::Sense::click());
+
+    let active_t = if animate {
+        ctx.animate_bool_with_time(id, active, TAB_ANIM_SECONDS)
+    } else if active {
+        1.0
+    } else {
+        0.0
+    };
+    let hover_t = if animate {
+        ctx.animate_bool_with_time(id.with("hover"), response.hovered(), TAB_ANIM_SECONDS)
+    } else if response.hovered() {
+        1.0
+    } else {
+        0.0
+    };
+
+    if ui.is_rect_visible(rect) {
+        let visuals = ui.visuals();
+        let muted = visuals.widgets.noninteractive.fg_stroke.color;
+        let strong = visuals.strong_text_color();
+        let text_color = lerp_color(lerp_color(muted, strong, hover_t * 0.6), strong, active_t);
+        let fill = lerp_color(
+            visuals.panel_fill,
+            visuals.widgets.active.weak_bg_fill,
+            active_t,
+        );
+        let fill = if hover_t > 0.0 {
+            lerp_color(fill, visuals.widgets.hovered.weak_bg_fill, hover_t * 0.6)
+        } else {
+            fill
+        };
+        ui.painter().rect_filled(rect, 8, fill);
+        if active_t > 0.0 {
+            let stroke = visuals
+                .widgets
+                .active
+                .bg_stroke
+                .color
+                .gamma_multiply(active_t);
+            ui.painter().rect_stroke(
+                rect,
+                8,
+                egui::Stroke::new(1.0, stroke),
+                egui::StrokeKind::Inside,
+            );
+        }
+        ui.painter().galley_with_override_text_color(
+            rect.center() - galley.size() / 2.0,
+            galley,
+            text_color,
+        );
+    }
+
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, active, label));
+    if response.hovered() {
+        ctx.set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    response.clicked()
 }
 
 fn load_prefs(path: &Path) -> Option<Preferences> {
@@ -706,6 +856,34 @@ mod tests {
         let warning = length_warning_for(&dance, &tune).expect("length mismatch");
         assert!(warning.contains("63.5"), "{warning}");
         assert!(warning.contains("64.0"), "{warning}");
+    }
+
+    #[test]
+    fn ease_out_cubic_hits_the_endpoints_and_clamps() {
+        assert_eq!(ease_out_cubic(0.0), 0.0);
+        assert!((ease_out_cubic(1.0) - 1.0).abs() < 1e-6);
+        assert_eq!(ease_out_cubic(-1.0), 0.0);
+        assert!((ease_out_cubic(2.0) - 1.0).abs() < 1e-6);
+        assert!(ease_out_cubic(0.5) > 0.5);
+    }
+
+    #[test]
+    fn color_lerp_moves_between_endpoints_and_clamps() {
+        use egui::Color32;
+        assert_eq!(
+            lerp_color(Color32::BLACK, Color32::WHITE, 0.0),
+            Color32::BLACK
+        );
+        assert_eq!(
+            lerp_color(Color32::BLACK, Color32::WHITE, 1.0),
+            Color32::WHITE
+        );
+        assert_eq!(
+            lerp_color(Color32::BLACK, Color32::WHITE, 2.0),
+            Color32::WHITE
+        );
+        let middle = lerp_color(Color32::BLACK, Color32::WHITE, 0.5);
+        assert!(middle.r() > 120 && middle.r() < 136);
     }
 }
 
