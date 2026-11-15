@@ -34,6 +34,28 @@ enum Screen {
     Aliases,
 }
 
+impl Screen {
+    /// Where Escape leads from this screen. The session itself ignores Escape.
+    fn escape_target(self) -> Option<Self> {
+        match self {
+            Self::Session => None,
+            Self::Aliases => Some(Self::Preferences),
+            Self::DancePicker | Self::TunePicker | Self::Preferences => Some(Self::Session),
+        }
+    }
+}
+
+/// Map the number-key tab shortcuts to screens.
+fn screen_for_tab_key(key: egui::Key) -> Option<Screen> {
+    match key {
+        egui::Key::Num1 => Some(Screen::Session),
+        egui::Key::Num2 => Some(Screen::DancePicker),
+        egui::Key::Num3 => Some(Screen::TunePicker),
+        egui::Key::Num4 => Some(Screen::Preferences),
+        _ => None,
+    }
+}
+
 pub struct ContraApp {
     prefs: Preferences,
     prefs_path: PathBuf,
@@ -191,6 +213,79 @@ impl ContraApp {
             custom_key: String::new(),
             custom_alias: String::new(),
         }
+    }
+
+    /// Handle app-wide keyboard shortcuts.
+    ///
+    /// Only called while no widget has keyboard focus, so typing in a text
+    /// field never triggers play, restart, or a tab change.
+    fn handle_shortcuts(&mut self, ui: &egui::Ui) {
+        let (space, restart, escape, tab) = ui.input(|input| {
+            let tab = [
+                egui::Key::Num1,
+                egui::Key::Num2,
+                egui::Key::Num3,
+                egui::Key::Num4,
+            ]
+            .into_iter()
+            .find_map(screen_for_tab_key);
+            (
+                input.key_pressed(egui::Key::Space),
+                input.key_pressed(egui::Key::R),
+                input.key_pressed(egui::Key::Escape),
+                tab,
+            )
+        });
+
+        if let Some(screen) = tab {
+            self.screen = screen;
+        }
+        if space {
+            if self.audio.is_playing() {
+                self.pause();
+            } else {
+                self.play();
+            }
+        }
+        if restart {
+            self.restart();
+        }
+        if escape && let Some(target) = self.screen.escape_target() {
+            self.screen = target;
+        }
+    }
+
+    /// Start a dance search from the current filters.
+    fn search_dances(&mut self) {
+        if self.search_loading {
+            return;
+        }
+        self.search_loading = true;
+        self.source.search_dances(self.dance_query.clone());
+    }
+
+    /// Start a tune search from the current filters.
+    fn search_tunes(&mut self) {
+        if self.search_loading {
+            return;
+        }
+        self.search_loading = true;
+        self.source.search_tunes(self.tune_query.clone());
+    }
+
+    /// Add the custom alias currently entered in the alias editor.
+    fn add_custom_alias(&mut self) {
+        let key = self.custom_key.trim().to_string();
+        let alias = self.custom_alias.trim().to_string();
+        if key.is_empty() || alias.is_empty() {
+            return;
+        }
+        self.prefs.aliases.set_custom(&key, &alias);
+        self.custom_key.clear();
+        self.custom_alias.clear();
+        self.rebuild_timeline();
+        self.needs_render = true;
+        self.save_prefs();
     }
 
     /// Advance the screen-entry animation and return its eased progress.
@@ -520,21 +615,7 @@ impl eframe::App for ContraApp {
         self.handle_source_events();
 
         if !ctx.egui_wants_keyboard_input() {
-            if ui.input(|input| input.key_pressed(egui::Key::Space)) {
-                if self.audio.is_playing() {
-                    self.pause();
-                } else {
-                    self.play();
-                }
-            }
-            if ui.input(|input| input.key_pressed(egui::Key::R)) {
-                self.restart();
-            }
-            if ui.input(|input| input.key_pressed(egui::Key::Escape))
-                && self.screen != Screen::Session
-            {
-                self.screen = Screen::Session;
-            }
+            self.handle_shortcuts(ui);
         }
 
         let beat = self.current_beat();
@@ -547,13 +628,14 @@ impl eframe::App for ContraApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.heading("Contra Karaoke");
                     ui.add_space(12.0);
-                    if tab(ui, self.screen == Screen::Session, "Session", animate) {
+                    if tab(ui, self.screen == Screen::Session, "Session", "1", animate) {
                         self.screen = Screen::Session;
                     }
                     if tab(
                         ui,
                         self.screen == Screen::DancePicker,
                         "Select dance",
+                        "2",
                         animate,
                     ) {
                         self.screen = Screen::DancePicker;
@@ -562,6 +644,7 @@ impl eframe::App for ContraApp {
                         ui,
                         self.screen == Screen::TunePicker,
                         "Select Tune",
+                        "3",
                         animate,
                     ) {
                         self.screen = Screen::TunePicker;
@@ -570,6 +653,7 @@ impl eframe::App for ContraApp {
                         ui,
                         self.screen == Screen::Preferences,
                         "Preferences",
+                        "4",
                         animate,
                     ) {
                         self.screen = Screen::Preferences;
@@ -648,7 +732,7 @@ fn lerp_color(from: egui::Color32, to: egui::Color32, t: f32) -> egui::Color32 {
 ///
 /// `tab()` is used instead of `selectable_label` so the selected state can
 /// fade in and out; egui's selectable label switches instantly.
-fn tab(ui: &mut egui::Ui, active: bool, label: &str, animate: bool) -> bool {
+fn tab(ui: &mut egui::Ui, active: bool, label: &str, shortcut: &str, animate: bool) -> bool {
     let ctx = ui.ctx().clone();
     let id = ui.make_persistent_id(("tab", label));
     let font = egui::TextStyle::Button.resolve(ui.style());
@@ -660,6 +744,7 @@ fn tab(ui: &mut egui::Ui, active: bool, label: &str, animate: bool) -> bool {
         (galley.size().y + 16.0).max(ui.spacing().interact_size.y),
     );
     let (rect, response) = ui.allocate_exact_size(desired, egui::Sense::click());
+    let response = response.on_hover_text(format!("{label} ({shortcut})"));
 
     let active_t = if animate {
         ctx.animate_bool_with_time(id, active, TAB_ANIM_SECONDS)
@@ -825,6 +910,34 @@ mod tests {
         let warning = length_warning_for(&dance, &tune).expect("length mismatch");
         assert!(warning.contains("63.5"), "{warning}");
         assert!(warning.contains("64.0"), "{warning}");
+    }
+
+    #[test]
+    fn number_keys_select_top_tabs() {
+        assert_eq!(screen_for_tab_key(egui::Key::Num1), Some(Screen::Session));
+        assert_eq!(
+            screen_for_tab_key(egui::Key::Num2),
+            Some(Screen::DancePicker)
+        );
+        assert_eq!(
+            screen_for_tab_key(egui::Key::Num3),
+            Some(Screen::TunePicker)
+        );
+        assert_eq!(
+            screen_for_tab_key(egui::Key::Num4),
+            Some(Screen::Preferences)
+        );
+        assert_eq!(screen_for_tab_key(egui::Key::Num5), None);
+        assert_eq!(screen_for_tab_key(egui::Key::Space), None);
+    }
+
+    #[test]
+    fn escape_returns_to_the_previous_screen() {
+        assert_eq!(Screen::Session.escape_target(), None);
+        assert_eq!(Screen::DancePicker.escape_target(), Some(Screen::Session));
+        assert_eq!(Screen::TunePicker.escape_target(), Some(Screen::Session));
+        assert_eq!(Screen::Preferences.escape_target(), Some(Screen::Session));
+        assert_eq!(Screen::Aliases.escape_target(), Some(Screen::Preferences));
     }
 
     #[test]

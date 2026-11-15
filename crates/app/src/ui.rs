@@ -38,13 +38,25 @@ impl ContraApp {
                 timeline_dirty = true;
                 music_dirty = true;
             }
-            if ui.button("Play").clicked() {
+            if ui
+                .button("Play")
+                .on_hover_text("Play (Space)")
+                .clicked()
+            {
                 action = Some("play");
             }
-            if ui.button("Pause").clicked() {
+            if ui
+                .button("Pause")
+                .on_hover_text("Pause (Space)")
+                .clicked()
+            {
                 action = Some("pause");
             }
-            if ui.button("Restart").clicked() {
+            if ui
+                .button("Restart")
+                .on_hover_text("Restart (R)")
+                .clicked()
+            {
                 action = Some("restart");
             }
             if ui
@@ -432,7 +444,11 @@ impl ContraApp {
     fn dance_picker_ui(&mut self, ui: &mut egui::Ui) {
         let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
-            if ui.button("← Back to session").clicked() {
+            if ui
+                .button("← Back to session")
+                .on_hover_text("Back to session (Esc)")
+                .clicked()
+            {
                 self.screen = Screen::Session;
             }
             ui.heading("Select dance");
@@ -443,21 +459,22 @@ impl ContraApp {
         );
         ui.add_space(6.0);
 
+        let mut submit = false;
         egui::Grid::new("dance-search-grid")
             .num_columns(2)
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
                 ui.label("Title");
-                ui.text_edit_singleline(&mut self.dance_query.title);
+                submit |= submit_text_edit(ui, &mut self.dance_query.title);
                 ui.end_row();
                 ui.label("Choreographer");
-                ui.text_edit_singleline(&mut self.dance_query.choreographer);
+                submit |= submit_text_edit(ui, &mut self.dance_query.choreographer);
                 ui.end_row();
                 ui.label("User");
-                ui.text_edit_singleline(&mut self.dance_query.user);
+                submit |= submit_text_edit(ui, &mut self.dance_query.user);
                 ui.end_row();
                 ui.label("Hook");
-                ui.text_edit_singleline(&mut self.dance_query.hook);
+                submit |= submit_text_edit(ui, &mut self.dance_query.hook);
                 ui.end_row();
                 ui.label("Formation");
                 egui::ComboBox::from_id_salt("formation")
@@ -533,7 +550,7 @@ impl ContraApp {
                     });
                 ui.end_row();
                 ui.label("Figure contains");
-                ui.text_edit_singleline(&mut self.dance_query.figure_text);
+                submit |= submit_text_edit(ui, &mut self.dance_query.figure_text);
                 ui.end_row();
                 ui.label("Verified only");
                 ui.checkbox(&mut self.dance_query.verified, "");
@@ -548,13 +565,15 @@ impl ContraApp {
                     });
                 ui.end_row();
             });
+        if submit {
+            self.search_dances();
+        }
         ui.horizontal(|ui| {
-            if ui
+            let search = ui
                 .add_enabled(!self.search_loading, egui::Button::new("Search dances"))
-                .clicked()
-            {
-                self.search_loading = true;
-                self.source.search_dances(self.dance_query.clone());
+                .on_hover_text("Search dances (Enter)");
+            if search.clicked() {
+                self.search_dances();
             }
             if self.search_loading {
                 ui.spinner();
@@ -674,7 +693,11 @@ impl ContraApp {
     fn tune_picker_ui(&mut self, ui: &mut egui::Ui) {
         let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
-            if ui.button("← Back to session").clicked() {
+            if ui
+                .button("← Back to session")
+                .on_hover_text("Back to session (Esc)")
+                .clicked()
+            {
                 self.screen = Screen::Session;
             }
             ui.heading("Select Tune");
@@ -685,15 +708,16 @@ impl ContraApp {
         );
         ui.add_space(6.0);
 
+        let mut submit = false;
         egui::Grid::new("tune-search-grid")
             .num_columns(2)
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
                 ui.label("Search");
-                ui.text_edit_singleline(&mut self.tune_query.search);
+                submit |= submit_text_edit(ui, &mut self.tune_query.search);
                 ui.end_row();
                 ui.label("Composer");
-                ui.text_edit_singleline(&mut self.tune_query.composer);
+                submit |= submit_text_edit(ui, &mut self.tune_query.composer);
                 ui.end_row();
                 ui.label("Key");
                 combo_option(ui, "tune-key", &mut self.tune_query.key, &[
@@ -738,13 +762,15 @@ impl ContraApp {
                 ]);
                 ui.end_row();
             });
+        if submit {
+            self.search_tunes();
+        }
         ui.horizontal(|ui| {
-            if ui
+            let search = ui
                 .add_enabled(!self.search_loading, egui::Button::new("Search tunes"))
-                .clicked()
-            {
-                self.search_loading = true;
-                self.source.search_tunes(self.tune_query.clone());
+                .on_hover_text("Search tunes (Enter)");
+            if search.clicked() {
+                self.search_tunes();
             }
             if self.search_loading {
                 ui.spinner();
@@ -909,7 +935,11 @@ impl ContraApp {
     fn preferences_ui(&mut self, ui: &mut egui::Ui) {
         let before = self.prefs.clone();
         ui.horizontal(|ui| {
-            if ui.button("← Back to session").clicked() {
+            if ui
+                .button("← Back to session")
+                .on_hover_text("Back to session (Esc)")
+                .clicked()
+            {
                 self.screen = Screen::Session;
             }
             ui.heading("Preferences");
@@ -1024,6 +1054,13 @@ impl ContraApp {
             ui.label(
                 egui::RichText::new(
                     "Fade and slide between screens and animate tabs and highlights. Turn off to reduce motion.",
+                )
+                .small()
+                .color(theme::muted(ui)),
+            );
+            ui.label(
+                egui::RichText::new(
+                    "Keyboard: Space play/pause · R restart · Esc back · 1–4 switch tabs · Enter starts a search or adds an alias.",
                 )
                 .small()
                 .color(theme::muted(ui)),
@@ -1214,7 +1251,11 @@ impl ContraApp {
 
     fn aliases_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            if ui.button("← Back to preferences").clicked() {
+            if ui
+                .button("← Back to preferences")
+                .on_hover_text("Back to preferences (Esc)")
+                .clicked()
+            {
                 self.screen = Screen::Preferences;
             }
             ui.heading("Dance move aliases");
@@ -1308,31 +1349,37 @@ impl ContraApp {
             });
         }
         ui.horizontal(|ui| {
-            ui.add(
+            let key = ui.add(
                 egui::TextEdit::singleline(&mut self.custom_key)
                     .hint_text("card phrase")
                     .desired_width(220.0),
             );
-            ui.add(
+            let alias = ui.add(
                 egui::TextEdit::singleline(&mut self.custom_alias)
                     .hint_text("call to say")
                     .desired_width(220.0),
             );
-            if ui.button("Add alias").clicked()
-                && !self.custom_key.trim().is_empty()
-                && !self.custom_alias.trim().is_empty()
-            {
-                self.prefs
-                    .aliases
-                    .set_custom(self.custom_key.trim(), self.custom_alias.trim());
-                self.custom_key.clear();
-                self.custom_alias.clear();
-                self.rebuild_timeline();
-                self.needs_render = true;
-                self.save_prefs();
+            let submit = submitted(ui, &key) || submitted(ui, &alias);
+            let clicked = ui
+                .button("Add alias")
+                .on_hover_text("Add alias (Enter)")
+                .clicked();
+            if clicked || submit {
+                self.add_custom_alias();
             }
         });
     }
+}
+
+/// Whether a text field lost focus because Enter was pressed.
+fn submitted(ui: &egui::Ui, response: &egui::Response) -> bool {
+    response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter))
+}
+
+/// A single-line search field that reports Enter as a submit action.
+fn submit_text_edit(ui: &mut egui::Ui, text: &mut String) -> bool {
+    let response = ui.text_edit_singleline(text);
+    submitted(ui, &response)
 }
 
 fn empty_label<'a>(value: &'a str, fallback: &'a str) -> &'a str {

@@ -749,7 +749,9 @@ All colours live in a theme module; do not hard-code colours in widgets.
 
 ### 8.3 Accessibility
 
-- Keyboard: Space = play/pause, R = restart, Esc = close sheet.
+- Keyboard: Space = play/pause, R = restart, Esc = back, 1–4 = switch tabs,
+  Enter = submit a search or add an alias. Shortcuts are suspended while a text
+  field has focus.
 - Every control has a text label or accessibility label.
 - Text contrast meets WCAG AA against the chosen background.
 - TTS is optional and never the only way to receive a call.

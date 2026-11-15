@@ -138,7 +138,9 @@ Useful checks for this app:
 - Resize to a phone viewport (`resize` with `390 × 844`, for example) and
   screenshot it. The app's minimum width is 360 points.
 - `press_key` with `Space` toggles play/pause; `R` restarts; `Escape` leaves a
-  picker or preferences screen.
+  picker or preferences screen (the alias editor returns to preferences).
+- Number keys `1`–`4` switch tabs, and `Enter` in a search field starts the
+  search or adds a custom alias.
 - After selecting a dance or tune, use `wait_for` on the result text before
   asserting the session screen changed.
 - The screenshot is useful for theme and layout checks; `widget_tree` is better

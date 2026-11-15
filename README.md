@@ -56,6 +56,21 @@ being device-tested.
 - **Preferences** — role terms, aliases, instruments, theme, animations, lead
   settings, TTS, soundfont, proxy, and cache tools.
 
+### Keyboard shortcuts
+
+- **Space** — play or pause.
+- **R** — restart from the beginning.
+- **Esc** — leave a picker or preferences screen; from the alias editor it
+  returns to preferences.
+- **1 / 2 / 3 / 4** — switch to Session, Select dance, Select Tune, or
+  Preferences.
+- **Enter** — start a dance or tune search from any search field, or add a
+  custom alias from either alias field.
+
+Shortcuts are ignored while typing in a text field, so Space and R stay ordinary
+characters in search boxes. Hovering a tab, Play/Pause, Restart, Search, or Add
+alias control shows its shortcut.
+
 ## How call timing works
 
 One **dance beat** is half a bar. At 240 BPM it lasts 0.5 s, so a standard
