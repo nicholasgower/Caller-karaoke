@@ -8,6 +8,9 @@ rust-version.workspace = true
 repository.workspace = true
 description = "Contra dance caller trainer with ABC music playback and early call timing"
 build = "build.rs"
+# `contra-headless` is a development-only helper behind the `headless` feature;
+# plain `cargo run -p contra-app` must launch the real app.
+default-run = "contra-karaoke"
 
 [lib]
 name = "contra_app"
