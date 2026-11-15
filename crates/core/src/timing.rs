@@ -11,6 +11,13 @@ use crate::dance::{Dance, DanceError};
 use crate::roles::RoleTerms;
 use crate::time::Tempo;
 
+/// Flat safety padding added to every call, in seconds.
+///
+/// This is deliberately outside the min/max speech-lead clamp: the padding is
+/// a constant buffer for every instruction, while the clamp keeps the speech
+/// estimate itself within the caller's chosen range.
+pub const LEAD_PADDING_SECONDS: f64 = 0.5;
+
 /// User-tunable call-lead calculation.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LeadSettings {
@@ -108,17 +115,20 @@ impl LeadSettings {
         self.manual_beats = self.manual_beats.clamp(self.min_beats, self.max_beats);
     }
 
-    /// Lead in dance beats for a rendered call.
+    /// Lead in dance beats for a rendered call, including the flat padding.
     pub fn lead_beats(&self, syllables: usize, words: usize, tempo: Tempo) -> f64 {
-        if !self.auto {
-            return self.manual_beats.clamp(self.min_beats, self.max_beats);
-        }
+        let speech_lead = if !self.auto {
+            self.manual_beats.clamp(self.min_beats, self.max_beats)
+        } else {
+            let speech_seconds = syllables as f64 / self.syllables_per_second
+                + words.saturating_sub(1) as f64 * self.word_gap_seconds
+                + self.extra_pause_seconds;
+            let beats = speech_seconds / tempo.seconds_per_dance_beat().0 * self.lead_scale;
+            beats.clamp(self.min_beats, self.max_beats)
+        };
 
-        let speech_seconds = syllables as f64 / self.syllables_per_second
-            + words.saturating_sub(1) as f64 * self.word_gap_seconds
-            + self.extra_pause_seconds;
-        let beats = speech_seconds / tempo.seconds_per_dance_beat().0 * self.lead_scale;
-        beats.clamp(self.min_beats, self.max_beats)
+        let padding_beats = LEAD_PADDING_SECONDS / tempo.seconds_per_dance_beat().0;
+        speech_lead + padding_beats
     }
 }
 
@@ -164,6 +174,40 @@ impl CallEvent {
 
     pub fn contains_beat(&self, beat: f64) -> bool {
         beat >= self.call_start_beat && beat < self.end_beat
+    }
+}
+
+/// A call occurrence in a particular loop, with times adjusted for a lead that
+/// wraps past the loop boundary.
+///
+/// The first call of a dance may need to start before beat 0 (during the
+/// count-in). When the dance loops, that same lead has to happen at the end of
+/// the previous loop so the first move is still called. A wrapped occurrence
+/// therefore runs from `start_beat` to the loop boundary.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScheduledCall {
+    /// Index into [`PracticeTimeline::calls`].
+    pub index: usize,
+    pub call: CallEvent,
+    /// When the caller starts speaking, in current-loop beats.
+    pub start_beat: f64,
+    /// When the figure executes, in current-loop beats.
+    pub execute_beat: f64,
+    /// End of the figure in current-loop beats.
+    pub end_beat: f64,
+    /// True for the pre-loop occurrence of a call whose lead begins before 0.
+    pub wrapped: bool,
+}
+
+impl ScheduledCall {
+    /// True while the caller should be speaking this occurrence.
+    pub fn is_calling(&self, beat: f64) -> bool {
+        beat >= self.start_beat && beat < self.execute_beat
+    }
+
+    /// True while the figure is being called or executed.
+    pub fn contains_beat(&self, beat: f64) -> bool {
+        beat >= self.start_beat && beat < self.end_beat
     }
 }
 
@@ -257,6 +301,117 @@ impl PracticeTimeline {
             music_loop_beats: config.music_loop_beats.max(1.0),
             count_in_beats: config.count_in_beats.max(0.0),
         })
+    }
+
+    fn make_scheduled(&self, index: usize, wrapped: bool) -> ScheduledCall {
+        let call = self.calls[index].clone();
+        if wrapped {
+            ScheduledCall {
+                index,
+                start_beat: call.call_start_beat + self.music_loop_beats,
+                execute_beat: self.music_loop_beats,
+                end_beat: self.music_loop_beats,
+                wrapped: true,
+                call,
+            }
+        } else {
+            ScheduledCall {
+                index,
+                start_beat: call.call_start_beat,
+                execute_beat: call.execute_beat,
+                end_beat: call.end_beat,
+                wrapped: false,
+                call,
+            }
+        }
+    }
+
+    /// The call being spoken or executed at `beat`, taking loop wrapping into
+    /// account.
+    ///
+    /// When `looping` is true, a call whose lead starts before beat 0 is also
+    /// available at the end of the loop, so the first move is called before
+    /// the next repetition.
+    pub fn scheduled_call_at(&self, beat: f64, looping: bool) -> Option<ScheduledCall> {
+        if looping && beat >= 0.0 {
+            let loop_beats = self.music_loop_beats;
+            let wrapped = self
+                .calls
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, call)| {
+                    call.call_start_beat < 0.0
+                        && beat >= call.call_start_beat + loop_beats
+                        && beat < loop_beats
+                })
+                .map(|(index, _)| index);
+            if let Some(index) = wrapped {
+                return Some(self.make_scheduled(index, true));
+            }
+        }
+
+        self.calls
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_, call)| beat >= call.call_start_beat && beat < call.end_beat)
+            .map(|(index, _)| self.make_scheduled(index, false))
+    }
+
+    /// The `index`-th call as it occurs at `beat` in the current loop.
+    ///
+    /// This is used by the dance card, which lists every call but needs the
+    /// wrapped phase for the first call near the loop boundary.
+    pub fn scheduled_call_for_index(
+        &self,
+        index: usize,
+        beat: f64,
+        looping: bool,
+    ) -> Option<ScheduledCall> {
+        let call = self.calls.get(index)?;
+        let wrapped = looping
+            && call.call_start_beat < 0.0
+            && beat >= call.call_start_beat + self.music_loop_beats
+            && beat < self.music_loop_beats;
+        Some(self.make_scheduled(index, wrapped))
+    }
+
+    /// The next call to begin after `beat`, taking loop wrapping into account.
+    pub fn next_scheduled_call(&self, beat: f64, looping: bool) -> Option<ScheduledCall> {
+        let normal = self
+            .calls
+            .iter()
+            .enumerate()
+            .find(|(_, call)| call.call_start_beat > beat)
+            .map(|(index, _)| self.make_scheduled(index, false));
+
+        if !looping {
+            return normal;
+        }
+
+        let loop_beats = self.music_loop_beats;
+        let wrapped = self
+            .calls
+            .iter()
+            .enumerate()
+            .filter(|(_, call)| call.call_start_beat < 0.0)
+            .map(|(index, call)| (index, call.call_start_beat + loop_beats))
+            .find(|(_, start)| *start > beat)
+            .map(|(index, _)| self.make_scheduled(index, true));
+
+        match (normal, wrapped) {
+            (Some(normal), Some(wrapped)) => {
+                if normal.start_beat <= wrapped.start_beat {
+                    Some(normal)
+                } else {
+                    Some(wrapped)
+                }
+            }
+            (Some(normal), None) => Some(normal),
+            (None, Some(wrapped)) => Some(wrapped),
+            (None, None) => None,
+        }
     }
 
     /// The call that is currently being spoken or executed at `beat`.
@@ -434,7 +589,7 @@ mod tests {
     }
 
     #[test]
-    fn lead_is_between_one_and_five_beats() {
+    fn lead_is_between_two_and_six_beats() {
         let timeline = PracticeTimeline::build(
             &another_last_dance(),
             &AliasTable::default(),
@@ -446,7 +601,7 @@ mod tests {
         .expect("timeline");
         for call in &timeline.calls {
             assert!(
-                (1.0..=5.0).contains(&call.lead_beats()),
+                (2.0..=6.0).contains(&call.lead_beats()),
                 "lead for {:?} was {}",
                 call.text,
                 call.lead_beats()
@@ -455,16 +610,103 @@ mod tests {
     }
 
     #[test]
-    fn measured_allemande_call_gets_two_and_a_quarter_seconds() {
+    fn measured_allemande_call_gets_padding() {
         let aliases = AliasTable::default();
         let call = aliases.render("ladles allemande left 1½", &RoleTerms::default());
         assert_eq!(call.text, "larks allemande left once and a half");
         assert_eq!(call.syllables, 9);
 
         let lead = LeadSettings::default().lead_beats(call.syllables, call.words, Tempo::default());
-        assert_eq!(lead, 4.5);
+        // 9 syllables / 4.0 = 2.25 s = 4.5 beats, plus the flat 0.5 s = 5.5 beats.
+        assert_eq!(lead, 5.5);
         let seconds = lead * Tempo::default().seconds_per_dance_beat().0;
-        assert!((seconds - 2.25).abs() < 1e-9);
+        assert!((seconds - 2.75).abs() < 1e-9);
+    }
+
+    #[test]
+    fn padding_is_half_a_second_at_any_tempo() {
+        let lead = LeadSettings {
+            auto: false,
+            manual_beats: 1.25,
+            ..LeadSettings::default()
+        };
+        for bpm in [120.0, 180.0, 240.0, 320.0] {
+            let tempo = Tempo::new(bpm);
+            let expected = 1.25 + LEAD_PADDING_SECONDS / tempo.seconds_per_dance_beat().0;
+            assert!(
+                (lead.lead_beats(0, 0, tempo) - expected).abs() < 1e-9,
+                "padding was not flat at {bpm} BPM"
+            );
+        }
+    }
+
+    #[test]
+    fn first_call_wraps_to_the_end_of_the_loop() {
+        let timeline = PracticeTimeline::build(
+            &another_last_dance(),
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &LeadSettings::default(),
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+        let first = &timeline.calls[0];
+        let wrapped_start = timeline.music_loop_beats - first.lead_beats();
+        assert!(wrapped_start > 0.0);
+        assert!(wrapped_start < timeline.music_loop_beats);
+
+        let wrapped = timeline
+            .scheduled_call_at(wrapped_start + 0.1, true)
+            .expect("wrapped first call");
+        assert!(wrapped.wrapped);
+        assert_eq!(wrapped.index, 0);
+        assert_eq!(wrapped.execute_beat, timeline.music_loop_beats);
+        assert_eq!(wrapped.end_beat, timeline.music_loop_beats);
+        assert!((wrapped.start_beat - wrapped_start).abs() < 1e-9);
+        assert!(wrapped.is_calling(wrapped_start + 0.1));
+
+        let not_wrapped = timeline.scheduled_call_at(wrapped_start + 0.1, false);
+        assert!(not_wrapped.is_none_or(|call| !call.wrapped));
+    }
+
+    #[test]
+    fn next_call_includes_the_wrapped_first_call() {
+        let timeline = PracticeTimeline::build(
+            &another_last_dance(),
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &LeadSettings::default(),
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+        let wrapped_start = timeline.music_loop_beats - timeline.calls[0].lead_beats();
+        let next = timeline
+            .next_scheduled_call(wrapped_start - 0.5, true)
+            .expect("next call");
+        assert!(next.wrapped);
+        assert_eq!(next.index, 0);
+        assert!((next.start_beat - wrapped_start).abs() < 1e-9);
+    }
+
+    #[test]
+    fn loop_boundary_hands_back_to_the_normal_first_call() {
+        let timeline = PracticeTimeline::build(
+            &another_last_dance(),
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &LeadSettings::default(),
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+        let at_zero = timeline
+            .scheduled_call_at(0.0, true)
+            .expect("first call at the loop start");
+        assert!(!at_zero.wrapped);
+        assert_eq!(at_zero.index, 0);
+        assert_eq!(at_zero.execute_beat, 0.0);
     }
 
     #[test]
@@ -506,13 +748,13 @@ mod tests {
     }
 
     #[test]
-    fn manual_lead_overrides_syllables() {
+    fn manual_lead_also_gets_padding() {
         let lead = LeadSettings {
             auto: false,
             manual_beats: 1.25,
             ..LeadSettings::default()
         };
-        assert_eq!(lead.lead_beats(100, 20, Tempo::default()), 1.25);
+        assert_eq!(lead.lead_beats(100, 20, Tempo::default()), 2.25);
     }
 
     #[test]

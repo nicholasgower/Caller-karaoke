@@ -7,8 +7,8 @@ enum CallPhase {
     Executing,
 }
 
-fn phase_at(call: &contra_core::CallEvent, beat: f64) -> CallPhase {
-    if beat < call.call_start_beat {
+fn phase_at(call: &contra_core::ScheduledCall, beat: f64) -> CallPhase {
+    if beat < call.start_beat {
         CallPhase::Upcoming
     } else if beat < call.execute_beat {
         CallPhase::Calling
@@ -155,17 +155,13 @@ impl ContraApp {
         ui.add_space(8.0);
         let active = if self.started {
             self.timeline
-                .calls
-                .iter()
-                .enumerate()
-                .rev()
-                .find(|(_, call)| beat >= call.call_start_beat && beat < call.end_beat)
-                .map(|(index, call)| (index, call.clone()))
+                .scheduled_call_at(beat, self.prefs.loop_enabled)
         } else {
             None
         };
         let next = if self.started {
-            self.timeline.next_call(beat).cloned()
+            self.timeline
+                .next_scheduled_call(beat, self.prefs.loop_enabled)
         } else {
             None
         };
@@ -202,14 +198,14 @@ impl ContraApp {
                                 .strong(),
                         );
                         ui.vertical(|ui| {
-                            if let Some((_, call)) = &active {
+                            if let Some(call) = &active {
                                 ui.label(
                                     egui::RichText::new("CALL NOW")
                                         .small()
                                         .color(egui::Color32::WHITE),
                                 );
                                 ui.label(
-                                    egui::RichText::new(&call.text)
+                                    egui::RichText::new(&call.call.text)
                                         .size(26.0)
                                         .strong()
                                         .color(egui::Color32::WHITE),
@@ -220,14 +216,17 @@ impl ContraApp {
                                 );
                                 if let Some(next) = &next {
                                     ui.label(
-                                        egui::RichText::new(format!("First call: {}", next.text))
-                                            .color(theme::MUTED),
+                                        egui::RichText::new(format!(
+                                            "First call: {}",
+                                            next.call.text
+                                        ))
+                                        .color(theme::MUTED),
                                     );
                                 }
                             }
                         });
                     });
-                } else if let Some((_, call)) = &active {
+                } else if let Some(call) = &active {
                     let phase = phase_at(call, beat);
                     let label = match phase {
                         CallPhase::Upcoming => "UPCOMING",
@@ -244,7 +243,7 @@ impl ContraApp {
                             }),
                     );
                     ui.label(
-                        egui::RichText::new(&call.text)
+                        egui::RichText::new(&call.call.text)
                             .size(34.0)
                             .strong()
                             .color(if phase == CallPhase::Executing {
@@ -267,7 +266,7 @@ impl ContraApp {
                         );
                         if self.prefs.show_original {
                             ui.label(
-                                egui::RichText::new(format!("· {}", call.original_text))
+                                egui::RichText::new(format!("· {}", call.call.original_text))
                                     .small()
                                     .color(theme::MUTED),
                             );
@@ -296,11 +295,11 @@ impl ContraApp {
         if let Some(next) = &next {
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new("Next:").color(theme::MUTED));
-                ui.label(egui::RichText::new(&next.text).strong());
+                ui.label(egui::RichText::new(&next.call.text).strong());
                 ui.label(
                     egui::RichText::new(format!(
                         "at beat {:.0} (call at {:.1})",
-                        next.execute_beat, next.call_start_beat
+                        next.execute_beat, next.start_beat
                     ))
                     .small()
                     .color(theme::MUTED),
@@ -333,12 +332,13 @@ impl ContraApp {
                 for (figure_index, figure) in self.dance.figures.iter().enumerate() {
                     let figure_end = cursor + figure.beats;
                     let active_figure = beat >= cursor && beat < figure_end;
-                    let calls: Vec<contra_core::CallEvent> = self
+                    let calls: Vec<(usize, contra_core::CallEvent)> = self
                         .timeline
                         .calls
                         .iter()
-                        .filter(|call| call.figure_index == figure_index)
-                        .cloned()
+                        .enumerate()
+                        .filter(|(_, call)| call.figure_index == figure_index)
+                        .map(|(index, call)| (index, call.clone()))
                         .collect();
                     let fill = if active_figure {
                         theme::CALL_ACTIVE_BG
@@ -367,8 +367,17 @@ impl ContraApp {
                                         .color(theme::MUTED),
                                 );
                             });
-                            for call in &calls {
-                                let phase = phase_at(call, beat);
+                            for (index, call) in &calls {
+                                let phase = self
+                                    .timeline
+                                    .scheduled_call_for_index(
+                                        *index,
+                                        beat,
+                                        self.prefs.loop_enabled,
+                                    )
+                                    .as_ref()
+                                    .map(|scheduled| phase_at(scheduled, beat))
+                                    .unwrap_or(CallPhase::Upcoming);
                                 let color = match phase {
                                     CallPhase::Upcoming => theme::MUTED,
                                     CallPhase::Calling => egui::Color32::WHITE,
@@ -995,14 +1004,14 @@ impl ContraApp {
             ui.checkbox(&mut self.prefs.lead.auto, "Automatic syllable-based lead");
             if self.prefs.lead.auto {
                 ui.horizontal(|ui| {
-                    ui.label("Minimum");
+                    ui.label("Minimum speech lead");
                     ui.add(
                         egui::Slider::new(&mut self.prefs.lead.min_beats, 0.5..=4.0)
                             .text("beats"),
                     );
                 });
                 ui.horizontal(|ui| {
-                    ui.label("Maximum");
+                    ui.label("Maximum speech lead");
                     ui.add(
                         egui::Slider::new(&mut self.prefs.lead.max_beats, 1.0..=6.0)
                             .text("beats"),
@@ -1020,13 +1029,18 @@ impl ContraApp {
                 });
             } else {
                 ui.horizontal(|ui| {
-                    ui.label("Manual lead");
+                    ui.label("Manual speech lead");
                     ui.add(
                         egui::Slider::new(&mut self.prefs.lead.manual_beats, 0.5..=6.0)
                             .text("beats"),
                     );
                 });
             }
+            ui.label(
+                egui::RichText::new("Every call also gets a flat 0.5 s safety padding.")
+                    .small()
+                    .color(theme::MUTED),
+            );
             if ui.button("Rebuild call timing").clicked() {
                 self.rebuild_timeline();
                 self.needs_render = true;

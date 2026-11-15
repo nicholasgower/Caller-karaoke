@@ -293,17 +293,19 @@ words            = word count
 speech_seconds   = syllables / syllables_per_second
                  + (words - 1) * word_gap_seconds
                  + extra_pause_seconds
-lead_beats       = clamp(
+speech_lead_beats = clamp(
                      (speech_seconds / seconds_per_dance_beat) * lead_scale,
                      min_lead_beats,
                      max_lead_beats
                    )
+lead_beats       = speech_lead_beats + 0.5 s (as dance beats)
 call_start_beat  = execution_beat - lead_beats
 ```
 
 Defaults are calibrated from measured delivery: saying
 “larks allemande left once and a half” (nine syllables) took **2.25 seconds**,
-which is 4.5 dance beats at 240 BPM.
+which is 4.5 dance beats at 240 BPM. A flat **0.5 s safety padding** is added
+to every call after the speech-lead clamp.
 
 | Setting | Default |
 | --- | --- |
@@ -311,23 +313,26 @@ which is 4.5 dance beats at 240 BPM.
 | word gap | 0.0 s |
 | extra pause | 0.0 s |
 | lead scale | 1.0 |
-| min lead | 1.0 beat |
-| max lead | 5.0 beats |
+| min speech lead | 1.0 beat |
+| max speech lead | 5.0 beats |
+| safety padding | 0.5 s |
 
-The max lead is user-adjustable up to 6 beats for learning sessions or slower
-TTS voices.
+The max speech lead is user-adjustable up to 6 beats for learning sessions or
+slower TTS voices; the padding is always added on top.
 
 Example at 240 BPM:
 
 | Alias | Lead | Call starts |
 | --- | ---: | ---: |
-| `swing` | 1.0 beat | 0.5 s before the move |
-| `circle left three` | 2.0 beats | 1.0 s before the move |
-| `neighbors do-si-do once` | 3.0 beats | 1.5 s before the move |
-| `larks allemande left once and a half` | 4.5 beats | 2.25 s before the move |
+| `swing` | 2.0 beats | 1.0 s before the move |
+| `circle left three` | 3.0 beats | 1.5 s before the move |
+| `neighbors do-si-do once` | 4.0 beats | 2.0 s before the move |
+| `larks allemande left once and a half` | 5.5 beats | 2.75 s before the move |
 
 The first call of a dance may fall at a negative beat (inside the count-in).
-That is intentional and must be displayed/spoken.
+That is intentional and must be displayed/spoken. When the dance loops, the
+same call is also scheduled at `music_loop_beats - lead_beats` so the first move
+is called near the end of the previous loop.
 
 Syllable estimation:
 

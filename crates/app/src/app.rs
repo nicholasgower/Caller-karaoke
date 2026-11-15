@@ -65,7 +65,7 @@ pub struct ContraApp {
     status: String,
     error: Option<String>,
     length_warning: Option<String>,
-    last_spoken: Option<usize>,
+    last_spoken: Option<f64>,
     last_beat: f64,
     cache_clear_confirm: bool,
     alias_filter: String,
@@ -381,28 +381,28 @@ impl ContraApp {
         if !self.prefs.tts_enabled || !self.speech.available() || !self.audio.is_playing() {
             return;
         }
-        let active = self
+        if let Some(call) = self
             .timeline
-            .calls
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, call)| beat >= call.call_start_beat && beat < call.execute_beat)
-            .map(|(index, _)| index);
-        if let Some(index) = active
-            && self.last_spoken != Some(index)
+            .scheduled_call_at(beat, self.prefs.loop_enabled)
+            && call.is_calling(beat)
+            && self.last_spoken != Some(call.start_beat)
         {
-            let text = &self.timeline.calls[index].text;
-            self.speech.speak(text);
-            self.last_spoken = Some(index);
+            self.speech.speak(&call.call.text);
+            self.last_spoken = Some(call.start_beat);
         }
     }
 
     fn current_beat(&self) -> f64 {
-        if self.audio.has_buffer() {
-            self.audio.position_beat()
+        if !self.audio.has_buffer() {
+            return 0.0;
+        }
+        let beat = self.audio.position_beat();
+        if self.prefs.loop_enabled && beat >= self.timeline.music_loop_beats {
+            // The audio callback resets on the next sample, but the UI can
+            // briefly observe exactly the loop end. Treat that as beat 0.
+            beat - self.timeline.music_loop_beats
         } else {
-            0.0
+            beat
         }
     }
 

@@ -26,16 +26,18 @@ so a bar is always two dance beats.
 speech_seconds = syllables / syllables_per_second
                + (words - 1) * word_gap_seconds
                + extra_pause_seconds
-lead_beats = clamp(
+speech_lead_beats = clamp(
   (speech_seconds / seconds_per_dance_beat) * lead_scale,
   min_lead_beats,
   max_lead_beats
 )
+lead_beats = speech_lead_beats + 0.5 s (converted to dance beats)
 call_start_beat = execute_beat - lead_beats
 ```
 
 Defaults are calibrated from a measured 2.25 s delivery of the nine-syllable
-call “larks allemande left once and a half”:
+call “larks allemande left once and a half”. A flat 0.5 s safety padding is
+added to every call after the speech-lead clamp.
 
 | Setting | Value |
 | --- | --- |
@@ -43,14 +45,20 @@ call “larks allemande left once and a half”:
 | word gap | 0.0 s |
 | extra pause | 0.0 s |
 | lead scale | 1.0 |
-| minimum | 1.0 beat |
-| maximum | 5.0 beats |
+| minimum speech lead | 1.0 beat |
+| maximum speech lead | 5.0 beats |
+| safety padding | 0.5 s |
 
-At 240 BPM that phrase gets 4.5 beats, or exactly 2.25 seconds. The maximum can
-be raised to 6 beats in Preferences. Calls are computed from the **rendered
-alias**, not the original card text, so a longer alias starts earlier.
+At 240 BPM that phrase gets 4.5 beats of speech plus 1 beat of padding = 5.5
+beats, or 2.75 seconds. The maximum speech lead can be raised to 6 beats in
+Preferences; the padding is always added. Calls are computed from the
+**rendered alias**, not the original card text, so a longer alias starts
+earlier.
 
 The first call can be negative (inside the count-in). Do not clamp it to zero.
+When the dance loops, the same call is scheduled again at
+`music_loop_beats - lead_beats`; the UI and TTS treat that as a wrapped call at
+the end of the loop so the first move of the next repetition is still called.
 
 ## Sub-calls and grid
 
@@ -68,7 +76,8 @@ The first call can be negative (inside the count-in). Do not clamp it to zero.
 ## Tests
 
 `crates/core/src/timing.rs` covers the default dance, the negative first call,
-the 1–5 beat clamp, manual leads, sub-call splitting, and tempo sensitivity.
+the 1–5 beat speech-lead clamp plus the 0.5 s padding, manual leads, loop
+wrapping, sub-call splitting, and tempo sensitivity.
 `crates/music/src/arrange.rs` verifies the bundled Sandy Boys tune has a
 64-beat AABB body plus a 0.5-beat pickup, and checks the dance/tune length
 comparison. `crates/app/src/defaults.rs` asserts that the bundled dance and

@@ -19,6 +19,7 @@ pub use prefs::{AccompanimentInstrument, MelodyInstrument, Preferences, SoundFon
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};
 pub use timing::{
-    CallEvent, LeadSettings, PhraseSpan, PracticeTimeline, TimelineConfig, TimelineError,
+    CallEvent, LEAD_PADDING_SECONDS, LeadSettings, PhraseSpan, PracticeTimeline, ScheduledCall,
+    TimelineConfig, TimelineError,
 };
 pub use tune::Tune;
