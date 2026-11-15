@@ -6,8 +6,8 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
 use contra_core::{
-    AccompanimentInstrument, AliasTable, Dance, MelodyInstrument, MoveKind, PracticeTimeline,
-    Preferences, RolePreset, RoleTerms, Theme, TimelineConfig, Tune,
+    AccompanimentInstrument, AccompanimentRhythm, AliasTable, Dance, MelodyInstrument, MoveKind,
+    PracticeTimeline, Preferences, RolePreset, RoleTerms, Theme, TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi, parse_abc, render,
@@ -527,6 +527,7 @@ impl ContraApp {
             bpm: self.prefs.tempo_bpm,
             melody: self.prefs.melody,
             accompaniment: self.prefs.accompaniment,
+            accompaniment_rhythm: self.prefs.accompaniment_rhythm,
             melody_volume: self.prefs.melody_volume,
             accompaniment_volume: self.prefs.accompaniment_volume,
             count_in_beats: if self.prefs.count_in_enabled {
@@ -818,6 +819,7 @@ impl ContraApp {
                 &arrangement,
                 self.prefs.melody,
                 self.prefs.accompaniment,
+                self.prefs.accompaniment_rhythm,
                 self.prefs.tempo_bpm,
             );
             match std::fs::write(&path, bytes) {

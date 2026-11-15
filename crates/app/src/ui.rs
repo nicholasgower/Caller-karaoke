@@ -1259,17 +1259,31 @@ impl ContraApp {
                         });
                     ui.end_row();
                     ui.label("Accompaniment");
-                    egui::ComboBox::from_id_salt("accompaniment")
-                        .selected_text(self.prefs.accompaniment.label())
-                        .show_ui(ui, |ui| {
-                            for option in AccompanimentInstrument::ALL {
-                                ui.selectable_value(
-                                    &mut self.prefs.accompaniment,
-                                    option,
-                                    option.label(),
-                                );
-                            }
-                        });
+                    ui.horizontal(|ui| {
+                        egui::ComboBox::from_id_salt("accompaniment")
+                            .selected_text(self.prefs.accompaniment.label())
+                            .show_ui(ui, |ui| {
+                                for option in AccompanimentInstrument::ALL {
+                                    ui.selectable_value(
+                                        &mut self.prefs.accompaniment,
+                                        option,
+                                        option.label(),
+                                    );
+                                }
+                            });
+                        ui.label("Rhythm");
+                        egui::ComboBox::from_id_salt("accompaniment_rhythm")
+                            .selected_text(self.prefs.accompaniment_rhythm.label())
+                            .show_ui(ui, |ui| {
+                                for option in AccompanimentRhythm::ALL {
+                                    ui.selectable_value(
+                                        &mut self.prefs.accompaniment_rhythm,
+                                        option,
+                                        option.label(),
+                                    );
+                                }
+                            });
+                    });
                     ui.end_row();
                 });
             ui.horizontal(|ui| {
@@ -1570,6 +1584,7 @@ impl ContraApp {
                 || self.prefs.accompaniment_variations != before.accompaniment_variations
                 || self.prefs.melody != before.melody
                 || self.prefs.accompaniment != before.accompaniment
+                || self.prefs.accompaniment_rhythm != before.accompaniment_rhythm
                 || self.prefs.melody_volume != before.melody_volume
                 || self.prefs.accompaniment_volume != before.accompaniment_volume
                 || self.prefs.soundfont != before.soundfont;

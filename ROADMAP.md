@@ -121,6 +121,8 @@ Listed in this order:
 3. **Instrument preferences**
    - Melody: Fiddle (default), Accordion.
    - Accompaniment: Piano (default), Guitar, Accordion.
+   - Accompaniment rhythm: match instrument (default), block chords,
+     boom-chuck, offbeat stabs, arpeggio, shuffle, strum, sustained.
    - Melody/accompaniment volume.
    - Soundfont: None (built-in synth) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.

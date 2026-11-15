@@ -26,7 +26,8 @@ the tune title with unsafe characters replaced.
 
 The export contains:
 
-- two tracks: melody and accompaniment;
+- two tracks: melody and accompaniment, using the selected
+  accompaniment rhythm;
 - the tempo, meter, key, and program changes;
 - the arranged 64-beat loop.
 

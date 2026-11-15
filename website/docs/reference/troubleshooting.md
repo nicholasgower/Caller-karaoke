@@ -15,7 +15,7 @@ message in Preferences.
 | --- | --- |
 | No music | Check **Volume**, the OS output device, and the `Audio device:` message. Pause and Play again. |
 | Music does not start | The first Play renders the loop synchronously. Wait for it; the window may be busy for a moment. In a browser, press **Play** once to allow audio. |
-| `Press Play to prepare the music…` will not go away | Press **Play**. Tempo, instrument, melody/accompaniment volume, SoundFont, and count-in changes rebuild the loop; while playing they apply without restarting. |
+| `Press Play to prepare the music…` will not go away | Press **Play**. Tempo, instrument, accompaniment rhythm, melody/accompaniment volume, SoundFont, and count-in changes rebuild the loop; while playing they apply without restarting. |
 | A call seems late or early | Check **Calling lead** and the alias length. A longer call is moved earlier automatically. |
 | The first call appears during the count-in | Expected. The first call starts before beat 0. |
 | Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, 1–4, and Enter are ignored while a text field has focus. |

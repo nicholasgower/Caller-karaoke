@@ -222,7 +222,7 @@
     },
     {
       "id": "prefs-instrument-melody",
-      "alt": "The Instruments section with the Melody menu set to Fiddle and the accompaniment menu and volume sliders visible.",
+      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment and rhythm menus, and the volume sliders visible.",
       "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
       "status": "ready",
       "width": 1280,
@@ -230,8 +230,8 @@
     },
     {
       "id": "prefs-instrument-accompaniment",
-      "alt": "The Accompaniment menu open with Piano, Guitar, and Accordion options.",
-      "caption": "Piano is the default accompaniment; Guitar and Accordion are available.",
+      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it.",
+      "caption": "Piano, Guitar, and Accordion are the accompaniment voices; the Rhythm menu chooses the backing pattern.",
       "status": "ready",
       "width": 1280,
       "height": 2250
