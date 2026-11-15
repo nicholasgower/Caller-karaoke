@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use crate::audio::AudioEngine;
+use contra_core::CallTone;
 use contra_core::pronounce;
 
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
@@ -127,6 +128,7 @@ pub struct Speech {
     status: SpeechStatus,
     enabled: bool,
     rate: f32,
+    tone: CallTone,
     last_calls: Vec<String>,
     voice_id: String,
     #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
@@ -168,6 +170,7 @@ impl Speech {
                 status,
                 enabled: false,
                 rate: 1.0,
+                tone: CallTone::default(),
                 last_calls: Vec::new(),
                 voice_id: DEFAULT_VOICE_ID.to_string(),
                 pending_rate: None,
@@ -191,6 +194,7 @@ impl Speech {
                 status,
                 enabled: false,
                 rate: 1.0,
+                tone: CallTone::default(),
                 last_calls: Vec::new(),
                 voice_id: DEFAULT_VOICE_ID.to_string(),
             }
@@ -215,6 +219,7 @@ impl Speech {
             },
             enabled: false,
             rate: 1.0,
+            tone: CallTone::default(),
             last_calls: Vec::new(),
             voice_id: DEFAULT_VOICE_ID.to_string(),
             pending_rate: None,
@@ -240,6 +245,7 @@ impl Speech {
             },
             enabled: false,
             rate: 1.0,
+            tone: CallTone::default(),
             last_calls: Vec::new(),
             voice_id: DEFAULT_VOICE_ID.to_string(),
             pending_rate: None,
@@ -340,6 +346,24 @@ impl Speech {
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
             self.pending_rate = Some(Instant::now());
+        }
+    }
+
+    /// Change the delivery tone. A tone change invalidates synthesized calls
+    /// because the pitch is baked into the audio, then re-prepares them so the
+    /// first call after the change already uses the new voice.
+    pub fn set_tone(&mut self, tone: CallTone) {
+        if self.tone == tone {
+            return;
+        }
+        self.tone = tone;
+        self.platform.set_tone(tone);
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        if let Some(kokoro) = &self.kokoro {
+            kokoro.set_tone(tone);
+            if self.enabled {
+                kokoro.prewarm(self.last_calls.clone());
+            }
         }
     }
 
@@ -454,6 +478,7 @@ struct PlatformSpeech {
     tts: Option<tts::Tts>,
     error: Option<String>,
     rate: f32,
+    tone: CallTone,
     #[cfg(feature = "headless")]
     available_override: Option<bool>,
 }
@@ -464,6 +489,7 @@ impl PlatformSpeech {
             tts: None,
             error: None,
             rate: 1.0,
+            tone: CallTone::default(),
             #[cfg(feature = "headless")]
             available_override: None,
         };
@@ -471,6 +497,7 @@ impl PlatformSpeech {
             Ok(tts) => {
                 speech.tts = Some(tts);
                 speech.apply_rate();
+                speech.apply_tone();
             }
             Err(error) => speech.error = Some(error.to_string()),
         }
@@ -484,6 +511,7 @@ impl PlatformSpeech {
             tts: None,
             error: error.map(str::to_string),
             rate: 1.0,
+            tone: CallTone::default(),
             available_override: Some(available),
         }
     }
@@ -505,6 +533,14 @@ impl PlatformSpeech {
         self.apply_rate();
     }
 
+    fn set_tone(&mut self, tone: CallTone) {
+        if self.tone == tone {
+            return;
+        }
+        self.tone = tone;
+        self.apply_tone();
+    }
+
     fn speak(&mut self, text: &str) {
         if let Some(tts) = &mut self.tts {
             let _ = tts.speak(text.to_string(), true);
@@ -523,6 +559,28 @@ impl PlatformSpeech {
             let _ = tts.set_volume(1.0);
         }
     }
+
+    fn apply_tone(&mut self) {
+        if let Some(tts) = &mut self.tts {
+            let normal = tts.normal_pitch();
+            let max = tts.max_pitch();
+            let _ = tts.set_pitch(platform_pitch(normal, max, self.tone));
+        }
+    }
+}
+
+/// Translate a [`CallTone`] into a platform TTS pitch value.
+///
+/// Backends disagree on the scale (WinRT and Android use roughly 0..2, Speech
+/// Dispatcher uses -100..100), but all report a normal pitch and an upper
+/// bound. Moving the same fraction of the way down from normal gives a similar
+/// drop on each backend.
+fn platform_pitch(normal: f32, max: f32, tone: CallTone) -> f32 {
+    if tone == CallTone::Natural {
+        return normal;
+    }
+    let headroom = (max - normal).max(0.0);
+    normal - headroom * (1.0 - tone.pitch())
 }
 
 #[cfg(test)]
@@ -547,5 +605,21 @@ mod tests {
     fn unknown_voice_falls_back_to_the_default() {
         assert_eq!(voice("not-a-voice").id, DEFAULT_VOICE_ID);
         assert_eq!(voice(DEFAULT_VOICE_ID).label, "Heart (US female)");
+    }
+
+    #[test]
+    fn commanding_tone_lowers_the_platform_pitch() {
+        // WinRT and Android style ranges.
+        assert_eq!(platform_pitch(1.0, 2.0, CallTone::Natural), 1.0);
+        let lower = platform_pitch(1.0, 2.0, CallTone::Commanding);
+        assert!(lower < 1.0, "{lower}");
+        assert!((lower - 0.94).abs() < 1e-6, "{lower}");
+
+        // Speech Dispatcher uses -100..100 with normal at zero.
+        let linux = platform_pitch(0.0, 100.0, CallTone::Commanding);
+        assert!((linux + 6.0).abs() < 1e-6, "{linux}");
+
+        // A backend without headroom must not be pushed out of range.
+        assert_eq!(platform_pitch(0.5, 0.5, CallTone::Commanding), 0.5);
     }
 }

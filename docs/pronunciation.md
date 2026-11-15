@@ -21,6 +21,17 @@ live in `crates/core/src/pronounce.rs`.
 5. Re-run the review against the real model with the ignored smoke test (see
    below).
 
+The **Commanding caller** tone runs a clear-speech pass after this review: it
+adds a length mark to the primary stressed vowel in each content word and then
+applies presence and compression to the audio. The table below lists the base
+phonemes before that pass, so the pronunciation corrections remain the source of
+truth.
+
+Count phrases are smoothed separately. A count of one is omitted from the
+rendered alias, and “and a half” becomes “an a half” for both backends. Kokoro
+then receives the connected tail `nəhˈæf` instead of `ænd ɐ hˈæf`, so the count
+does not arrive as four separated words.
+
 The check is automated by `cargo test -p contra-app`. The default test suite
 does not download anything.
 

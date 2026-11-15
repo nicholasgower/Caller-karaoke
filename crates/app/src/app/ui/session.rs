@@ -3,7 +3,7 @@ use crate::app::*;
 use crate::audio::AudioEngine;
 use crate::theme;
 use crate::tts::Speech;
-use contra_core::Preferences;
+use contra_core::{COUNT_IN_BEATS, Preferences};
 use eframe::egui;
 
 /// The tempo, transport, loop/count-in/speech, and volume controls.
@@ -443,6 +443,11 @@ impl ContraApp {
 
         let call_size = if compact { 30.0 } else { 34.0 };
         let count_size = if compact { 48.0 } else { 56.0 };
+        let count_in_label = if self.prefs.count_in_enabled {
+            format!("{}-beat count-in", COUNT_IN_BEATS as u32)
+        } else {
+            "no count-in".to_string()
+        };
         egui::Frame::group(ui.style())
             .fill(card_fill)
             .inner_margin(egui::Margin::same(if compact { 10 } else { 12 }))
@@ -461,9 +466,10 @@ impl ContraApp {
                     );
                     ui.label(
                         egui::RichText::new(format!(
-                            "{} calls · {} beats · three-beat count-in",
+                            "{} calls · {} beats · {}",
                             self.timeline.calls.len(),
-                            self.timeline.music_loop_beats
+                            self.timeline.music_loop_beats,
+                            count_in_label
                         ))
                         .color(theme::muted(ui)),
                     );
@@ -623,9 +629,10 @@ impl ContraApp {
                     );
                     ui.label(
                         egui::RichText::new(format!(
-                            "{} calls · {} beats · 3-beat count-in",
+                            "{} calls · {} beats · {}",
                             self.timeline.calls.len(),
-                            self.timeline.music_loop_beats
+                            self.timeline.music_loop_beats,
+                            count_in_label
                         ))
                         .color(theme::muted(ui)),
                     );

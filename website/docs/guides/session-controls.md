@@ -19,7 +19,7 @@ volume settings.
 | **End tune** | — | Slows the tune's last bar, holds the final chord, then stops. |
 | **Loop** | on by default | Repeats the 64-beat music loop. |
 | **Cycle tunes** | off by default | Plays through a set of saved tunes, changing at a repeat. |
-| **Count-in** | on by default | Three accompaniment beats built from the tune's first chord. |
+| **Count-in** | on by default | Four accompaniment beats built from the tune's first chord. |
 | **Speak calls** | off by default | Speaks the active call if a system voice is available. |
 | **Volume** | 0–1, default 0.8 | Master playback volume. |
 
@@ -82,8 +82,8 @@ wording appears in small muted text next to the rendered call.
 
 <Shot id="session-count-in" />
 
-The count-in is three dance beats of accompaniment only. At 240 BPM that is
-1.5 seconds. The first call often starts during the count-in because its lead is
+The count-in is four dance beats of accompaniment only. At 240 BPM that is
+2.0 seconds. The first call often starts during the count-in because its lead is
 subtracted from beat 0. That is intentional: the caller needs to say the first
 figure before the dancers move on beat 0. When a call is already active during
 the count-in, the panel shows **CALL NOW** and the call text instead of

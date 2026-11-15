@@ -539,6 +539,7 @@ mod tests {
     use super::*;
     use crate::abc::parse_abc;
     use crate::arrange::Arrangement;
+    use contra_core::COUNT_IN_BEATS;
 
     const TUNE: &str = "X:1\nT:Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n";
 
@@ -552,7 +553,7 @@ mod tests {
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
-            count_in_beats: 3.0,
+            count_in_beats: COUNT_IN_BEATS,
             sample_rate: 24_000,
             variation_passes: 1,
             ending: false,
@@ -573,8 +574,8 @@ mod tests {
     #[test]
     fn buffer_length_matches_tempo() {
         let buffer = render_builtin(&request());
-        // 3 count-in beats + 64 loop beats at 240 BPM = 33.5 s.
-        let expected = 33.5 * 24_000.0;
+        // 4 count-in beats + 64 loop beats at 240 BPM = 34.0 s.
+        let expected = 34.0 * 24_000.0;
         assert!((buffer.frames() as f64 - expected).abs() < 2.0);
     }
 
@@ -585,7 +586,8 @@ mod tests {
         let buffer = render_builtin(&request);
 
         let pass_seconds = 64.0 * 0.5;
-        let expected = (3.0 * 0.5 + pass_seconds * crate::VARIATION_PASSES as f64) * 24_000.0;
+        let expected =
+            (COUNT_IN_BEATS * 0.5 + pass_seconds * crate::VARIATION_PASSES as f64) * 24_000.0;
         assert!((buffer.frames() as f64 - expected).abs() < 2.0);
         assert_eq!(
             buffer.loop_end_sample - buffer.loop_start_sample,

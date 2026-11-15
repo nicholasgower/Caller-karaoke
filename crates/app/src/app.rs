@@ -6,9 +6,9 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AliasTable, Dance, FolderFilter, Library,
-    MelodyInstrument, MoveKind, PracticeTimeline, Preferences, RolePreset, RoleTerms, Theme,
-    TimelineConfig, Tune,
+    AccompanimentInstrument, AccompanimentRhythm, AliasTable, COUNT_IN_BEATS, Dance, FolderFilter,
+    Library, MelodyInstrument, MoveKind, PracticeTimeline, Preferences, RolePreset, RoleTerms,
+    Theme, TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi, parse_abc, render,
@@ -458,6 +458,7 @@ impl ContraApp {
         let mut speech = Speech::new(cache_dir.join("tts"), audio.0.sample_rate());
         speech.set_rate(prefs.tts_rate);
         speech.set_voice(&prefs.tts_voice);
+        speech.set_tone(prefs.tts_tone);
         if prefs.tts_enabled {
             speech.set_enabled(true);
         }
@@ -803,6 +804,7 @@ impl ContraApp {
 
         let mut speech = Speech::stub();
         speech.set_rate(prefs.tts_rate);
+        speech.set_tone(prefs.tts_tone);
 
         let source = SourceClient::new(
             source_tx,
@@ -981,7 +983,7 @@ impl ContraApp {
             .err()
             .map(format_length_mismatch);
         let settings = self.render_settings(if self.prefs.count_in_enabled {
-            3.0
+            COUNT_IN_BEATS
         } else {
             0.0
         });
@@ -1976,7 +1978,11 @@ fn build_timeline(
         &prefs.lead,
         prefs.tempo(),
         TimelineConfig {
-            count_in_beats: if prefs.count_in_enabled { 3.0 } else { 0.0 },
+            count_in_beats: if prefs.count_in_enabled {
+                COUNT_IN_BEATS
+            } else {
+                0.0
+            },
             music_loop_beats: 64.0,
             shuffle_alternatives: prefs.shuffle_alternatives,
             alias_seed,
@@ -1991,7 +1997,7 @@ fn empty_timeline() -> PracticeTimeline {
         phrases: Vec::new(),
         total_beats: 64.0,
         music_loop_beats: 64.0,
-        count_in_beats: 3.0,
+        count_in_beats: COUNT_IN_BEATS,
     }
 }
 

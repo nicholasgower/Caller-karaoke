@@ -12,3 +12,7 @@
 | Flatpak/AppImage CI complexity | Missing Linux assets | Separate jobs, pinned tool versions, cached dependencies |
 | Content licensing | Legal risk | Bundle only attributed defaults; local cache only; no database redistribution |
 | egui mobile keyboard quirks | Poor search UX | Test early; use full-screen sheets and focus management |
+| Call variants or thinning feel artificial | The trainer teaches bad habits | Review scripts with an experienced caller; keep every automatic choice visible and overridable; start with conservative defaults |
+| Thinning drops a call the learner still needs | Confusion, loss of trust | Keep first move, post-swing move, and unusual figures; offer Rescue; let the learner choose Fixed/Full support |
+| Dance-model scope creep | Delays release and distorts the product | Gate all who/where features behind §17 C13; ship the metadata-only checks first |
+| Beat-aware TTS is costly to tune | Poor return on effort | Start with the visual rhythm strip and a click track; treat TTS rhythm as P2 |

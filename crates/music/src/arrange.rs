@@ -520,11 +520,26 @@ impl Arrangement {
                 }
             }
             AccompanimentRhythm::Strum => {
+                let voicing = chord.voicing(55);
                 let mut beat = start;
+                let mut down = true;
                 while beat < end {
-                    for (index, midi) in chord.voicing(55).into_iter().enumerate() {
-                        push_note(notes, beat + index as f64 * 0.025, 0.4, midi, 54, end);
+                    if down {
+                        // Down strum: the bass string leads and the pick rolls
+                        // up through the chord.
+                        for (index, midi) in voicing.iter().enumerate() {
+                            push_note(notes, beat + index as f64 * 0.025, 0.42, *midi, 58, end);
+                        }
+                    } else {
+                        // Up strum: the treble leads and the pick falls back
+                        // toward the bass. Dropping the lowest string and
+                        // easing the attack keeps the offbeat lighter than the
+                        // downbeat.
+                        for (index, midi) in voicing.iter().skip(1).rev().enumerate() {
+                            push_note(notes, beat + index as f64 * 0.018, 0.30, *midi, 44, end);
+                        }
                     }
+                    down = !down;
                     beat += 0.5;
                 }
             }
@@ -942,6 +957,51 @@ mod tests {
             arpeggio, block,
             "choosing a rhythm must change the generated accompaniment"
         );
+    }
+
+    #[test]
+    fn strum_alternates_down_and_up() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let notes = arrangement.accompaniment_notes_with_rhythm(
+            AccompanimentInstrument::Guitar,
+            AccompanimentRhythm::Strum,
+        );
+
+        // Within a strum, the attack order tells the direction: a down strum
+        // goes from the bass up through the chord, an up strum comes back down
+        // from the treble.
+        for strum in 0..4 {
+            let low = strum as f64 * 0.5;
+            let high = low + 0.5;
+            let mut attack: Vec<&NoteEvent> = notes
+                .iter()
+                .filter(|note| note.start_beat >= low && note.start_beat < high)
+                .collect();
+            attack.sort_by(|a, b| a.start_beat.total_cmp(&b.start_beat));
+            let pitches: Vec<u8> = attack.iter().map(|note| note.midi).collect();
+            if strum % 2 == 0 {
+                assert!(
+                    pitches.windows(2).all(|pair| pair[0] < pair[1]),
+                    "strum {strum} should sweep up from the bass: {pitches:?}"
+                );
+            } else {
+                assert!(
+                    pitches.windows(2).all(|pair| pair[0] > pair[1]),
+                    "strum {strum} should sweep back down from the treble: {pitches:?}"
+                );
+            }
+        }
+
+        // The upstroke is lighter and leaves out the lowest string.
+        let down: Vec<&NoteEvent> = notes.iter().filter(|note| note.start_beat < 0.5).collect();
+        let up: Vec<&NoteEvent> = notes
+            .iter()
+            .filter(|note| (0.5..1.0).contains(&note.start_beat))
+            .collect();
+        assert!(down.iter().all(|note| note.velocity > 44));
+        assert!(up.iter().all(|note| note.velocity == 44));
+        assert_eq!(up.len(), down.len() - 1);
+        assert!(up.iter().map(|note| note.midi).min() > down.iter().map(|note| note.midi).min());
     }
 
     #[test]

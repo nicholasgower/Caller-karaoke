@@ -111,7 +111,7 @@
     {
       "id": "session-count-in",
       "alt": "The session screen during the count-in, showing a large 2, the label COUNT-IN, and either CALL NOW with the first call or Listen for the first chord.",
-      "caption": "The three-beat count-in sets the tempo before the 64-beat loop begins.",
+      "caption": "The four-beat count-in sets the tempo before the 64-beat loop begins.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -368,8 +368,8 @@
     },
     {
       "id": "prefs-tts-rate",
-      "alt": "The Text to speech section showing the Kokoro Voice selector, the voice description, the Rate slider, and the headless-ready status line.",
-      "caption": "Desktop uses a local Kokoro voice; the rate applies to spoken calls without changing visual timing.",
+      "alt": "The Text to speech section showing the Kokoro Voice selector, the voice description, the Rate slider, the Tone selector, and the headless-ready status line.",
+      "caption": "Desktop uses a local Kokoro voice; rate and the calling tone change the spoken delivery without changing visual timing.",
       "status": "ready",
       "width": 1280,
       "height": 2250

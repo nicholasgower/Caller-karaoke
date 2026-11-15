@@ -21,13 +21,14 @@ pub use library::{
     FolderError, FolderFilter, LIBRARY_SCHEMA_VERSION, Library, LibraryEntry, LibraryItem,
 };
 pub use prefs::{
-    AccompanimentInstrument, AccompanimentRhythm, ChangeSet, MelodyInstrument, Preferences,
-    SoundFontSetting, Theme, TuneRotation,
+    AccompanimentInstrument, AccompanimentRhythm, CallTone, ChangeSet, MelodyInstrument,
+    Preferences, SoundFontSetting, Theme, TuneRotation,
 };
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};
 pub use timing::{
-    CallEvent, LEAD_PADDING_SECONDS, LeadSettings, MAX_PADDING_SECONDS, MIN_PADDING_SECONDS,
-    PhraseSpan, PracticeTimeline, ScheduledCall, TimelineConfig, TimelineError,
+    COUNT_IN_BEATS, CallEvent, LEAD_PADDING_SECONDS, LeadSettings, MAX_PADDING_SECONDS,
+    MIN_PADDING_SECONDS, PhraseSpan, PracticeTimeline, ScheduledCall, TimelineConfig,
+    TimelineError,
 };
 pub use tune::Tune;

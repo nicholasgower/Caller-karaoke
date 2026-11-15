@@ -109,7 +109,7 @@ zero.
 - A **dance beat** is half a bar in 4/4, 2/2, and 6/8.
 - At 240 BPM, `seconds_per_dance_beat = 120 / bpm = 0.5 s`.
 - A standard 32-bar tune is **64 dance beats**, or **32 seconds**.
-- The count-in is **3 dance beats**, built from the tune's first chord.
+- The count-in is **4 dance beats**, built from the tune's first chord.
 - Reels and jigs use the same dance-beat duration at the same BPM setting.
 
 For the complete formula, worked examples, and edge cases, see

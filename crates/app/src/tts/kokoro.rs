@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 
+use contra_core::CallTone;
 use contra_core::pronounce;
 #[cfg(target_os = "linux")]
 use flate2::read::GzDecoder;
@@ -84,6 +85,7 @@ enum Command {
     Speak { text: String, generation: u64 },
     Stop,
     SetRate(f32),
+    SetTone(CallTone),
     SetVoice(String),
     Retry { enabled: bool, calls: Vec<String> },
 }
@@ -141,6 +143,10 @@ impl KokoroSpeech {
         let _ = self.tx.send(Command::SetRate(rate));
     }
 
+    pub(crate) fn set_tone(&self, tone: CallTone) {
+        let _ = self.tx.send(Command::SetTone(tone));
+    }
+
     pub(crate) fn set_voice(&self, id: &str) {
         let _ = self.tx.send(Command::SetVoice(id.to_string()));
     }
@@ -158,6 +164,7 @@ struct Worker {
     cache_dir: PathBuf,
     output_sample_rate: u32,
     rate: f32,
+    tone: CallTone,
     voice: &'static crate::tts::VoiceOption,
     enabled: bool,
     engine: Option<Engine>,
@@ -173,6 +180,7 @@ impl Worker {
             cache_dir,
             output_sample_rate,
             rate: 1.0,
+            tone: CallTone::default(),
             voice: crate::tts::voice(crate::tts::DEFAULT_VOICE_ID),
             enabled: false,
             engine: None,
@@ -226,6 +234,13 @@ impl Worker {
                 }
                 Command::SetRate(rate) => {
                     self.rate = rate.clamp(0.5, 2.0);
+                    self.cache.clear();
+                }
+                Command::SetTone(tone) => {
+                    if self.tone == tone {
+                        continue;
+                    }
+                    self.tone = tone;
                     self.cache.clear();
                 }
                 Command::SetVoice(id) => {
@@ -401,6 +416,14 @@ impl Worker {
                 self.cache.clear();
                 PrewarmAction::Abort
             }
+            Command::SetTone(tone) => {
+                if self.tone == tone {
+                    return PrewarmAction::Continue;
+                }
+                self.tone = tone;
+                self.cache.clear();
+                PrewarmAction::Restart
+            }
             Command::SetVoice(id) => {
                 let voice = crate::tts::voice(&id);
                 if self.voice.id == voice.id {
@@ -453,7 +476,7 @@ impl Worker {
 
     fn synthesize(&mut self, text: &str, events: &Sender<KokoroEvent>) -> Option<Vec<f32>> {
         let engine = self.engine.as_mut()?;
-        match engine.synthesize(text, self.rate, self.output_sample_rate) {
+        match engine.synthesize(text, self.rate, self.tone, self.output_sample_rate) {
             Ok(samples) => {
                 self.cache.insert(text.to_string(), samples.clone());
                 Some(samples)
@@ -539,6 +562,7 @@ impl Engine {
         &mut self,
         text: &str,
         rate: f32,
+        tone: CallTone,
         output_sample_rate: u32,
     ) -> Result<Vec<f32>, String> {
         let input = pronounce::kokoro_text(text);
@@ -546,7 +570,22 @@ impl Engine {
             .g2p
             .g2p(&input)
             .map_err(|error| format!("could not phonemize {text:?}: {error}"))?;
-        let phonemes = to_kokoro_phonemes(&raw);
+        let mut phonemes = to_kokoro_phonemes(&raw);
+        phonemes = smooth_count_phonemes(&phonemes);
+        if tone.enunciation() {
+            phonemes = enunciate_phonemes(&phonemes);
+        }
+        self.render(&phonemes, text, rate, tone, output_sample_rate)
+    }
+
+    fn render(
+        &mut self,
+        phonemes: &str,
+        text: &str,
+        rate: f32,
+        tone: CallTone,
+        output_sample_rate: u32,
+    ) -> Result<Vec<f32>, String> {
         if phonemes.is_empty() {
             return Err(format!("no phonemes for {text:?}"));
         }
@@ -579,7 +618,7 @@ impl Engine {
             .map_err(|error| format!("could not build the Kokoro input: {error}"))?;
         let style = Tensor::from_array((vec![1, VOICE_DIM], style))
             .map_err(|error| format!("could not build the Kokoro style: {error}"))?;
-        let speed = Tensor::from_array((vec![1], vec![rate]))
+        let speed = Tensor::from_array((vec![1], vec![synthesis_speed(rate, tone.pitch())]))
             .map_err(|error| format!("could not build the Kokoro speed: {error}"))?;
         let outputs = self
             .session
@@ -603,7 +642,243 @@ impl Engine {
         }
         trim_silence(&mut audio);
         fade(&mut audio);
-        Ok(resample_linear(&audio, SAMPLE_RATE, output_sample_rate))
+        // A lower tone is produced by synthesizing the same words a little
+        // faster and then playing the samples back a little slower. The two
+        // cancel in duration, so the call still fits its timeline slot; only
+        // the pitch and formants move down.
+        let mut samples = resample_linear(
+            &audio,
+            SAMPLE_RATE,
+            pitch_shifted_rate(output_sample_rate, tone.pitch()),
+        );
+        if tone.enunciation() {
+            enunciate_audio(&mut samples, output_sample_rate);
+        }
+        Ok(samples)
+    }
+}
+
+/// Kokoro's `speed` input for a target pitch and playback rate.
+///
+/// A pitch multiplier below one needs a faster synthesis so that the later
+/// slow-down does not lengthen the call.
+fn synthesis_speed(rate: f32, pitch: f32) -> f32 {
+    rate / pitch.clamp(0.5, 2.0)
+}
+
+/// The rate the shifted samples are resampled to.
+///
+/// This is deliberately not the device rate: the buffer is played at
+/// `output_sample_rate`, so resampling it to a higher rate is what lowers the
+/// pitch and lengthens the samples. [`synthesis_speed`] compensates for the
+/// length.
+fn pitch_shifted_rate(output_sample_rate: u32, pitch: f32) -> u32 {
+    ((output_sample_rate as f32 / pitch.clamp(0.5, 2.0)).round() as u32).max(1)
+}
+
+/// Lengthen the primary stressed vowel in each content word.
+///
+/// Kokoro's front end already marks stress, but the vowels are often short.
+/// Adding the IPA length mark after a stressed vowel makes the word land more
+/// deliberately, which is the core of a caller's diction. Function words have
+/// no primary stress and are left alone, so the stress contrast stays natural.
+fn enunciate_phonemes(phonemes: &str) -> String {
+    let mut out = String::with_capacity(phonemes.len() + 8);
+    let mut chars = phonemes.chars().peekable();
+    while let Some(ch) = chars.next() {
+        out.push(ch);
+        if ch != 'ˈ' {
+            continue;
+        }
+        if chars.peek().is_some_and(|next| is_vowel(*next)) {
+            if let Some(vowel) = chars.next() {
+                out.push(vowel);
+            }
+            if chars.peek() != Some(&'ː') {
+                out.push('ː');
+            }
+        }
+    }
+    out
+}
+
+/// Connect the count tail "and a half" into one caller phrase.
+///
+/// Kokoro treats every space as a pause, so "once and a half" comes out as four
+/// separated words. Callers reduce it to "once 'n' a half"; this substitution
+/// gives the model the same connected phrase without changing the card text.
+fn smooth_count_phonemes(phonemes: &str) -> String {
+    phonemes
+        .replace("ænd ɐ h", "nəh")
+        .replace("ænd ə h", "nəh")
+        .replace("ɐn ɐ h", "nəh")
+        .replace("ɐn ə h", "nəh")
+        .replace("ən ɐ h", "nəh")
+}
+
+/// Vowels in Kokoro's trained alphabet (plus the IPA symbols Misaki emits
+/// before normalization).
+fn is_vowel(ch: char) -> bool {
+    matches!(
+        ch,
+        'a' | 'e'
+            | 'i'
+            | 'o'
+            | 'u'
+            | 'A'
+            | 'I'
+            | 'O'
+            | 'W'
+            | 'Y'
+            | 'æ'
+            | 'ɑ'
+            | 'ɒ'
+            | 'ɔ'
+            | 'ɛ'
+            | 'ɜ'
+            | 'ɪ'
+            | 'ʊ'
+            | 'ʌ'
+            | 'ɐ'
+            | 'ə'
+            | 'ɚ'
+            | 'ɝ'
+            | 'ɘ'
+            | 'ɞ'
+            | 'ɨ'
+            | 'ʉ'
+            | 'ɯ'
+            | 'ɤ'
+            | 'ɵ'
+            | 'ø'
+            | 'œ'
+            | 'ᵻ'
+    )
+}
+
+/// A second-order IIR section in transposed direct form II.
+#[derive(Clone, Copy)]
+struct Biquad {
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+    z1: f32,
+    z2: f32,
+}
+
+impl Biquad {
+    fn high_pass(sample_rate: f32, frequency: f32, q: f32) -> Self {
+        let w0 = std::f32::consts::TAU * frequency / sample_rate;
+        let (sin, cos) = w0.sin_cos();
+        let alpha = sin / (2.0 * q);
+        Self::normalized(
+            (1.0 + cos) * 0.5,
+            -(1.0 + cos),
+            (1.0 + cos) * 0.5,
+            1.0 + alpha,
+            -2.0 * cos,
+            1.0 - alpha,
+        )
+    }
+
+    fn peaking(sample_rate: f32, frequency: f32, gain_db: f32, q: f32) -> Self {
+        let w0 = std::f32::consts::TAU * frequency / sample_rate;
+        let (sin, cos) = w0.sin_cos();
+        let alpha = sin / (2.0 * q);
+        let a = 10f32.powf(gain_db / 40.0);
+        Self::normalized(
+            1.0 + alpha * a,
+            -2.0 * cos,
+            1.0 - alpha * a,
+            1.0 + alpha / a,
+            -2.0 * cos,
+            1.0 - alpha / a,
+        )
+    }
+
+    fn normalized(b0: f32, b1: f32, b2: f32, a0: f32, a1: f32, a2: f32) -> Self {
+        Self {
+            b0: b0 / a0,
+            b1: b1 / a0,
+            b2: b2 / a0,
+            a1: a1 / a0,
+            a2: a2 / a0,
+            z1: 0.0,
+            z2: 0.0,
+        }
+    }
+
+    fn process(&mut self, input: f32) -> f32 {
+        let output = self.b0 * input + self.z1;
+        self.z1 = self.b1 * input - self.a1 * output + self.z2;
+        self.z2 = self.b2 * input - self.a2 * output;
+        output
+    }
+}
+
+/// Sharpen the neural voice after resampling.
+///
+/// The pitch shift lowers the formants, which can blur consonants. A gentle
+/// high-pass and low-mid cut remove rumble and mud, a presence lift brings out
+/// consonant energy around 3 kHz, and a slow compressor evens the syllables so
+/// final consonants are not lost. The peak guard keeps speech from clipping the
+/// music mix.
+fn enunciate_audio(samples: &mut [f32], sample_rate: u32) {
+    if samples.is_empty() {
+        return;
+    }
+    let sample_rate = sample_rate as f32;
+    let mut high_pass = Biquad::high_pass(sample_rate, 90.0, 0.707);
+    let mut de_mud = Biquad::peaking(sample_rate, 300.0, -1.5, 0.9);
+    let mut presence = Biquad::peaking(sample_rate, 2_800.0, 3.0, 1.0);
+    for sample in samples.iter_mut() {
+        let mut value = *sample;
+        value = high_pass.process(value);
+        value = de_mud.process(value);
+        value = presence.process(value);
+        *sample = value;
+    }
+    compress(samples, sample_rate);
+}
+
+fn compress(samples: &mut [f32], sample_rate: f32) {
+    const THRESHOLD_DB: f32 = -22.0;
+    const RATIO: f32 = 2.5;
+    const MAKEUP_DB: f32 = 2.0;
+    const ATTACK_SECONDS: f32 = 0.005;
+    const RELEASE_SECONDS: f32 = 0.080;
+
+    let attack = (-1.0 / (ATTACK_SECONDS * sample_rate)).exp();
+    let release = (-1.0 / (RELEASE_SECONDS * sample_rate)).exp();
+    let makeup = 10f32.powf(MAKEUP_DB / 20.0);
+    let mut envelope = 0.0f32;
+    for sample in samples.iter_mut() {
+        let level = sample.abs();
+        let coefficient = if level > envelope { attack } else { release };
+        envelope = coefficient * envelope + (1.0 - coefficient) * level;
+        let gain = if envelope > 0.0 {
+            let envelope_db = 20.0 * envelope.log10();
+            if envelope_db > THRESHOLD_DB {
+                let reduction = (envelope_db - THRESHOLD_DB) * (1.0 - 1.0 / RATIO);
+                10f32.powf(-reduction / 20.0)
+            } else {
+                1.0
+            }
+        } else {
+            1.0
+        };
+        *sample *= gain * makeup;
+    }
+    let peak = samples
+        .iter()
+        .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+    if peak > 0.98 {
+        let scale = 0.98 / peak;
+        for sample in samples.iter_mut() {
+            *sample *= scale;
+        }
     }
 }
 
@@ -1097,6 +1372,16 @@ mod tests {
             assert!(!phonemes.is_empty(), "{call}");
             assert!(!phonemes.contains('?'), "{call}: {phonemes}");
             assert!(!phonemes.contains('\u{200D}'), "{call}: {phonemes}");
+
+            // The clear-speech pass may only add the length mark; any other
+            // symbol would be an unverified change to the pronunciation.
+            let enunciated = enunciate_phonemes(&phonemes);
+            assert!(
+                enunciated
+                    .chars()
+                    .all(|ch| ch == 'ː' || phonemes.contains(ch)),
+                "{call}: {enunciated}"
+            );
         }
     }
 
@@ -1170,6 +1455,104 @@ mod tests {
     }
 
     #[test]
+    fn commanding_tone_keeps_the_call_length() {
+        let output_rate = 48_000;
+        let pitch = CallTone::Commanding.pitch();
+        let speed = synthesis_speed(1.0, pitch);
+        let shifted = pitch_shifted_rate(output_rate, pitch);
+        assert!(speed > 1.0, "{speed}");
+        assert!(shifted > output_rate, "{shifted}");
+
+        // The faster synthesis and the slower playback cancel out.
+        let length = (1.0 / speed) * (shifted as f32 / output_rate as f32);
+        assert!((length - 1.0).abs() < 0.002, "{length}");
+
+        // The natural tone must be the old path, sample for sample.
+        assert_eq!(synthesis_speed(1.0, 1.0), 1.0);
+        assert_eq!(pitch_shifted_rate(output_rate, 1.0), output_rate);
+    }
+
+    #[test]
+    fn enunciation_lengthens_stressed_vowels_once() {
+        assert_eq!(enunciate_phonemes("lˈɛft"), "lˈɛːft");
+        assert_eq!(enunciate_phonemes("dˈO sˈiː dˈO"), "dˈOː sˈiː dˈOː");
+        assert_eq!(enunciate_phonemes("pˈɑːɹtnɚ"), "pˈɑːɹtnɚ");
+        assert_eq!(enunciate_phonemes("ænd ɐ"), "ænd ɐ");
+        assert_eq!(
+            enunciate_phonemes("pˈɛtɹOnˌɛlə"),
+            "pˈɛːtɹOnˌɛlə",
+            "secondary stress stays secondary"
+        );
+
+        let once = enunciate_phonemes("lˈɛft");
+        assert_eq!(enunciate_phonemes(&once), once, "the pass is idempotent");
+    }
+
+    #[test]
+    fn half_counts_are_spoken_as_one_phrase() {
+        assert_eq!(smooth_count_phonemes("wˈʌns ænd ɐ hˈæf"), "wˈʌns nəhˈæf");
+        assert_eq!(smooth_count_phonemes("twˈIs ænd ɐ hˈæf"), "twˈIs nəhˈæf");
+        assert_eq!(smooth_count_phonemes("wˈʌns ɐn ɐ hˈæf"), "wˈʌns nəhˈæf");
+        assert_eq!(smooth_count_phonemes("kˈɑntɹə"), "kˈɑntɹə");
+
+        let once = smooth_count_phonemes("wˈʌns ænd ɐ hˈæf");
+        assert_eq!(smooth_count_phonemes(&once), once, "the pass is idempotent");
+
+        // The spoken form reaches this through the text normalizer.
+        assert_eq!(
+            smooth_count_phonemes(&phones("once and a half")),
+            "wˈʌns nəhˈæf"
+        );
+    }
+
+    #[test]
+    fn enunciation_makes_presence_and_dynamics_distinct() {
+        let rate = 48_000;
+        let mut low = sine_wave(300.0, rate, 0.2);
+        let mut high = sine_wave(3_000.0, rate, 0.2);
+        enunciate_audio(&mut low, rate);
+        enunciate_audio(&mut high, rate);
+        assert!(
+            rms(&high) > rms(&low) * 1.2,
+            "presence lift should favour consonant energy: {} vs {}",
+            rms(&high),
+            rms(&low)
+        );
+
+        let mut loud = sine_wave(500.0, rate, 0.8);
+        let mut quiet = sine_wave(500.0, rate, 0.05);
+        compress(&mut loud, rate as f32);
+        compress(&mut quiet, rate as f32);
+        let ratio_before = 0.8 / 0.05;
+        let ratio_after = rms(&loud) / rms(&quiet);
+        assert!(
+            ratio_after < ratio_before * 0.8,
+            "compression should reduce the dynamic range: {ratio_after} vs {ratio_before}"
+        );
+
+        let mut samples = sine_wave(500.0, rate, 1.0);
+        enunciate_audio(&mut samples, rate);
+        assert!(samples.iter().all(|sample| sample.is_finite()));
+        let peak = samples
+            .iter()
+            .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+        assert!(peak <= 0.98, "{peak}");
+    }
+
+    fn sine_wave(frequency: f32, sample_rate: u32, amplitude: f32) -> Vec<f32> {
+        let rate = sample_rate as f32;
+        (0..sample_rate)
+            .map(|index| {
+                amplitude * (std::f32::consts::TAU * frequency * index as f32 / rate).sin()
+            })
+            .collect()
+    }
+
+    fn rms(samples: &[f32]) -> f32 {
+        (samples.iter().map(|sample| sample * sample).sum::<f32>() / samples.len() as f32).sqrt()
+    }
+
+    #[test]
     #[ignore = "downloads and loads the Kokoro model"]
     fn synthesizes_a_reviewed_call_from_the_real_model() {
         let cache = std::env::var("CONTRA_KOKORO_CACHE")
@@ -1180,7 +1563,12 @@ mod tests {
         let mut engine = Engine::load(Path::new(&cache), voice, &environment, |_, _, _| {})
             .expect("load the voice");
         let samples = engine
-            .synthesize("larks allemande left once and a half", 1.0, 48_000)
+            .synthesize(
+                "larks allemande left once and a half",
+                1.0,
+                CallTone::Commanding,
+                48_000,
+            )
             .expect("synthesize a call");
         assert!(samples.len() > 24_000, "the call was too short");
         let peak = samples
@@ -1197,7 +1585,9 @@ mod tests {
             "gentlespoons",
             "neighbors do-si-do once",
         ] {
-            let samples = engine.synthesize(text, 1.0, 48_000).expect(text);
+            let samples = engine
+                .synthesize(text, 1.0, CallTone::Commanding, 48_000)
+                .expect(text);
             let peak = samples
                 .iter()
                 .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
@@ -1209,7 +1599,7 @@ mod tests {
             let mut engine = Engine::load(Path::new(&cache), voice, &environment, |_, _, _| {})
                 .unwrap_or_else(|error| panic!("{}: {error}", voice.id));
             let samples = engine
-                .synthesize("swing your partner", 1.0, 48_000)
+                .synthesize("swing your partner", 1.0, CallTone::Commanding, 48_000)
                 .unwrap_or_else(|error| panic!("{}: {error}", voice.id));
             let peak = samples
                 .iter()

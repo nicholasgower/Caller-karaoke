@@ -84,7 +84,7 @@ pub enum AccompanimentRhythm {
     Arpeggio,
     /// Swung boom-chuck with a long-short feel.
     Shuffle,
-    /// Continuous chord strums on every half beat.
+    /// Alternating down and up strums on every half beat.
     Strum,
     /// One chord per harmony, held as long as the changes allow.
     Sustained,
@@ -131,6 +131,61 @@ impl Theme {
             Self::Dark => "Dark",
             Self::Light => "Light",
         }
+    }
+}
+
+/// How the spoken call is delivered.
+///
+/// The Kokoro model has no emotion or style input, and punctuation is reduced
+/// to pauses before synthesis. Tone therefore comes from two model-level cues:
+/// a small pitch shift that keeps its own contribution to duration neutral, and
+/// a clear-speech pass that holds stressed vowels and lifts consonant presence.
+/// Call start times stay on the syllable estimate.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CallTone {
+    /// A lower, projected register with lengthened stressed vowels and a
+    /// presence lift for consonants.
+    #[default]
+    Commanding,
+    /// The voice's recorded pitch and even emphasis.
+    Natural,
+}
+
+impl CallTone {
+    pub const ALL: [Self; 2] = [Self::Commanding, Self::Natural];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Commanding => "Commanding caller",
+            Self::Natural => "Natural",
+        }
+    }
+
+    pub fn detail(self) -> &'static str {
+        match self {
+            Self::Commanding => {
+                "A lower, projected register with crisper consonants and fuller \
+                 stressed vowels. The lead stays on the syllable estimate; the \
+                 safety padding covers the clearer delivery."
+            }
+            Self::Natural => "The voice's recorded pitch and even emphasis.",
+        }
+    }
+
+    /// Pitch multiplier for the neural voice. `1.0` leaves the voice alone.
+    pub fn pitch(self) -> f32 {
+        match self {
+            Self::Commanding => 0.94,
+            Self::Natural => 1.0,
+        }
+    }
+
+    /// Whether this tone asks the neural voice to sharpen its diction.
+    ///
+    /// The enunciation pass lengthens the stressed vowel in each content word
+    /// and adds a presence/compression stage after synthesis.
+    pub fn enunciation(self) -> bool {
+        matches!(self, Self::Commanding)
     }
 }
 
@@ -243,6 +298,9 @@ pub struct Preferences {
     pub tts_rate: f32,
     #[serde(default = "default_tts_voice")]
     pub tts_voice: String,
+    /// Delivery tone for spoken calls; see [`CallTone`].
+    #[serde(default)]
+    pub tts_tone: CallTone,
     /// Speak and show a randomly chosen alternative call alias for moves that
     /// have one. Off by default so calls stay predictable.
     pub shuffle_alternatives: bool,
@@ -323,6 +381,11 @@ pub const MIGRATIONS: &[Migration] = &[
         version: 7,
         apply: migrate_v6_tune_rotation,
     },
+    Migration {
+        tag: "tts-tone-v7",
+        version: 7,
+        apply: migrate_v6_tts_tone,
+    },
 ];
 
 fn migrate_v1_lead_calibration(prefs: &mut Preferences) {
@@ -371,6 +434,12 @@ fn migrate_v6_tune_rotation(_prefs: &mut Preferences) {
     // default for older files.
 }
 
+fn migrate_v6_tts_tone(_prefs: &mut Preferences) {
+    // v7 adds the caller tone. `serde` supplies the Commanding default for
+    // older files, which is the requested change, so there is nothing else to
+    // adjust.
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -387,12 +456,14 @@ pub struct ChangeSet {
     pub timeline: bool,
     /// Music must be re-rendered: arrangement, mix, or soundfont changed.
     pub audio: bool,
+    /// Spoken calls must be synthesized again: the delivery tone changed.
+    pub tone: bool,
 }
 
 impl ChangeSet {
     /// Whether anything has to be redone.
     pub fn any(self) -> bool {
-        self.timeline || self.audio
+        self.timeline || self.audio || self.tone
     }
 }
 
@@ -416,6 +487,7 @@ impl Default for Preferences {
             tts_enabled: false,
             tts_rate: 1.0,
             tts_voice: default_tts_voice(),
+            tts_tone: CallTone::default(),
             shuffle_alternatives: false,
             loop_enabled: true,
             count_in_enabled: true,
@@ -530,6 +602,7 @@ impl Preferences {
                 || self.melody_volume != old.melody_volume
                 || self.accompaniment_volume != old.accompaniment_volume
                 || self.soundfont != old.soundfont,
+            tone: self.tts_tone != old.tts_tone,
         }
     }
 }
@@ -555,6 +628,7 @@ mod tests {
         assert!(prefs.accompaniment_variations);
         assert!(!prefs.tts_enabled);
         assert_eq!(prefs.tts_voice, "af_heart");
+        assert_eq!(prefs.tts_tone, CallTone::Commanding);
         assert_eq!(prefs.schema_version, 7);
         assert!(!prefs.shuffle_alternatives);
         assert!(!prefs.tune_rotation.enabled);
@@ -676,6 +750,36 @@ mod tests {
         assert_eq!(migrated.accompaniment_rhythm, AccompanimentRhythm::Auto);
         assert_eq!(migrated.lead.padding_seconds, LEAD_PADDING_SECONDS);
         assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn v6_preferences_use_the_commanding_tone_by_default() {
+        let json = r#"{"schema_version":6,"tempo_bpm":220.0}"#;
+        let migrated = Preferences::from_json(json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, 7);
+        assert_eq!(migrated.tts_tone, CallTone::Commanding);
+        assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn call_tone_round_trips() {
+        let prefs = Preferences {
+            tts_tone: CallTone::Natural,
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.tts_tone, CallTone::Natural);
+    }
+
+    #[test]
+    fn commanding_tone_lowers_the_neural_pitch() {
+        assert!(CallTone::Commanding.pitch() < 1.0);
+        assert_eq!(CallTone::Natural.pitch(), 1.0);
+        assert!(CallTone::Commanding.enunciation());
+        assert!(!CallTone::Natural.enunciation());
+        assert_eq!(CallTone::default(), CallTone::Commanding);
     }
 
     #[test]
@@ -868,7 +972,8 @@ mod tests {
             tempo.changes_since(&base),
             ChangeSet {
                 timeline: true,
-                audio: true
+                audio: true,
+                tone: false
             }
         );
 
@@ -878,7 +983,8 @@ mod tests {
             aliases.changes_since(&base),
             ChangeSet {
                 timeline: true,
-                audio: false
+                audio: false,
+                tone: false
             }
         );
 
@@ -888,7 +994,19 @@ mod tests {
             melody.changes_since(&base),
             ChangeSet {
                 timeline: false,
-                audio: true
+                audio: true,
+                tone: false
+            }
+        );
+
+        let mut tone = base.clone();
+        tone.tts_tone = CallTone::Natural;
+        assert_eq!(
+            tone.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: false,
+                tone: true
             }
         );
 

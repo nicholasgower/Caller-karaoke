@@ -7,6 +7,8 @@
 - Role-term replacement across all presets and custom terms.
 - Alias classification and template rendering.
 - Timeline construction for the default dance and synthetic edge cases.
+- Call variants, collision-free scheduling, call rhythm slots, thinning, phrase
+  validation, and the first-call fit (§17).
 - ABC sequencing: keys, accidentals, ties, repeats, endings, parts, tuplets,
   chords, pickups.
 - Chord extraction and inference.
@@ -31,6 +33,9 @@
 ### Manual QA
 
 - Count-in, first call, loop seam, pause/resume.
+- Call along to the default dance at 224, 232, and 240 BPM with each call-support
+  level; compare the result with a recording and, where possible, an experienced
+  caller (§17).
 - Tempo changes and instrument changes.
 - TTS timing and stop behaviour.
 - Small-screen layout and soft keyboard.

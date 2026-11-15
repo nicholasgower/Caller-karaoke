@@ -1,6 +1,6 @@
 ---
 title: Text to speech
-description: Enable spoken calls, choose the local Kokoro voice, set the speaking rate, and understand pronunciation corrections and fallbacks.
+description: Enable spoken calls, choose the local Kokoro voice and caller tone, set the speaking rate, and understand pronunciation corrections and fallbacks.
 sidebar_position: 8
 ---
 
@@ -45,6 +45,25 @@ and differ only in the downloaded style file. On first use, the section shows a
 progress bar while the voice is prepared; later runs load it from the cache. If
 preparation fails, desktop shows **Retry neural voice** and continues with the
 platform voice.
+
+## Choose a caller tone
+
+<Steps>
+  <Step shot="prefs-tts-rate">
+    In **Preferences → Text to speech**, choose **Tone**.
+  </Step>
+</Steps>
+
+**Commanding caller** is the default. It lowers the voice slightly and sharpens
+diction: the stressed vowel in each content word is held a little longer, and a
+presence and compression stage brings consonants forward. **Natural** uses the
+voice's recorded pitch and even emphasis. The tone changes delivery, not the
+words. On desktop, changing the tone prepares the neural voice again.
+
+The tone does not change the visual lead. Calls are still timed from the
+syllable estimate, and the clear-speech delivery stays inside the safety padding
+used for every call. Some platform voices ignore pitch changes; the desktop
+neural voice applies the full delivery.
 
 The same section has **Shuffle alternative call aliases**, which varies the call
 wording when the alias table has alternatives. Its behaviour is described in
@@ -110,5 +129,10 @@ paused dance does not repeat it.
 The app speaks the **rendered alias**, not the original card text. That means
 role terms, placeholders, and custom aliases are reflected in speech. If
 **Show original card text** is on, the original is only visual.
+
+A count of one is omitted from the alias before it is spoken, so
+`neighbors do-si-do once` is called as `neighbors do-si-do`. The tail `and a
+half` is pronounced as one connected phrase, “n' a half”, so `once and a half`
+does not arrive as four separated words.
 
 Next: [Cache and offline](/docs/guides/cache-and-offline).

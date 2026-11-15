@@ -59,10 +59,10 @@ Generate a backing track from the chord track:
 
 ### 6.4 Count-in
 
-- Three dance beats before the loop.
+- Four dance beats before the loop.
 - Accompaniment only.
 - First chord from the chord track at beat 0; fall back to the tonic triad.
-- Visual 3-2-1 and optional "Get ready: <first call>" text.
+- Visual 4-3-2-1 and optional "Get ready: <first call>" text.
 
 ### 6.5 Synthesis
 

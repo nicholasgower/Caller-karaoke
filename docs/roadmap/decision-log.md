@@ -13,3 +13,9 @@
 | 2026-11-14 | Dated nightly tags + rolling nightly | Traceable builds without changing semantic version |
 | 2026-11-15 | Refresh documentation screenshots only at release prep | Per-worktree regeneration was slow and noisy; prose still tracks every change |
 | 2026-11-15 | Host the web build on the documentation site | Lets visitors try the app without downloading; the docs deploy already owns the Pages artifact and can rebuild it from `main` |
+| 2026-11-15 | Count-in is four dance beats ("four potatoes") | Owner correction: the earlier three-beat choice was wrong. Four is the contra convention and gives the first call more room |
+| 2026-11-15 | Pursue both human-caller training and autonomous calling | The same timeline supports both; an autonomous caller is a strong model for a learner |
+| 2026-11-15 | Calls should fit the beat via long/medium/short variants | Research: good callers use 4/2/1/0-beat variants and thin over the dance; stretching every alias is a training crutch |
+| 2026-11-15 | Defer the dance model and everything that depends on it | Who/where and positional calling need a real choreography model; roadmap only until it is designed and accepted |
+| 2026-11-15 | Commanding caller tone by default, via a pitch shift and clear-speech phoneme/EQ pass | Kokoro has no emotion input and drops punctuation; holding stressed vowels and lifting presence makes diction carry without changing the syllable-based lead |
+| 2026-11-15 | Omit the word “once” and connect “and a half” in calls | Callers do not say a one-count; the connected tail removes the four-word pause without changing the card |

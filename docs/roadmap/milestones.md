@@ -40,7 +40,7 @@ multiple tempo/alias settings.
 - [ ] MIDI export.
 - [ ] Golden tests for arrangement and audio sanity.
 
-Exit: Sandy Boys plays as a 64-beat fiddle/piano loop with a three-beat
+Exit: Sandy Boys plays as a 64-beat fiddle/piano loop with a four-beat
 count-in, and the UI clock matches the audio.
 
 ### M3 — Sources, cache, defaults
@@ -67,7 +67,7 @@ falls back to bundled/cached content.
 - [ ] Preferences in the specified order.
 - [ ] Alias editor with live preview and reset.
 - [ ] Role-term selector and custom terms.
-- [ ] TTS toggle, voice/rate, and stop-on-pause.
+- [ ] TTS toggle, voice/rate/tone, and stop-on-pause.
 - [ ] Loading, empty, error, and offline states.
 - [ ] Keyboard shortcuts and accessibility labels.
 
@@ -99,3 +99,38 @@ Exit: a push to `dev` produces a complete nightly release.
 - [ ] Tag 0.1.0 (only when the owner approves).
 
 Exit: all release-checklist items pass.
+
+### M7 — Caller craft (post-0.1.0)
+
+Sequenced in §17. This milestone starts after 0.1.0 unless the owner promotes a
+P0 item earlier.
+
+**P0 — trustworthy calls**
+
+- [ ] C1: long / medium / short call variants, chosen by fit.
+- [ ] C2: collision-free scheduling and first-call fit.
+- [ ] C3: distance, fraction, and destination correctness; callability report.
+- [ ] C4: call-rhythm display and “say by” marker.
+
+**P1 — teach the caller**
+
+- [ ] C5: call support and thinning schedule; Rescue.
+- [ ] C6: dance/phrase validation; repeat short cards.
+- [ ] C7: walkthrough and teaching mode.
+- [ ] C8: loop count, ending, and band cues.
+
+**P2 — complete the practice loop**
+
+- [ ] C9: tempo and count-in polish.
+- [ ] C10: recording, timing score, cover and spot-check modes.
+- [ ] C11: beat-aware TTS and speech-rate calibration.
+- [ ] C12: callability check in the picker.
+
+**P3 — gated on the dance model**
+
+- [ ] C13: dance model designed and accepted.
+- [ ] C14: positional / gender-free prompt style.
+- [ ] C15: program and set planning.
+
+Exit: a caller can use the app from walkthrough to drop-out, and the same
+timeline can call a dance on its own at a danceable tempo.
