@@ -389,7 +389,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     capture(&mut harness, out, "prefs-alias-reset-all")?;
 
     // Preferences sections that sit below the fold at 1280x800.
-    harness.set_size(Vec2::new(1280.0, 2150.0));
+    harness.set_size(Vec2::new(1280.0, 2250.0));
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;

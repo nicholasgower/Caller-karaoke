@@ -21,7 +21,7 @@ message in Preferences.
 | Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, 1–4, and Enter are ignored while a text field has focus. |
 | Search returns an error | Dismiss it and retry. Cached content may still be available. In a browser, check the web proxy URL/token. |
 | Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from Maintenance. |
-| No spoken calls | Check the OS/browser voice, the **Speak calls** toggle, **Rate**, and that the music is playing. |
+| No spoken calls | Check the **Speak calls** toggle, **Rate**, the selected **Voice**, and that the music is playing. On desktop, wait for the first voice preparation or select **Retry neural voice**. |
 | SoundFont sounds wrong or silent | On desktop, remove it and return to the built-in synth; check the GM programs required by your file. |
 | SoundFont loading is unavailable | The browser and Android builds cannot load `.sf2` in 0.1.0; use the built-in synth. |
 | MIDI export is unavailable | Export is desktop-only in 0.1.0; the browser and Android builds report the limitation. |
@@ -72,9 +72,11 @@ and exporting MIDI are not available in the Android build yet.
 
 ## TTS errors
 
-If the system has no speech voice, **Speak calls** does not produce sound. The
-Preferences section shows the reason in muted text. Visual calls continue; see
-[Text to speech](/docs/guides/text-to-speech).
+On desktop, the first use of a Kokoro voice downloads the model and style file.
+If that fails, the app shows the reason, offers **Retry neural voice**, and falls
+back to the platform voice. If neither voice is usable, **Speak calls** does not
+produce sound and the Preferences section shows the reason in muted text. Visual
+calls continue; see [Text to speech](/docs/guides/text-to-speech).
 
 ## SoundFont errors
 

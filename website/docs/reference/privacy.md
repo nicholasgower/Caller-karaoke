@@ -18,6 +18,8 @@ does not send usage data to the project.
   `localStorage`. The cache is cleared manually from Preferences.
 - **SoundFont** — if you load one, the app stores its display name and path in
   preferences. The file itself remains where you put it.
+- **Neural voice cache** — on desktop, the Kokoro model and the selected voice
+  style file are stored in the app cache after the first download.
 
 ## What goes over the network
 
@@ -25,11 +27,13 @@ The app contacts only the sources you use:
 
 - `contradb.com` for dance search and details;
 - `backend.abcsessiontunes.com` for tune search and details;
-- a configured web proxy, if you set one.
+- a configured web proxy, if you set one;
+- Hugging Face, once, to download the Kokoro model and voice files for the
+  desktop neural voice.
 
 There are no analytics endpoints, crash reports, or update checks. The app does
 not fetch a page unless a search or selection asks for it; it does not crawl a
-site.
+site. After the neural voice is cached, speech synthesis is local.
 
 ## Proxy tokens
 

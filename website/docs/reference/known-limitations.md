@@ -26,8 +26,10 @@ development release. These are the limitations to know before relying on it.
   is unavailable.
 - A **SoundFont is not bundled**. You supply the file and are responsible for
   its license.
-- **TTS** depends on the operating system or browser voice. If no voice is
-  installed, visual calls continue.
+- **TTS** uses the local Kokoro neural voice on desktop. The model and selected
+  voice are downloaded on first use and then cached; a first run without a
+  network connection falls back to the platform voice. Web and Android always
+  use the platform voice. Visual calls continue if no voice is available.
 - **Page size** is fixed at ten results; there is no page-size selector.
 - There is no offline “using cached content” banner; stale cache is used
   silently.

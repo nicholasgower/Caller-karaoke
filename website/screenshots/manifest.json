@@ -220,7 +220,7 @@
       "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-instrument-accompaniment",
@@ -228,7 +228,7 @@
       "caption": "Piano is the default accompaniment; Guitar and Accordion are available.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-instrument-mix",
@@ -236,7 +236,7 @@
       "caption": "Balance the melody against the accompaniment before starting a session.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-accompaniment-variations",
@@ -244,7 +244,7 @@
       "caption": "Accompaniment variations add small emphasis notes and the occasional melody-only bar.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-sf2-loaded",
@@ -252,7 +252,7 @@
       "caption": "A user-supplied SoundFont replaces the built-in instrument voices.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-sf2-removed",
@@ -260,7 +260,7 @@
       "caption": "Remove a SoundFont to return to the built-in synth.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "error-sf2",
@@ -268,7 +268,7 @@
       "caption": "An unreadable or unsupported SoundFont leaves the previous instrument setup in place.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-timing-mode",
@@ -276,7 +276,7 @@
       "caption": "Automatic lead derives the call time from the rendered words.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-timing-bounds",
@@ -284,7 +284,7 @@
       "caption": "The speech lead is clamped to one to five beats; every call then adds 0.5 s of safety padding.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-timing-speech-rate",
@@ -292,7 +292,7 @@
       "caption": "A lower speech rate moves longer calls earlier.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-timing-rebuild",
@@ -300,7 +300,7 @@
       "caption": "Rebuild the timeline after changing lead settings if the session does not do it automatically.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "session-lead-countdown",
@@ -320,11 +320,11 @@
     },
     {
       "id": "prefs-tts-rate",
-      "alt": "The Text to speech section with Speak calls enabled and the Rate slider set below the default.",
-      "caption": "The rate applies to spoken calls and does not change the visual timing.",
+      "alt": "The Text to speech section showing the Kokoro Voice selector, the voice description, the Rate slider, and the headless-ready status line.",
+      "caption": "Desktop uses a local Kokoro voice; the rate applies to spoken calls without changing visual timing.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-tts-unavailable",
@@ -332,7 +332,7 @@
       "caption": "If the system has no speech voice, visual calls still work.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-cache-confirm",
@@ -340,7 +340,7 @@
       "caption": "Clearing the cache is a two-step action.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-cache-cleared",
@@ -348,7 +348,7 @@
       "caption": "Clearing the source cache does not remove the bundled default dance or tune.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-proxy",
@@ -356,7 +356,7 @@
       "caption": "Desktop and Android fetch sources directly; the web build can use a proxy.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "prefs-theme-light",
@@ -380,7 +380,7 @@
       "caption": "MIDI export is desktop-only in 0.1.0; clearing cache works on every platform.",
       "status": "ready",
       "width": 1280,
-      "height": 2150
+      "height": 2250
     },
     {
       "id": "error-network",

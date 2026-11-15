@@ -8,6 +8,10 @@ Contra Karaoke fetches dances from ContraDB and tunes from ABC Session Tunes,
 then caches the raw responses locally: files on the desktop and Android, and
 `localStorage` in the browser. The two bundled defaults work without a network.
 
+On desktop, the Kokoro neural voice is cached separately: the model and the
+selected voice style file are downloaded once and reused offline. The platform
+voice is used if the neural voice is not ready.
+
 ## Cache lifetimes
 
 | Content | Lifetime |
@@ -48,8 +52,8 @@ earlier.
   </Step>
 </Steps>
 
-Clearing the cache does not remove preferences, the bundled defaults, or a
-loaded SoundFont.
+Clearing the cache does not remove preferences, the bundled defaults, a loaded
+SoundFont, or the cached neural voice files.
 
 There is no cache-size display or manual refresh button in the current UI. Use
 the normal search action to fetch fresh content after clearing.

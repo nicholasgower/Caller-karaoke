@@ -701,7 +701,7 @@
     "prefs-instrument-melody": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
@@ -715,7 +715,7 @@
     "prefs-instrument-accompaniment": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
@@ -729,7 +729,7 @@
     "prefs-instrument-mix": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
@@ -743,21 +743,21 @@
     "prefs-accompaniment-variations": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1585,
+          1650,
           480,
-          50
+          60
         ]
       ]
     },
     "prefs-timing-mode": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
@@ -771,7 +771,7 @@
     "prefs-timing-bounds": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
@@ -785,7 +785,7 @@
     "prefs-timing-speech-rate": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
@@ -799,7 +799,7 @@
     "prefs-timing-rebuild": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
@@ -813,54 +813,54 @@
     "prefs-tts-rate": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1402,
-          160,
-          34
+          1290,
+          700,
+          270
         ]
       ]
     },
     "prefs-tts-unavailable": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1428,
-          360,
-          22
+          1290,
+          700,
+          280
         ]
       ]
     },
     "prefs-sf2-loaded": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1700,
+          1755,
           200,
-          80
+          90
         ]
       ]
     },
     "prefs-sf2-removed": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1738,
+          1780,
           180,
           22
         ]
@@ -869,26 +869,26 @@
     "error-sf2": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1700,
+          1755,
           500,
-          90
+          100
         ]
       ]
     },
     "prefs-cache-confirm": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1998,
+          2065,
           300,
           35
         ]
@@ -897,42 +897,42 @@
     "prefs-cache-cleared": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1950,
+          2070,
           300,
-          85
+          80
         ]
       ]
     },
     "prefs-proxy": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1810,
+          1885,
           370,
-          80
+          90
         ]
       ]
     },
     "prefs-maintenance": {
       "size": [
         1280,
-        2150
+        2250
       ],
       "regions": [
         [
           8,
-          1950,
+          2070,
           300,
-          85
+          80
         ]
       ]
     },
