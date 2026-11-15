@@ -51,7 +51,8 @@ The same Rust codebase targets Windows, Linux, the web (WASM), and Android.
 | Theme | Dark grey by default; light grey option |
 | Version until further notice | **0.1.0** |
 | Windows packaging | Inno Setup installer + portable ZIP |
-| Nightly releases | Every push to `main`, dated tags plus a rolling `nightly` release |
+| Nightly releases | Every push to `dev`, dated tags plus a rolling `nightly` release |
+| Branching | Feature work merges into `dev`; `main` advances only for releases |
 
 The default dance is **Another Last Dance** (ContraDB dance 2409).
 The default tune is **Sandy Boys** (ABC Session Tunes tune 75815).
@@ -340,14 +341,14 @@ speech_lead_beats = clamp(
                      min_lead_beats,
                      max_lead_beats
                    )
-lead_beats       = speech_lead_beats + 0.5 s (as dance beats)
+lead_beats       = speech_lead_beats + safety_padding (as dance beats)
 call_start_beat  = execution_beat - lead_beats
 ```
 
 Defaults are calibrated from measured delivery: saying
 “larks allemande left once and a half” (nine syllables) took **2.25 seconds**,
-which is 4.5 dance beats at 240 BPM. A flat **0.5 s safety padding** is added
-to every call after the speech-lead clamp.
+which is 4.5 dance beats at 240 BPM. A **safety padding** is added to every call
+after the speech-lead clamp; it defaults to 0.5 s and is user-adjustable.
 
 | Setting | Default |
 | --- | --- |
@@ -357,10 +358,11 @@ to every call after the speech-lead clamp.
 | lead scale | 1.0 |
 | min speech lead | 1.0 beat |
 | max speech lead | 5.0 beats |
-| safety padding | 0.5 s |
+| safety padding | 0.5 s (adjustable 0–2 s) |
 
 The max speech lead is user-adjustable up to 6 beats for learning sessions or
-slower TTS voices; the padding is always added on top.
+slower TTS voices, and the safety padding is adjustable separately; it is always
+added on top.
 
 Example at 240 BPM:
 
@@ -792,11 +794,15 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 ### 8.2 Responsive behaviour
 
 - Breakpoint: approximately 640 px.
-- Tabs remain horizontally usable on mobile (scroll if necessary).
-- Session controls wrap into two rows on narrow screens.
+- Tabs remain horizontally usable on mobile (scroll if necessary); the phone
+  layout uses short tab labels and drops the wordmark to keep one row.
+- Session controls stack on narrow screens: tempo and volume sliders span the
+  width, transport buttons split one row, and the remaining toggles wrap.
 - Minimum 44 px touch targets.
 - Avoid hover-only interactions.
-- The dance area scrolls; the current call stays visible.
+- The dance area scrolls; the current call stays visible. On short windows
+  (under about 800 px of session height, including a landscape phone) the whole
+  session page scrolls so the card stays reachable.
 - The pickers become full-screen sheets on mobile and dialogs on desktop.
 - Respect safe-area insets on mobile.
 
@@ -845,7 +851,7 @@ Notes:
 
 ### 9.2 CI
 
-**`ci.yml`** on pull requests and pushes:
+**`ci.yml`** on pull requests and pushes to `main` or `dev`:
 
 - `cargo fmt --all --check`
 - `cargo clippy --workspace --all-targets -- -D warnings`
@@ -855,7 +861,7 @@ Notes:
 - `cargo deny check` with an allowlist of permissive licenses
 - `cargo machete`
 
-**`nightly.yml`** on every push to `main`:
+**`nightly.yml`** on every push to `dev`:
 
 - Build all release targets.
 - Generate release notes with `git-cliff`.
@@ -873,8 +879,11 @@ Notes:
 also builds the WASM app and stages it under `/app/` so the guide can embed a
 hosted copy.
 
-### 9.3 Versioning
+### 9.3 Versioning and branches
 
+- Feature work from worktrees and pull requests merges into `dev` first. Test it
+  on `dev`; only merge `dev` into `main` when a release is ready.
+- `main` is the source for official release builds.
 - Stay at **0.1.0** until the project owner declares a release.
 - Nightly artifacts carry the date and short SHA, not a new semantic version.
 - The changelog keeps an `[Unreleased]` section.
@@ -1066,7 +1075,7 @@ placeholder screens.
 - [ ] `CREDITS.md`, README, and docs.
 - [ ] Artifact checksums and release notes.
 
-Exit: a push to `main` produces a complete nightly release.
+Exit: a push to `dev` produces a complete nightly release.
 
 ### M6 — Release hardening
 

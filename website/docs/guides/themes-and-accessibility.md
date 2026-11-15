@@ -43,8 +43,13 @@ immediately. The docs site also respects `prefers-reduced-motion`.
 
 ## Touch and narrow windows
 
-Buttons use a 40-pixel interaction height, and the session controls wrap into
-multiple rows at narrow widths. The app window has a minimum size of 360×560.
+Every control in the phone session layout — tab, slider, transport button, and
+toggle — uses a 44-pixel interaction height, and the app window has a minimum
+size of 360×560. Below about 640 pixels wide the **Session** tab switches to
+that phone layout: the wordmark and long tab labels give way to four short tabs
+beside the pinned **About** button, the tempo and volume sliders use the full
+width, and the transport buttons split the row evenly. On a short window the
+whole session page scrolls so the dance card is never pushed out of reach.
 
 <Shot id="main-mobile" />
 

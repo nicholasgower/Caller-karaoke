@@ -69,8 +69,9 @@ While a figure executes, the prompt switches to the move you must say next. The
 <Shot id="session-call-now" />
 
 The **executes in N beats** line is the remaining lead. A short call may show
-about two beats; a long call up to six by default once the 0.5 s safety padding
-is included. See [Timing and lead](/docs/guides/timing-and-lead).
+about two beats; a long call up to six by default once the safety padding
+(0.5 s by default) is included. See
+[Timing and lead](/docs/guides/timing-and-lead).
 
 If **Show original card text** is enabled in Preferences, the original card
 wording appears in small muted text next to the rendered call.
@@ -146,10 +147,18 @@ open, the transport and tab shortcuts are suspended.
 
 ## Narrow windows
 
-The session controls use wrapping rows. At phone width they take several lines,
-and the dance card scrolls below the prompt. The pickers use two columns; on a
-narrow screen this can be tight, so rotate the device or use a wider window when
-searching.
+At phone width the session tab uses its compact layout. The top row keeps four
+short tabs — **Session**, **Dance**, **Tune**, and **Prefs** — beside the
+pinned **About** button, without the wordmark. The tempo and volume sliders
+span the screen with their value boxes, and **Play**, **Pause**, and
+**Restart** split one row evenly. Loop, count-in, and spoken calls stay on one
+wrapping row. Every control keeps a 44-pixel touch target.
+
+When the window is too short to show the controls, prompt, progress, and dance
+card together, the whole session page scrolls instead of squeezing the card.
+On a taller phone the prompt stays put and only the dance card scrolls. The
+pickers still use two columns; on a narrow screen this can be tight, so rotate
+the device or use a wider window when searching.
 
 <Shot id="session-mobile-controls" />
 

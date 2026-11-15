@@ -9,9 +9,10 @@ The release matrix is defined in `.github/workflows/nightly.yml`.
 | Web | `contra-karaoke-web.zip` | Trunk + wasm-opt |
 | Android | `.apk` | cargo-apk, minSdk 26 |
 
-Nightly releases are created on every push to `main` and use version `0.1.0`
-with the commit SHA in the release name. The changelog is maintained by
-`git-cliff`.
+Nightly releases are created on every push to `dev` and use version `0.1.0`
+with the commit SHA in the release name. Feature work merges into `dev` first;
+`main` only advances when a release is ready and is the source for official
+release builds. The changelog is maintained by `git-cliff`.
 
 Before a release, run:
 

@@ -755,7 +755,7 @@ impl ContraApp {
             // A render that lands mid-call while the music is already playing
             // must not repeat that call. When the transport was not running,
             // nothing has been spoken for this position, so the call must stay
-            // eligible — otherwise the first call of a freshly selected dance
+            // eligible ΓÇö otherwise the first call of a freshly selected dance
             // is marked as spoken before it is ever heard.
             if was_playing {
                 self.last_spoken = self
@@ -1065,13 +1065,19 @@ impl eframe::App for ContraApp {
         let beat = self.current_beat();
         self.update_speech(beat);
 
+        let compact = ui.available_width() < COMPACT_WIDTH;
         egui::Panel::top("tabs")
             .frame(egui::Frame::default().inner_margin(egui::Margin::symmetric(12, 8)))
             .show(ui, |ui| {
                 let animate = self.prefs.animations_enabled;
                 // The About button is pinned to the top-right corner; the
-                // heading and tabs share the remaining width and still wrap at
-                // phone width.
+                // heading and tabs share the remaining width.
+                if compact {
+                    // Keep the phone header at the 44 pt touch minimum and
+                    // narrow the About button so four short tabs fit beside it.
+                    ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
+                    ui.spacing_mut().button_padding.x = 8.0;
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                     if ui
                         .button("About")
@@ -1082,35 +1088,61 @@ impl eframe::App for ContraApp {
                     }
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
                         ui.horizontal_wrapped(|ui| {
-                            ui.heading("Contra Karaoke");
-                            ui.add_space(12.0);
-                            if tab(ui, self.screen == Screen::Session, "Session", "1", animate) {
+                            // At phone width the four tabs, not the wordmark, are
+                            // the useful part of the header. Dropping the heading
+                            // and the long tab labels keeps the navigation to one
+                            // row and leaves that height for the prompt and card.
+                            let labels = if compact {
+                                ["Session", "Dance", "Tune", "Prefs"]
+                            } else {
+                                ["Session", "Select dance", "Select Tune", "Preferences"]
+                            };
+                            let hovers = ["Session", "Select dance", "Select Tune", "Preferences"];
+                            if !compact {
+                                ui.heading("Contra Karaoke");
+                                ui.add_space(12.0);
+                            }
+                            if tab(
+                                ui,
+                                self.screen == Screen::Session,
+                                labels[0],
+                                hovers[0],
+                                "1",
+                                animate,
+                                compact,
+                            ) {
                                 self.screen = Screen::Session;
                             }
                             if tab(
                                 ui,
                                 matches!(self.screen, Screen::DancePicker | Screen::DanceDownload),
-                                "Select dance",
+                                labels[1],
+                                hovers[1],
                                 "2",
                                 animate,
+                                compact,
                             ) {
                                 self.screen = Screen::DancePicker;
                             }
                             if tab(
                                 ui,
                                 matches!(self.screen, Screen::TunePicker | Screen::TuneDownload),
-                                "Select tune",
+                                labels[2],
+                                hovers[2],
                                 "3",
                                 animate,
+                                compact,
                             ) {
                                 self.screen = Screen::TunePicker;
                             }
                             if tab(
                                 ui,
                                 self.screen == Screen::Preferences,
-                                "Preferences",
+                                labels[3],
+                                hovers[3],
                                 "4",
                                 animate,
+                                compact,
                             ) {
                                 self.screen = Screen::Preferences;
                             }
@@ -1121,6 +1153,9 @@ impl eframe::App for ContraApp {
 
         if let Some(error) = self.error.clone() {
             egui::Panel::bottom("error").show(ui, |ui| {
+                if compact {
+                    ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
+                }
                 ui.horizontal_wrapped(|ui| {
                     ui.colored_label(theme::error(ui), error);
                     if ui.button("Dismiss").clicked() {
@@ -1171,6 +1206,34 @@ impl eframe::App for ContraApp {
 
 /// Duration of the fade/slide when the active screen changes.
 const SCREEN_ANIM_SECONDS: f32 = 0.22;
+/// Width below which the UI switches to its phone layout (ROADMAP ┬º8.2).
+const COMPACT_WIDTH: f32 = 640.0;
+/// Height below which the session tab scrolls as one page so the dance card
+/// stays reachable on short phones and landscape windows.
+const SESSION_PAGE_SCROLL_HEIGHT: f32 = 800.0;
+
+/// Height below which the session tab scrolls as one page, even at a wide
+/// width, so a landscape phone can still reach the dance card.
+const SESSION_SHORT_HEIGHT: f32 = 560.0;
+
+/// How the session tab adapts to the viewport.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct SessionLayout {
+    /// Use the stacked phone layout for the controls and summary.
+    compact: bool,
+    /// Scroll the whole session page instead of only the dance card.
+    page_scroll: bool,
+}
+
+fn session_layout(width: f32, height: f32) -> SessionLayout {
+    let compact = width < COMPACT_WIDTH;
+    SessionLayout {
+        compact,
+        page_scroll: (compact && height < SESSION_PAGE_SCROLL_HEIGHT)
+            || height < SESSION_SHORT_HEIGHT,
+    }
+}
+
 /// Duration of a tab's selected/hover background and text fade.
 const TAB_ANIM_SECONDS: f32 = 0.16;
 /// Duration used for animating card and result highlights.
@@ -1201,20 +1264,32 @@ fn lerp_color(from: egui::Color32, to: egui::Color32, t: f32) -> egui::Color32 {
 /// A top-row tab with an animated selected background and text colour.
 ///
 /// `tab()` is used instead of `selectable_label` so the selected state can
-/// fade in and out; egui's selectable label switches instantly.
-fn tab(ui: &mut egui::Ui, active: bool, label: &str, shortcut: &str, animate: bool) -> bool {
+/// fade in and out; egui's selectable label switches instantly. `label` is the
+/// visible text and `hover` is the full name plus shortcut, which lets the
+/// phone layout shorten the label without losing the screen name.
+fn tab(
+    ui: &mut egui::Ui,
+    active: bool,
+    label: &str,
+    hover: &str,
+    shortcut: &str,
+    animate: bool,
+    compact: bool,
+) -> bool {
     let ctx = ui.ctx().clone();
-    let id = ui.make_persistent_id(("tab", label));
+    let id = ui.make_persistent_id(("tab", hover));
     let font = egui::TextStyle::Button.resolve(ui.style());
     let galley = ui
         .painter()
         .layout_no_wrap(label.to_owned(), font, egui::Color32::PLACEHOLDER);
+    // Narrower tabs leave room for the pinned About button on a phone.
+    let horizontal_padding = if compact { 16.0 } else { 24.0 };
     let desired = egui::vec2(
-        galley.size().x + 24.0,
+        galley.size().x + horizontal_padding,
         (galley.size().y + 16.0).max(ui.spacing().interact_size.y),
     );
     let (rect, response) = ui.allocate_exact_size(desired, egui::Sense::click());
-    let response = response.on_hover_text(format!("{label} ({shortcut})"));
+    let response = response.on_hover_text(format!("{hover} ({shortcut})"));
 
     let active_t = if animate {
         ctx.animate_bool_with_time(id, active, TAB_ANIM_SECONDS)
@@ -1268,7 +1343,7 @@ fn tab(ui: &mut egui::Ui, active: bool, label: &str, shortcut: &str, animate: bo
         );
     }
 
-    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, active, label));
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, active, hover));
     if response.hovered() {
         ctx.set_cursor_icon(egui::CursorIcon::PointingHand);
     }
@@ -1547,6 +1622,57 @@ mod tests {
             card_tone(true, None, CardMode::CurrentCall),
             CardTone::Neutral
         );
+    }
+
+    #[test]
+    fn session_layout_uses_the_phone_stack_below_the_breakpoint() {
+        assert_eq!(
+            session_layout(390.0, 900.0),
+            SessionLayout {
+                compact: true,
+                page_scroll: false
+            }
+        );
+        assert_eq!(
+            session_layout(639.0, 900.0),
+            SessionLayout {
+                compact: true,
+                page_scroll: false
+            }
+        );
+        assert_eq!(
+            session_layout(390.0, 768.0),
+            SessionLayout {
+                compact: true,
+                page_scroll: true
+            }
+        );
+        assert_eq!(
+            session_layout(640.0, 800.0),
+            SessionLayout {
+                compact: false,
+                page_scroll: false
+            }
+        );
+        assert_eq!(
+            session_layout(1280.0, 800.0),
+            SessionLayout {
+                compact: false,
+                page_scroll: false
+            }
+        );
+    }
+
+    #[test]
+    fn short_phone_sessions_scroll_as_one_page() {
+        let layout = session_layout(390.0, 560.0);
+        assert!(layout.compact);
+        assert!(layout.page_scroll);
+        // A landscape phone keeps the wide control row, but its short height
+        // still makes the whole page scroll so the dance card is reachable.
+        let landscape = session_layout(844.0, 390.0);
+        assert!(!landscape.compact);
+        assert!(landscape.page_scroll);
     }
 
     #[test]

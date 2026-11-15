@@ -11,12 +11,19 @@ use crate::dance::{Dance, DanceError};
 use crate::roles::RoleTerms;
 use crate::time::Tempo;
 
-/// Flat safety padding added to every call, in seconds.
+/// Default flat safety padding added to every call, in seconds.
 ///
 /// This is deliberately outside the min/max speech-lead clamp: the padding is
 /// a constant buffer for every instruction, while the clamp keeps the speech
-/// estimate itself within the caller's chosen range.
+/// estimate itself within the caller's chosen range. The caller can adjust the
+/// padding in [`LeadSettings::padding_seconds`].
 pub const LEAD_PADDING_SECONDS: f64 = 0.5;
+
+/// Smallest selectable safety padding, in seconds.
+pub const MIN_PADDING_SECONDS: f64 = 0.0;
+
+/// Largest selectable safety padding, in seconds.
+pub const MAX_PADDING_SECONDS: f64 = 2.0;
 
 /// User-tunable call-lead calculation.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -38,6 +45,9 @@ pub struct LeadSettings {
     pub lead_scale: f64,
     #[serde(default = "default_manual_lead")]
     pub manual_beats: f64,
+    /// Flat buffer added to every call after the speech-lead clamp, in seconds.
+    #[serde(default = "default_padding_seconds")]
+    pub padding_seconds: f64,
 }
 
 fn default_true() -> bool {
@@ -66,6 +76,9 @@ fn default_lead_scale() -> f64 {
 fn default_manual_lead() -> f64 {
     1.5
 }
+fn default_padding_seconds() -> f64 {
+    LEAD_PADDING_SECONDS
+}
 
 impl Default for LeadSettings {
     fn default() -> Self {
@@ -78,6 +91,7 @@ impl Default for LeadSettings {
             extra_pause_seconds: default_extra_pause(),
             lead_scale: default_lead_scale(),
             manual_beats: default_manual_lead(),
+            padding_seconds: default_padding_seconds(),
         }
     }
 }
@@ -113,9 +127,15 @@ impl LeadSettings {
             self.manual_beats = default_manual_lead();
         }
         self.manual_beats = self.manual_beats.clamp(self.min_beats, self.max_beats);
+        if !self.padding_seconds.is_finite() {
+            self.padding_seconds = default_padding_seconds();
+        }
+        self.padding_seconds = self
+            .padding_seconds
+            .clamp(MIN_PADDING_SECONDS, MAX_PADDING_SECONDS);
     }
 
-    /// Lead in dance beats for a rendered call, including the flat padding.
+    /// Lead in dance beats for a rendered call, including the safety padding.
     pub fn lead_beats(&self, syllables: usize, words: usize, tempo: Tempo) -> f64 {
         let speech_lead = if !self.auto {
             self.manual_beats.clamp(self.min_beats, self.max_beats)
@@ -127,7 +147,7 @@ impl LeadSettings {
             beats.clamp(self.min_beats, self.max_beats)
         };
 
-        let padding_beats = LEAD_PADDING_SECONDS / tempo.seconds_per_dance_beat().0;
+        let padding_beats = self.padding_seconds / tempo.seconds_per_dance_beat().0;
         speech_lead + padding_beats
     }
 }
@@ -785,6 +805,45 @@ mod tests {
                 "padding was not flat at {bpm} BPM"
             );
         }
+    }
+
+    #[test]
+    fn custom_padding_changes_every_lead() {
+        let tempo = Tempo::default();
+        let lead = LeadSettings {
+            auto: false,
+            manual_beats: 1.25,
+            padding_seconds: 1.0,
+            ..LeadSettings::default()
+        };
+        // One second of padding is two dance beats at 240 BPM.
+        assert!((lead.lead_beats(100, 20, tempo) - 3.25).abs() < 1e-9);
+    }
+
+    #[test]
+    fn zero_padding_is_allowed() {
+        let tempo = Tempo::default();
+        let lead = LeadSettings {
+            auto: false,
+            manual_beats: 1.25,
+            padding_seconds: 0.0,
+            ..LeadSettings::default()
+        };
+        assert_eq!(lead.lead_beats(100, 20, tempo), 1.25);
+    }
+
+    #[test]
+    fn validate_clamps_padding_to_the_ui_range() {
+        let mut lead = LeadSettings {
+            padding_seconds: 5.0,
+            ..LeadSettings::default()
+        };
+        lead.validate();
+        assert_eq!(lead.padding_seconds, MAX_PADDING_SECONDS);
+
+        lead.padding_seconds = -1.0;
+        lead.validate();
+        assert_eq!(lead.padding_seconds, MIN_PADDING_SECONDS);
     }
 
     #[test]

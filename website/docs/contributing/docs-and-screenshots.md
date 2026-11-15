@@ -115,6 +115,9 @@ A page should not use a raw `<img>` for an in-app screenshot.
 
 ## Before opening a pull request
 
+Open pull requests against `dev`, not `main`. `dev` is the integration branch;
+`main` advances only when a release is ready.
+
 - [ ] The page renders at 390 px and 1280 px.
 - [ ] Every step has a shot or is an explicit command step.
 - [ ] No broken links or anchors.
