@@ -1419,8 +1419,12 @@ impl ContraApp {
             ui.heading("Dance move aliases");
         });
         ui.label(
-            egui::RichText::new("These are the words shown and spoken during a session. Placeholders: {actor}, {actor_singular}, {actor_object}, {direction}, {count}.")
-                .color(theme::muted(ui)),
+            egui::RichText::new(concat!(
+                "These are the words shown and spoken during a session. Placeholders: ",
+                "{actor}, {actor_singular}, {actor_plural}, {actor_object}, ",
+                "{actor_object_plural}, {direction}, {count}."
+            ))
+            .color(theme::muted(ui)),
         );
         ui.add_space(6.0);
         ui.horizontal(|ui| {

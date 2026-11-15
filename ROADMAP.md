@@ -151,7 +151,8 @@ Advanced settings:
 - Dance-card text is parsed into a move type plus parameters (actor, direction,
   count).
 - Each move type has a default alias template. Templates support placeholders
-  such as `{actor}`, `{direction}`, and `{count}`.
+  such as `{actor}`, `{actor_singular}`, `{actor_plural}`, `{actor_object}`,
+  `{actor_object_plural}`, `{direction}`, and `{count}`.
 - The caller can override any template and add aliases for figures the parser
   does not recognise.
 - The rendered alias replaces the card text during a session; an optional

@@ -3,7 +3,9 @@
 //! Card text is brief ("ladles allemande left 1½"); callers say it in many
 //! different ways. The alias table maps a recognised move type to a template
 //! such as `"{actor} allemande {direction} {count}"`, then `{actor}` is
-//! rendered with the caller's chosen role vocabulary.
+//! rendered with the caller's chosen role vocabulary. Templates can force a
+//! number with `{actor_singular}` or `{actor_plural}`; the object forms add
+//! "your" ("your neighbor", "your neighbors").
 
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -11,7 +13,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::roles::{RoleSide, RoleTerms};
+use crate::roles::RoleTerms;
 use crate::syllables::{count_syllables, word_count};
 
 /// Move types the alias editor understands.
@@ -295,19 +297,16 @@ impl ActorRef {
         !self.plural
     }
 
+    /// The actor in the number used on the card.
     pub fn display(&self, roles: &RoleTerms) -> String {
-        match &self.actor {
-            Actor::Neighbor => pluralize("neighbor", self.plural),
-            Actor::Partner => pluralize("partner", self.plural),
-            Actor::Lark => roles.term(RoleSide::Left, self.plural).to_string(),
-            Actor::Robin => roles.term(RoleSide::Right, self.plural).to_string(),
-            Actor::Shadow => pluralize("shadow", self.plural),
-            Actor::FirstCorner => pluralize("first corner", self.plural),
-            Actor::SecondCorner => pluralize("second corner", self.plural),
-            Actor::Other(value) => value.clone(),
+        if self.plural {
+            self.plural_display(roles)
+        } else {
+            self.singular_display(roles)
         }
     }
 
+    /// The actor in the singular, regardless of the card phrase.
     pub fn singular_display(&self, roles: &RoleTerms) -> String {
         match &self.actor {
             Actor::Lark => roles.left_singular.clone(),
@@ -317,6 +316,20 @@ impl ActorRef {
             Actor::Shadow => "shadow".into(),
             Actor::FirstCorner => "first corner".into(),
             Actor::SecondCorner => "second corner".into(),
+            Actor::Other(value) => value.clone(),
+        }
+    }
+
+    /// The actor in the plural, regardless of the card phrase.
+    pub fn plural_display(&self, roles: &RoleTerms) -> String {
+        match &self.actor {
+            Actor::Lark => roles.left_plural.clone(),
+            Actor::Robin => roles.right_plural.clone(),
+            Actor::Neighbor => "neighbors".into(),
+            Actor::Partner => "partners".into(),
+            Actor::Shadow => "shadows".into(),
+            Actor::FirstCorner => "first corners".into(),
+            Actor::SecondCorner => "second corners".into(),
             Actor::Other(value) => value.clone(),
         }
     }
@@ -649,6 +662,7 @@ fn render_template(
     let actor = params.actor.as_ref();
     let actor_display = actor.map(|a| a.display(roles)).unwrap_or_default();
     let actor_singular = actor.map(|a| a.singular_display(roles)).unwrap_or_default();
+    let actor_plural = actor.map(|a| a.plural_display(roles)).unwrap_or_default();
     let actor_object = actor
         .map(|a| match a.actor {
             Actor::Neighbor | Actor::Partner | Actor::Lark | Actor::Robin => {
@@ -657,11 +671,21 @@ fn render_template(
             _ => a.display(roles),
         })
         .unwrap_or_default();
+    let actor_object_plural = actor
+        .map(|a| match a.actor {
+            Actor::Neighbor | Actor::Partner | Actor::Lark | Actor::Robin => {
+                format!("your {}", a.plural_display(roles))
+            }
+            _ => a.plural_display(roles),
+        })
+        .unwrap_or_default();
 
     let mut out = template.to_string();
     out = out.replace("{actor}", &actor_display);
     out = out.replace("{actor_singular}", &actor_singular);
+    out = out.replace("{actor_plural}", &actor_plural);
     out = out.replace("{actor_object}", &actor_object);
+    out = out.replace("{actor_object_plural}", &actor_object_plural);
     out = out.replace(
         "{direction}",
         params.direction.as_deref().unwrap_or_default(),
@@ -703,17 +727,6 @@ fn clean_spaces(text: &str) -> String {
         out.pop();
     }
     out
-}
-
-fn pluralize(word: &str, plural: bool) -> String {
-    if !plural {
-        return word.to_string();
-    }
-    if word.ends_with('s') {
-        word.to_string()
-    } else {
-        format!("{word}s")
-    }
 }
 
 #[cfg(test)]
@@ -798,6 +811,52 @@ mod tests {
         aliases.set_override(MoveKind::Swing, "swing that {actor}");
         let call = aliases.render("neighbors swing", &RoleTerms::default());
         assert_eq!(call.text, "swing that neighbors");
+    }
+
+    #[test]
+    fn plural_placeholders_ignore_the_card_number() {
+        let mut aliases = AliasTable::default();
+        aliases.set_override(
+            MoveKind::Swing,
+            "{actor_singular} and {actor_plural} {actor_object} {actor_object_plural}",
+        );
+        let roles = RoleTerms::default();
+        assert_eq!(
+            aliases.render("neighbor swing", &roles).text,
+            "neighbor and neighbors your neighbor your neighbors"
+        );
+        assert_eq!(
+            aliases.render("neighbors swing", &roles).text,
+            "neighbor and neighbors your neighbor your neighbors"
+        );
+    }
+
+    #[test]
+    fn plural_placeholders_use_configured_role_terms() {
+        let mut aliases = AliasTable::default();
+        aliases.set_override(MoveKind::Allemande, "{actor_plural} allemande {direction}");
+        let roles = RoleTerms::preset(crate::roles::RolePreset::LadiesGentlemen);
+        assert_eq!(
+            aliases.render("ladle allemande left", &roles).text,
+            "ladies allemande left"
+        );
+        assert_eq!(
+            aliases.render("ladles allemande left", &roles).text,
+            "ladies allemande left"
+        );
+    }
+
+    #[test]
+    fn plural_placeholders_are_empty_without_an_actor() {
+        let mut aliases = AliasTable::default();
+        aliases.set_override(
+            MoveKind::Circle,
+            "circle {actor_plural} {actor_object_plural}",
+        );
+        assert_eq!(
+            aliases.render("circle left", &RoleTerms::default()).text,
+            "circle"
+        );
     }
 
     #[test]

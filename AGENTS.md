@@ -302,8 +302,9 @@ update the provider and its fixtures, not the session engine.
   Leads/Follows, Lefts/Rights, custom.
 - Replace role terms in both the card and the call text, with word-boundary
   matching. Do not replace "shadow", "neighbor", or "partner".
-- Alias templates support `{actor}`, `{direction}`, and `{count}`. Document
-  placeholders in the UI.
+- Alias templates support `{actor}`, `{actor_singular}`, `{actor_plural}`,
+  `{actor_object}`, `{actor_object_plural}`, `{direction}`, and `{count}`.
+  Document placeholders in the UI.
 - Every alias can be reset to its default. Custom aliases can be added for
   unmatched figure text.
 - Rebuild the timeline when aliases, roles, or lead settings change.
