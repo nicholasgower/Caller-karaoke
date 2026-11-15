@@ -87,6 +87,11 @@ The estimator is deliberately approximate:
 The alias is the caller's control surface. If the estimate feels wrong, change
 the alias or switch to a manual lead.
 
+When **Shuffle alternative call aliases** is on, the app selects one usable
+wording for each figure and uses that text for both display and lead timing. The
+shuffle seed is stable for a session, so the same card produces the same calls
+until the dance or shuffle setting changes.
+
 ## The first call is allowed to be negative
 
 A call is placed before its execute beat. For the first figure, that means the

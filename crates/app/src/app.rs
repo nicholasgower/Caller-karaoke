@@ -395,7 +395,7 @@ impl ContraApp {
 
         let dance = defaults::default_dance();
         let tune = defaults::default_tune();
-        let timeline = build_timeline(&dance, &prefs).unwrap_or_else(|_| empty_timeline());
+        let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
         let length_warning = length_warning_for(&dance, &tune);
 
         theme::apply(&cc.egui_ctx, prefs.theme, prefs.animations_enabled);
@@ -449,6 +449,8 @@ impl ContraApp {
             alias_filter: String::new(),
             custom_key: String::new(),
             custom_alias: String::new(),
+            alternative_inputs: std::collections::BTreeMap::new(),
+            alias_seed: 0,
         }
     }
 

@@ -27,7 +27,7 @@ not start or stop the music.
 - **1–4** are ignored while a text field has focus, so typing a number does not
   change tabs.
 - **Enter** in a search field submits the current filters; in the custom alias
-  fields it adds the alias when both fields are filled.
+  or alternative-call fields it adds the entry when both fields are filled.
 - On a browser, click the app once before using Space so the canvas has focus.
   If the page scrolls instead, click the session background and try again.
 

@@ -46,6 +46,10 @@ progress bar while the voice is prepared; later runs load it from the cache. If
 preparation fails, desktop shows **Retry neural voice** and continues with the
 platform voice.
 
+The same section has **Shuffle alternative call aliases**, which varies the call
+wording when the alias table has alternatives. Its behaviour is described in
+[Dance move aliases](/docs/guides/aliases#alternative-calls).
+
 ## Set the rate
 
 <Steps>

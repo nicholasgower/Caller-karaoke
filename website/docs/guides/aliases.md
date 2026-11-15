@@ -65,6 +65,20 @@ Unknown placeholders are left as literal text, so a typo is visible in the
 session rather than silently disappearing. Empty placeholders are removed and
 extra spaces are cleaned up.
 
+## Alternative calls
+
+A move can have more than one natural wording. Swing, for example, can be
+`swing your partner` or `partner swing`. **Preferences → Text to speech** has a
+**Shuffle alternative call aliases** checkbox. When it is on, the app chooses one
+usable wording for each figure, including the active template, and shows and
+speaks that choice. The chosen wording also determines the lead time.
+
+The alias editor lists the built-in alternatives under a move. Add your own in
+**add an alternative call** and press **Enter** or select **Add alternative**;
+your alternatives are marked and can be removed individually. Shuffling is off
+by default so calls stay predictable; selecting a new dance advances the shuffle.
+Turning it off returns every call to its active template.
+
 ## Reset
 
 <Steps>
