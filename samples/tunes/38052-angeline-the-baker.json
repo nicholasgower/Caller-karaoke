@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "38052",
+    "url": "https://abcsessiontunes.com/tunes/38052"
+  },
+  "title": "Angeline The Baker",
+  "composer": "",
+  "key": "Gmaj",
+  "meter": "2/4",
+  "rhythm": "polka",
+  "abc": "\nX: 4\nT: Angeline The Baker\nR: polka\nM: 2/4\nL: 1/8\nK: Gmaj\n|:DE GD|EG GE|DE GD|E2 E2|\nDE GA|BA GA|BA GE|1 DB, DE:|2 D2 Dd-||\n|:dB AG|BA GB|dB AG|E2 Ed-|\ndB AG|BA GA|BA GE|1 D2 Dd-:|2 DB, DE||\n\n",
+  "credits": "https://abcnotation.com/tunePage?a=thesession.org/tunes/14300.no-ext/0004"
+}

@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "55939",
+    "url": "https://abcsessiontunes.com/tunes/55939"
+  },
+  "title": "Moneymusk",
+  "composer": "",
+  "key": "A",
+  "meter": "4/4",
+  "rhythm": "Reel",
+  "abc": "X:549\nT:Moneymusk\nR:Reel\nO:Probably a version from Teelin, County Donegal.\nM:4/4\nL:1/8\nK:A\naf || eAcA e2 (3agf | eAdc BEGB | eAcA e3a | fdBa (3gfe (3agf | eAcAe2(3agf |\\\neAcA Bcdf | eccB cdea | fdBc defg || a2ea ceA2 | aAce fBB2 | a2ea ceA2 |\\\ndcBc defg | a2ea ceA2 | aAce fBBe | (3agf (3gfe (3fed (3cBA | (3fga (3gfe fgaf\n||",
+  "credits": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/book/Athole/F/athol-m/0045"
+}

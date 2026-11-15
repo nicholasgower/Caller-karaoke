@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "75412",
+    "url": "https://abcsessiontunes.com/tunes/75412"
+  },
+  "title": "Saint Anne's Reel",
+  "composer": "",
+  "key": "D",
+  "meter": "C|",
+  "rhythm": "reel",
+  "abc": "X:462\nT:Saint Anne's Reel\nR:reel\nO:French Canadian\nZ:id:hn-reel-462\nM:C|\nK:D\nfedf edcB|A2FA DAFA|B2GB EBGB|A2FA DAFA|\nfedf edcB|A2FA DAFA|Beed cABc|eddc d2de:|\n|:f2fg fedc|Bggf g3f|edcB ABce|baa^g a3=g|\nf2fg fedc|Bggf g3f|edcB ABcd|eddc d2de:|\n\"variations\"\n|:fedc edcB|A2FA DAFA|B2GB EBGB|A2FA DAFA|\nfedc edcB|A2FA DAFA|BGBd cAce|1 d2dc d2de:|2 d2dc d2ag||\n|:fdfa fdfa|aggf g3f|edcB Aceg|baa^g a3=g|\nfdfa fdfa|aggf g3f|edcB Aceg|1 fddc d2ag:|2 fddc d2de||",
+  "credits": "id:hn-reel-462 — https://abcnotation.com/tunePage?a=sessionite.com/docs/5574/2585"
+}

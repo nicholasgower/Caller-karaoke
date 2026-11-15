@@ -1,0 +1,49 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "218",
+    "url": "https://contradb.com/dances/218"
+  },
+  "title": "Across Nottingham A",
+  "choreographer": "Cary Ravitz",
+  "formation": "cross contra - improper then ladle one and gentlespoon two trade places",
+  "preamble": "",
+  "notes": "Source: http://www.dance.ravitz.us/#an\n\nA less dizzy start of B2 - gentlespoons start a hands across star left and ladles fall in behind your partner, from initial positions, turn the star 1 for gentlespoons and 1/2 for ladles.",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 16.0,
+      "text": "twos start a full hey - lefts in center, rights on ends"
+    },
+    {
+      "phrase": "A2",
+      "beats": 3.0,
+      "text": "neighbors trade places, ones behind twos"
+    },
+    {
+      "phrase": null,
+      "beats": 10.0,
+      "text": "circle left 4 places - no hands, eyes on partner"
+    },
+    {
+      "phrase": null,
+      "beats": 3.0,
+      "text": "ladles trade places across, ladle one behind ladle two"
+    },
+    {
+      "phrase": "B1",
+      "beats": 16.0,
+      "text": "partners balance & swing"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "circle left 3 places pass through to new (first corners now on caller's left)"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "first corners (gentlespoon one, ladle two) do si do, while second corners allemande right 1½"
+    }
+  ]
+}

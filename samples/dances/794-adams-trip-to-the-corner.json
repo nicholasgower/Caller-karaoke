@@ -1,0 +1,44 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "794",
+    "url": "https://contradb.com/dances/794"
+  },
+  "title": "Adam's Trip to the Corner",
+  "choreographer": "Adam Carlson",
+  "formation": "triplet",
+  "preamble": "triplet with couples proper",
+  "notes": "In the first half of B2, the twos and threes can adjust to be proper if they ended the swing on the wrong side.\n\nTraditionally only the ones would balance and swing in B1, but it's more fun if everyone gets a chance.\n\nBased on Ted's Triplet #7, but easier for beginners.\n\nWritten pretty much on the fly at a Port Orchard, WA dance when only 3 couples remained at the end of the evening.",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 8.0,
+      "text": "ones and twos circle left"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "ones down the center at the bottom, ones cast around the threes and the twos move up so the ones end up between the twos and threes"
+    },
+    {
+      "phrase": "A2",
+      "beats": 16.0,
+      "text": "ones contra corners"
+    },
+    {
+      "phrase": "B1",
+      "beats": 16.0,
+      "text": "partners balance & swing"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "ones up the center cast round the outside and down to the bottom, threes move up"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "long lines forward & back"
+    }
+  ]
+}

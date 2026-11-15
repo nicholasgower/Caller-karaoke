@@ -1,0 +1,54 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "1246",
+    "url": "https://contradb.com/dances/1246"
+  },
+  "title": "Badlands Contra",
+  "choreographer": "Don Flaherty",
+  "formation": "Becket",
+  "preamble": "",
+  "notes": "Please walk this dance thru before taking to the dance floor, any feed back would be appreciate you can E-mail do14flah@aol.com\n\nthanks Don Flaherty written 1-11-02",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 16.0,
+      "text": "partners balance & swing"
+    },
+    {
+      "phrase": "A2",
+      "beats": 8.0,
+      "text": "right left through"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "star left 4 places"
+    },
+    {
+      "phrase": "B1",
+      "beats": 8.0,
+      "text": "ladles do si do 1½ on right diagonal to face new neighbor"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "neighbors swing (new neighbor)"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "gentlespoons allemande left 1½ to wave of four gentlespoons in center left hands right to neighbor"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "balance wave"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "neighbors allemande right ½ and move straight to partner"
+    }
+  ]
+}

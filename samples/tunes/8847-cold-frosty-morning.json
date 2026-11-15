@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "8847",
+    "url": "https://abcsessiontunes.com/tunes/8847"
+  },
+  "title": "Cold Frosty Morning",
+  "composer": "",
+  "key": "Ador",
+  "meter": "4/4",
+  "rhythm": "reel",
+  "abc": "X: 1\nT: Cold Frosty Morning\nR: reel\nS: Henry Reed\nZ: jc:purr.demon.co.uk (Jack Campin)\nM: 4/4\nL: 1/8\nK: Ador\n|: a4 a4 | a>b a>g e>d c>d | e>d e>f g>a g>f | e>d c>d e4 | A4 c3 c |\n| d>c d2 e2 e>d | c>B A>c B>A G2 | A3B A4 :: E>D E>G A2 A>A | c>A c>d e2 (3DEF | G2 B>A G2 (3DEF |\n| G>A B>c d4 | E>D E>G A2 A>A | c>A c>d e2 e>d | c>B A>c B>A G2 | A8 :|\n",
+  "credits": "jc:purr.demon.co.uk (Jack Campin)"
+}

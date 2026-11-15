@@ -1,0 +1,54 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "3110",
+    "url": "https://contradb.com/dances/3110"
+  },
+  "title": "Adventures in C#",
+  "choreographer": "Bob Isaacs",
+  "formation": "Improper",
+  "preamble": "Source: https://archive.org/details/bob-isaacs-dances",
+  "notes": "Intermediate.\n\nNotes from the author:\n\nWritten on July 15, 2001. First called on December 27, 2001 at Glenside, PA. Not recommending any keys here, but named after the main dance pavilion in Pinewoods where I learned a few lessons about circle rights and such.\n\nThe “Petronella claps” are good [in B1] because the first time, as all rejoin hands in a ring. But on the second Petronella, the claps disrupt flow into the star L, so dancers should think twice about clapping twice.\n\nThe circle R-pass L-allemande R [in B2/A1] is a new progression, but is not hard for dancers if clearly explained; after the circle R * tell them “because it’s a circle R, you pass through by the L, and the new [gentlespoons] are set up to allemande R, etc.” The circle R /pass L is equivalent to a [gentlespoons] chain just like a circle L /pass R is equivalent to a [ladles] chain.",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 8.0,
+      "text": "gentlespoons allemande right once"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "partners start a half hey - lefts on ends, rights in center"
+    },
+    {
+      "phrase": "A2",
+      "beats": 16.0,
+      "text": "partners balance & swing"
+    },
+    {
+      "phrase": "B1",
+      "beats": 8.0,
+      "text": "balance & petronella"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "balance & petronella"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "star left 4 places"
+    },
+    {
+      "phrase": null,
+      "beats": 6.0,
+      "text": "circle right 3 places"
+    },
+    {
+      "phrase": null,
+      "beats": 2.0,
+      "text": "neighbors pass by left shoulders"
+    }
+  ]
+}

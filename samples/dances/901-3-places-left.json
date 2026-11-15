@@ -1,0 +1,59 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "901",
+    "url": "https://contradb.com/dances/901"
+  },
+  "title": "3 Places Left",
+  "choreographer": "Arthur Kingsland",
+  "formation": "proper",
+  "preamble": "[2011]\n\n32-bar reels (lively!)",
+  "notes": "The final moves are meanwhile:\n\n1s cross and cast down outside, while\n\n2s LH turn moving up inside",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 8.0,
+      "text": "long lines forward & back"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "partners do si do once"
+    },
+    {
+      "phrase": "A2",
+      "beats": 8.0,
+      "text": "circle left 3 places"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "partners swing – finish facing across"
+    },
+    {
+      "phrase": "B1",
+      "beats": 8.0,
+      "text": "long lines forward & back"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "neighbors see saw once [i.e. left shoulder do-si-do]"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "star left - hands across - 3 places [switch to LH with partner at end]"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "ones pass by left shoulders – across and out the side"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "ones cast down one place – own side of the set; twos allemande left once – moving up inside the set"
+    }
+  ]
+}

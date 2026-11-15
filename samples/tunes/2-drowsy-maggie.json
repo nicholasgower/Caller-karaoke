@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "2",
+    "url": "https://abcsessiontunes.com/tunes/2"
+  },
+  "title": "Drowsy Maggie",
+  "composer": "",
+  "key": "Edor",
+  "meter": "4/4",
+  "rhythm": "reel",
+  "abc": "X: 1\nT: Drowsy Maggie\nT: Ceol Rince na h\\'Eirann 4-part version\nS: Michael (Master) McDermott, Tyrone\nB: Ceol Rince na h\\'Eireann 4, Breathnach/Small\nZ: Paul de Grae <sullgrae:iol.ie> irtrad-l 2000-08-28\nM: 4/4\nL: 1/8\nR: reel\nK: Edor\n|: ~E2 BE dEBE | ~E2 Bc dAFD |\\\n[1 ~E2 BE dEBB | BABc dAFD :|\\\n[2 ~E2 BE dEBB | BABc dAFA |]\n|: d2 fd c2 ec | d2 fd faaf |\\\n[1 d2 fd c2 ec | BABc dAFA :|\\\n[2 (3bag af gfed | BABc dAFA |]\n|: dBfB dBfB | cAeA cAeA |\\\n[1 dBfB ~B2 fB | defg aecA :|\\\n[2 (3Bcd (3efg aecA | ~B2 Bc dAFA |]\n|: dffe dfBf | ce e2 ceAe |\\\n[1 dffe defg | agfg aece :|\\\n[2 afge fded | BABc dAFD |]\n",
+  "credits": "Paul de Grae <sullgrae:iol.ie> irtrad-l 2000-08-28"
+}

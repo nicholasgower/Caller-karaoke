@@ -1,0 +1,54 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "553",
+    "url": "https://contradb.com/dances/553"
+  },
+  "title": "Attleboro Reel",
+  "choreographer": "Linda Leslie",
+  "formation": "Sicilian circle",
+  "preamble": "",
+  "notes": "/+ take hand with partner and do si do your neighbors as couples\n\n/++Var: Partner balance & swing or partner do si do and 2 hand turn",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 8.0,
+      "text": "neighbors do si do once"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "as couples do si do +"
+    },
+    {
+      "phrase": "A2",
+      "beats": 8.0,
+      "text": "star right 4 places"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "star left 4 places"
+    },
+    {
+      "phrase": "B1",
+      "beats": 8.0,
+      "text": "circle left 4 places ++"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "circle right 4 places"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "long lines forward & back"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "ones arch twos dive"
+    }
+  ]
+}

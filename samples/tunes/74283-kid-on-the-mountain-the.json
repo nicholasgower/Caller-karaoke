@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "74283",
+    "url": "https://abcsessiontunes.com/tunes/74283"
+  },
+  "title": "Kid on the Mountain, The",
+  "composer": "",
+  "key": "Em",
+  "meter": "9/8",
+  "rhythm": "slip jig",
+  "abc": "X:99\nT:Rosie Finn's Favorite\nR:slide\nN:No Name/Over The Water To Charlie/Kid On The Mountain\nD:Bothy Band: Old Hag You've Killed Me\nZ:id:hn-slide-7\nM:6/8\nL:1/8\nK:G\nG2B d2g|b2g d2B|cBc agf|gfe dBA|!\nG2B d2g|b2g d2B|cBc agf|g3 g2d:|!\ng2b c'2b|a2e e2g|f2a abg|f2d d2f|!\ng2b c'2b|a2e a2g|faf def|g3 g2d:|\nT:Over the Water to Charlie\nR:slide\nZ:id:hn-slide-31\nM:6/8\nL:1/8\nK:D\nA|DFA AFA|Bcd AFA|DFA AFA|B2c d2D|!\nDFA AFA|Bcd AFA|fed edc|B2c d2:||!\ng|fed edc|Bcd AFA|fed edc|B2e e2g|!\nfed edc|Bcd AFA|DFA AFA|B2c d2:||\nT:Kid on the Mountain, The\nR:slip jig\nZ:id:hn-slipjig-31\nM:9/8\nL:1/8\nK:Em\n~E3 FEF G2F|E3 BdB AGF|~E3 FEF G2A|BAG FAG FED:||!\nB2B ABA G2D|GAB dge dBA|BGB ABA G2A|BAG FAG FED:||!\ngfg efe e2f|gfg efg afd|gfg efe e2a|bag fag fed:||!\neBB e2f g2f|eBB efg afd|eBB e2f g2a|bag fag fed:||!\nedB dBA G2D|GAB dge dBd|edB dBA G2A|BAG FAG FED:||",
+  "credits": "id:hn-slide-7 — https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/contrib/Tunes/RosieFinnsFavorite/0000"
+}

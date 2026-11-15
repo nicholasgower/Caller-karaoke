@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "75815",
+    "url": "https://abcsessiontunes.com/tunes/75815"
+  },
+  "title": "Sandy Boys",
+  "composer": "",
+  "key": "A mix",
+  "meter": "4/4",
+  "rhythm": "",
+  "abc": "X:8\nT:Sandy Boys\nM:4/4\nL:1/8\nZ:abc-transcription Josh Larios <hades@elsewhere.org>, 2014.01.13\nB:Complete Tractor, p.172\nN:Chords from Sarah Comer\nK:A mix\neg |: \"A\"a2 g2 e2 g2 | ed c2 A2 a2- | a2 g2 e2 g2 | \"G\"a3 b a2 eg |\n\"A\"a2 g2 e2 g2 | ed c2 A2 AB | c2 cc \"E7\"d2 c2 | \"A\"A3 B A2 cd :|\n|: \"A\"e4 e3 e | d2 c2 A3 A | \"A\"[ce]2 [ce][ce] \"D\"[df]2 [df][df] |\"A\"[ce]2 [ce][ce] \"D\"[df]2 [df][df] |\n\"A\"e4 e3 e | d2 c2 A2 AB | [ce]2 cc \"E7\"d2 c2 | \"A\"A3 B A2 :|",
+  "credits": "abc-transcription Josh Larios <hades@elsewhere.org>, 2014.01.13 — https://abcnotation.com/tunePage?a=kaz.neocities.org/Combined_Tunebook.txt/0007"
+}

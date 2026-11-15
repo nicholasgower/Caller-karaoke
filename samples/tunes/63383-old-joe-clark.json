@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "63383",
+    "url": "https://abcsessiontunes.com/tunes/63383"
+  },
+  "title": "Old Joe Clark",
+  "composer": "",
+  "key": "A mix",
+  "meter": "4/4",
+  "rhythm": "",
+  "abc": "X:4\nT:Old Joe Clark\nM:4/4\nL:1/4\nZ:abc-transcription Josh Larios <hades@elsewhere.org>, 2014.01.13\nS:Sarah Comer\nK:A mix\n|: \"A\"efgf | e(dc2) | efgf | \"E\"e2e2 |\n\"A\"efgf | edc>c | Ac\"E\"BB | \"A\"A2A2 ::\n\"A\"A>(BA2) | edc>c | AAcA | \"E\"B2B2 |\n\"A\"A>(BA) c/d/ | e(dc2) | Ac\"E\"BB | \"A\"A2A2 :|",
+  "credits": "abc-transcription Josh Larios <hades@elsewhere.org>, 2014.01.13 — https://abcnotation.com/tunePage?a=kaz.neocities.org/Combined_Tunebook.txt/0003"
+}

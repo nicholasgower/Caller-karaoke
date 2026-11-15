@@ -1,0 +1,443 @@
+{
+  "generated": "2026-11-15",
+  "sources": [
+    {
+      "provider": "contradb",
+      "name": "ContraDB",
+      "url": "https://contradb.com",
+      "note": "Dance cards transcribed by ContraDB contributors. Each card keeps its source URL and choreographer credit."
+    },
+    {
+      "provider": "abcsessiontunes",
+      "name": "ABC Session Tunes",
+      "url": "https://abcsessiontunes.com",
+      "note": "ABC transcriptions by their respective contributors. Each tune keeps its source URL and transcription credit."
+    }
+  ],
+  "dances": [
+    {
+      "id": "74",
+      "title": "40 Years of Penguin Pam",
+      "choreographer": "Seth Tepfer",
+      "formation": "Becket",
+      "beats": 96.0,
+      "figures": 11,
+      "url": "https://contradb.com/dances/74",
+      "files": {
+        "normalized": "dances/74-40-years-of-penguin-pam.json",
+        "raw": "dances/74-40-years-of-penguin-pam.html"
+      },
+      "tests": "Becket. 96 beats, so the card runs past one 64-beat music loop."
+    },
+    {
+      "id": "218",
+      "title": "Across Nottingham A",
+      "choreographer": "Cary Ravitz",
+      "formation": "cross contra - improper then ladle one and gentlespoon two trade places",
+      "beats": 64.0,
+      "figures": 7,
+      "url": "https://contradb.com/dances/218",
+      "files": {
+        "normalized": "dances/218-across-nottingham-a.json",
+        "raw": "dances/218-across-nottingham-a.html"
+      },
+      "tests": "Cross contra. 64 beats, odd 3/10/3-beat split of a phrase."
+    },
+    {
+      "id": "434",
+      "title": "A New Idea",
+      "choreographer": "Michael Fuerst",
+      "formation": "Becket ccw",
+      "beats": 64.0,
+      "figures": 8,
+      "url": "https://contradb.com/dances/434",
+      "files": {
+        "normalized": "dances/434-a-new-idea.json",
+        "raw": "dances/434-a-new-idea.html"
+      },
+      "tests": "Becket ccw. 64 beats, 2-beat sub-move, '+' and '++' footnote markers in card text."
+    },
+    {
+      "id": "553",
+      "title": "Attleboro Reel",
+      "choreographer": "Linda Leslie",
+      "formation": "Sicilian circle",
+      "beats": 60.0,
+      "figures": 8,
+      "url": "https://contradb.com/dances/553",
+      "files": {
+        "normalized": "dances/553-attleboro-reel.json",
+        "raw": "dances/553-attleboro-reel.html"
+      },
+      "tests": "Sicilian circle. 60 beats, so the card does not fill the 64-beat music loop."
+    },
+    {
+      "id": "664",
+      "title": "Accretion Reel",
+      "choreographer": "Chris Page",
+      "formation": "scatter mixer",
+      "beats": 64.0,
+      "figures": 10,
+      "url": "https://contradb.com/dances/664",
+      "files": {
+        "normalized": "dances/664-accretion-reel.json",
+        "raw": "dances/664-accretion-reel.html"
+      },
+      "tests": "Scatter mixer. 64 beats, 4-beat rows, bracketed footnote markers [1]-[6]."
+    },
+    {
+      "id": "794",
+      "title": "Adam's Trip to the Corner",
+      "choreographer": "Adam Carlson",
+      "formation": "triplet",
+      "beats": 64.0,
+      "figures": 6,
+      "url": "https://contradb.com/dances/794",
+      "files": {
+        "normalized": "dances/794-adams-trip-to-the-corner.json",
+        "raw": "dances/794-adams-trip-to-the-corner.html"
+      },
+      "tests": "Triplet. 64 beats, long figure text, 16-beat figures."
+    },
+    {
+      "id": "901",
+      "title": "3 Places Left",
+      "choreographer": "Arthur Kingsland",
+      "formation": "proper",
+      "beats": 64.0,
+      "figures": 9,
+      "url": "https://contradb.com/dances/901",
+      "files": {
+        "normalized": "dances/901-3-places-left.json",
+        "raw": "dances/901-3-places-left.html"
+      },
+      "tests": "Proper. 64 beats, zero-beat 'meanwhile' row, 4+4+0 split of a phrase."
+    },
+    {
+      "id": "1246",
+      "title": "Badlands Contra",
+      "choreographer": "Don Flaherty",
+      "formation": "Becket",
+      "beats": 64.0,
+      "figures": 8,
+      "url": "https://contradb.com/dances/1246",
+      "files": {
+        "normalized": "dances/1246-badlands-contra.json",
+        "raw": "dances/1246-badlands-contra.html"
+      },
+      "tests": "Becket. 64 beats, 8 rows, 4-beat sub-moves, notes, 'new neighbor' wording."
+    },
+    {
+      "id": "1692",
+      "title": "24th of October variation",
+      "choreographer": "Don Lennartson",
+      "formation": "singlet",
+      "beats": 64.0,
+      "figures": 8,
+      "url": "https://contradb.com/dances/1692",
+      "files": {
+        "normalized": "dances/1692-24th-of-october-variation.json",
+        "raw": "dances/1692-24th-of-october-variation.html"
+      },
+      "tests": "Singlet. 64 beats, repeated 'box circulate' phrase with role variants."
+    },
+    {
+      "id": "2380",
+      "title": "Allison's Favorite",
+      "choreographer": "Colin Hume",
+      "formation": "four face four",
+      "beats": 64.0,
+      "figures": 10,
+      "url": "https://contradb.com/dances/2380",
+      "files": {
+        "normalized": "dances/2380-allisons-favorite.json",
+        "raw": "dances/2380-allisons-favorite.html"
+      },
+      "tests": "Four face four. 64 beats, many zero-beat setup rows, a 16-beat figure mid-dance."
+    },
+    {
+      "id": "2409",
+      "title": "Another Last Dance",
+      "choreographer": "Erik Hoffman",
+      "formation": "improper",
+      "beats": 64.0,
+      "figures": 7,
+      "url": "https://contradb.com/dances/2409",
+      "files": {
+        "normalized": "dances/2409-another-last-dance.json",
+        "raw": "dances/2409-another-last-dance.html"
+      },
+      "tests": "Default dance. 64 beats, 7 rows, continued phrase, Unicode fraction; raw page ends with a pilcrow progression marker."
+    },
+    {
+      "id": "3061",
+      "title": "Arkansas Traveler",
+      "choreographer": "Sue Hulsether",
+      "formation": "circle mixer",
+      "beats": 64.0,
+      "figures": 6,
+      "url": "https://contradb.com/dances/3061",
+      "files": {
+        "normalized": "dances/3061-arkansas-traveler.json",
+        "raw": "dances/3061-arkansas-traveler.html"
+      },
+      "tests": "Circle mixer. 64 beats, 16-beat figures, misspelled source text."
+    },
+    {
+      "id": "3110",
+      "title": "Adventures in C#",
+      "choreographer": "Bob Isaacs",
+      "formation": "Improper",
+      "beats": 64.0,
+      "figures": 8,
+      "url": "https://contradb.com/dances/3110",
+      "files": {
+        "normalized": "dances/3110-adventures-in-c.json",
+        "raw": "dances/3110-adventures-in-c.html"
+      },
+      "tests": "Capitalized 'Improper'. 64 beats, 6+2 split, notes."
+    }
+  ],
+  "tunes": [
+    {
+      "id": "2",
+      "title": "Drowsy Maggie",
+      "composer": "",
+      "key": "Edor",
+      "meter": "4/4",
+      "rhythm": "reel",
+      "url": "https://abcsessiontunes.com/tunes/2",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/2-drowsy-maggie.json",
+        "abc": "tunes/2-drowsy-maggie.abc",
+        "api": "tunes/2-drowsy-maggie.api.json"
+      },
+      "tests": "Reel, E dor, four parts with first/second endings, no chords."
+    },
+    {
+      "id": "3017",
+      "title": "Fisher's Hornpipe",
+      "composer": "",
+      "key": "D",
+      "meter": "C|",
+      "rhythm": "hornpipe",
+      "url": "https://abcsessiontunes.com/tunes/3017",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/3017-fishers-hornpipe.json",
+        "abc": "tunes/3017-fishers-hornpipe.abc",
+        "api": "tunes/3017-fishers-hornpipe.api.json"
+      },
+      "tests": "Hornpipe, D, C| meter, quoted chords, pickup."
+    },
+    {
+      "id": "7268",
+      "title": "Haste to the Wedding",
+      "composer": "",
+      "key": "D",
+      "meter": "6/8",
+      "rhythm": "jig",
+      "url": "https://abcsessiontunes.com/tunes/7268",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/7268-haste-to-the-wedding.json",
+        "abc": "tunes/7268-haste-to-the-wedding.abc",
+        "api": "tunes/7268-haste-to-the-wedding.api.json"
+      },
+      "tests": "Jig, D, 6/8, dense quoted chords, pickup, quoted chord with parentheses."
+    },
+    {
+      "id": "7404",
+      "title": "Banish Misfortune",
+      "composer": "Cronin",
+      "key": "D",
+      "meter": "6/8",
+      "rhythm": "",
+      "url": "https://abcsessiontunes.com/tunes/7404",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/7404-banish-misfortune.json",
+        "abc": "tunes/7404-banish-misfortune.abc",
+        "api": "tunes/7404-banish-misfortune.api.json"
+      },
+      "tests": "Jig, D, 6/8, one chord symbol, pickup note."
+    },
+    {
+      "id": "8847",
+      "title": "Cold Frosty Morning",
+      "composer": "",
+      "key": "Ador",
+      "meter": "4/4",
+      "rhythm": "reel",
+      "url": "https://abcsessiontunes.com/tunes/8847",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/8847-cold-frosty-morning.json",
+        "abc": "tunes/8847-cold-frosty-morning.abc",
+        "api": "tunes/8847-cold-frosty-morning.api.json"
+      },
+      "tests": "Reel, A dor, no repeat barlines (linear body)."
+    },
+    {
+      "id": "9248",
+      "title": "Red Haired Boy",
+      "composer": "",
+      "key": "AMix",
+      "meter": "C|",
+      "rhythm": "reel",
+      "url": "https://abcsessiontunes.com/tunes/9248",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/9248-red-haired-boy.json",
+        "abc": "tunes/9248-red-haired-boy.abc",
+        "api": "tunes/9248-red-haired-boy.api.json"
+      },
+      "tests": "Reel, A mix, C| meter, quoted chords, pickup note."
+    },
+    {
+      "id": "13476",
+      "title": "the Butterfly",
+      "composer": "",
+      "key": "Em",
+      "meter": "9/8",
+      "rhythm": "slip jig",
+      "url": "https://abcsessiontunes.com/tunes/13476",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/13476-the-butterfly.json",
+        "abc": "tunes/13476-the-butterfly.abc",
+        "api": "tunes/13476-the-butterfly.api.json"
+      },
+      "tests": "Slip jig, E minor, 9/8, three parts, quoted chords."
+    },
+    {
+      "id": "16494",
+      "title": "Ashokan Farewell",
+      "composer": "Jay Ungar, 1982.",
+      "key": "D",
+      "meter": "3/4",
+      "rhythm": "waltz",
+      "url": "https://abcsessiontunes.com/tunes/16494",
+      "abc_source": "",
+      "files": {
+        "normalized": "tunes/16494-ashokan-farewell.json",
+        "abc": "tunes/16494-ashokan-farewell.abc",
+        "api": "tunes/16494-ashokan-farewell.api.json"
+      },
+      "tests": "Waltz, D, 3/4, quoted chords, long N: notes and a D7/C chord."
+    },
+    {
+      "id": "38052",
+      "title": "Angeline The Baker",
+      "composer": "",
+      "key": "Gmaj",
+      "meter": "2/4",
+      "rhythm": "polka",
+      "url": "https://abcsessiontunes.com/tunes/38052",
+      "abc_source": "https://abcnotation.com/tunePage?a=thesession.org/tunes/14300.no-ext/0004",
+      "files": {
+        "normalized": "tunes/38052-angeline-the-baker.json",
+        "abc": "tunes/38052-angeline-the-baker.abc",
+        "api": "tunes/38052-angeline-the-baker.api.json"
+      },
+      "tests": "Polka, G, 2/4, no chords, blank line before the X: header."
+    },
+    {
+      "id": "38058",
+      "title": "Angeline the Baker",
+      "composer": "",
+      "key": "D",
+      "meter": "4/4",
+      "rhythm": "",
+      "url": "https://abcsessiontunes.com/tunes/38058",
+      "abc_source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/contrib/Tunes/AngelineTheBaker/0000",
+      "files": {
+        "normalized": "tunes/38058-angeline-the-baker.json",
+        "abc": "tunes/38058-angeline-the-baker.abc",
+        "api": "tunes/38058-angeline-the-baker.api.json"
+      },
+      "tests": "Reel, D, 4/4, no L: or R: header and no repeat barlines."
+    },
+    {
+      "id": "55939",
+      "title": "Moneymusk",
+      "composer": "",
+      "key": "A",
+      "meter": "4/4",
+      "rhythm": "Reel",
+      "url": "https://abcsessiontunes.com/tunes/55939",
+      "abc_source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/book/Athole/F/athol-m/0045",
+      "files": {
+        "normalized": "tunes/55939-moneymusk.json",
+        "abc": "tunes/55939-moneymusk.abc",
+        "api": "tunes/55939-moneymusk.api.json"
+      },
+      "tests": "Reel, A, no quoted chords (chord inference), pickup, triplets."
+    },
+    {
+      "id": "63383",
+      "title": "Old Joe Clark",
+      "composer": "",
+      "key": "A mix",
+      "meter": "4/4",
+      "rhythm": "",
+      "url": "https://abcsessiontunes.com/tunes/63383",
+      "abc_source": "https://abcnotation.com/tunePage?a=kaz.neocities.org/Combined_Tunebook.txt/0003",
+      "files": {
+        "normalized": "tunes/63383-old-joe-clark.json",
+        "abc": "tunes/63383-old-joe-clark.abc",
+        "api": "tunes/63383-old-joe-clark.api.json"
+      },
+      "tests": "Reel, A mix, L:1/4, three-note pickup, quoted chords."
+    },
+    {
+      "id": "74283",
+      "title": "Kid on the Mountain, The",
+      "composer": "",
+      "key": "Em",
+      "meter": "9/8",
+      "rhythm": "slip jig",
+      "url": "https://abcsessiontunes.com/tunes/74283",
+      "abc_source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/contrib/Tunes/RosieFinnsFavorite/0000",
+      "files": {
+        "normalized": "tunes/74283-kid-on-the-mountain-the.json",
+        "abc": "tunes/74283-kid-on-the-mountain-the.abc",
+        "api": "tunes/74283-kid-on-the-mountain-the.api.json"
+      },
+      "tests": "Medley file: three tunes in one ABC body (edge case for the parser)."
+    },
+    {
+      "id": "75412",
+      "title": "Saint Anne's Reel",
+      "composer": "",
+      "key": "D",
+      "meter": "C|",
+      "rhythm": "reel",
+      "url": "https://abcsessiontunes.com/tunes/75412",
+      "abc_source": "https://abcnotation.com/tunePage?a=sessionite.com/docs/5574/2585",
+      "files": {
+        "normalized": "tunes/75412-saint-annes-reel.json",
+        "abc": "tunes/75412-saint-annes-reel.abc",
+        "api": "tunes/75412-saint-annes-reel.api.json"
+      },
+      "tests": "Reel, D, C| meter, inline 'variations' text, more than 32 bars."
+    },
+    {
+      "id": "75815",
+      "title": "Sandy Boys",
+      "composer": "",
+      "key": "A mix",
+      "meter": "4/4",
+      "rhythm": "",
+      "url": "https://abcsessiontunes.com/tunes/75815",
+      "abc_source": "https://abcnotation.com/tunePage?a=kaz.neocities.org/Combined_Tunebook.txt/0007",
+      "files": {
+        "normalized": "tunes/75815-sandy-boys.json",
+        "abc": "tunes/75815-sandy-boys.abc",
+        "api": "tunes/75815-sandy-boys.api.json"
+      },
+      "tests": "Default tune. Reel, A mix, 4/4, quoted chords, 32 bars."
+    }
+  ]
+}

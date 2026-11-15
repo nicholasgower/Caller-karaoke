@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "13476",
+    "url": "https://abcsessiontunes.com/tunes/13476"
+  },
+  "title": "the Butterfly",
+  "composer": "",
+  "key": "Em",
+  "meter": "9/8",
+  "rhythm": "slip jig",
+  "abc": "X: 1\nT: the Butterfly\nO: attr. Tommy Potts\nR: slipjig\nZ: 1997 by John Chambers <jc:trillian.mit.edu>\nN: Commonly ends with the first bar as a coda.\nN: Although this tune is often attributed to Tommy Potts, he wrote at most the first part.\nN: The other parts are variants of the old tunes Barney's Goat and Skin (or Kick) the Peeler.\nN: The tune has many other names, such as The Bug, Eitil Im, Fiona, Im Ag Eitit, The Red Monarch Butterfly, etc..\nD: Bothy Band: 1975\nM: 9/8\nL: 1/8\nK: Em\n|: \"Em\"B2E G2E \"D\"F3 | \"Em\"B2E G2E \"D\"FED | \"Em\"B2E G2E \"D\"F3 | \"G\"B2d d2B \"D\"AFD :|\n|: \"Em\"B2c e2f g3 | B2c g2e \"D\"dBA | \"Em\"B2c e2f g2a | \"G\"b2a g2e \"D\"dBA :|\n|: \"Em\"B>cB B2A G2A | B>cB BAB \"D\"dBA | \"Em\"B>cB B2A G2A | \"G\"B2d g2e \"D\"dBA :|\n",
+  "credits": "1997 by John Chambers <jc:trillian.mit.edu>"
+}

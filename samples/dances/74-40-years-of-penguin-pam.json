@@ -1,0 +1,69 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "74",
+    "url": "https://contradb.com/dances/74"
+  },
+  "title": "40 Years of Penguin Pam",
+  "choreographer": "Seth Tepfer",
+  "formation": "Becket",
+  "preamble": "",
+  "notes": "",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 8.0,
+      "text": "circle left 3 places"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "neighbors swing"
+    },
+    {
+      "phrase": "A2",
+      "beats": 8.0,
+      "text": "circle left 3 places"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "partners two hand turn 1½"
+    },
+    {
+      "phrase": "B1",
+      "beats": 8.0,
+      "text": "left diagonal right left through"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "right left through"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "left diagonal ladles chain"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "ladles chain across set (this is shadow)"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "ladles start a left diagonal half hey - rights in center, lefts on ends by right shoulder"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "ladles start a half hey - rights in center, lefts on ends"
+    },
+    {
+      "phrase": null,
+      "beats": 16.0,
+      "text": "partners balance & swing"
+    }
+  ]
+}

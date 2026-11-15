@@ -1,0 +1,64 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "664",
+    "url": "https://contradb.com/dances/664"
+  },
+  "title": "Accretion Reel",
+  "choreographer": "Chris Page",
+  "formation": "scatter mixer",
+  "preamble": "",
+  "notes": "http://chrispagecontra.awardspace.us/dances/index.htm#accretion-reel\n\n[1] What ring? The circle at the end of B2. The first time through the dance, skip this part, and begin straight with the individual scatter promenade. (John Sweeney came up with a cool alternate beginning, with everyone in one big circle, before breaking it up into individual pieces. If so, you definitely also want the big circle for the final time through.)\n\nDavid Millstone writes about a nice modification of this for ONS groups: \"Chris's dance calls for folks to balance in and out, and even though I demonstrated that to a group, their inclination was to go into the center in four counts with a whoop! and their arms rising up. Who am I to fight the natural tendency of the dancers? I suspect that this feels more satisfying, and it still gives them 12 beats to say goodbye to their circle and to walk alone to find a new partner.\"\n\n[2] When I'm calling for ONS (one-night-stand) groups, I'll use \"say goodbye\" here. Then when they gyre later on, it's \"say hello, and go around them, looking at them.\"\n\n[3] Those allergic to gyres may wish to substitute a do-si-do, or skip it altogether and go straight to the swing. For an ONS group, substitute the swing with a two-allemande, elbow swing, or \"whatever you think a swing should be.\"\n\n[4] For more advanced groups, the gypsy can be with more than one other person. And the swing can be a basket swing.\n\n[5] Last time through the dance, I like to have everyone promenade in one giant circle. Ditto for the final circles.\n\n[6] Here each couple needs to find a few other couples to circle with. Lone couples could always two-allemande each other. James Hutson came up with a nice term for these variable-sized circles -- blobs.\n\nThe dance I consider my best. Usable both for non-dancing crowds, and with regular contra groups.\n\nI wrote it after attending a contra dance with a number of beginners that kept breaking down over and over and over. On the way back, I thought what would have worked (a dance that intentionally broke down each time), and came up with a dance that I kept refining and simplifying down to this. It was partly also inspired by Ted Sannella's \"Ted's Solo Mixer\" and the scatter mixer \"Set a' Crochet.\"\n\nThe dance's name came from ideas of planetary system formation, where larger and larger chunks of matter spiral inwards from gravity, accreting to form planetisemals, and then planets. The analogy goes bad where everybody separates every thirty seconds, but you could just consider that a periodic supernova event.\n\nAfter having danced this, the A1/A2 feels sort of like the rush of looking for a partner, though here the commitment's only for 20 seconds. Kind of reminiscent of the cabeceo of tango.\n\nVideos: (#1) (#2)",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 4.0,
+      "text": "balance ring [1]"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "turn alone [2]"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "individual scatter promenade"
+    },
+    {
+      "phrase": null,
+      "beats": 4.0,
+      "text": "find a new partner"
+    },
+    {
+      "phrase": "A2",
+      "beats": 8.0,
+      "text": "partners gyre once [3] [4]"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "partners swing"
+    },
+    {
+      "phrase": "B1",
+      "beats": 8.0,
+      "text": "partners promenade scatter [5]"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "join in rings of any number of couples [6]"
+    },
+    {
+      "phrase": "B2",
+      "beats": 8.0,
+      "text": "circle left 4 places"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "circle right 4 places"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "3017",
+    "url": "https://abcsessiontunes.com/tunes/3017"
+  },
+  "title": "Fisher's Hornpipe",
+  "composer": "",
+  "key": "D",
+  "meter": "C|",
+  "rhythm": "hornpipe",
+  "abc": "X: 1\nT: Fisher's Hornpipe\nR: hornpipe, reel\nO: James Fishar 1778\nZ: 1997 by John Chambers <jc:trillian.mit.edu>\nM: C|\nL: 1/8\nK: D\n(3A/B/c/ \\\n| \"D\"dAFD \"G\"GBAG | \"D\"FDFD \"G\"GBAG | \"D\"FDFD \"A7\"GEGE | \"D\"FDFD \"A7\"EABc |\n| \"D\"dAFD \"G\"GBAG | \"D\"FDFD \"G\"GBAG | \"D\"FGAB \"A7\"cdec | \"D\"d2d2 d2 :|\n|: cd \\\n| \"A\"ecAc egfe | \"D\"fdAd fagf | \"A\"ecAc efgf | \"E7\"edcB \"A\"A2A2 |\n| \"G\"BGDG BdcB | \"D\"AFDF AFdA | \"G\"BdcB \"A7\"AGFE | \"D\"D2[d2D2] [d2D2] :|\n",
+  "credits": "1997 by John Chambers <jc:trillian.mit.edu>"
+}

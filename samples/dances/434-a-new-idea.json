@@ -1,0 +1,54 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "434",
+    "url": "https://contradb.com/dances/434"
+  },
+  "title": "A New Idea",
+  "choreographer": "Michael Fuerst",
+  "formation": "Becket ccw",
+  "preamble": "Once dancers are in Becket position, introduce dancers to shadow, the next opposite role person beyond their partner (gentlespoons look right, ladles left).\n\nHave ladles note that they will interact thrice with the ladle in the couple on the right diagonal",
+  "notes": "+half-right diagonal: Note couple on right diagonal. Dancers will trade sides and end up facing this couple as new neighbors.\n\nGentlespoons pull by right with current neighbor gentlespoon, while ladles pull by right with ladle in that noted couple. Courtesy turn with partner and adjust as needed to face noted couple. Ladles who pulled by will be in facing couples, ladles need to help partners shift during or at end of courtesy turn to face correct couple.)\n\n++ half-left diagonal: Gentlespoons pull by right with gentlespoon on their left of their partner, ladles pull by right the ladles previously pulled by and allemanded. Neighbors who just swung courtesy turn, and all finish facing across their noted shadow.\n\nOther teaching hints:\n\n1. Make sure ladles know that the two pull-bys and allemande all occur with the same neighbor ladle\n\n2. Tell dancers that at the ends of the sets, the rights and lefts will occur with one person pulling by a ghost.\n\n3. When out at end with partner, dancers position themselves on the correct diagonal to re-enter dance.\n\n4. During the dance, one can prompt the 1/2 diagonal rights and lefts as with \"right diagonal\" and \"left diagonal\"\n\nOriginal at http://aptsg.org/Dance/dances.html#NewIdea",
+  "figures": [
+    {
+      "phrase": "A1",
+      "beats": 8.0,
+      "text": "long lines forward & back"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "right & left through with partner on the half-right diagonal +"
+    },
+    {
+      "phrase": "A2",
+      "beats": 8.0,
+      "text": "ladles allemande right 1½ (same ladles who just pulled by each other)"
+    },
+    {
+      "phrase": null,
+      "beats": 8.0,
+      "text": "neighbors swing"
+    },
+    {
+      "phrase": "B1",
+      "beats": 8.0,
+      "text": "right & left through with neigbor on the half-left diagonal ++"
+    },
+    {
+      "phrase": null,
+      "beats": 6.0,
+      "text": "circle left 3 places"
+    },
+    {
+      "phrase": null,
+      "beats": 2.0,
+      "text": "shadows pass by right shoulders"
+    },
+    {
+      "phrase": "B2",
+      "beats": 16.0,
+      "text": "partners balance & swing"
+    }
+  ]
+}

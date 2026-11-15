@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "9248",
+    "url": "https://abcsessiontunes.com/tunes/9248"
+  },
+  "title": "Red Haired Boy",
+  "composer": "",
+  "key": "AMix",
+  "meter": "C|",
+  "rhythm": "reel",
+  "abc": "X: 1\nT: Red Haired Boy\nO: Irish\nM: C|\nS: Roaring Jelly collection\nR: reel\nK: AMix\nGF |\\\n\"A\"E2A2 ABcd | efec \"D\"d2cd | \"A\"edcB ABce | \"G\"BGEF G2GF |\n\"A\"E2AG ABcd | efec \"D\"dBcd | \"A\"ea2b aged | \"E7\"c2A2 \"A\"A2 :|\n|:\\\nef |\\\n\"G\"g2ef g2ef | gfec \"D\"d2cd | \"A\"edcB ABce | \"G\"BGEF G2GF |\n\"A\"E2AG ABcd | efec \"D\"dBcd | \"A\"ea2b aged | \"E7\"c2A2 \"A\"A2 :|\n",
+  "credits": "ABC Session Tunes tune 9248"
+}

@@ -1,0 +1,14 @@
+{
+  "source": {
+    "provider": "abcsessiontunes",
+    "id": "7268",
+    "url": "https://abcsessiontunes.com/tunes/7268"
+  },
+  "title": "Haste to the Wedding",
+  "composer": "",
+  "key": "D",
+  "meter": "6/8",
+  "rhythm": "jig",
+  "abc": "X: 1\nT: Haste to the Wedding\nO: 1760\nM: 6/8\nL: 1/8\nR: jig\nZ: 2005 John Chambers <jc:trillian.mit.edu>\nB: Cole p.53\nB: Called \"The Small Pin Cushion\" in J. Oswald's \"Caledonian Pocket Companion\" (bk. 10, c 1760)\nB: Called \"Carrick Fergus\" in J. Brysson's \"A Curious Collection of Favourite Tunes\" (Edinburgh 1791)\nN: \"The tune 'Come, Haste to the Wedding,' of Gaelic origin, was introduced in the pantomime, The Elopement, staged in London in 1767.\" (Linscott, 1939)\nK: D\nF/G/ \\\n| \"D\"A>BA Agf | \"G\"ede \"A7\"fdB | \"D\"A>BA \"Bm\"AdF | \"Em\"GFG \"A7\"EFG | \"D\"A>BA Aaf |\n| \"G\"ede \"A7\"fdB | \"D\"A>BA \"A7\"faf | \"D\"d>ed d2 :: f/g/ | \"D\"a>fa afa | \"G\"b>gb \"(A7)\"bag |\n| \"D\"fga \"Bm\"agf | \"Em\"g>fg \"A7\"efg | \"D\"a2z \"Bm\"f2z | \"Em\"ede \"A7\"fdB | \"D\"A>BA \"A7\"faf | \"D\"d>ed d2 :|\n",
+  "credits": "2005 John Chambers <jc:trillian.mit.edu>"
+}
