@@ -23,6 +23,30 @@
       "height": 800
     },
     {
+      "id": "dance-library",
+      "alt": "The Select dance screen with a saved-dance search field, a folder sidebar listing Warmups and Encores, three saved cards, and Another Last Dance selected for preview.",
+      "caption": "Select dance lists your saved cards; search them, group them into folders, and load one without a network.",
+      "status": "pending"
+    },
+    {
+      "id": "dance-library-search",
+      "alt": "The Select dance screen with belle typed in the saved-dance search, the Warmups folder selected, one matching card, and its preview.",
+      "caption": "Saved content is searched locally; the folder panel filters the list and offers rename and delete.",
+      "status": "pending"
+    },
+    {
+      "id": "tune-library",
+      "alt": "The Select tune screen with a saved-tune search field, a folder sidebar listing Reels and Jigs, three saved tunes, and Sandy Boys sheet music.",
+      "caption": "Select tune lists your saved tunes with an offline sheet-music preview.",
+      "status": "pending"
+    },
+    {
+      "id": "tune-library-search",
+      "alt": "The Select tune screen with saint typed in the saved-tune search, the Reels folder selected, one matching tune, and its sheet music.",
+      "caption": "The same saved-content search and folders apply to tunes.",
+      "status": "pending"
+    },
+    {
       "id": "about-window",
       "alt": "The About window over the session screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
       "caption": "About shows the program version, its author, and the project links.",
@@ -30,24 +54,24 @@
     },
     {
       "id": "dance-picker-open",
-      "alt": "The Select dance screen with Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields above an empty results area.",
-      "caption": "Select dance searches ContraDB and previews a card before loading it.",
+      "alt": "The Download dance screen with Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields above an empty results area.",
+      "caption": "Download dance searches ContraDB and previews a card before saving it locally.",
       "status": "ready",
       "width": 1280,
       "height": 800
     },
     {
       "id": "dance-picker-search",
-      "alt": "The Select dance screen with last typed in the Title field and a list of matching dances on the left and a dance preview on the right.",
-      "caption": "Search results show the title, choreographer, and formation; Preview opens the figures.",
+      "alt": "The Download dance screen with last typed in the Title field and a list of matching dances on the left, a downloaded badge on saved cards, and a dance preview on the right.",
+      "caption": "Results show the title, choreographer, and formation; Preview opens the figures.",
       "status": "ready",
       "width": 1280,
       "height": 800
     },
     {
       "id": "dance-picker-preview",
-      "alt": "The Select dance screen with Another Last Dance selected, its figure list and Open on ContraDB link in the preview column, and the Use this dance button visible.",
-      "caption": "Preview the full card, its beat total, and the source link before replacing the current dance.",
+      "alt": "The Download dance screen with Another Last Dance selected, the Download again, Use this dance, and View saved dances buttons, and its figure list below.",
+      "caption": "Download the card for offline use or load it immediately; either action saves it to your library.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -62,16 +86,16 @@
     },
     {
       "id": "tune-picker-open",
-      "alt": "The Select Tune screen with Search and Composer fields, Key, Meter, and Genre menus, and an empty results area.",
-      "caption": "Select Tune searches ABC Session Tunes and previews the ABC text.",
+      "alt": "The Download tune screen with Search and Composer fields, Key, Meter, and Genre menus, and an empty results area.",
+      "caption": "Download tune searches ABC Session Tunes and previews the sheet music.",
       "status": "ready",
       "width": 1280,
       "height": 800
     },
     {
       "id": "tune-picker-preview",
-      "alt": "The Select Tune preview showing the tune metadata, credits, source link, Show ABC toggle, and rendered sheet music.",
-      "caption": "The preview engraves the ABC as sheet music; Show ABC switches to the source text.",
+      "alt": "The Download tune preview showing the tune metadata, credits, source link, Show ABC toggle, Download again and Use this tune buttons, and rendered sheet music.",
+      "caption": "The preview engraves the ABC as sheet music; Download saves it and Use loads it.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -351,7 +375,7 @@
     {
       "id": "prefs-cache-cleared",
       "alt": "The Maintenance section after clearing the cache, with the status Cache cleared shown below the buttons.",
-      "caption": "Clearing the source cache does not remove the bundled default dance or tune.",
+      "caption": "Clearing the source cache does not remove saved dances, tunes, or the bundled defaults.",
       "status": "ready",
       "width": 1280,
       "height": 2250
@@ -390,7 +414,7 @@
     },
     {
       "id": "error-network",
-      "alt": "The session screen with a red source error in the bottom panel and a Dismiss button.",
+      "alt": "The Download dance screen with a red source error in the bottom panel and a Dismiss button.",
       "caption": "A failed search or detail request leaves the current dance and tune in place.",
       "status": "ready",
       "width": 1280,
@@ -398,7 +422,7 @@
     },
     {
       "id": "error-parse",
-      "alt": "The session screen with a red message that a source response could not be parsed and a Dismiss button.",
+      "alt": "The Download tune screen with a red message that a source response could not be parsed and a Dismiss button.",
       "caption": "A short reason is shown; the current content is not replaced.",
       "status": "ready",
       "width": 1280,
@@ -414,7 +438,7 @@
     },
     {
       "id": "dance-sort",
-      "alt": "The Select dance Sort menu open with Relevance, Title A–Z, Title Z–A, Choreographer A–Z, and Newest.",
+      "alt": "The Download dance Sort menu open with Relevance, Title A–Z, Title Z–A, Choreographer A–Z, and Newest.",
       "caption": "Sorting applies the next time Search dances runs.",
       "status": "ready",
       "width": 1280,
@@ -422,7 +446,7 @@
     },
     {
       "id": "dance-pagination",
-      "alt": "The bottom of the Select dance screen with Previous, Page 1 of 12, and Next controls.",
+      "alt": "The bottom of the Download dance screen with Previous, Page 1 of 12, and Next controls.",
       "caption": "Results are shown ten at a time.",
       "status": "ready",
       "width": 1280,
@@ -438,7 +462,7 @@
     },
     {
       "id": "error-dance-load",
-      "alt": "The Select dance screen with an error in the bottom panel after a failed search or preview.",
+      "alt": "The Download dance screen with an error in the bottom panel after a failed search or preview.",
       "caption": "Dismiss the error and retry, or use a cached result if one is available.",
       "status": "ready",
       "width": 1280,
@@ -446,7 +470,7 @@
     },
     {
       "id": "tune-search",
-      "alt": "The Select Tune screen with a search term and a list of matching tunes with title, composer, key, and meter.",
+      "alt": "The Download tune screen with a search term and a list of matching tunes with title, composer, key, and meter.",
       "caption": "Search matches title and composer; filters narrow the result set.",
       "status": "ready",
       "width": 1280,
@@ -454,7 +478,7 @@
     },
     {
       "id": "tune-filter-key",
-      "alt": "The Select Tune Key menu open with Any key, D major, G major, A major, and the other curated keys.",
+      "alt": "The Download tune Key menu open with Any key, D major, G major, A major, and the other curated keys.",
       "caption": "The key menu uses a curated list of common contra keys.",
       "status": "ready",
       "width": 1280,
@@ -462,7 +486,7 @@
     },
     {
       "id": "tune-filter-meter",
-      "alt": "The Select Tune Meter menu open with Any meter, 4/4, 2/2, 2/4, 6/8, 9/8, 12/8, and 3/4.",
+      "alt": "The Download tune Meter menu open with Any meter, 4/4, 2/2, 2/4, 6/8, 9/8, 12/8, and 3/4.",
       "caption": "Meter filters the ABC Session Tunes results before searching.",
       "status": "ready",
       "width": 1280,
@@ -470,7 +494,7 @@
     },
     {
       "id": "tune-filter-genre",
-      "alt": "The Select Tune Genre menu open with reels, jigs, slip jigs, hornpipes, polkas, slides, strathspeys, and waltzes.",
+      "alt": "The Download tune Genre menu open with reels, jigs, slip jigs, hornpipes, polkas, slides, strathspeys, and waltzes.",
       "caption": "Genre is the ABC Session Tunes rhythm field.",
       "status": "ready",
       "width": 1280,
@@ -478,7 +502,7 @@
     },
     {
       "id": "error-tune-load",
-      "alt": "The Select Tune screen with an error in the bottom panel after a failed search or preview.",
+      "alt": "The Download tune screen with an error in the bottom panel after a failed search or preview.",
       "caption": "The current tune stays loaded if a new one cannot be fetched or parsed.",
       "status": "ready",
       "width": 1280,
@@ -550,7 +574,7 @@
     },
     {
       "id": "dance-filter-user",
-      "alt": "The Select dance screen with a User filter entered and matching results.",
+      "alt": "The Download dance screen with a User filter entered and matching results.",
       "caption": "The User filter matches the ContraDB contributor name.",
       "status": "ready",
       "width": 1280,
@@ -558,7 +582,7 @@
     },
     {
       "id": "dance-filter-hook",
-      "alt": "The Select dance screen with a Hook filter entered and matching results.",
+      "alt": "The Download dance screen with a Hook filter entered and matching results.",
       "caption": "The Hook filter matches the short hook line on ContraDB cards.",
       "status": "ready",
       "width": 1280,
@@ -566,7 +590,7 @@
     },
     {
       "id": "dance-filter-figure-type",
-      "alt": "The Select dance Figure type menu open with Swing, Allemande, Do-si-do, Balance, Chain, Circle, Star, Hey, Gyre, and the other move types.",
+      "alt": "The Download dance Figure type menu open with Swing, Allemande, Do-si-do, Balance, Chain, Circle, Star, Hey, Gyre, and the other move types.",
       "caption": "Figure type sends a move-type filter and takes precedence over Figure contains.",
       "status": "ready",
       "width": 1280,

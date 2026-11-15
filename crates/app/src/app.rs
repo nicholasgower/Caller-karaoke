@@ -6,8 +6,9 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AliasTable, Dance, MelodyInstrument, MoveKind,
-    PracticeTimeline, Preferences, RolePreset, RoleTerms, Theme, TimelineConfig, Tune,
+    AccompanimentInstrument, AccompanimentRhythm, AliasTable, Dance, FolderFilter, Library,
+    MelodyInstrument, MoveKind, PracticeTimeline, Preferences, RolePreset, RoleTerms, Theme,
+    TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi, parse_abc, render,
@@ -23,6 +24,7 @@ use rustysynth::SoundFont;
 
 use crate::audio::AudioEngine;
 use crate::defaults;
+use crate::library;
 use crate::sheet::SheetPreview;
 use crate::source::{SourceClient, SourceEvent};
 use crate::theme;
@@ -32,7 +34,9 @@ use crate::tts::Speech;
 enum Screen {
     Session,
     DancePicker,
+    DanceDownload,
     TunePicker,
+    TuneDownload,
     Preferences,
     Aliases,
 }
@@ -67,6 +71,8 @@ impl Screen {
         match self {
             Self::Session => None,
             Self::Aliases => Some(Self::Preferences),
+            Self::DanceDownload => Some(Self::DancePicker),
+            Self::TuneDownload => Some(Self::TunePicker),
             Self::DancePicker | Self::TunePicker | Self::Preferences => Some(Self::Session),
         }
     }
@@ -113,6 +119,9 @@ fn tab_shortcut(input: &egui::InputState) -> Option<Screen> {
 pub struct ContraApp {
     prefs: Preferences,
     prefs_path: Option<PathBuf>,
+    /// Directory for the saved dance and tune libraries; `None` in the
+    /// headless renderer, which must not touch user data.
+    library_dir: Option<PathBuf>,
     audio: AudioEngine,
     audio_error: Option<String>,
     speech: Speech,
@@ -142,6 +151,18 @@ pub struct ContraApp {
     started: bool,
     dance_query: DanceQuery,
     tune_query: TuneQuery,
+    dance_library: Library<Dance>,
+    tune_library: Library<Tune>,
+    dance_library_query: String,
+    tune_library_query: String,
+    dance_library_folder: FolderFilter,
+    tune_library_folder: FolderFilter,
+    new_dance_folder: String,
+    new_tune_folder: String,
+    renaming_dance_folder: Option<String>,
+    renaming_tune_folder: Option<String>,
+    folder_rename_text: String,
+    library_status: Option<String>,
     dance_results: Option<DanceSearchPage>,
     tune_results: Option<TuneSearchPage>,
     dance_preview: Option<Dance>,
@@ -230,6 +251,27 @@ impl ContraApp {
 
         let dance = defaults::default_dance();
         let tune = defaults::default_tune();
+        let library_dir = config_dir.join("library");
+        let mut dance_library = match library::load_dances(Some(&library_dir)) {
+            Some(saved) => saved,
+            None => {
+                let mut saved = Library::default();
+                saved.insert(dance.clone(), None, library::now_seconds());
+                library::save_dances(Some(&library_dir), &saved);
+                saved
+            }
+        };
+        let mut tune_library = match library::load_tunes(Some(&library_dir)) {
+            Some(saved) => saved,
+            None => {
+                let mut saved = Library::default();
+                saved.insert(tune.clone(), None, library::now_seconds());
+                library::save_tunes(Some(&library_dir), &saved);
+                saved
+            }
+        };
+        dance_library.validate();
+        tune_library.validate();
         let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
         speech.prewarm(call_texts(&timeline));
         let length_warning = length_warning_for(&dance, &tune);
@@ -246,6 +288,7 @@ impl ContraApp {
         Self {
             prefs,
             prefs_path: Some(prefs_path),
+            library_dir: Some(library_dir),
             audio: audio.0,
             audio_error: audio.1,
             speech,
@@ -274,6 +317,18 @@ impl ContraApp {
                 page_size: 10,
                 ..TuneQuery::default()
             },
+            dance_library,
+            tune_library,
+            dance_library_query: String::new(),
+            tune_library_query: String::new(),
+            dance_library_folder: FolderFilter::All,
+            tune_library_folder: FolderFilter::All,
+            new_dance_folder: String::new(),
+            new_tune_folder: String::new(),
+            renaming_dance_folder: None,
+            renaming_tune_folder: None,
+            folder_rename_text: String::new(),
+            library_status: None,
             dance_results: None,
             tune_results: None,
             dance_preview: None,
@@ -354,6 +409,108 @@ impl ContraApp {
         self.source.search_tunes(self.tune_query.clone());
     }
 
+    fn save_dance_library(&self) {
+        library::save_dances(self.library_dir.as_deref(), &self.dance_library);
+    }
+
+    fn save_tune_library(&self) {
+        library::save_tunes(self.library_dir.as_deref(), &self.tune_library);
+    }
+
+    /// Store a downloaded dance in the local library.
+    ///
+    /// Re-downloading replaces the stored card but keeps its folder. The
+    /// picker calls this from the Download dance screen and from
+    /// [`Self::use_dance`], so anything that reaches the session can be found
+    /// offline later.
+    fn download_dance(&mut self, dance: Dance) {
+        let title = dance.title.clone();
+        let refreshed = self
+            .dance_library
+            .contains(&dance.source.provider, &dance.source.id);
+        self.dance_library
+            .insert(dance, None, library::now_seconds());
+        self.save_dance_library();
+        self.library_status = Some(if refreshed {
+            format!("Updated \"{title}\" in your saved dances.")
+        } else {
+            format!("Downloaded \"{title}\" to your saved dances.")
+        });
+    }
+
+    fn download_tune(&mut self, tune: Tune) {
+        let title = tune.title.clone();
+        let refreshed = self
+            .tune_library
+            .contains(&tune.source.provider, &tune.source.id);
+        self.tune_library.insert(tune, None, library::now_seconds());
+        self.save_tune_library();
+        self.library_status = Some(if refreshed {
+            format!("Updated \"{title}\" in your saved tunes.")
+        } else {
+            format!("Downloaded \"{title}\" to your saved tunes.")
+        });
+    }
+
+    fn remove_saved_dance(&mut self, id: &str) {
+        let Some(entry) = self.dance_library.remove("contradb", id) else {
+            return;
+        };
+        self.save_dance_library();
+        if self
+            .dance_preview
+            .as_ref()
+            .is_some_and(|dance| dance.source.id == id)
+        {
+            self.dance_preview = None;
+        }
+        self.library_status = Some(format!(
+            "Removed \"{}\" from saved dances.",
+            entry.item.title
+        ));
+    }
+
+    fn remove_saved_tune(&mut self, id: &str) {
+        let Some(entry) = self.tune_library.remove("abcsessiontunes", id) else {
+            return;
+        };
+        self.save_tune_library();
+        if self
+            .tune_preview
+            .as_ref()
+            .is_some_and(|tune| tune.source.id == id)
+        {
+            self.tune_preview = None;
+            self.tune_sheet = None;
+        }
+        self.library_status = Some(format!(
+            "Removed \"{}\" from saved tunes.",
+            entry.item.title
+        ));
+    }
+
+    fn move_saved_dance(&mut self, id: &str, folder: Option<String>) {
+        let label = folder.clone().unwrap_or_else(|| "Unfiled".into());
+        match self.dance_library.set_folder("contradb", id, folder) {
+            Ok(()) => {
+                self.save_dance_library();
+                self.library_status = Some(format!("Moved the dance to {label}."));
+            }
+            Err(error) => self.library_status = Some(error.to_string()),
+        }
+    }
+
+    fn move_saved_tune(&mut self, id: &str, folder: Option<String>) {
+        let label = folder.clone().unwrap_or_else(|| "Unfiled".into());
+        match self.tune_library.set_folder("abcsessiontunes", id, folder) {
+            Ok(()) => {
+                self.save_tune_library();
+                self.library_status = Some(format!("Moved the tune to {label}."));
+            }
+            Err(error) => self.library_status = Some(error.to_string()),
+        }
+    }
+
     /// Add the custom alias currently entered in the alias editor.
     fn add_custom_alias(&mut self) {
         let key = self.custom_key.trim().to_string();
@@ -374,6 +531,7 @@ impl ContraApp {
         if self.screen_anim_screen != self.screen {
             self.screen_anim_screen = self.screen;
             self.screen_anim = 0.0;
+            self.library_status = None;
         }
         if !self.prefs.animations_enabled {
             self.screen_anim = 1.0;
@@ -414,6 +572,10 @@ impl ContraApp {
 
         let dance = defaults::default_dance();
         let tune = defaults::default_tune();
+        let mut dance_library = Library::default();
+        dance_library.insert(dance.clone(), None, 0);
+        let mut tune_library = Library::default();
+        tune_library.insert(tune.clone(), None, 0);
         let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
         let length_warning = length_warning_for(&dance, &tune);
 
@@ -422,6 +584,7 @@ impl ContraApp {
         Self {
             prefs,
             prefs_path: None,
+            library_dir: None,
             audio,
             audio_error: None,
             speech,
@@ -450,6 +613,18 @@ impl ContraApp {
                 page_size: 10,
                 ..TuneQuery::default()
             },
+            dance_library,
+            tune_library,
+            dance_library_query: String::new(),
+            tune_library_query: String::new(),
+            dance_library_folder: FolderFilter::All,
+            tune_library_folder: FolderFilter::All,
+            new_dance_folder: String::new(),
+            new_tune_folder: String::new(),
+            renaming_dance_folder: None,
+            renaming_tune_folder: None,
+            folder_rename_text: String::new(),
+            library_status: None,
             dance_results: None,
             tune_results: None,
             dance_preview: None,
@@ -654,6 +829,7 @@ impl ContraApp {
 
     fn use_dance(&mut self, dance: Dance) {
         self.error = None;
+        self.download_dance(dance.clone());
         self.dance = dance;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_dance = Some(self.dance.source.clone());
@@ -674,6 +850,7 @@ impl ContraApp {
 
     fn use_tune(&mut self, tune: Tune) {
         self.error = None;
+        self.download_tune(tune.clone());
         self.tune = tune;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_tune = Some(self.tune.source.clone());
@@ -938,7 +1115,7 @@ impl eframe::App for ContraApp {
                             }
                             if tab(
                                 ui,
-                                self.screen == Screen::DancePicker,
+                                matches!(self.screen, Screen::DancePicker | Screen::DanceDownload),
                                 labels[1],
                                 hovers[1],
                                 "2",
@@ -949,7 +1126,7 @@ impl eframe::App for ContraApp {
                             }
                             if tab(
                                 ui,
-                                self.screen == Screen::TunePicker,
+                                matches!(self.screen, Screen::TunePicker | Screen::TuneDownload),
                                 labels[2],
                                 hovers[2],
                                 "3",
@@ -998,8 +1175,10 @@ impl eframe::App for ContraApp {
             }
             match self.screen {
                 Screen::Session => self.session_ui(ui, beat),
-                Screen::DancePicker => self.dance_picker_ui(ui),
-                Screen::TunePicker => self.tune_picker_ui(ui),
+                Screen::DancePicker => self.dance_library_ui(ui),
+                Screen::DanceDownload => self.dance_download_ui(ui),
+                Screen::TunePicker => self.tune_library_ui(ui),
+                Screen::TuneDownload => self.tune_download_ui(ui),
                 Screen::Preferences => self.preferences_ui(ui),
                 Screen::Aliases => self.aliases_ui(ui),
             }
@@ -1356,7 +1535,15 @@ mod tests {
     fn escape_returns_to_the_previous_screen() {
         assert_eq!(Screen::Session.escape_target(), None);
         assert_eq!(Screen::DancePicker.escape_target(), Some(Screen::Session));
+        assert_eq!(
+            Screen::DanceDownload.escape_target(),
+            Some(Screen::DancePicker)
+        );
         assert_eq!(Screen::TunePicker.escape_target(), Some(Screen::Session));
+        assert_eq!(
+            Screen::TuneDownload.escape_target(),
+            Some(Screen::TunePicker)
+        );
         assert_eq!(Screen::Preferences.escape_target(), Some(Screen::Session));
         assert_eq!(Screen::Aliases.escape_target(), Some(Screen::Preferences));
     }

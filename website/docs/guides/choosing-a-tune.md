@@ -1,13 +1,53 @@
 ---
 title: Choosing a tune
-description: Search ABC Session Tunes by title, composer, key, meter, and genre, preview the sheet music or ABC, and load a 64-beat arrangement.
+description: Search your saved tunes, organise them into folders, and download another ABC Session Tunes melody.
 sidebar_position: 2
 ---
 
-**Select Tune** searches ABC Session Tunes and loads a melody plus chord track.
-The current tune stays loaded until you choose **Use this tune**.
+**Select tune** lists the tunes saved on this device. Saved tunes are available
+offline; they are not the same as the temporary source cache. The bundled
+default, *Sandy Boys*, is in the list from first launch.
 
-## Search fields
+The current tune stays loaded until you press **Use** or **Use this tune**.
+
+## Find a saved tune
+
+<Shot id="tune-library" />
+
+Type into **Search saved** to filter the list. The search is local and matches
+the tune title, composer, key, meter, genre, and credits. Every word you type
+must match. Select **Preview** to read the metadata and engraved sheet music on
+the right, or **Use** to load the tune.
+
+<Shot id="tune-library-search" />
+
+The folder panel works exactly as it does for dances:
+
+| Choice | Shows |
+| --- | --- |
+| **All tunes** | Every saved tune. |
+| **Unfiled** | Tunes that are not in a folder. |
+| **A folder name** | Only the tunes in that folder. |
+
+## Organise saved tunes into folders
+
+Create a folder with **New folder** and **Create folder**, then open the
+**Folder:** menu on a saved tune to move it. The counts beside **All tunes**,
+**Unfiled**, and each folder update immediately.
+
+Folder names are case-insensitive. Select a folder to reveal **Rename folder**
+and **Delete folder**. Renaming keeps the folder's tunes with it. Deleting a
+folder keeps its tunes and moves them to **Unfiled**. **Remove from saved
+tunes** deletes that saved copy only; a tune already loaded in the session keeps
+playing.
+
+## Download another tune
+
+Select **Download tune** at the top of **Select tune** to open the ABC Session
+Tunes search screen. Previewing a tune does not save it; use **Download tune**,
+or **Use this tune** to download and load it at once.
+
+<Shot id="tune-picker-open" />
 
 | Field | What it does |
 | --- | --- |
@@ -17,8 +57,6 @@ The current tune stays loaded until you choose **Use this tune**.
 | **Meter** | Any meter, or 4/4, 2/2, 2/4, 6/8, 9/8, 12/8, or 3/4. |
 | **Genre** | Any genre, or reel, jig, slip jig, hornpipe, polka, slide, strathspey, or waltz. |
 
-<Shot id="tune-picker-open" />
-
 The key and genre lists are curated rather than exhaustive. ABC Session Tunes
 accepts other values, but the UI keeps the common contra choices short.
 
@@ -27,7 +65,8 @@ accepts other values, but the UI keeps the common contra choices short.
 <Steps>
   <Step shot="tune-search">
     Type a title or composer and select **Search tunes**. Results show the
-    title, composer, key, and meter.
+    title, composer, key, and meter. A **downloaded** line marks tunes already
+    in your saved tunes.
   </Step>
   <Step shot="tune-filter-key">
     Open **Key** to narrow the result set. The same pattern applies to **Meter**
@@ -43,20 +82,21 @@ accepts other values, but the UI keeps the common contra choices short.
 
 Results are ten per page; **Previous** and **Next** sit below the columns.
 
-## Preview the sheet music and ABC
+## Preview, download, and load
 
 <Steps>
   <Step shot="tune-picker-preview">
     Select **Preview** on a result. The right column shows the title, composer,
     key, meter, credits, the rendered sheet music, and an **Open on ABC Session
-    Tunes** link. Use **Show ABC** to switch between the staff and the source.
-    Select **Use this tune** to load it.
+    Tunes** link. **Download tune** saves the tune for offline use; **Use this
+    tune** saves and loads it. **Show ABC** switches between the staff and the
+    source text.
   </Step>
 </Steps>
 
 The sheet music is engraved from the ABC by the app. The **Show ABC** view
 displays the source text in a preview field; edits there are local and do not
-change the loaded tune or the stored cache. If the engraver cannot render the
+change the loaded tune or the saved copy. If the engraver cannot render the
 tune, the app explains why and the ABC view remains available.
 
 ## What happens to the tune
@@ -74,14 +114,18 @@ The UI does not show an extended/trimmed warning in the tune preview. The
 arranger's warning appears on the session screen after the music is rendered.
 The arrangement itself keeps the same 64-beat grid as the dance.
 
-## Defaults and attribution
+## Defaults, storage, and attribution
 
 The bundled default is **Sandy Boys** (ABC Session Tunes 75815). Its credits
 are shown in the preview: ABC transcription by Josh Larios, chords from Sarah
-Comer. Tunes remain the work of their transcribers; the app caches them locally
-rather than bundling a tune database.
+Comer. Tunes remain the work of their transcribers.
 
-## Errors and caching
+Saved tunes are stored with your app data: JSON files on desktop and Android,
+`localStorage` in the browser. They survive **Clear source cache**, which only
+clears temporary search and detail responses. See
+[Cache and offline](/docs/guides/cache-and-offline).
+
+## Errors and storage
 
 A failed tune search or detail request appears in the red bottom panel. The
 current tune is not replaced. Search results are cached for seven days and tune

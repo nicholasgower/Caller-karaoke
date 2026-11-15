@@ -1,16 +1,67 @@
 ---
 title: Choosing a dance
-description: Search ContraDB by title, choreographer, user, hook, formation, figure type, or figure words, then preview and load a dance card.
+description: Search your saved dances, organise them into folders, and download another ContraDB card when you need it.
 sidebar_position: 1
 ---
 
-**Select dance** opens a ContraDB search screen. It is a normal form: fill in
-any combination of fields, select **Search dances**, and choose a result.
+**Select dance** lists the dances saved on this device. Saved dances are
+available offline; they are not the same as the temporary source cache. The
+bundled default, *Another Last Dance*, is in the list from first launch.
 
-The current dance is not replaced until you press **Use this dance**. Closing
-the screen with **Back to session** leaves the session untouched.
+The current dance is not replaced until you press **Use** or **Use this dance**.
+Closing the screen with **Back to session** leaves the session untouched.
 
-## Search fields
+## Find a saved dance
+
+<Shot id="dance-library" />
+
+Type into **Search saved** to filter the list. The search is local and matches:
+
+- the dance title;
+- the choreographer;
+- the formation;
+- and the words of the figures on the card.
+
+Every word you type must match, so `belle ralph` finds Belle of the Ball but
+`belle erik` does not. Select a card's **Preview** to read its figures, beat
+total, and source link on the right. Select **Use** to load it.
+
+<Shot id="dance-library-search" />
+
+The folder panel on the left filters the list:
+
+| Choice | Shows |
+| --- | --- |
+| **All dances** | Every saved dance. |
+| **Unfiled** | Dances that are not in a folder. |
+| A folder name | Only the dances in that folder. |
+
+## Organise saved dances into folders
+
+<Steps>
+  <Step shot="dance-library-search">
+    Type a name in **New folder** and select **Create folder**. The folder
+    appears in the panel, ready for cards to be moved into it.
+  </Step>
+  <Step shot="dance-library">
+    Open the **Folder:** menu on a saved card and choose a folder, or choose
+    **Unfiled**. The card moves immediately and the counts update.
+  </Step>
+</Steps>
+
+Folder names are case-insensitive, so you cannot create both `Warmups` and
+`warmups`. Select a folder in the panel to reveal **Rename folder** and
+**Delete folder**. Renaming keeps the folder's dances with it. Deleting a folder
+does not delete the dances; they become unfiled. **Remove from saved dances**
+on a card deletes that saved copy only; it does not unload a dance that is
+already in the session.
+
+## Download another dance
+
+Select **Download dance** at the top of **Select dance** to open the ContraDB
+search screen. Downloading is explicit: previewing a card does not save it.
+
+<Shot id="dance-picker-open" />
 
 | Field | What it does |
 | --- | --- |
@@ -23,8 +74,6 @@ the screen with **Back to session** leaves the session untouched.
 | **Figure contains** | Searches the card text for a move phrase, for example `chain` or `balance`. |
 | **Verified only** | Restricts results to ContraDB's verified tag. |
 | **Sort** | Relevance, Title A–Z, Title Z–A, Choreographer A–Z, or Newest. |
-
-<Shot id="dance-picker-open" />
 
 **Figure type** takes precedence over **Figure contains** when both are set: the
 provider sends a move-type filter and ignores the free-text figure clause. Use
@@ -43,7 +92,8 @@ a dance is loaded.
 <Steps>
   <Step shot="dance-picker-search">
     Fill in a field and select **Search dances**. Results appear on the left
-    with title, choreographer, and formation.
+    with title, choreographer, and formation. A **downloaded** line marks cards
+    that are already in your saved dances.
   </Step>
   <Step shot="dance-sort">
     Change **Sort**, then search again. Sorting applies to the next request.
@@ -54,23 +104,24 @@ a dance is loaded.
   </Step>
 </Steps>
 
-If you are offline, the app may return a cached search page or cached detail.
-There is no “using cached results” banner in 0.1.0; stale data is used silently
-when a request fails and a cache entry exists.
-
-## Preview before loading
+## Preview and download
 
 <Steps>
   <Step shot="dance-picker-preview">
     Select **Preview** on a result. The right column shows the title,
     choreographer, formation, figure count, beat total, each figure with its
-    phrase label and beats, and an **Open on ContraDB** link.
+    phrase label and beats, and an **Open on ContraDB** link. Select
+    **Download dance** to add the card to your saved dances, or **Use this
+    dance** to download and load it at the same time.
   </Step>
 </Steps>
 
+A card that is already saved shows **Download again** and an **already
+downloaded** note; downloading again refreshes the stored card and keeps its
+folder.
 
-Check the beat total. A standard contra card is **64 beats**, which is exactly
-one 64-beat music loop. Cards that total fewer or more beats can be previewed,
+A standard contra card is **64 beats**, which is exactly
+one 64-beat music loop. Cards that total fewer or more beats can be saved,
 but the current transport has only one 64-beat loop:
 
 - calls follow the card's cumulative figure beats up to beat 64;
@@ -89,21 +140,25 @@ still not fully reached because the transport has one 64-beat loop.
 
 ## Load the dance
 
-Select **Use this dance**. The app returns to **Session**, replaces the card,
-rebuilds the call timeline, and marks the music for a rebuild. Press **Play** to
-render and start the new arrangement.
+Select **Use this dance** in the download preview or **Use** on a saved card.
+The app returns to **Session**, replaces the card, rebuilds the call timeline,
+and marks the music for a rebuild. Press **Play** to render and start the new
+arrangement.
 
 <Shot id="main-dance-loaded" />
 
-## Errors and caching
+## Errors and storage
 
 A failed search or detail request appears in a red panel at the bottom of the
-window. Select **Dismiss** to close it. The current dance stays loaded.
+Download dance screen. Select **Dismiss** to close it. The current dance stays
+loaded.
 
 <Shot id="error-dance-load" />
 
-Search responses are cached for seven days and dance details for thirty days.
-Clearing the cache is covered in [Cache and offline](/docs/guides/cache-and-offline).
+Saved dances are stored with your app data: JSON files on desktop and Android,
+`localStorage` in the browser. They survive **Clear source cache** in
+**Preferences → Maintenance**, which only clears the temporary search and
+detail responses. See [Cache and offline](/docs/guides/cache-and-offline).
 
 ## Attribution
 

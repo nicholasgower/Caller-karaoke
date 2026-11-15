@@ -5,6 +5,7 @@ use web_sys::window;
 
 const PREFS_KEY: &str = "contra-karaoke.prefs";
 const CACHE_PREFIX: &str = "contra-karaoke.cache.";
+const LIBRARY_PREFIX: &str = "contra-karaoke.library.";
 
 #[cfg(target_arch = "wasm32")]
 fn storage() -> Option<web_sys::Storage> {
@@ -20,6 +21,21 @@ pub fn read_prefs() -> Option<String> {
 pub fn write_prefs(json: &str) {
     if let Some(storage) = storage() {
         let _ = storage.set_item(PREFS_KEY, json);
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn read_library(name: &str) -> Option<String> {
+    storage()?
+        .get_item(&format!("{LIBRARY_PREFIX}{name}"))
+        .ok()
+        .flatten()
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn write_library(name: &str, json: &str) {
+    if let Some(storage) = storage() {
+        let _ = storage.set_item(&format!("{LIBRARY_PREFIX}{name}"), json);
     }
 }
 

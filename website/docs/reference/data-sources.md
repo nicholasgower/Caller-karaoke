@@ -21,7 +21,9 @@ still hand-written for these two providers rather than generated from
 The search UI exposes title, choreographer, user, hook, formation, figure type,
 figure text, verified, and sort. **Figure type** sends a move-type filter;
 **Figure contains** sends a free-text figure clause. If both are set, the
-move-type filter wins and the free-text clause is omitted.
+move-type filter wins and the free-text clause is omitted. The search UI lives
+under **Select dance → Download dance**; **Select dance** itself lists saved
+dances.
 
 The preview includes an **Open on ContraDB** link to the source card.
 
@@ -48,8 +50,21 @@ Cloudflare Worker proxy in `proxy/`:
 - the worker may require a shared token;
 - the app stores the proxy URL and token in preferences.
 
-A web build without a proxy still works with the bundled defaults and cached
-content.
+A web build without a proxy still works with the bundled defaults and anything
+already in the saved library.
+
+## Saved library
+
+Downloads are separate from the source cache:
+
+- **Select dance** and **Select tune** read a local library of complete cards and
+  tunes, with user folders and a local search.
+- Native and Android builds keep `dances.json` and `tunes.json` in the app
+  config directory; the browser uses `localStorage`.
+- The bundled defaults are added on first launch.
+- Downloading the same source again replaces its stored copy and keeps its
+  folder.
+- Clearing the source cache does not remove saved items.
 
 ## Caching
 
@@ -93,8 +108,8 @@ provider, so adding a source also means updating the provider selection in
 ## Attribution and redistribution
 
 Dance transcriptions and ABC transcriptions belong to their contributors.
-Contra Karaoke caches content locally for the user but does not ship a dance or
-tune database. The two bundled defaults are included with source URLs and
+Contra Karaoke stores downloads locally for the user but does not ship a dance
+or tune database. The two bundled defaults are included with source URLs and
 credit. If you publish screenshots or example cards, keep the attribution.
 
 The `samples/` directory in the repository contains parser fixtures from
