@@ -92,6 +92,18 @@ loaded. Choose **Use bundled** and try a different file.
 
 <Shot id="error-sf2" />
 
+## Window and displays
+
+Contra Karaoke keeps its logical window size when you drag it between monitors
+with different display scaling, so the controls and the dance card stay the size
+you expect. The size is corrected when the drag ends, so the window stays under
+the cursor while you move it. The sheet-music preview is rasterized again for
+the new display density, so it stays sharp.
+
+If the window opens larger than the screen, maximize and restore it, or drag it
+back to the other monitor and release it there. The app does not restore a
+previous window position between launches in 0.1.0.
+
 ## Rendering and timing
 
 The app renders the count-in and loop offline before playback. A long tune, a
