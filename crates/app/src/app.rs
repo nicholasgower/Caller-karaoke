@@ -105,7 +105,7 @@ fn tab_shortcut(input: &egui::InputState) -> Option<Screen> {
 
 pub struct ContraApp {
     prefs: Preferences,
-    prefs_path: PathBuf,
+    prefs_path: Option<PathBuf>,
     audio: AudioEngine,
     audio_error: Option<String>,
     speech: Speech,
@@ -230,7 +230,7 @@ impl ContraApp {
 
         Self {
             prefs,
-            prefs_path,
+            prefs_path: Some(prefs_path),
             audio: audio.0,
             audio_error: audio.1,
             speech,
@@ -364,16 +364,100 @@ impl ContraApp {
         ease_out_cubic(self.screen_anim)
     }
 
+    /// Construct the real app without opening a window, audio device, TTS voice,
+    /// network client, or user preference file. Used by `contra-headless` and
+    /// screenshot tests.
+    #[cfg(feature = "headless")]
+    pub fn new_headless(cc: &eframe::CreationContext<'_>) -> Self {
+        let (source_tx, source_rx): (Sender<SourceEvent>, Receiver<SourceEvent>) = channel();
+        let mut prefs = Preferences::default();
+        prefs.validate();
+
+        let audio = AudioEngine::headless_clock(48_000, prefs.tempo_bpm);
+        audio.set_looping(prefs.loop_enabled);
+        audio.set_volume(prefs.master_volume);
+
+        let mut speech = Speech::stub();
+        speech.set_rate(prefs.tts_rate);
+
+        let source = SourceClient::new(
+            source_tx,
+            Cache::new(contra_sources::MemoryCache::default()),
+            None,
+            None,
+        );
+
+        let dance = defaults::default_dance();
+        let tune = defaults::default_tune();
+        let timeline = build_timeline(&dance, &prefs).unwrap_or_else(|_| empty_timeline());
+        let length_warning = length_warning_for(&dance, &tune);
+
+        theme::apply(&cc.egui_ctx, prefs.theme, prefs.animations_enabled);
+
+        Self {
+            prefs,
+            prefs_path: None,
+            audio,
+            audio_error: None,
+            speech,
+            source,
+            source_rx,
+            screen: Screen::Session,
+            screen_anim: 1.0,
+            screen_anim_screen: Screen::Session,
+            dance,
+            tune,
+            timeline,
+            arrangement: None,
+            soundfont: None,
+            soundfont_error: None,
+            needs_render: true,
+            pending_audio: false,
+            render_loading: false,
+            started: false,
+            dance_query: DanceQuery {
+                page_size: 10,
+                ..DanceQuery::default()
+            },
+            tune_query: TuneQuery {
+                page_size: 10,
+                ..TuneQuery::default()
+            },
+            dance_results: None,
+            tune_results: None,
+            dance_preview: None,
+            tune_preview: None,
+            tune_view: TuneView::default(),
+            tune_sheet: None,
+            dance_selected: None,
+            tune_selected: None,
+            search_loading: false,
+            preview_loading: false,
+            status: "Ready".into(),
+            error: None,
+            length_warning,
+            last_spoken: None,
+            last_beat: 0.0,
+            cache_clear_confirm: false,
+            alias_filter: String::new(),
+            custom_key: String::new(),
+            custom_alias: String::new(),
+        }
+    }
+
     fn save_prefs(&self) {
         if let Ok(json) = self.prefs.to_json() {
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let _ = std::fs::write(&self.prefs_path, json);
+                if let Some(path) = &self.prefs_path {
+                    let _ = std::fs::write(path, json);
+                }
             }
             #[cfg(target_arch = "wasm32")]
             {
-                let _ = &self.prefs_path;
-                crate::web_store::write_prefs(&json);
+                if self.prefs_path.is_some() {
+                    crate::web_store::write_prefs(&json);
+                }
             }
         }
     }
@@ -1224,3 +1308,6 @@ mod tests {
 
 // The rest of the UI is implemented in `ui.rs` to keep this file navigable.
 include!("ui.rs");
+
+#[cfg(feature = "headless")]
+pub mod headless;

@@ -206,6 +206,20 @@ for clients that read that file. Call `attach` in the client, then use
 the other tools. See `docs/automation.md` for client configuration, the tool
 list, and safety notes.
 
+Documentation screenshots can also be rendered without a window or audio device,
+then annotated with PhotoCraft:
+
+```sh
+cd website
+npm run screenshots
+```
+
+## Documentation
+
+The user guide is a Docusaurus site in `website/`; run `npm install && npm start`
+there. It is published to GitHub Pages by `.github/workflows/docs.yml`.
+Development notes live in `docs/`.
+
 ## Project documents
 
 - `ROADMAP.md` — full product and milestone plan.

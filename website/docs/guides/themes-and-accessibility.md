@@ -1,0 +1,74 @@
+---
+title: Themes and accessibility
+description: Switch between the dark and light grey themes, and understand the current keyboard, touch, and screen-reader behaviour.
+sidebar_position: 10
+---
+
+Contra Karaoke uses a neutral grey interface with no accent colour. The active
+call is distinguished by contrast, weight, and border rather than a highlight
+colour.
+
+## Choose a theme
+
+<Steps>
+  <Step shot="prefs-theme-light">
+    Open **Preferences → Theme** and select **Light** or **Dark**. Dark is the
+    default.
+  </Step>
+  <Step shot="main-light">
+    Return to **Session** to see the chosen theme on the call screen.
+  </Step>
+</Steps>
+
+The light theme uses the same structure with inverted values: a light grey page,
+near-black text, and the same muted secondary text. It is intended for bright
+rooms and projectors. In 0.1.0 some chrome still uses dark theme constants: the
+top tab bar and active-call cards can have lower contrast in light mode. This is
+a known polish issue, not a separate theme.
+
+## Touch and narrow windows
+
+Buttons use a 40-pixel interaction height, and the session controls wrap into
+multiple rows at narrow widths. The app window has a minimum size of 360×560.
+
+<Shot id="main-mobile" />
+
+The two-column pickers are the tightest layout on a phone. If the columns are
+too narrow, rotate the device or use a wider window while searching. The
+current UI has no separate mobile sheet; it keeps the same screen structure.
+
+## Keyboard
+
+- **Space** plays or pauses.
+- **R** restarts from the count-in.
+- **Esc** returns to **Session** from a picker, Preferences, or the alias editor.
+
+Shortcuts are ignored while a text field has focus. See
+[Keyboard shortcuts](/docs/reference/keyboard-shortcuts) for details.
+
+## Screen readers and labels
+
+The app uses `egui`'s accessibility tree and is designed to expose control
+labels, but the current UI is still being audited. Several fields (search boxes,
+alias editors, and some sliders) are visually labelled without a formal
+accessible-name association. Treat screen-reader support as incomplete for
+0.1.0.
+
+The documentation site itself is keyboard navigable, uses visible focus
+outlines, and provides alt text for every screenshot. If you find a specific
+unusable control, report it with the control name and screen so it can be
+added to the label pass.
+
+## Motion and flashing
+
+The app does not flash or pulse the call prompt. The progress bar moves
+continuously with playback. The docs site respects `prefers-reduced-motion` and
+uses no animated screenshots.
+
+## Text-to-speech
+
+TTS is optional and never the only way to receive a call. If no voice is
+available, visual calls continue. See
+[Text to speech](/docs/guides/text-to-speech).
+
+Next: [Export MIDI](/docs/guides/export-midi).

@@ -1,0 +1,600 @@
+{
+  "schemaVersion": 1,
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "scale": 2
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "scale": 2
+    }
+  },
+  "shots": [
+    {
+      "id": "main-idle",
+      "alt": "The session screen immediately after launch, showing READY, Another Last Dance, Sandy Boys, 240 BPM, and the message Press Play to prepare the music with these settings.",
+      "caption": "On launch the bundled default dance and tune are ready; press Play to render the music.",
+      "status": "ready",
+      "priority": true,
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-picker-open",
+      "alt": "The Select dance screen with Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields above an empty results area.",
+      "caption": "Select dance searches ContraDB and previews a card before loading it.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-picker-search",
+      "alt": "The Select dance screen with last typed in the Title field and a list of matching dances on the left and a dance preview on the right.",
+      "caption": "Search results show the title, choreographer, and formation; Preview opens the figures.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-picker-preview",
+      "alt": "The Select dance screen with Another Last Dance selected, its figure list and Open on ContraDB link in the preview column, and the Use this dance button visible.",
+      "caption": "Preview the full card, its beat total, and the source link before replacing the current dance.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "main-dance-loaded",
+      "alt": "The session screen after choosing Another Last Dance, showing its title and figures in the dance card and the pending-rebuild message.",
+      "caption": "Using a dance returns to the session and marks the music for a rebuild.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "tune-picker-open",
+      "alt": "The Select Tune screen with Search and Composer fields, Key, Meter, and Genre menus, and an empty results area.",
+      "caption": "Select Tune searches ABC Session Tunes and previews the ABC text.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "tune-picker-preview",
+      "alt": "The Select tune screen with Sandy Boys selected, metadata, ABC text, an Open on ABC Session Tunes link, and the Use this tune button visible.",
+      "caption": "Check the tune metadata, ABC, and source link before loading it.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "transport-tempo",
+      "alt": "The session controls with the Tempo slider set to 240 BPM beside Play, Pause, Restart, Loop, Count-in, Speak calls, and Volume.",
+      "caption": "Tempo changes mark the music for a rebuild; press Play to apply them.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-count-in",
+      "alt": "The session screen during the count-in, showing a large 2, the label COUNT-IN, and either CALL NOW with the first call or Listen for the first chord.",
+      "caption": "The three-beat count-in sets the tempo before the 64-beat loop begins.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-length-warning",
+      "alt": "The session screen showing a length-check warning that the dance and tune lengths differ, above the dance card.",
+      "caption": "The session warns when the dance and tune lengths differ; it does not rescale either one.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-call-now",
+      "alt": "The session screen during a figure, showing the CALL NOW prompt, the executes-in countdown, the next call, and the active dance-card row.",
+      "caption": "The large prompt is the call to say now; the next call is previewed below it.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-changes-pending",
+      "alt": "The session screen with the message Press Play to prepare the music with these settings after a settings change.",
+      "caption": "Settings changes stop playback and wait for the next Play to rebuild.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-paused",
+      "alt": "The session screen with playback paused, the current musical position retained, and the Play control available.",
+      "caption": "Pause stops the music and any speech; Play resumes from the same position.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-finished",
+      "alt": "The session screen after the non-looping dance ends, showing the message Dance complete and the instruction to press Restart.",
+      "caption": "With looping off, the session stops at the end of the loop.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-open",
+      "alt": "The Preferences screen with Role terms at the top, followed by role preset controls and the Instruments section.",
+      "caption": "Preferences are saved automatically; most changes apply on the next Play.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-roles-presets",
+      "alt": "The Role terms section with the Larks / Robins preset selected and the live role-replacement example below it.",
+      "caption": "Larks / Robins is the default; the example updates as the terms change.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-roles-custom",
+      "alt": "The Role terms section with the Custom preset selected and Left singular, Left plural, Right singular, and Right plural fields.",
+      "caption": "Custom terms replace role words in both the card and the calls.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-roles-applied",
+      "alt": "The session screen with a dance card and call prompt using the chosen role terms instead of ladles and gentlespoons.",
+      "caption": "Role terms are applied to the card and to the rendered calls.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-alias-list",
+      "alt": "The Dance move aliases screen with a Filter field, the Reset all aliases button, and a long list of move types with editable alias templates.",
+      "caption": "Each recognised move type has an alias template; overridden entries are marked.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-alias-editor",
+      "alt": "The Dance move aliases screen with the Swing row focused and its alias template selected for editing.",
+      "caption": "Edit the words shown and spoken for a move type.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-alias-placeholders",
+      "alt": "The top of the Dance move aliases screen showing the supported placeholders: actor, actor_singular, actor_object, direction, and count.",
+      "caption": "Placeholders are filled from the card phrase; unknown placeholders are left as text.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-alias-custom",
+      "alt": "The Custom figure aliases section with a card phrase field, a call-to-say field, and the Add alias button.",
+      "caption": "Use a custom alias when the classifier does not recognise a figure phrase.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-alias-call",
+      "alt": "The session screen showing a custom or edited alias in the current-call prompt and the dance card.",
+      "caption": "Alias changes rebuild the call timeline and move calls earlier or later as the wording changes.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-instrument-melody",
+      "alt": "The Instruments section with the Melody menu set to Fiddle and the accompaniment menu and volume sliders visible.",
+      "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-instrument-accompaniment",
+      "alt": "The Accompaniment menu open with Piano, Guitar, and Accordion options.",
+      "caption": "Piano is the default accompaniment; Guitar and Accordion are available.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-instrument-mix",
+      "alt": "The Instruments section showing the Melody volume and Accompaniment volume sliders.",
+      "caption": "Balance the melody against the accompaniment before starting a session.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-sf2-loaded",
+      "alt": "The Soundfont section showing a loaded SoundFont name, the Load .sf2 button, and the Remove button.",
+      "caption": "A user-supplied SoundFont replaces the built-in instrument voices.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-sf2-removed",
+      "alt": "The Soundfont section showing None (built-in synth) and the Load .sf2 button.",
+      "caption": "Remove a SoundFont to return to the built-in synth.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "error-sf2",
+      "alt": "The Soundfont section with a red error message below the current SoundFont name.",
+      "caption": "An unreadable or unsupported SoundFont leaves the previous instrument setup in place.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-timing-mode",
+      "alt": "The Calling lead section with Automatic syllable-based lead selected and the manual lead controls hidden.",
+      "caption": "Automatic lead derives the call time from the rendered words.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-timing-bounds",
+      "alt": "The Calling lead section showing Minimum and Maximum beat sliders and the Speech rate slider.",
+      "caption": "The default lead is clamped to one to five dance beats.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-timing-speech-rate",
+      "alt": "The Speech rate slider in the Calling lead section set to 6.5 syllables per second.",
+      "caption": "A lower speech rate moves longer calls earlier.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-timing-rebuild",
+      "alt": "The Calling lead section with the Rebuild call timing button below the lead controls.",
+      "caption": "Rebuild the timeline after changing lead settings if the session does not do it automatically.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "session-lead-countdown",
+      "alt": "The session screen with the CALL NOW prompt and the executes-in countdown showing how many beats remain before the dancers move.",
+      "caption": "Calls start before the execute beat so the words finish before the move.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-first-call",
+      "alt": "The session screen during the count-in with the first call previewed below Listen for the first chord.",
+      "caption": "The first call can begin during the count-in because it starts before beat zero.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-tts-rate",
+      "alt": "The Text to speech section with Speak calls enabled and the Rate slider set below the default.",
+      "caption": "The rate applies to spoken calls and does not change the visual timing.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-tts-unavailable",
+      "alt": "The Text to speech section showing the Speak calls checkbox and a muted message explaining that TTS is unavailable.",
+      "caption": "If the system has no speech voice, visual calls still work.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-cache-confirm",
+      "alt": "The Maintenance section with Clear source cache replaced by Confirm clear cache and Cancel buttons.",
+      "caption": "Clearing the cache is a two-step action.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-cache-cleared",
+      "alt": "The Maintenance section after clearing the cache, with the status Cache cleared shown below the buttons.",
+      "caption": "Clearing the source cache does not remove the bundled default dance or tune.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-proxy",
+      "alt": "The Web data proxy section with Proxy URL and Token fields and the note that it is only needed by the web build.",
+      "caption": "Desktop and Android fetch sources directly; the web build can use a proxy.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "prefs-theme-light",
+      "alt": "The Theme section with Light selected and the surrounding Preferences screen rendered in light grey.",
+      "caption": "The light theme keeps the same grey structure with inverted values.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1000
+    },
+    {
+      "id": "main-light",
+      "alt": "The session screen in the light theme, with dark text on a light grey background and the current call highlighted.",
+      "caption": "The light theme is available for bright rooms and projectors.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-maintenance",
+      "alt": "The Maintenance section with the Export MIDI button, the Clear source cache button, and the status line.",
+      "caption": "MIDI export is desktop-only in 0.1.0; clearing cache works on every platform.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1900
+    },
+    {
+      "id": "error-network",
+      "alt": "The session screen with a red source error in the bottom panel and a Dismiss button.",
+      "caption": "A failed search or detail request leaves the current dance and tune in place.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "error-parse",
+      "alt": "The session screen with a red message that a source response could not be parsed and a Dismiss button.",
+      "caption": "A short reason is shown; the current content is not replaced.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "error-audio",
+      "alt": "The session controls with a red Audio device message below the transport row.",
+      "caption": "Without an output device the app falls back to a silent engine; restore audio and restart.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-sort",
+      "alt": "The Select dance Sort menu open with Relevance, Title A–Z, Title Z–A, Choreographer A–Z, and Newest.",
+      "caption": "Sorting applies the next time Search dances runs.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-pagination",
+      "alt": "The bottom of the Select dance screen with Previous, Page 1 of 12, and Next controls.",
+      "caption": "Results are shown ten at a time.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1050
+    },
+    {
+      "id": "dance-preview-beats",
+      "alt": "A dance preview showing a figure count and a total that is not 64 beats.",
+      "caption": "The card can total fewer or more than 64 beats; the music keeps its 64-beat grid.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "error-dance-load",
+      "alt": "The Select dance screen with an error in the bottom panel after a failed search or preview.",
+      "caption": "Dismiss the error and retry, or use a cached result if one is available.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "tune-search",
+      "alt": "The Select Tune screen with a search term and a list of matching tunes with title, composer, key, and meter.",
+      "caption": "Search matches title and composer; filters narrow the result set.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "tune-filter-key",
+      "alt": "The Select Tune Key menu open with Any key, D major, G major, A major, and the other curated keys.",
+      "caption": "The key menu uses a curated list of common contra keys.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "tune-filter-meter",
+      "alt": "The Select Tune Meter menu open with Any meter, 4/4, 2/2, 2/4, 6/8, 9/8, 12/8, and 3/4.",
+      "caption": "Meter filters the ABC Session Tunes results before searching.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "tune-filter-genre",
+      "alt": "The Select Tune Genre menu open with reels, jigs, slip jigs, hornpipes, polkas, slides, strathspeys, and waltzes.",
+      "caption": "Genre is the ABC Session Tunes rhythm field.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "error-tune-load",
+      "alt": "The Select Tune screen with an error in the bottom panel after a failed search or preview.",
+      "caption": "The current tune stays loaded if a new one cannot be fetched or parsed.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "transport-loop-off",
+      "alt": "The session controls with the Loop checkbox cleared.",
+      "caption": "With looping off, the dance stops at the end of the 64-beat loop.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "transport-volume",
+      "alt": "The session controls with the Volume slider visible beside the transport buttons.",
+      "caption": "Master volume is separate from the melody and accompaniment volumes in Preferences.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "transport-summary",
+      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, and accompaniment.",
+      "caption": "The summary confirms what will play before you start.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "transport-tts-on",
+      "alt": "The session controls with the Speak calls checkbox selected.",
+      "caption": "Spoken calls accompany the visual prompt; the visual prompt is never hidden.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-mobile-controls",
+      "alt": "The session controls wrapped across several rows in a narrow window.",
+      "caption": "Controls wrap at narrow widths so the transport remains usable.",
+      "status": "ready",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "main-mobile",
+      "alt": "The session screen in a 390-pixel-wide window with wrapped controls and the call prompt above a scrolling dance card.",
+      "caption": "The layout is designed to remain usable at phone width.",
+      "status": "ready",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "prefs-alias-reset",
+      "alt": "An alias row with the Reset to default button highlighted.",
+      "caption": "Resetting one alias restores the built-in wording for that move.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "prefs-alias-reset-all",
+      "alt": "The Dance move aliases header with the Reset all aliases button.",
+      "caption": "Reset all aliases returns every move type to its default template.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-filter-user",
+      "alt": "The Select dance screen with a User filter entered and matching results.",
+      "caption": "The User filter matches the ContraDB contributor name.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-filter-hook",
+      "alt": "The Select dance screen with a Hook filter entered and matching results.",
+      "caption": "The Hook filter matches the short hook line on ContraDB cards.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "dance-filter-figure-type",
+      "alt": "The Select dance Figure type menu open with Swing, Allemande, Do-si-do, Balance, Chain, Circle, Star, Hey, Gyre, and the other move types.",
+      "caption": "Figure type sends a move-type filter and takes precedence over Figure contains.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "install-windows-release",
+      "alt": "The GitHub nightly release page with the Windows setup executable and portable ZIP listed as assets.",
+      "caption": "Download the setup program or portable ZIP from the nightly release.",
+      "status": "pending"
+    },
+    {
+      "id": "install-windows-wizard",
+      "alt": "The Inno Setup installer wizard for Contra Karaoke.",
+      "caption": "Follow the wizard, choose whether to create a desktop shortcut, and finish.",
+      "status": "pending"
+    },
+    {
+      "id": "install-windows-smartscreen",
+      "alt": "The Windows SmartScreen warning for an unsigned nightly installer, with the More info link visible.",
+      "caption": "Only run the unsigned nightly build if it came from this repository.",
+      "status": "pending"
+    },
+    {
+      "id": "install-windows-portable",
+      "alt": "A file-manager view of the extracted portable ZIP with contra-karaoke.exe.",
+      "caption": "The portable build runs from its folder and does not write to the registry.",
+      "status": "pending"
+    },
+    {
+      "id": "install-linux-deb",
+      "alt": "A file manager or terminal showing the downloaded Contra Karaoke Debian package.",
+      "caption": "Install the .deb with apt so dependencies are resolved.",
+      "status": "pending"
+    },
+    {
+      "id": "install-linux-appimage",
+      "alt": "A downloaded ContraKaraoke AppImage file marked executable.",
+      "caption": "Run the AppImage directly, or use --appimage-extract-and-run without FUSE.",
+      "status": "pending"
+    },
+    {
+      "id": "install-web-browser",
+      "alt": "The Contra Karaoke browser build open in a tab with the session screen and a Play button.",
+      "caption": "Serve the bundle over HTTP and press Play once to allow audio.",
+      "status": "pending"
+    },
+    {
+      "id": "install-android-package",
+      "alt": "The Android package-installer confirmation for the Contra Karaoke APK, including the unknown-apps prompt.",
+      "caption": "Android may require permission to install apps from this source.",
+      "status": "pending"
+    },
+    {
+      "id": "install-android-app",
+      "alt": "The Contra Karaoke app open on an Android device showing the session screen.",
+      "caption": "The Android build is still being device-tested.",
+      "status": "pending"
+    }
+  ]
+}

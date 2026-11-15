@@ -1,0 +1,73 @@
+.hero {
+  padding: 5rem 0 3rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.kicker {
+  margin: 0 0 0.5rem;
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  letter-spacing: -0.03em;
+}
+
+.subtitle {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  color: var(--ifm-color-content);
+}
+
+.lede {
+  max-width: 46rem;
+  margin: 1.25rem 0;
+  color: var(--ifm-color-content-secondary);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.note {
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.85rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  padding: 3rem 0 4rem;
+}
+
+.card {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  padding: 1.25rem;
+  background: var(--ifm-background-surface-color);
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+.card p {
+  color: var(--ifm-color-content-secondary);
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding-top: 3rem;
+  }
+}
