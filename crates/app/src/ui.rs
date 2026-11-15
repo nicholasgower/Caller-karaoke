@@ -680,8 +680,10 @@ impl ContraApp {
             ui.heading("Select Tune");
         });
         ui.label(
-            egui::RichText::new("Search ABC Session Tunes and preview the ABC before loading it.")
-                .color(theme::muted(ui)),
+            egui::RichText::new(
+                "Search ABC Session Tunes and preview the sheet music before loading it.",
+            )
+            .color(theme::muted(ui)),
         );
         ui.add_space(6.0);
 
@@ -834,22 +836,57 @@ impl ContraApp {
                                 .small()
                                 .color(theme::muted(ui)),
                         );
-                        ui.hyperlink_to("Open on ABC Session Tunes", &tune.source.url);
+                        ui.horizontal_wrapped(|ui| {
+                            ui.hyperlink_to("Open on ABC Session Tunes", &tune.source.url);
+                            if ui.button(self.tune_view.toggle_label()).clicked() {
+                                self.tune_view = self.tune_view.toggled();
+                            }
+                        });
                         ui.separator();
-                        let mut abc_preview = tune.abc.clone();
-                        ui.add(
-                            egui::TextEdit::multiline(&mut abc_preview)
-                                .font(egui::TextStyle::Monospace)
-                                .desired_rows(12)
-                                .desired_width(f32::INFINITY),
-                        );
+                        match self.tune_view {
+                            TuneView::Sheet => {
+                                if self.tune_sheet.is_none() {
+                                    self.tune_sheet =
+                                        Some(SheetPreview::render(ui.ctx(), &tune.abc));
+                                }
+                                if let Some(result) = &self.tune_sheet {
+                                    match result {
+                                        Ok(sheet) => sheet.ui(ui),
+                                        Err(error) => {
+                                            ui.label(
+                                                egui::RichText::new(format!(
+                                                    "Could not render sheet music: {error}"
+                                                ))
+                                                .color(theme::warning(ui)),
+                                            );
+                                            ui.label(
+                                                egui::RichText::new(
+                                                    "The tune still loads; switch to ABC to read or copy the source.",
+                                                )
+                                                .small()
+                                                .color(theme::muted(ui)),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            TuneView::Abc => {
+                                let mut abc_preview = tune.abc.clone();
+                                ui.add(
+                                    egui::TextEdit::multiline(&mut abc_preview)
+                                        .font(egui::TextStyle::Monospace)
+                                        .desired_rows(12)
+                                        .desired_width(f32::INFINITY),
+                                );
+                            }
+                        }
                         ui.add_space(6.0);
                         if ui.button("Use this tune").clicked() {
                             self.use_tune(tune);
                         }
                     } else if !self.preview_loading {
                         ui.label(
-                            egui::RichText::new("Preview a tune to see its ABC.")
+                            egui::RichText::new("Preview a tune to see its sheet music.")
                                 .color(theme::muted(ui)),
                         );
                     }

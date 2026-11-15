@@ -10,6 +10,10 @@ and build tools used by the project.
 | `eframe` / `egui` | MIT OR Apache-2.0 | Desktop, web, and Android UI |
 | `cpal` | Apache-2.0 | Audio output (WASAPI, ALSA, AAudio, WebAudio) |
 | `abc-parser` | MIT | ABC syntax parsing |
+| `acorde` | MIT OR Apache-2.0 | ABC-to-score engraving for the sheet-music preview |
+| `acorde-render-svg` | MIT OR Apache-2.0 | Deterministic SVG sheet-music rendering |
+| `resvg` / `usvg` / `tiny-skia` | MIT OR Apache-2.0 | SVG rasterization for the egui preview |
+| `epaint_default_fonts` | MIT OR Apache-2.0 AND OFL-1.1 AND Ubuntu-font-1.0 | Shared egui font for sheet-music text |
 | `midly` | Unlicense | Standard MIDI File writing |
 | `rustysynth` | MIT | Optional SoundFont synthesis |
 | `scraper` | ISC | ContraDB HTML parsing |

@@ -19,6 +19,11 @@ UI -> SourceClient -> provider request/parser -> Dance/Tune
    -> MIDI export
 ```
 
+The tune picker engraves the fetched ABC separately from playback: `acorde`
+builds the display score, `acorde-render-svg` emits SVG, and `resvg` rasterizes
+it onto a paper-white texture for `egui`. This preview path never feeds the
+call timeline or the synthesiser.
+
 Rules:
 
 - `core` has no UI, network, filesystem, or audio dependencies.

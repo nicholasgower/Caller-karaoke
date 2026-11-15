@@ -6,6 +6,7 @@
 pub mod app;
 mod audio;
 mod defaults;
+mod sheet;
 mod source;
 mod theme;
 mod tts;
