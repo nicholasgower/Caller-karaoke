@@ -401,9 +401,16 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .color(theme::muted(ui)),
     );
     slider_row(ui, compact, "Rate", |ui| {
-        let response = ui.add(egui::Slider::new(&mut app.prefs.tts_rate, 0.5..=2.0));
+        let response = ui.add(
+            egui::Slider::new(
+                &mut app.prefs.tts_rate,
+                contra_core::MIN_TTS_RATE..=contra_core::MAX_TTS_RATE,
+            )
+            .step_by(0.1)
+            .fixed_decimals(1),
+        );
         if response.changed() {
-            app.speech.set_rate(app.prefs.tts_rate);
+            app.speech.set_rate(app.prefs.speech_rate());
         }
         response
     });

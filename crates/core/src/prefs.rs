@@ -10,6 +10,21 @@ use crate::roles::RoleTerms;
 use crate::time::Tempo;
 use crate::timing::LeadSettings;
 
+/// Factor from the displayed speech rate to the TTS engine's rate.
+///
+/// The UI keeps the familiar 1.0 default while the engine speaks at 1.2, which
+/// is the delivery the calls were calibrated against.
+pub const TTS_RATE_SCALE: f32 = 1.2;
+
+/// Slowest speech rate the preferences expose, in displayed units.
+pub const MIN_TTS_RATE: f32 = 0.4;
+
+/// Fastest speech rate the preferences expose, in displayed units.
+///
+/// The old ceiling was 1.5 engine units; on the displayed scale that is
+/// 1.25, rounded to one decimal place.
+pub const MAX_TTS_RATE: f32 = 1.3;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MelodyInstrument {
     #[default]
@@ -379,6 +394,8 @@ pub struct Preferences {
     pub lead: LeadSettings,
     pub tempo_bpm: f64,
     pub tts_enabled: bool,
+    /// Speaking rate as displayed in preferences. The engine receives
+    /// [`Preferences::speech_rate`], which applies [`TTS_RATE_SCALE`].
     pub tts_rate: f32,
     #[serde(default = "default_tts_voice")]
     pub tts_voice: String,
@@ -623,6 +640,11 @@ impl Preferences {
         Tempo::new(self.tempo_bpm)
     }
 
+    /// The rate handed to the speech engine.
+    pub fn speech_rate(&self) -> f32 {
+        self.tts_rate * TTS_RATE_SCALE
+    }
+
     /// Clamp values that came from a preference file or a UI control.
     pub fn validate(&mut self) {
         if self.schema_version == 0 {
@@ -634,7 +656,7 @@ impl Preferences {
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
         self.tune_rotation.validate();
-        self.tts_rate = self.tts_rate.clamp(0.5, 2.0);
+        self.tts_rate = self.tts_rate.clamp(MIN_TTS_RATE, MAX_TTS_RATE);
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
         self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
         self.percussion_volume = self.percussion_volume.clamp(0.0, 2.0);
@@ -749,6 +771,8 @@ mod tests {
         assert!(prefs.count_in_enabled);
         assert!(prefs.accompaniment_variations);
         assert!(!prefs.tts_enabled);
+        assert_eq!(prefs.tts_rate, 1.0);
+        assert!((prefs.speech_rate() - 1.2).abs() < 1e-6);
         assert_eq!(prefs.tts_voice, "af_heart");
         assert_eq!(prefs.tts_tone, CallTone::Commanding);
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
@@ -769,6 +793,19 @@ mod tests {
         assert_eq!(prefs.tempo_bpm, Tempo::MAX_BPM);
         assert_eq!(prefs.melody_volume, 2.0);
         assert!(prefs.lead.syllables_per_second >= 0.5);
+    }
+
+    #[test]
+    fn clamps_tts_rate_to_the_displayed_range() {
+        let mut prefs = Preferences {
+            tts_rate: 9.0,
+            ..Preferences::default()
+        };
+        prefs.validate();
+        assert_eq!(prefs.tts_rate, MAX_TTS_RATE);
+        prefs.tts_rate = 0.0;
+        prefs.validate();
+        assert_eq!(prefs.tts_rate, MIN_TTS_RATE);
     }
 
     #[test]
@@ -1104,7 +1141,7 @@ mod tests {
             Migration {
                 tag: "branch-a",
                 version: 7,
-                apply: |prefs| prefs.tts_rate = 1.5,
+                apply: |prefs| prefs.tts_rate = 1.3,
             },
             Migration {
                 tag: "branch-b",
@@ -1113,7 +1150,7 @@ mod tests {
             },
         ];
         prefs.migrate_with(&migrations);
-        assert_eq!(prefs.tts_rate, 1.5);
+        assert_eq!(prefs.tts_rate, 1.3);
         assert_eq!(prefs.master_volume, 0.25);
         assert!(prefs.applied_migrations.contains("branch-a"));
         assert!(prefs.applied_migrations.contains("branch-b"));
