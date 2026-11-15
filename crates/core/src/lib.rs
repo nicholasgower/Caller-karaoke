@@ -16,7 +16,10 @@ pub mod tune;
 
 pub use alias::{Actor, ActorRef, AliasTable, ClassifiedMove, MoveKind, MoveParams, RenderedCall};
 pub use dance::{Dance, Figure, SourceRef};
-pub use prefs::{AccompanimentInstrument, MelodyInstrument, Preferences, SoundFontSetting, Theme};
+pub use prefs::{
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Preferences, SoundFontSetting,
+    Theme,
+};
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};
 pub use timing::{

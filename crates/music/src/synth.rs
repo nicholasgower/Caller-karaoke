@@ -69,7 +69,11 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
 
         let accompaniment = request
             .arrangement
-            .accompaniment_notes_for_pass(request.accompaniment, pass);
+            .accompaniment_notes_for_pass_with_rhythm(
+                request.accompaniment,
+                request.accompaniment_rhythm,
+                pass,
+            );
         render_notes(
             &mut samples,
             &accompaniment,
@@ -447,6 +451,7 @@ mod tests {
             bpm: 240.0,
             melody: MelodyInstrument::Fiddle,
             accompaniment: AccompanimentInstrument::Piano,
+            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             count_in_beats: 3.0,

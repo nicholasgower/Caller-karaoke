@@ -1,7 +1,7 @@
 //! Turn a parsed score into a dance-length music loop and generate the
 //! accompaniment.
 
-use contra_core::AccompanimentInstrument;
+use contra_core::{AccompanimentInstrument, AccompanimentRhythm};
 
 use crate::chord::{Chord, resolve_chords};
 use crate::score::{ChordEvent, Key, Meter, NoteEvent, Score};
@@ -216,25 +216,47 @@ impl Arrangement {
 
     /// Generate the plain backing track for the selected instrument.
     ///
-    /// This is pass 0: no variations. MIDI export and callers that want one
-    /// unchanged loop use it.
+    /// This is pass 0 with the instrument's default rhythm. MIDI export and
+    /// callers that want one unchanged loop use it.
     pub fn accompaniment_notes(&self, instrument: AccompanimentInstrument) -> Vec<NoteEvent> {
-        self.accompaniment_notes_for_pass(instrument, 0)
+        self.accompaniment_notes_with_rhythm(instrument, AccompanimentRhythm::Auto)
     }
 
-    /// Generate the backing track for one loop pass.
-    ///
-    /// Pass 0 is the plain pattern. Later passes are the same pattern with
-    /// deterministic variations: a few extra chord stabs for emphasis, and
-    /// now and then one bar where the accompaniment drops out so the melody
-    /// plays alone. The variations never move existing notes, so the pulse and
-    /// the 64-beat grid are unchanged.
+    /// Generate the plain backing track for one instrument and rhythm.
+    pub fn accompaniment_notes_with_rhythm(
+        &self,
+        instrument: AccompanimentInstrument,
+        rhythm: AccompanimentRhythm,
+    ) -> Vec<NoteEvent> {
+        self.accompaniment_notes_for_pass_with_rhythm(instrument, rhythm, 0)
+    }
+
+    /// Generate the backing track for one loop pass using the instrument's
+    /// default rhythm.
     pub fn accompaniment_notes_for_pass(
         &self,
         instrument: AccompanimentInstrument,
         pass: u32,
     ) -> Vec<NoteEvent> {
-        let mut notes = self.plain_accompaniment(instrument);
+        self.accompaniment_notes_for_pass_with_rhythm(instrument, AccompanimentRhythm::Auto, pass)
+    }
+
+    /// Generate the backing track for one loop pass.
+    ///
+    /// `rhythm` chooses how the chord track is realised. `Auto` keeps each
+    /// instrument's signature pattern (boom-chuck piano, strummed guitar,
+    /// sustained accordion). Pass 0 is the plain pattern. Later passes are the
+    /// same pattern with deterministic variations: a few extra chord stabs for
+    /// emphasis, and now and then one bar where the accompaniment drops out so
+    /// the melody plays alone. The variations never move existing notes, so the
+    /// pulse and the 64-beat grid are unchanged.
+    pub fn accompaniment_notes_for_pass_with_rhythm(
+        &self,
+        instrument: AccompanimentInstrument,
+        rhythm: AccompanimentRhythm,
+        pass: u32,
+    ) -> Vec<NoteEvent> {
+        let mut notes = self.plain_accompaniment(instrument, rhythm);
         if pass > 0 {
             self.vary_accompaniment(&mut notes, pass);
         }
@@ -246,7 +268,19 @@ impl Arrangement {
         notes
     }
 
-    fn plain_accompaniment(&self, instrument: AccompanimentInstrument) -> Vec<NoteEvent> {
+    fn plain_accompaniment(
+        &self,
+        instrument: AccompanimentInstrument,
+        rhythm: AccompanimentRhythm,
+    ) -> Vec<NoteEvent> {
+        let rhythm = match rhythm {
+            AccompanimentRhythm::Auto => match instrument {
+                AccompanimentInstrument::Piano => AccompanimentRhythm::BoomChuck,
+                AccompanimentInstrument::Guitar => AccompanimentRhythm::Strum,
+                AccompanimentInstrument::Accordion => AccompanimentRhythm::Sustained,
+            },
+            explicit => explicit,
+        };
         let mut notes = Vec::new();
         for chord_event in &self.chords {
             let chord = Chord::parse(&chord_event.symbol).unwrap_or_else(|| self.count_in_chord());
@@ -255,71 +289,96 @@ impl Arrangement {
             if end <= start {
                 continue;
             }
-            match instrument {
-                AccompanimentInstrument::Piano => {
-                    let mut step = 0;
-                    let mut beat = start;
-                    while beat < end {
-                        if step % 2 == 0 {
-                            notes.push(NoteEvent {
-                                start_beat: beat,
-                                duration_beats: 0.45,
-                                midi: chord.bass_midi(),
-                                velocity: 58,
-                            });
-                        } else {
-                            for midi in chord.voicing(55) {
-                                notes.push(NoteEvent {
-                                    start_beat: beat,
-                                    duration_beats: 0.45,
-                                    midi,
-                                    velocity: 52,
-                                });
-                            }
-                        }
-                        beat += 0.5;
-                        step += 1;
-                    }
-                }
-                AccompanimentInstrument::Guitar => {
-                    let mut step = 0;
-                    let mut beat = start;
-                    while beat < end {
-                        for (index, midi) in chord.voicing(55).into_iter().enumerate() {
-                            notes.push(NoteEvent {
-                                start_beat: beat + index as f64 * 0.025,
-                                duration_beats: 0.4,
-                                midi,
-                                velocity: 54,
-                            });
-                        }
-                        beat += 0.5;
-                        step += 1;
-                        if step > 4096 {
-                            break;
-                        }
-                    }
-                }
-                AccompanimentInstrument::Accordion => {
-                    let duration = (end - start).min(2.0) * 0.95;
-                    notes.push(NoteEvent {
-                        start_beat: start,
-                        duration_beats: duration,
-                        midi: chord.bass_midi(),
-                        velocity: 55,
-                    });
-                    for midi in chord.voicing(60) {
-                        notes.push(NoteEvent {
-                            start_beat: start,
-                            duration_beats: duration,
-                            midi,
-                            velocity: 50,
-                        });
-                    }
-                }
-            }
+            self.render_rhythm(&mut notes, rhythm, &chord, start, end);
         }
         notes
+    }
+
+    fn render_rhythm(
+        &self,
+        notes: &mut Vec<NoteEvent>,
+        rhythm: AccompanimentRhythm,
+        chord: &Chord,
+        start: f64,
+        end: f64,
+    ) {
+        match rhythm {
+            // Resolved to a concrete pattern in `plain_accompaniment`.
+            AccompanimentRhythm::Auto => {}
+            AccompanimentRhythm::Block => {
+                let mut beat = start;
+                while beat < end {
+                    push_note(notes, beat, 0.9, chord.bass_midi(), 58, end);
+                    push_chord(notes, beat, 0.9, chord, 55, 52, end);
+                    beat += 1.0;
+                }
+            }
+            AccompanimentRhythm::BoomChuck => {
+                let mut step = 0;
+                let mut beat = start;
+                while beat < end {
+                    if step % 2 == 0 {
+                        push_note(notes, beat, 0.45, chord.bass_midi(), 58, end);
+                    } else {
+                        push_chord(notes, beat, 0.45, chord, 55, 52, end);
+                    }
+                    beat += 0.5;
+                    step += 1;
+                }
+            }
+            AccompanimentRhythm::Offbeat => {
+                // A held bass anchors each bar while the chords answer between
+                // the beats.
+                let mut bar = start;
+                while bar < end {
+                    push_note(notes, bar, 1.8, chord.bass_midi(), 56, end);
+                    push_chord(notes, bar + 0.5, 0.3, chord, 55, 56, end);
+                    push_chord(notes, bar + 1.5, 0.3, chord, 55, 56, end);
+                    bar += 2.0;
+                }
+            }
+            AccompanimentRhythm::Arpeggio => {
+                let voicing = chord.voicing(55);
+                let mut step = 0;
+                let mut beat = start;
+                while beat < end {
+                    let midi = if step % 4 == 0 || voicing.is_empty() {
+                        chord.bass_midi()
+                    } else {
+                        voicing[(step - 1) % voicing.len()]
+                    };
+                    push_note(notes, beat, 0.45, midi, 52, end);
+                    beat += 0.5;
+                    step += 1;
+                }
+            }
+            AccompanimentRhythm::Shuffle => {
+                // Long-short pairs: the offbeat chord lands two thirds of the
+                // way through each beat.
+                let mut bar = start;
+                while bar < end {
+                    push_note(notes, bar, 0.4, chord.bass_midi(), 58, end);
+                    push_chord(notes, bar + 0.67, 0.3, chord, 55, 52, end);
+                    push_note(notes, bar + 1.0, 0.4, chord.bass_midi(), 58, end);
+                    push_chord(notes, bar + 1.67, 0.3, chord, 55, 52, end);
+                    bar += 2.0;
+                }
+            }
+            AccompanimentRhythm::Strum => {
+                let mut beat = start;
+                while beat < end {
+                    for (index, midi) in chord.voicing(55).into_iter().enumerate() {
+                        push_note(notes, beat + index as f64 * 0.025, 0.4, midi, 54, end);
+                    }
+                    beat += 0.5;
+                }
+            }
+            AccompanimentRhythm::Sustained => {
+                let duration = (end - start).min(2.0) * 0.95;
+                push_note(notes, start, duration, chord.bass_midi(), 55, end);
+                push_chord(notes, start, duration, chord, 60, 50, end);
+            }
+        }
     }
 
     /// Apply one pass of variations in place.
@@ -399,6 +458,45 @@ impl Arrangement {
             feed((note.start_beat * 1000.0).round() as u64);
         }
         hash
+    }
+}
+
+/// Add one accompaniment note, clipped to the harmony's end.
+fn push_note(
+    notes: &mut Vec<NoteEvent>,
+    start_beat: f64,
+    duration_beats: f64,
+    midi: u8,
+    velocity: u8,
+    limit: f64,
+) {
+    if start_beat >= limit - 1e-9 {
+        return;
+    }
+    let duration_beats = duration_beats.min(limit - start_beat);
+    if duration_beats <= 1e-6 {
+        return;
+    }
+    notes.push(NoteEvent {
+        start_beat,
+        duration_beats,
+        midi,
+        velocity,
+    });
+}
+
+/// Add every note of a close-position voicing at the same time.
+fn push_chord(
+    notes: &mut Vec<NoteEvent>,
+    start_beat: f64,
+    duration_beats: f64,
+    chord: &Chord,
+    low: i32,
+    velocity: u8,
+    limit: f64,
+) {
+    for midi in chord.voicing(low) {
+        push_note(notes, start_beat, duration_beats, midi, velocity, limit);
     }
 }
 
@@ -555,6 +653,135 @@ mod tests {
             let notes = arrangement.accompaniment_notes(instrument);
             assert!(!notes.is_empty());
             assert!(notes.iter().all(|note| note.midi <= 108));
+        }
+    }
+
+    #[test]
+    fn auto_rhythm_matches_each_instruments_signature_pattern() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        for (instrument, rhythm) in [
+            (
+                AccompanimentInstrument::Piano,
+                AccompanimentRhythm::BoomChuck,
+            ),
+            (AccompanimentInstrument::Guitar, AccompanimentRhythm::Strum),
+            (
+                AccompanimentInstrument::Accordion,
+                AccompanimentRhythm::Sustained,
+            ),
+        ] {
+            assert_eq!(
+                arrangement.accompaniment_notes(instrument),
+                arrangement.accompaniment_notes_with_rhythm(instrument, rhythm),
+                "{} should default to {}",
+                instrument.label(),
+                rhythm.label()
+            );
+        }
+    }
+
+    #[test]
+    fn every_rhythm_stays_inside_the_loop_for_every_instrument() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        for instrument in [
+            AccompanimentInstrument::Piano,
+            AccompanimentInstrument::Guitar,
+            AccompanimentInstrument::Accordion,
+        ] {
+            for rhythm in AccompanimentRhythm::ALL {
+                let notes = arrangement.accompaniment_notes_with_rhythm(instrument, rhythm);
+                assert!(
+                    !notes.is_empty(),
+                    "{} with {} must play",
+                    instrument.label(),
+                    rhythm.label()
+                );
+                assert!(
+                    notes
+                        .iter()
+                        .all(|note| note.start_beat >= 0.0 && note.end_beat() <= 64.0 + 1e-6),
+                    "{} with {} must stay inside the loop",
+                    instrument.label(),
+                    rhythm.label()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rhythms_have_distinct_pulses() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let piano = AccompanimentInstrument::Piano;
+
+        let block = arrangement.accompaniment_notes_with_rhythm(piano, AccompanimentRhythm::Block);
+        assert!(
+            block
+                .iter()
+                .any(|note| (note.start_beat - 1.0).abs() < 1e-9),
+            "block chords land on each dance beat"
+        );
+
+        let shuffle =
+            arrangement.accompaniment_notes_with_rhythm(piano, AccompanimentRhythm::Shuffle);
+        assert!(
+            shuffle
+                .iter()
+                .any(|note| (note.start_beat - 0.67).abs() < 1e-9),
+            "shuffle places the offbeat chord two thirds of the way through the beat"
+        );
+
+        let arpeggio =
+            arrangement.accompaniment_notes_with_rhythm(piano, AccompanimentRhythm::Arpeggio);
+        let sustained =
+            arrangement.accompaniment_notes_with_rhythm(piano, AccompanimentRhythm::Sustained);
+        assert!(
+            arpeggio.len() > sustained.len(),
+            "the arpeggio should move through the chord rather than hold it"
+        );
+
+        assert_ne!(
+            arpeggio, block,
+            "choosing a rhythm must change the generated accompaniment"
+        );
+    }
+
+    #[test]
+    fn variations_keep_the_selected_rhythm_on_the_grid() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        for rhythm in AccompanimentRhythm::ALL {
+            let plain =
+                arrangement.accompaniment_notes_with_rhythm(AccompanimentInstrument::Piano, rhythm);
+            for pass in 1..VARIATION_PASSES {
+                let notes = arrangement.accompaniment_notes_for_pass_with_rhythm(
+                    AccompanimentInstrument::Piano,
+                    rhythm,
+                    pass,
+                );
+                assert!(
+                    notes
+                        .iter()
+                        .all(|note| note.start_beat >= 0.0 && note.end_beat() <= 64.0 + 1e-6),
+                    "{} pass {pass} must stay inside the loop",
+                    rhythm.label()
+                );
+                assert!(
+                    notes.iter().any(|note| note.start_beat < 2.0),
+                    "{} pass {pass} must keep the opening bar",
+                    rhythm.label()
+                );
+            }
+            assert!(
+                arrangement
+                    .accompaniment_notes_for_pass_with_rhythm(
+                        AccompanimentInstrument::Piano,
+                        rhythm,
+                        1,
+                    )
+                    .len()
+                    >= plain.len(),
+                "{} variations should add emphasis, not remove the pattern",
+                rhythm.label()
+            );
         }
     }
 

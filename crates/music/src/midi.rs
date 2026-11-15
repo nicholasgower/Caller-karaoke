@@ -6,7 +6,7 @@
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
-use contra_core::{AccompanimentInstrument, MelodyInstrument};
+use contra_core::{AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument};
 
 use crate::arrange::Arrangement;
 use crate::score::NoteEvent;
@@ -19,9 +19,11 @@ pub fn export_midi(
     arrangement: &Arrangement,
     melody: MelodyInstrument,
     accompaniment: AccompanimentInstrument,
+    accompaniment_rhythm: AccompanimentRhythm,
     bpm: f64,
 ) -> Vec<u8> {
-    let accompaniment_notes = arrangement.accompaniment_notes(accompaniment);
+    let accompaniment_notes =
+        arrangement.accompaniment_notes_with_rhythm(accompaniment, accompaniment_rhythm);
 
     let tracks = vec![
         build_track(
@@ -193,6 +195,7 @@ mod tests {
             &arrangement,
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
             240.0,
         );
         assert!(bytes.starts_with(b"MThd"));
@@ -216,6 +219,30 @@ mod tests {
     }
 
     #[test]
+    fn export_uses_the_selected_rhythm() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let block = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Block,
+            240.0,
+        );
+        let sustained = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Sustained,
+            240.0,
+        );
+        assert_ne!(
+            block, sustained,
+            "changing the accompaniment rhythm must change the exported notes"
+        );
+    }
+
+    #[test]
     fn midi_is_deterministic() {
         let score = parse_abc(TUNE).expect("parse");
         let arrangement = Arrangement::from_score(&score, 64.0);
@@ -223,12 +250,14 @@ mod tests {
             &arrangement,
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
             240.0,
         );
         let second = export_midi(
             &arrangement,
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
             240.0,
         );
         assert_eq!(first, second);
