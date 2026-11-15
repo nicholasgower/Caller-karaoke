@@ -3,12 +3,93 @@
 use contra_core::Theme;
 use eframe::egui;
 
-pub const CALL_ACTIVE_BG: egui::Color32 = egui::Color32::from_rgb(58, 58, 58);
-pub const CALL_UPCOMING_BG: egui::Color32 = egui::Color32::from_rgb(38, 38, 38);
-pub const MUTED: egui::Color32 = egui::Color32::from_rgb(154, 154, 154);
-/// A desaturated warm grey for non-blocking warnings; still part of the
-/// neutral theme rather than an accent colour.
-pub const WARNING: egui::Color32 = egui::Color32::from_rgb(205, 180, 135);
+/// Colours for the parts of the UI that paint their own backgrounds and text
+/// instead of relying on egui's widget visuals.
+///
+/// Each theme carries its own palette: the dark card greys read as solid black
+/// blocks on a light background, and dark-theme text would disappear on them.
+#[derive(Clone, Copy, Debug)]
+pub struct Palette {
+    /// Background of the now-playing call card and selected results.
+    pub call_active_bg: egui::Color32,
+    /// Background of an upcoming figure card.
+    pub call_upcoming_bg: egui::Color32,
+    /// Secondary and hint text.
+    pub muted: egui::Color32,
+    /// Strong text drawn on a call or result card.
+    pub on_card: egui::Color32,
+    /// A call whose move has already started.
+    pub executing: egui::Color32,
+    /// Small, low-emphasis text such as the original card wording.
+    pub subtle: egui::Color32,
+    /// Non-blocking warning text.
+    pub warning: egui::Color32,
+    /// Error text and banners.
+    pub error: egui::Color32,
+}
+
+const DARK: Palette = Palette {
+    call_active_bg: egui::Color32::from_rgb(58, 58, 58),
+    call_upcoming_bg: egui::Color32::from_rgb(38, 38, 38),
+    muted: egui::Color32::from_rgb(154, 154, 154),
+    on_card: egui::Color32::WHITE,
+    executing: egui::Color32::from_gray(180),
+    subtle: egui::Color32::from_gray(120),
+    warning: egui::Color32::from_rgb(205, 180, 135),
+    error: egui::Color32::from_rgb(220, 120, 120),
+};
+
+const LIGHT: Palette = Palette {
+    call_active_bg: egui::Color32::from_rgb(214, 214, 214),
+    call_upcoming_bg: egui::Color32::from_rgb(230, 230, 230),
+    muted: egui::Color32::from_rgb(92, 92, 92),
+    on_card: egui::Color32::from_rgb(24, 24, 24),
+    executing: egui::Color32::from_gray(96),
+    subtle: egui::Color32::from_gray(104),
+    warning: egui::Color32::from_rgb(120, 94, 46),
+    error: egui::Color32::from_rgb(160, 40, 40),
+};
+
+/// The palette that matches `dark_mode`.
+pub fn palette(dark_mode: bool) -> &'static Palette {
+    if dark_mode { &DARK } else { &LIGHT }
+}
+
+fn palette_for(ui: &egui::Ui) -> &'static Palette {
+    palette(ui.visuals().dark_mode)
+}
+
+pub fn call_active_bg(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).call_active_bg
+}
+
+pub fn call_upcoming_bg(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).call_upcoming_bg
+}
+
+pub fn muted(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).muted
+}
+
+pub fn on_card(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).on_card
+}
+
+pub fn executing(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).executing
+}
+
+pub fn subtle(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).subtle
+}
+
+pub fn warning(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).warning
+}
+
+pub fn error(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).error
+}
 
 pub fn apply(ctx: &egui::Context, theme: Theme, animations: bool) {
     let dark = visuals_for(true);
@@ -105,4 +186,76 @@ fn visuals_for(dark_mode: bool) -> egui::Visuals {
     visuals.window_corner_radius = egui::CornerRadius::same(8);
     visuals.menu_corner_radius = egui::CornerRadius::same(6);
     visuals
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Relative luminance of an sRGB channel (WCAG 2.x).
+    fn channel(value: u8) -> f32 {
+        let value = f32::from(value) / 255.0;
+        if value <= 0.04045 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    }
+
+    fn luminance(color: egui::Color32) -> f32 {
+        0.2126 * channel(color.r()) + 0.7152 * channel(color.g()) + 0.0722 * channel(color.b())
+    }
+
+    fn contrast(a: egui::Color32, b: egui::Color32) -> f32 {
+        let (a, b) = (luminance(a), luminance(b));
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn light_cards_are_light_and_dark_cards_are_dark() {
+        let dark = palette(true);
+        assert!(luminance(dark.call_active_bg) < 0.1);
+        assert!(luminance(dark.call_upcoming_bg) < 0.1);
+        let light = palette(false);
+        assert!(luminance(light.call_active_bg) > 0.5);
+        assert!(luminance(light.call_upcoming_bg) > 0.5);
+    }
+
+    #[test]
+    fn card_text_contrasts_with_every_card_background() {
+        for dark_mode in [true, false] {
+            let palette = palette(dark_mode);
+            for background in [palette.call_active_bg, palette.call_upcoming_bg] {
+                for (foreground, min) in [
+                    (palette.on_card, 4.5),
+                    (palette.muted, 3.0),
+                    (palette.executing, 3.0),
+                    // `subtle` is the smallest, lowest-emphasis hint text and
+                    // intentionally sits below normal body-text contrast.
+                    (palette.subtle, 2.5),
+                ] {
+                    let ratio = contrast(background, foreground);
+                    assert!(
+                        ratio >= min,
+                        "dark_mode={dark_mode} background={background:?} foreground={foreground:?} ratio={ratio}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn warning_and_error_read_on_the_panel() {
+        for dark_mode in [true, false] {
+            let panel = visuals_for(dark_mode).panel_fill;
+            let palette = palette(dark_mode);
+            for foreground in [palette.warning, palette.error, palette.muted] {
+                let ratio = contrast(panel, foreground);
+                assert!(
+                    ratio >= 3.0,
+                    "dark_mode={dark_mode} foreground={foreground:?} ratio={ratio}"
+                );
+            }
+        }
+    }
 }

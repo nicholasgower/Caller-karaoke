@@ -580,7 +580,7 @@ impl eframe::App for ContraApp {
         if let Some(error) = self.error.clone() {
             egui::Panel::bottom("error").show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    ui.colored_label(egui::Color32::from_rgb(220, 120, 120), error);
+                    ui.colored_label(theme::error(ui), error);
                     if ui.button("Dismiss").clicked() {
                         self.error = None;
                     }
