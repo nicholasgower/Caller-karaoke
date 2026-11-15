@@ -7,4 +7,7 @@ Icon=contra-karaoke
 Terminal=false
 Categories=AudioVideo;Audio;Education;
 Keywords=contra;dance;caller;music;ABC;
+# Lets the desktop hand the app a startup-notification token, so the window
+# opens focused instead of behind the launcher under focus-stealing prevention.
+StartupNotify=true
 StartupWMClass=contra-karaoke

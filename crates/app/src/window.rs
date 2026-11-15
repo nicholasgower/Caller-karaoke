@@ -1,4 +1,8 @@
-//! Keeps the native window the same size when it moves between monitors.
+//! Native window handling that egui does not provide.
+//!
+//! [`LaunchFocus`] brings the window to the front when the app starts, and
+//! [`ScaleGuard`] keeps the window the same size when it moves between
+//! monitors.
 //!
 //! Windows and winit try to preserve the *logical* window size when a window
 //! crosses onto a monitor with a different scale factor, but a drag between
@@ -42,6 +46,63 @@ const POSITION_EPSILON: f32 = 0.5;
 /// percent covers that (and fractional scale factors such as 1.25 vs 1.5)
 /// without matching an ordinary resize.
 const RATIO_TOLERANCE: f32 = 0.05;
+
+/// Frames for which the app keeps asking for the launch focus.
+///
+/// The window is shown at the end of the frame that paints it for the first
+/// time, and that frame's focus request reaches the window manager right after,
+/// so one request is normally enough. The extra frames cover a window manager
+/// that needs another pass before the window is on screen.
+const LAUNCH_FOCUS_FRAMES: u64 = 3;
+
+/// Takes the keyboard focus when the app starts.
+///
+/// eframe creates the window hidden and shows it only once it has painted a
+/// frame, so the user does not see a white flash. A window shown that way does
+/// not necessarily come to the front: when the app is started from a terminal
+/// or another application, Windows refuses to move the new window to the
+/// foreground and leaves it behind the window that launched it. An explicit
+/// focus request is allowed to do that (winit retries it with
+/// `SetForegroundWindow` after taking the foreground permission), so the app
+/// asks for the focus itself instead of relying on the plain show request.
+///
+/// The request is limited to the first frames: after that the user may have
+/// picked another window, and the app must not pull the focus back.
+#[derive(Debug, Default)]
+pub struct LaunchFocus {
+    /// The frame counter when the first frame ran; `None` before that.
+    start_frame: Option<u64>,
+    /// The window has had the focus, or the launch frames are over.
+    done: bool,
+}
+
+impl LaunchFocus {
+    /// Ask for the focus until the window is focused or the launch frames end.
+    pub fn update(&mut self, ctx: &egui::Context) {
+        if self.done {
+            return;
+        }
+
+        if ctx.input(|input| input.viewport().focused.unwrap_or(false)) {
+            // The window manager already gave us the focus: never ask again.
+            self.done = true;
+            return;
+        }
+
+        let frame = ctx.cumulative_frame_nr();
+        let start = *self.start_frame.get_or_insert(frame);
+        if frame.saturating_sub(start) >= LAUNCH_FOCUS_FRAMES {
+            self.done = true;
+            return;
+        }
+
+        // The web canvas cannot take focus from the browser, and the backend
+        // would only log an unhandled command.
+        if !cfg!(target_arch = "wasm32") {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
+    }
+}
 
 /// Display scales remembered while the window is moving.
 ///
@@ -231,6 +292,94 @@ fn matches_ratio(expected: egui::Vec2, size: egui::Vec2, scale: f32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Runs one frame and returns the viewport commands it sent.
+    ///
+    /// These tests render no widgets, so a frame is a single pass and the frame
+    /// counter advances once per call. `focused` reports the window as focused
+    /// in that frame's input, as the window manager does once the window has
+    /// the keyboard.
+    fn run_frame(
+        focus: &mut LaunchFocus,
+        ctx: &egui::Context,
+        focused: bool,
+    ) -> Vec<egui::ViewportCommand> {
+        let mut input = egui::RawInput::default();
+        if focused {
+            input.viewports.insert(
+                egui::ViewportId::ROOT,
+                egui::ViewportInfo {
+                    focused: Some(true),
+                    ..Default::default()
+                },
+            );
+        }
+        let output = ctx.run_pass(input, |ctx| focus.update(ctx));
+        let commands = output
+            .viewport_output
+            .get(&egui::ViewportId::ROOT)
+            .map(|viewport| viewport.commands.clone())
+            .unwrap_or_default();
+        // The test has no renderer to upload the font atlas to.
+        output.drop_without_applying_deltas();
+        commands
+    }
+
+    /// The bug: a window that eframe shows after its first frame stays behind
+    /// the program that launched it unless the app asks for the focus itself.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn asks_for_the_focus_when_the_window_opens() {
+        let ctx = egui::Context::default();
+        let mut focus = LaunchFocus::default();
+        assert!(run_frame(&mut focus, &ctx, false).contains(&egui::ViewportCommand::Focus));
+    }
+
+    /// A window that is focused from the start needs no request.
+    #[test]
+    fn does_not_ask_for_a_focus_it_already_has() {
+        let ctx = egui::Context::default();
+        let mut focus = LaunchFocus::default();
+        let commands = run_frame(&mut focus, &ctx, true);
+        assert!(
+            !commands.contains(&egui::ViewportCommand::Focus),
+            "{commands:?}"
+        );
+    }
+
+    /// Once the window has the focus, the app must not keep asking for it.
+    #[test]
+    fn stops_asking_once_the_window_has_the_focus() {
+        let ctx = egui::Context::default();
+        let mut focus = LaunchFocus::default();
+        run_frame(&mut focus, &ctx, false);
+        for _ in 0..2 {
+            let commands = run_frame(&mut focus, &ctx, true);
+            assert!(
+                !commands.contains(&egui::ViewportCommand::Focus),
+                "{commands:?}"
+            );
+        }
+    }
+
+    /// If the window never gets the focus, the requests stop after the launch
+    /// frames: the user may have chosen another window, and the app must not
+    /// pull the focus back from it.
+    #[test]
+    fn stops_asking_after_the_launch_frames() {
+        let ctx = egui::Context::default();
+        let mut focus = LaunchFocus::default();
+        for _ in 0..LAUNCH_FOCUS_FRAMES {
+            run_frame(&mut focus, &ctx, false);
+        }
+        for _ in 0..5 {
+            let commands = run_frame(&mut focus, &ctx, false);
+            assert!(
+                !commands.contains(&egui::ViewportCommand::Focus),
+                "the app asked for the focus after its launch frames: {commands:?}"
+            );
+        }
+    }
 
     fn size(x: f32, y: f32) -> egui::Vec2 {
         egui::vec2(x, y)
