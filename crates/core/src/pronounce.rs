@@ -4,8 +4,8 @@
 //! vocabulary is already correct, but a few terms are not:
 //!
 //! - `poussette` came out as "pows-ET" instead of "poo-SET".
-//! - `petronella` is pinned to the contra stress pattern so a lexicon update
-//!   cannot move it.
+//! - `petronella` is pinned to the first-syllable contra stress so a lexicon
+//!   update cannot move it.
 //! - `promenade` came out as "prom-uh-NAHD" instead of "prom-uh-NADE".
 //! - `O'More` was split into letters by the tokenizer.
 //! - `do-si-do` is spoken as "doe see doe" by request.
@@ -30,8 +30,8 @@ use regex::Regex;
 pub const KOKORO_OVERRIDES: &[(&str, &str)] = &[
     // "poo-SET", not "PWSS-et-te".
     ("poussette", "puˈsɛt"),
-    // "pet-roh-NEL-uh", not "PET-roh-nel-la".
-    ("petronella", "pˌɛtɹOnˈɛlə"),
+    // "PET-roh-nel-uh", not "pet-roh-NEL-uh".
+    ("petronella", "pˈɛtɹOnˌɛlə"),
     // "prom-uh-NADE", not "prom-uh-NAHD".
     ("promenade", "pɹˌɑmənˈAd"),
     // The G2P lexicon does not know the gender-neutral role term and otherwise
@@ -52,7 +52,7 @@ pub const KOKORO_OVERRIDES: &[(&str, &str)] = &[
 /// longest first so a phrase is never partially replaced by a shorter entry.
 pub const PLATFORM_RESPELLINGS: &[(&str, &str)] = &[
     ("poussette", "poo set"),
-    ("petronella", "petro nella"),
+    ("petronella", "petronelluh"),
     ("gyre", "jire"),
     ("o'more", "O More"),
     ("gentlespoon", "gentle spoon"),
@@ -128,6 +128,7 @@ mod tests {
     #[test]
     fn respells_only_whole_words() {
         assert_eq!(platform_text("poussette"), "poo set");
+        assert_eq!(platform_text("petronella"), "petronelluh");
         assert_eq!(
             platform_text("a poussette and a gyre"),
             "a poo set and a jire"

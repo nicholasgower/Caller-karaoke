@@ -71,7 +71,7 @@ before synthesis:
 | Term | Corrected pronunciation |
 | --- | --- |
 | `poussette` | “poo-SET” |
-| `petronella` | “pet-roh-NEL-uh”, with the contra stress |
+| `petronella` | “PET-roh-nel-uh”, with the contra stress |
 | `promenade` | “prom-uh-NADE” |
 | `do-si-do` | “doe see doe” |
 | `gentlespoon(s)` | “gentle spoon(s)” |

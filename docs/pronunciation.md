@@ -29,7 +29,7 @@ does not download anything.
 | Term | Problem | Kokoro phonemes | Platform-TTS respelling |
 | --- | --- | --- | --- |
 | `poussette` | G2P produced "pows-ET" (rhymes with "cows") | `puˈsɛt` ("poo-SET") | `poo set` |
-| `petronella` | Pinned to the contra stress pattern | `pˌɛtɹOnˈɛlə` ("pet-roh-NEL-uh") | `petro nella` |
+| `petronella` | Pinned to the contra stress pattern, with the first syllable stressed | `pˈɛtɹOnˌɛlə` ("PET-roh-nel-uh") | `petronelluh` |
 | `promenade` | G2P chose "prom-uh-NAHD" | `pɹˌɑmənˈAd` ("prom-uh-NADE") | unchanged |
 | `Rory O'More` | The tokenizer split `O'More` and spelled it out | `ɹˈɔːɹi ˈO mˈɔːɹ` | `Rory O More` |
 | `do-si-do` | Requested "doe see doe"; G2P said "doo see doo" | `dˈO sˈiː dˈO` | `doe see doe` |
@@ -38,8 +38,9 @@ does not download anything.
 
 Notes:
 
-- `petronella` is already correct in Misaki 0.3, but the override pins the
-  stress so a future G2P or lexicon update cannot silently change it.
+- `petronella` is pinned to the first-syllable contra stress
+  ("PET-roh-nel-uh"), so a future G2P or lexicon update cannot silently move
+  it.
 - `promenade` is the one that most affects a call: US contra callers say
   "prom-uh-NADE", not the French-influenced "prom-uh-NAHD".
 - `O'More` is normalized to `O More` before G2P; the G2P tokenizer otherwise
