@@ -39,6 +39,22 @@ the prose is the source of truth.
 - A step's screenshot shows the result of that action, not a mockup.
 - Do not include real tokens, usernames, device IDs, or third-party cards.
 
+## Hosted browser app
+
+The `/play` page embeds the WASM build that the docs workflow stages under
+`website/static/app/`. That folder is generated, so a local `npm run build`
+without Rust produces a site whose `/play` frame returns 404. To view the
+hosted app locally, build and stage it first:
+
+```sh
+cd website
+npm run build:app  # needs Rust, the wasm32 target, and Trunk
+npm start
+```
+
+The app is built with the public URL `/Contra-karaoke/app/`; keep that in step
+with `baseUrl` in `docusaurus.config.ts` or set `CONTRA_WEB_PUBLIC_URL`.
+
 ## Screenshots
 
 Screenshots are rendered by the real app through the headless entry point, then

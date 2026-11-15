@@ -817,7 +817,7 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 | --- | --- | --- |
 | Windows x64 | `cargo build --release` + Inno Setup | `ContraKaraoke-<version>-x64-setup.exe`, `...-portable.zip` |
 | Linux x86_64 | `cargo build --release` | `.deb` via `cargo-deb`, `.AppImage`, `.flatpak` |
-| Web | `trunk build --release` + `wasm-opt` | `contra-karaoke-web.zip`, optional GitHub Pages deploy |
+| Web | `trunk build --release` + `wasm-opt` | `contra-karaoke-web.zip`, hosted copy under the docs site `/app/` |
 | Android | `cargo apk build --release` | universal APK (arm64 + armv7), minSdk 26 |
 
 Notes:
@@ -857,7 +857,9 @@ Notes:
 - Commit with `[skip ci]` and path filters to avoid loops.
 - Nightly builds ignore changelog-only commits.
 
-Optional **`pages.yml`** deploys the web build to GitHub Pages.
+**`docs.yml`** builds and deploys the documentation site to GitHub Pages. It
+also builds the WASM app and stages it under `/app/` so the guide can embed a
+hosted copy.
 
 ### 9.3 Versioning
 
@@ -872,7 +874,8 @@ Optional **`pages.yml`** deploys the web build to GitHub Pages.
 - [ ] Documentation screenshots are regenerated in one pass
       (`cd website && npm run screenshots`), reviewed, and committed with updated
       manifest dimensions and emphasis regions.
-- [ ] Web build loads and plays audio in Chrome and Firefox.
+- [ ] Web build loads and plays audio in Chrome and Firefox, both from the
+      downloaded bundle and from the docs site `/play` page.
 - [ ] Android APK installs and plays audio on a real device.
 - [ ] Default dance and tune load offline.
 - [ ] Proxy-backed search works in the web build.
@@ -1044,7 +1047,7 @@ placeholder screens.
 
 - [ ] Windows Inno Setup installer and portable ZIP.
 - [ ] Linux `.deb`, AppImage, and Flatpak.
-- [ ] Web bundle and optional Pages deploy.
+- [ ] Web bundle and hosted copy in the documentation site.
 - [ ] Android APK with minSdk 26.
 - [ ] `ci.yml`, `nightly.yml`, `changelog.yml`.
 - [ ] `git-cliff` config and `CHANGELOG.md`.
@@ -1114,13 +1117,14 @@ Exit: all release-checklist items pass.
 | 2026-11-14 | Version stays 0.1.0 | Owner instruction until declared released |
 | 2026-11-14 | Dated nightly tags + rolling nightly | Traceable builds without changing semantic version |
 | 2026-11-15 | Refresh documentation screenshots only at release prep | Per-worktree regeneration was slow and noisy; prose still tracks every change |
+| 2026-11-15 | Host the web build on the documentation site | Lets visitors try the app without downloading; the docs deploy already owns the Pages artifact and can rebuild it from `main` |
 
 ---
 
 ## 16. Open items
 
 - Final proxy deployment host/domain and token policy.
-- Whether to publish the web build automatically to GitHub Pages.
+- Data proxy URL to bake into the hosted web copy for online search.
 - Android SF2 picker: JNI intent vs. app-folder import fallback.
 - Review of default alias templates with an experienced caller.
 - Permission/attribution wording for the bundled default dance and tune.

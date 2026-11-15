@@ -3,3 +3,4 @@ build/
 .docusaurus/
 .cache-loader/
 screenshots/raw/
+static/app/

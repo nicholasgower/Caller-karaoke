@@ -90,6 +90,10 @@ Still missing: the screenshot verification workflow, manual OS installer
 images, and the first Pages deployment. The app test seam and real in-app
 screenshots are now handled by the headless renderer below.
 
+The docs workflow also builds the WASM app and stages it at `/app/`, so the
+`/play` page can embed a hosted copy of the browser build without leaving the
+documentation site.
+
 ### 0.3 Headless renderer (implemented)
 
 `crates/app` has a `headless` feature and a `contra-headless` binary. It
@@ -138,7 +142,10 @@ remaining images are OS installer dialogs that are not part of the app. The old
 - Video or animated GIF tutorials.
 - Documenting features that are not in the build. The docs must not promise
   keyboard shortcuts, warning banners, or settings the UI does not have.
-- Publishing the web/WASM build from the docs workflow.
+- ~~Publishing the web/WASM build from the docs workflow.~~ Superseded: the docs
+  workflow now stages the WASM build under `/app/` and the `/play` page embeds
+  it. That build contains only the two attributed defaults; the docs site still
+  does not host a dance or tune database or a soundfont.
 - Redistributing third-party dances, tunes, or soundfonts. Screenshots use the
   two bundled defaults or synthetic fixtures only.
 - Replacing internal docs in `docs/`. Public docs live in `website/docs/`.
@@ -1043,7 +1050,9 @@ Use a muted Prism theme for code.
 - List expected artifact names; note nightly names include date/SHA.
 - Explain SmartScreen and unsigned nightly builds.
 - No GitHub API fetch at build/runtime.
-- Keep the web app decision separate from the docs site.
+- Offer a hosted browser copy on `/play` and link it from the download page and
+  landing page. The app itself is staged under `/app/` by the docs workflow;
+  keep the download bundle and the hosted copy built from the same sources.
 
 ### 6.8 Version banner
 
@@ -1086,8 +1095,22 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: website/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Trunk
+        run: |
+          curl -L --fail --retry 3 \
+            -o trunk.tar.gz \
+            https://github.com/trunk-rs/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf trunk.tar.gz
+          sudo mv trunk /usr/local/bin/
       - run: npm ci
         working-directory: website
+      - name: Build the hosted browser app
+        working-directory: website
+        run: npm run build:app
       - run: npm run check
         working-directory: website
       - uses: actions/configure-pages@v5

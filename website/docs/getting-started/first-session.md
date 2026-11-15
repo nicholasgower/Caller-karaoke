@@ -9,7 +9,8 @@ first, then shows how to replace them.
 
 ## Before you start
 
-- Launch the installed app or a source build. See the installation pages or
+- Launch the installed app, a source build, or the
+  [hosted browser copy](/play). See the installation pages or
   [Build and run](/docs/getting-started/build-and-run).
 - Have an audio output device available. In a browser, press Play once to allow
   audio.
