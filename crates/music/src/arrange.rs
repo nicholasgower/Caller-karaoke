@@ -24,6 +24,19 @@ pub const ENDING_SLOWDOWN_CURVE: f64 = 2.0;
 /// Dance beats the final harmony is held before the audio fades out.
 pub const ENDING_LINGER_BEATS: f64 = 8.0;
 
+/// Smallest interval, in semitones, the chordal accompaniment keeps from any
+/// melody note it sounds against.
+///
+/// A minor third or more reads as two independent voices. Anything closer — a
+/// unison, a minor second, or a major second — thickens the melody instead of
+/// supporting it, so the accompaniment note is moved down an octave.
+pub const MIN_MELODY_SEPARATION_SEMITONES: i32 = 3;
+
+/// Lowest pitch an accompaniment note may reach when it is moved down an
+/// octave to clear the melody. The floor keeps the fix from pushing a chord
+/// into inaudible sub-bass on small speakers.
+pub const MIN_ACCOMPANIMENT_MIDI: u8 = 24;
+
 /// One note of the once-only ending.
 ///
 /// Unlike [`NoteEvent`], an ending note is timed in seconds because the ending
@@ -336,6 +349,7 @@ impl Arrangement {
             ritard_seconds,
             linger_seconds,
         ));
+        separate_ending_accompaniment(&melody, &mut accompaniment);
         accompaniment.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
 
         Ending {
@@ -422,6 +436,7 @@ impl Arrangement {
         if pass > 0 {
             self.vary_accompaniment(&mut notes, pass);
         }
+        self.separate_accompaniment_from_melody(&mut notes);
         notes.sort_by(|a, b| {
             a.start_beat
                 .total_cmp(&b.start_beat)
@@ -540,6 +555,34 @@ impl Arrangement {
             .rev()
             .find(|midi| (45..=86).contains(midi) && tones.contains(&midi.rem_euclid(12)))
             .map(|midi| midi as u8)
+    }
+
+    /// Whether `midi` sits closer than [`MIN_MELODY_SEPARATION_SEMITONES`] to a
+    /// melody note sounding anywhere between `start` and `end`.
+    fn crowds_melody(&self, midi: u8, start: f64, end: f64) -> bool {
+        self.melody.iter().any(|melody| {
+            melody.start_beat < end - 1e-9
+                && melody.end_beat() > start + 1e-9
+                && (melody.midi as i32 - midi as i32).abs() < MIN_MELODY_SEPARATION_SEMITONES
+        })
+    }
+
+    /// Move accompaniment notes that crowd the melody down an octave.
+    ///
+    /// The melody is the line the dancers follow; a chord tone within a whole
+    /// tone of it blurs into the tune instead of supporting it. Any note that
+    /// lands closer than a minor third to an overlapping melody note is
+    /// dropped by an octave, repeating while a lower melody note is still too
+    /// close. The bass already sits below the melody and the countermelody is
+    /// deliberately a third below it, so both are left where they are.
+    fn separate_accompaniment_from_melody(&self, notes: &mut [NoteEvent]) {
+        for note in notes {
+            while note.midi.saturating_sub(MIN_ACCOMPANIMENT_MIDI) >= 12
+                && self.crowds_melody(note.midi, note.start_beat, note.end_beat())
+            {
+                note.midi -= 12;
+            }
+        }
     }
 
     fn plain_accompaniment(
@@ -847,6 +890,25 @@ fn final_chord_notes(chord: &Chord, start: f64, linger_seconds: f64) -> Vec<Endi
     notes
 }
 
+/// Apply the melody-separation rule to the once-only ending.
+///
+/// The ending is timed in seconds rather than dance beats, so it needs its own
+/// overlap test; the rule itself is the same as for the loop.
+fn separate_ending_accompaniment(melody: &[EndingNote], accompaniment: &mut [EndingNote]) {
+    for note in accompaniment {
+        while note.midi.saturating_sub(MIN_ACCOMPANIMENT_MIDI) >= 12
+            && melody.iter().any(|melody| {
+                melody.start_seconds < note.start_seconds + note.duration_seconds - 1e-9
+                    && melody.start_seconds + melody.duration_seconds > note.start_seconds + 1e-9
+                    && (melody.midi as i32 - note.midi as i32).abs()
+                        < MIN_MELODY_SEPARATION_SEMITONES
+            })
+        {
+            note.midi -= 12;
+        }
+    }
+}
+
 /// Small deterministic generator (SplitMix64) used for the variation choices.
 struct VariationRng {
     state: u64,
@@ -1103,6 +1165,93 @@ mod tests {
             let notes = arrangement.accompaniment_notes(instrument);
             assert!(!notes.is_empty());
             assert!(notes.iter().all(|note| note.midi <= 108));
+        }
+    }
+
+    #[test]
+    fn accompaniment_keeps_a_minor_third_from_the_melody() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        for instrument in [
+            AccompanimentInstrument::Piano,
+            AccompanimentInstrument::Guitar,
+            AccompanimentInstrument::Accordion,
+        ] {
+            for rhythm in AccompanimentRhythm::ALL {
+                let notes = arrangement.accompaniment_notes_with_rhythm(instrument, rhythm);
+                for note in &notes {
+                    for melody in &arrangement.melody {
+                        let overlaps = melody.start_beat < note.end_beat() - 1e-9
+                            && melody.end_beat() > note.start_beat + 1e-9;
+                        if overlaps {
+                            assert!(
+                                (melody.midi as i32 - note.midi as i32).abs()
+                                    >= MIN_MELODY_SEPARATION_SEMITONES,
+                                "{} {} note {} crowds melody {} at beat {}",
+                                instrument.label(),
+                                rhythm.label(),
+                                note.midi,
+                                melody.midi,
+                                note.start_beat
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_low_melody_pushes_the_accompaniment_down_an_octave() {
+        let low = Arrangement::from_score(&simple_score(), 64.0);
+        let mut high_score = simple_score();
+        for note in &mut high_score.notes {
+            note.midi += 24;
+        }
+        let high = Arrangement::from_score(&high_score, 64.0);
+        let low_notes = low.accompaniment_notes(AccompanimentInstrument::Piano);
+        let high_notes = high.accompaniment_notes(AccompanimentInstrument::Piano);
+
+        // The high tune sits clear of the piano's close-position voicing, so
+        // nothing moves and its top note stays the voicing's top.
+        assert!(
+            high_notes.iter().all(|note| note.midi <= 74),
+            "a high melody should leave the voicing alone: {:?}",
+            high_notes.iter().map(|note| note.midi).collect::<Vec<_>>()
+        );
+        // With the tune in the same octave as the chord tones, the nearest
+        // tones are dropped an octave and the pattern reaches lower.
+        assert!(
+            low_notes.iter().any(|note| note.midi < 55),
+            "a low melody should move the voicing down: {:?}",
+            low_notes.iter().map(|note| note.midi).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn the_ending_keeps_its_accompaniment_clear_of_the_melody() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+        );
+        for note in &ending.accompaniment {
+            let note_end = note.start_seconds + note.duration_seconds;
+            for melody in &ending.melody {
+                let melody_end = melody.start_seconds + melody.duration_seconds;
+                let overlaps = melody.start_seconds < note_end - 1e-9
+                    && melody_end > note.start_seconds + 1e-9;
+                if overlaps {
+                    assert!(
+                        (melody.midi as i32 - note.midi as i32).abs()
+                            >= MIN_MELODY_SEPARATION_SEMITONES,
+                        "ending accompaniment {} crowds melody {} at {:.3}s",
+                        note.midi,
+                        melody.midi,
+                        note.start_seconds
+                    );
+                }
+            }
         }
     }
 
