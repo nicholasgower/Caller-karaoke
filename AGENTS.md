@@ -1,8 +1,8 @@
 # AGENTS.md — Project guidelines
 
 This file is for anyone (human or AI) changing Contra Karaoke. Read it together
-with `ROADMAP.md` before starting. If the workspace has not been scaffolded yet,
-start at Milestone M0 in the roadmap.
+with `ROADMAP.md` before starting. The workspace is scaffolded; the desktop and
+web builds work, and Android/release hardening are the remaining roadmap work.
 
 ---
 

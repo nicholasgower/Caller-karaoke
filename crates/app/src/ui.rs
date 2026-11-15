@@ -421,6 +421,12 @@ impl ContraApp {
                 ui.label("Choreographer");
                 ui.text_edit_singleline(&mut self.dance_query.choreographer);
                 ui.end_row();
+                ui.label("User");
+                ui.text_edit_singleline(&mut self.dance_query.user);
+                ui.end_row();
+                ui.label("Hook");
+                ui.text_edit_singleline(&mut self.dance_query.hook);
+                ui.end_row();
                 ui.label("Formation");
                 egui::ComboBox::from_id_salt("formation")
                     .selected_text(formation_label(self.dance_query.formation.as_deref()))
@@ -440,6 +446,52 @@ impl ContraApp {
                                 == value;
                             if ui.selectable_label(selected, label).clicked() {
                                 self.dance_query.formation = if value.is_empty() {
+                                    None
+                                } else {
+                                    Some(value.to_string())
+                                };
+                            }
+                        }
+                    });
+                ui.end_row();
+                ui.label("Figure type");
+                let figure_options = [
+                    ("", "Any figure"),
+                    ("swing", "Swing"),
+                    ("allemande", "Allemande"),
+                    ("do si do", "Do-si-do"),
+                    ("balance", "Balance"),
+                    ("chain", "Chain"),
+                    ("circle", "Circle"),
+                    ("star", "Star"),
+                    ("hey", "Hey"),
+                    ("gyre", "Gyre"),
+                    ("promenade", "Promenade"),
+                    ("long lines", "Long lines"),
+                    ("right left through", "Right and left through"),
+                    ("pass through", "Pass through"),
+                    ("petronella", "Petronella"),
+                    ("mad robin", "Mad robin"),
+                ];
+                let selected = self
+                    .dance_query
+                    .figure_move
+                    .as_deref()
+                    .and_then(|current| {
+                        figure_options
+                            .iter()
+                            .find(|(value, _)| *value == current)
+                            .map(|(_, label)| *label)
+                    })
+                    .unwrap_or("Any figure");
+                egui::ComboBox::from_id_salt("figure-move")
+                    .selected_text(selected)
+                    .show_ui(ui, |ui| {
+                        for (value, label) in figure_options {
+                            let is_selected =
+                                self.dance_query.figure_move.as_deref().unwrap_or("") == value;
+                            if ui.selectable_label(is_selected, label).clicked() {
+                                self.dance_query.figure_move = if value.is_empty() {
                                     None
                                 } else {
                                     Some(value.to_string())

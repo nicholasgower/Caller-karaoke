@@ -1,6 +1,7 @@
 # Contra Karaoke — Roadmap
 
-**Status:** pre-implementation · **Version:** 0.1.0 (unreleased) · **License:** MIT
+**Status:** 0.1.0 development — desktop and web MVP implemented; Android and
+release hardening in progress · **Version:** 0.1.0 (unreleased) · **License:** MIT
 
 Contra Karaoke is a caller-training app for contra dancing. It behaves like a
 karaoke machine for callers: the dance card and a moving call prompt show the

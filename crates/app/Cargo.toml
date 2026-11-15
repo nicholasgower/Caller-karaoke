@@ -6,6 +6,7 @@ license.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+description = "Contra dance caller trainer with ABC music playback and early call timing"
 
 [lib]
 name = "contra_app"
