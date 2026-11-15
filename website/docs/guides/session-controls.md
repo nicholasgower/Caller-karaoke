@@ -68,8 +68,9 @@ While a figure executes, the prompt switches to the move you must say next. The
 <Shot id="session-call-now" />
 
 The **executes in N beats** line is the remaining lead. A short call may show
-about two beats; a long call up to six by default once the 0.5 s safety padding
-is included. See [Timing and lead](/docs/guides/timing-and-lead).
+about two beats; a long call up to six by default once the safety padding
+(0.5 s by default) is included. See
+[Timing and lead](/docs/guides/timing-and-lead).
 
 If **Show original card text** is enabled in Preferences, the original card
 wording appears in small muted text next to the rendered call.

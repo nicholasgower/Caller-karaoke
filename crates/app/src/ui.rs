@@ -1362,10 +1362,23 @@ impl ContraApp {
                     );
                 });
             }
+            ui.horizontal(|ui| {
+                ui.label("Safety padding");
+                let slider = egui::Slider::new(
+                    &mut self.prefs.lead.padding_seconds,
+                    contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+                )
+                .step_by(0.1)
+                .fixed_decimals(1)
+                .text("s");
+                ui.add(slider);
+            });
             ui.label(
-                egui::RichText::new("Every call also gets a flat 0.5 s safety padding.")
-                    .small()
-                    .color(theme::muted(ui)),
+                egui::RichText::new(
+                    "Added to every call after the speech-lead clamp. Zero removes the buffer.",
+                )
+                .small()
+                .color(theme::muted(ui)),
             );
             if ui.button("Rebuild call timing").clicked() {
                 self.rebuild_timeline();

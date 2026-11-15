@@ -31,13 +31,14 @@ speech_lead_beats = clamp(
   min_lead_beats,
   max_lead_beats
 )
-lead_beats = speech_lead_beats + 0.5 s (converted to dance beats)
+lead_beats = speech_lead_beats + safety_padding (converted to dance beats)
 call_start_beat = execute_beat - lead_beats
 ```
 
 Defaults are calibrated from a measured 2.25 s delivery of the nine-syllable
-call “larks allemande left once and a half”. A flat 0.5 s safety padding is
-added to every call after the speech-lead clamp.
+call “larks allemande left once and a half”. A safety padding is added to every
+call after the speech-lead clamp; it defaults to 0.5 s and is adjustable from 0
+to 2 s in Preferences.
 
 | Setting | Value |
 | --- | --- |
@@ -47,13 +48,13 @@ added to every call after the speech-lead clamp.
 | lead scale | 1.0 |
 | minimum speech lead | 1.0 beat |
 | maximum speech lead | 5.0 beats |
-| safety padding | 0.5 s |
+| safety padding | 0.5 s (adjustable 0–2 s) |
 
 At 240 BPM that phrase gets 4.5 beats of speech plus 1 beat of padding = 5.5
 beats, or 2.75 seconds. The maximum speech lead can be raised to 6 beats in
-Preferences; the padding is always added. Calls are computed from the
-**rendered alias**, not the original card text, so a longer alias starts
-earlier.
+Preferences, and the safety padding is adjustable; it is always added. Calls are
+computed from the **rendered alias**, not the original card text, so a longer
+alias starts earlier.
 
 When alternative-alias shuffling is enabled, the timeline first chooses one of
 the applicable templates for each call (the active template or one of its

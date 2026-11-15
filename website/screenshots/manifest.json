@@ -286,15 +286,15 @@
     },
     {
       "id": "prefs-timing-bounds",
-      "alt": "The Calling lead section showing Minimum speech lead and Maximum speech lead sliders, the Speech rate slider, and the 0.5 s padding note.",
-      "caption": "The speech lead is clamped to one to five beats; every call then adds 0.5 s of safety padding.",
+      "alt": "The Calling lead section showing Minimum speech lead and Maximum speech lead sliders, the Speech rate slider, and the safety padding note.",
+      "caption": "The speech lead is clamped to one to five beats; every call then adds the safety padding, 0.5 s by default.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-timing-speech-rate",
-      "alt": "The Calling lead section with the Speech rate slider showing syllables per second and the padding note.",
+      "alt": "The Calling lead section with the Speech rate slider showing syllables per second and the safety padding note.",
       "caption": "A lower speech rate moves longer calls earlier.",
       "status": "ready",
       "width": 1280,

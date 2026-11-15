@@ -31,9 +31,9 @@ explicit instruction.
    (syllables, words, speech rate). The defaults are calibrated from a measured
    2.25 s delivery of “larks allemande left once and a half” (nine syllables),
    which is 4.5 beats at 240 BPM. Keep the default minimum at 1 beat and the
-   default maximum at 5 beats (user-adjustable to 6), then add a flat 0.5 s
-   safety padding to every call. Do not change this to a fixed one-beat delay
-   or to "on the beat".
+   default maximum at 5 beats (user-adjustable to 6), then add a safety padding
+   to every call (0.5 s by default, user-adjustable from 0 to 2 s). Do not
+   change this to a fixed one-beat delay or to "on the beat".
 2. **One dance beat is half a bar.** At BPM 240, one dance beat is 0.5 s, a
    standard 64-beat dance is 32 s, and a jig bar is 1.0 s. Keep reels and jigs
    equally danceable at the same BPM setting.
@@ -237,7 +237,7 @@ music_loop_beats        = 64
 tune_body_beats         = music_loop_beats        // excluding the pickup
 dance_total_beats       = tune_body_beats         // warn, do not rescale
 speech_lead_beats      in [min_lead, max_lead]   // default 1..5
-lead_beats             = speech_lead_beats + 0.5 s (in beats)
+lead_beats             = speech_lead_beats + safety_padding (default 0.5 s, in beats)
 call_start_beat         = execute_beat - lead_beats
 ```
 
@@ -247,7 +247,7 @@ The calibrated regression case is:
 "larks allemande left once and a half" -> 9 syllables
 9 / 4.0 syllables_per_second = 2.25 s
 2.25 s / 0.5 s_per_dance_beat = 4.5 beats
-4.5 beats + 0.5 s padding (1 beat at 240 BPM) = 5.5 beats (2.75 s)
+4.5 beats + default 0.5 s padding (1 beat at 240 BPM) = 5.5 beats (2.75 s)
 ```
 
 - Lead is computed from the rendered alias, not the original figure.

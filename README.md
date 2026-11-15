@@ -106,11 +106,12 @@ One **dance beat** is half a bar. At 240 BPM it lasts 0.5 s, so a standard
 For each rendered call the app estimates syllables, converts the speech
 estimate to seconds, and starts the call that many beats before the figure. The
 defaults are calibrated from a measured 2.25 s delivery of "larks allemande
-left once and a half" (nine syllables = 4.5 beats at 240 BPM), then a flat
-0.5 s safety padding is added to every call. The speech-lead range is 1-5
-beats; the maximum is adjustable up to 6 beats for learning or slower TTS
-voices. When the dance loops, the first call is scheduled at the end of the
-loop so it still precedes the first move. See `docs/INITIAL_PROMPT.md`,
+left once and a half" (nine syllables = 4.5 beats at 240 BPM), then a safety
+padding is added to every call. The padding defaults to 0.5 s and is adjustable
+from 0 to 2 s. The speech-lead range is 1-5 beats; the maximum is adjustable up
+to 6 beats for learning or slower TTS voices. When the dance loops, the first
+call is scheduled at the end of the loop so it still precedes the first move.
+See `docs/INITIAL_PROMPT.md`,
 `ROADMAP.md`, and `docs/call-timing.md` for the full design.
 
 Example:

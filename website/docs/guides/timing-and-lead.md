@@ -1,6 +1,6 @@
 ---
 title: Timing and lead
-description: Understand why calls start before the move, and adjust automatic or manual lead, minimum and maximum beats, and speech rate.
+description: Understand why calls start before the move, and adjust automatic or manual lead, minimum and maximum beats, speech rate, and safety padding.
 sidebar_position: 7
 ---
 
@@ -31,6 +31,9 @@ rendered words.
   </Step>
 </Steps>
 
+Below those controls, **Safety padding** sets the flat buffer in seconds. It
+defaults to 0.5 s, can be set from 0 to 2 s, and zero removes it.
+
 The automatic lead uses:
 
 ```
@@ -42,12 +45,13 @@ speech_lead_beats = clamp(
                       min_beats,
                       max_beats
                     )
-lead_beats = speech_lead_beats + 0.5 s (converted to dance beats)
+lead_beats = speech_lead_beats + safety_padding_seconds (converted to dance beats)
 ```
 
-Only speech rate, minimum, and maximum are exposed in the UI. The word gap and
-extra pause are fixed at 0.0, and the lead scale at 1.0. Every call also gets a
-flat **0.5 s safety padding** after the speech-lead clamp.
+Speech rate, minimum, maximum, and safety padding are exposed in the UI. The
+word gap and extra pause are fixed at 0.0, and the lead scale at 1.0. Every call
+also gets the **safety padding** after the speech-lead clamp; it defaults to
+0.5 s and can be set from 0 to 2 s.
 
 The default is calibrated from a measured 2.25 s delivery of the nine-syllable
 call “larks allemande left once and a half”. At 240 BPM that is 4.5 beats of
@@ -82,10 +86,10 @@ the music for a rebuild; if the session shows the prepare-music message, press
   </Step>
 </Steps>
 
-A short call such as `swing` gets the 1-beat minimum speech lead plus the 1-beat
-padding at 240 BPM, so it starts about two beats early. A longer phrase
-approaches the 5-beat default maximum plus padding. If you raise the maximum to
-6, long calls can start even earlier.
+A short call such as `swing` gets the 1-beat minimum speech lead plus the
+default 1-beat padding at 240 BPM, so it starts about two beats early. A longer
+phrase approaches the 5-beat default maximum plus padding. If you raise the
+maximum to 6 or increase the safety padding, long calls can start even earlier.
 
 ## The first call can be negative
 

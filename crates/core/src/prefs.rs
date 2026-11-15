@@ -295,9 +295,9 @@ impl Preferences {
             self.schema_version = 5;
         }
         if self.schema_version < 6 {
-            // v6 adds the selectable accompaniment rhythm. `serde` supplies
-            // the instrument-matching default for older files, so only the
-            // version needs recording.
+            // v6 adds the selectable accompaniment rhythm and the adjustable
+            // safety padding. `serde` supplies the defaults for older files,
+            // so only the version needs recording.
             self.schema_version = 6;
         }
     }
@@ -306,6 +306,7 @@ impl Preferences {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::timing::LEAD_PADDING_SECONDS;
 
     #[test]
     fn defaults_match_product_spec() {
@@ -433,12 +434,13 @@ mod tests {
     }
 
     #[test]
-    fn v5_preferences_use_the_instrument_matching_rhythm() {
+    fn v5_preferences_use_the_new_defaults() {
         let json = r#"{"schema_version":5,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
         assert_eq!(migrated.schema_version, 6);
         assert_eq!(migrated.accompaniment_rhythm, AccompanimentRhythm::Auto);
+        assert_eq!(migrated.lead.padding_seconds, LEAD_PADDING_SECONDS);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
 
@@ -451,6 +453,15 @@ mod tests {
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
         assert_eq!(restored.accompaniment_rhythm, AccompanimentRhythm::Shuffle);
+    }
+
+    #[test]
+    fn custom_safety_padding_round_trips() {
+        let mut prefs = Preferences::default();
+        prefs.lead.padding_seconds = 0.8;
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.lead.padding_seconds, 0.8);
     }
 
     #[test]

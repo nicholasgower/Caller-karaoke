@@ -328,14 +328,14 @@ speech_lead_beats = clamp(
                      min_lead_beats,
                      max_lead_beats
                    )
-lead_beats       = speech_lead_beats + 0.5 s (as dance beats)
+lead_beats       = speech_lead_beats + safety_padding (as dance beats)
 call_start_beat  = execution_beat - lead_beats
 ```
 
 Defaults are calibrated from measured delivery: saying
 “larks allemande left once and a half” (nine syllables) took **2.25 seconds**,
-which is 4.5 dance beats at 240 BPM. A flat **0.5 s safety padding** is added
-to every call after the speech-lead clamp.
+which is 4.5 dance beats at 240 BPM. A **safety padding** is added to every call
+after the speech-lead clamp; it defaults to 0.5 s and is user-adjustable.
 
 | Setting | Default |
 | --- | --- |
@@ -345,10 +345,11 @@ to every call after the speech-lead clamp.
 | lead scale | 1.0 |
 | min speech lead | 1.0 beat |
 | max speech lead | 5.0 beats |
-| safety padding | 0.5 s |
+| safety padding | 0.5 s (adjustable 0–2 s) |
 
 The max speech lead is user-adjustable up to 6 beats for learning sessions or
-slower TTS voices; the padding is always added on top.
+slower TTS voices, and the safety padding is adjustable separately; it is always
+added on top.
 
 Example at 240 BPM:
 

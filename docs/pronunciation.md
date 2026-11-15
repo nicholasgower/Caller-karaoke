@@ -93,9 +93,9 @@ larks allemande left once and a half
 ```
 
 Short calls can run about 0.1-0.2 s past the minimum lead because the voice has
-a natural onset and release; the 0.5 s safety padding absorbs most of it. If a
-stricter gap is wanted, raise the minimum speech lead in Preferences. The
-timeline calibration itself is unchanged.
+a natural onset and release; the default 0.5 s safety padding absorbs most of
+it. If a stricter gap is wanted, raise the minimum speech lead or the safety
+padding in Preferences. The timeline calibration itself is unchanged.
 
 ## Running the checks
 
