@@ -3,10 +3,8 @@
 //! The exported file is the arranged 64-beat loop (not the count-in), with a
 //! melody track and an accompaniment track.
 
-use midly::num::{u15, u24, u28, u4, u7};
-use midly::{
-    Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
-};
+use midly::num::{u4, u7, u15, u24, u28};
+use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 use contra_core::{AccompanimentInstrument, MelodyInstrument};
 
@@ -158,7 +156,9 @@ fn build_track(
     let mut track = Vec::with_capacity(events.len());
     let mut previous_tick = 0u64;
     for (tick, _, kind) in events {
-        let delta = tick.saturating_sub(previous_tick).min(u28::max_value().as_int() as u64);
+        let delta = tick
+            .saturating_sub(previous_tick)
+            .min(u28::max_value().as_int() as u64);
         track.push(TrackEvent {
             delta: u28::new(delta as u32),
             kind,
