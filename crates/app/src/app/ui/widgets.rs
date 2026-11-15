@@ -34,6 +34,7 @@ pub(in crate::app) fn combo_option(
     id: &str,
     value: &mut Option<String>,
     options: &[(&str, &str)],
+    compact: bool,
 ) {
     let selected = value
         .as_deref()
@@ -44,18 +45,22 @@ pub(in crate::app) fn combo_option(
                 .map(|(_, label)| *label)
         })
         .unwrap_or_else(|| options.first().map(|(_, label)| *label).unwrap_or(""));
-    egui::ComboBox::from_id_salt(id)
-        .selected_text(selected)
-        .show_ui(ui, |ui| {
-            for (option, label) in options {
-                let is_selected = value.as_deref().unwrap_or("") == *option;
-                if ui.selectable_label(is_selected, *label).clicked() {
-                    *value = if option.is_empty() {
-                        None
-                    } else {
-                        Some((*option).to_string())
-                    };
-                }
+    let combo = egui::ComboBox::from_id_salt(id);
+    let combo = if compact {
+        combo.width((ui.available_width() - 12.0).max(96.0))
+    } else {
+        combo
+    };
+    combo.selected_text(selected).show_ui(ui, |ui| {
+        for (option, label) in options {
+            let is_selected = value.as_deref().unwrap_or("") == *option;
+            if ui.selectable_label(is_selected, *label).clicked() {
+                *value = if option.is_empty() {
+                    None
+                } else {
+                    Some((*option).to_string())
+                };
             }
-        });
+        }
+    });
 }

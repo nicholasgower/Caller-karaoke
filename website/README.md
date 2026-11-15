@@ -9,9 +9,9 @@ Android configured but device-testing pending). In-app screenshots are rendered
 by the headless `contra-headless` binary and annotated with PhotoCraft. The
 remaining placeholders are the manual Windows/Android installer dialogs.
 
-The current manifest has 78 planned shots; 69 in-app shots are ready. The nine
-remaining images are Windows/Android/Linux installer dialogs, which are manual
-OS captures rather than app frames.
+The current manifest has 87 planned shots; 69 are ready. Nine pending in-app
+shots are refreshed during release prep. The other nine are manual
+Windows/Android/Linux installer captures rather than app frames.
 
 ## Commands
 

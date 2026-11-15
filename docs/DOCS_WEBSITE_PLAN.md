@@ -1329,7 +1329,7 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 | User prefs leak into screenshots | Different images per machine | `prefs_path = None`, fixed fixture prefs |
 | Synchronous music render | Play blocks; no “preparing” screen | Do not screenshot a state that does not exist; document the pending-rebuild message |
 | No paused/playing status label | Pause screenshot is ambiguous | Add a session status label before P1, or drop the shot |
-| Mobile two-column pickers | Cramped at 390 px; bad screenshots | Do a responsive pass or use full-width stacked layout |
+| Mobile two-column pickers | Cramped at 390 px; bad screenshots | Picker results and preview stack into one column; forms keep labels beside full-width fields |
 | UI churn | Every release changes images | Focus crops, gallery, one release refresh |
 | GPU raster differences | Flaky checks | Linux + lavapipe, PREDICTABLE, tolerance, artifact |
 | Screenshot suite slow | Slow CI | Cache, `--filter`, parallel prefixes |
@@ -1359,7 +1359,7 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
       Reset, associated text fields/combos/sliders, `Verified only`.
 - [ ] Add a session status label (playing/paused/finished) if the pause shot is
       to be P1.
-- [ ] Add a narrow-width pass for the picker columns and header controls.
+- [x] Add a narrow-width pass for the picker columns and header controls.
 
 **Docs scaffolding (parallel):**
 

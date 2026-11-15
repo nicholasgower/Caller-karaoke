@@ -14,7 +14,11 @@ impl ContraApp {
         // Keep the window inside a phone-width viewport: the modal area is not
         // constrained to the screen by default.
         let max_width = (ctx.content_rect().width() - 48.0).clamp(240.0, 440.0);
+        let narrow = ctx.content_rect().width() < COMPACT_WIDTH;
         let response = egui::Modal::new(egui::Id::unique("about-window")).show(ctx, |ui| {
+            if narrow {
+                ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
+            }
             ui.set_max_width(max_width);
             ui.heading("Contra Karaoke");
             ui.label(

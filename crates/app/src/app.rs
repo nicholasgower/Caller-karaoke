@@ -1668,7 +1668,7 @@ impl eframe::App for ContraApp {
         self.poll_prepared_tune();
         self.tick_rotation(beat);
 
-        let compact = ui.available_width() < COMPACT_WIDTH;
+        let compact = compact_layout(ui.available_width());
         egui::Panel::top("tabs")
             .frame(egui::Frame::default().inner_margin(egui::Margin::symmetric(12, 8)))
             .show(ui, |ui| {
@@ -1771,11 +1771,17 @@ impl eframe::App for ContraApp {
 
 /// Duration of the fade/slide when the active screen changes.
 const SCREEN_ANIM_SECONDS: f32 = 0.22;
-/// Width below which the UI switches to its phone layout (ROADMAP ┬º8.2).
+/// Width below which the UI switches to its phone layout (ROADMAP §8.2).
 const COMPACT_WIDTH: f32 = 640.0;
 /// Height below which the session tab scrolls as one page so the dance card
 /// stays reachable on short phones and landscape windows.
 const SESSION_PAGE_SCROLL_HEIGHT: f32 = 800.0;
+
+/// The one width check shared by the tab row, the session layout, and every
+/// screen's form and column layout.
+fn compact_layout(width: f32) -> bool {
+    width < COMPACT_WIDTH
+}
 
 /// Height below which the session tab scrolls as one page, even at a wide
 /// width, so a landscape phone can still reach the dance card.
@@ -1791,7 +1797,7 @@ struct SessionLayout {
 }
 
 fn session_layout(width: f32, height: f32) -> SessionLayout {
-    let compact = width < COMPACT_WIDTH;
+    let compact = compact_layout(width);
     SessionLayout {
         compact,
         page_scroll: (compact && height < SESSION_PAGE_SCROLL_HEIGHT)
@@ -2287,6 +2293,18 @@ mod tests {
         let landscape = session_layout(844.0, 390.0);
         assert!(!landscape.compact);
         assert!(landscape.page_scroll);
+    }
+
+    #[test]
+    fn every_screen_uses_the_same_compact_breakpoint() {
+        // The tab row, session layout, and screen forms must agree on the
+        // breakpoint, or a screen would stack while the tabs still show their
+        // long labels (or the reverse).
+        assert!(compact_layout(360.0));
+        assert!(compact_layout(390.0));
+        assert!(compact_layout(639.0));
+        assert!(!compact_layout(640.0));
+        assert!(!compact_layout(1280.0));
     }
 
     #[test]

@@ -137,6 +137,10 @@ Useful checks for this app:
 
 - Resize to a phone viewport (`resize` with `390 × 844`, for example) and
   screenshot it. The app's minimum width is 360 points.
+- Inspect every screen, picker, modal, empty state, and error banner at both
+  `1280 × 800` and `390 × 844`; a desktop-only pass is not enough. Layout work
+  is not done until the phone widths have no clipped controls or horizontal
+  overflow.
 - `press_key` with `Space` toggles play/pause; `R` restarts; `Escape` leaves a
   picker or preferences screen (the alias editor returns to preferences).
 - Number keys `1`–`4` switch tabs, and `Enter` in a search field starts the
@@ -188,6 +192,13 @@ final images to `website/static/img/screens/`. `npm run annotate` repeats only
 the PhotoCraft pass. The renderer opens no window, audio device, network client,
 or system TTS. It is the deterministic path for documentation captures; MCP is
 for interactive live-app inspection.
+
+Pass `mobile` as the second argument to render the phone inspection set into
+`<out>/mobile` without touching the documentation manifest:
+
+```sh
+cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile
+```
 
 ## Safety
 

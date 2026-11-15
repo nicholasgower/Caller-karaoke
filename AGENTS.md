@@ -172,6 +172,13 @@ cd website
 npm run screenshots
 ```
 
+Phone-width inspection pass (renders every screen and dialog at 390×844 into
+`target/mobile-shots/mobile`; safe to run in any worktree):
+
+```sh
+cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile
+```
+
 Web:
 
 ```sh
@@ -331,6 +338,16 @@ engine.
   border.
 - Minimum 44 px touch targets; no hover-only controls.
 - The app must be usable at phone width and with a soft keyboard open.
+- **Inspect every screen at both desktop and phone sizes.** A UI change is not
+  done until the screen, sheet, dialog, empty state, and error banner have been
+  looked at in a desktop viewport (1280×800) and a phone viewport (390×844),
+  including the minimum window width of 360 points. Use the shared
+  `COMPACT_WIDTH` breakpoint and the layout helpers in
+  `crates/app/src/app/ui/mod.rs`; do not add a second breakpoint or assume a
+  wide-only column layout. The headless renderer has a phone pass for this
+  (`cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile`)
+  and the MCP `resize` tool can resize the live app. Fix what the phone pass
+  reveals instead of documenting it as a limitation.
 - Tabs at the top; session controls below; dance information occupies the
   remaining space.
 - The pickers are modal/sheets; they must not discard the current session.
@@ -470,6 +487,9 @@ A change is done when:
 - [ ] `cargo fmt --check`, `clippy -D warnings`, and tests pass.
 - [ ] New settings are persisted with a schema version.
 - [ ] New UI follows the grey theme and is usable at phone width.
+- [ ] Every screen, picker, modal, empty state, and error banner was inspected
+      at 1280×800 and 390×844 (and at the 360-point minimum width), with no
+      horizontal overflow and no 44 px touch target removed.
 - [ ] `CREDITS.md` is updated if dependencies/assets changed.
 - [ ] Website prose and the screenshot manifest are updated for every
       user-visible behavior change; screenshots themselves are refreshed at
