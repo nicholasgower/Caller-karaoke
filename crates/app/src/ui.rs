@@ -1339,6 +1339,17 @@ impl ContraApp {
                     self.speech.set_rate(self.prefs.tts_rate);
                 }
             });
+            ui.checkbox(
+                &mut self.prefs.shuffle_alternatives,
+                "Shuffle alternative call aliases",
+            );
+            ui.label(
+                egui::RichText::new(
+                    "Randomly uses an alternative wording, such as \"partner swing\" instead of \"swing your partner\", for moves that have one. The chosen wording is shown and spoken, and its timing is used.",
+                )
+                .small()
+                .color(theme::muted(ui)),
+            );
             let status = self.speech.status().clone();
             if let Some(progress) = status.progress {
                 ui.add(
@@ -1471,7 +1482,8 @@ impl ContraApp {
                 || self.prefs.aliases != before.aliases
                 || self.prefs.lead != before.lead
                 || self.prefs.tempo_bpm != before.tempo_bpm
-                || self.prefs.count_in_enabled != before.count_in_enabled;
+                || self.prefs.count_in_enabled != before.count_in_enabled
+                || self.prefs.shuffle_alternatives != before.shuffle_alternatives;
             let audio_changed = self.prefs.tempo_bpm != before.tempo_bpm
                 || self.prefs.count_in_enabled != before.count_in_enabled
                 || self.prefs.accompaniment_variations != before.accompaniment_variations
@@ -1519,6 +1531,11 @@ impl ContraApp {
             ))
             .color(theme::muted(ui)),
         );
+        ui.label(
+            egui::RichText::new("Alternatives are used only when \"Shuffle alternative call aliases\" is on in Preferences.")
+                .small()
+                .color(theme::muted(ui)),
+        );
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             ui.label("Filter");
@@ -1527,6 +1544,7 @@ impl ContraApp {
                 self.prefs.aliases = AliasTable::default();
                 self.rebuild_timeline();
                 self.needs_render = true;
+                self.save_prefs();
             }
         });
 
@@ -1573,6 +1591,64 @@ impl ContraApp {
                                 self.prefs.aliases.reset(kind);
                                 changed = true;
                             }
+
+                            let alternatives = self.prefs.aliases.alternatives(kind);
+                            let added = self.prefs.aliases.custom_alternatives_for(kind).to_vec();
+                            if !alternatives.is_empty() {
+                                ui.label(
+                                    egui::RichText::new("Alternative calls")
+                                        .small()
+                                        .color(theme::muted(ui)),
+                                );
+                                for template in &alternatives {
+                                    let is_added = added.iter().any(|value| value == template);
+                                    ui.horizontal(|ui| {
+                                        ui.label(
+                                            egui::RichText::new(format!("· {template}"))
+                                                .small()
+                                                .color(theme::muted(ui)),
+                                        );
+                                        if is_added && ui.small_button("Remove").clicked() {
+                                            self.prefs
+                                                .aliases
+                                                .remove_alternative(kind, template);
+                                            changed = true;
+                                        }
+                                    });
+                                }
+                            }
+
+                            let mut input = self
+                                .alternative_inputs
+                                .get(kind.id())
+                                .cloned()
+                                .unwrap_or_default();
+                            let mut alternative_added = false;
+                            ui.horizontal(|ui| {
+                                let response = ui.add(
+                                    egui::TextEdit::singleline(&mut input)
+                                        .hint_text("add an alternative call")
+                                        .desired_width(180.0),
+                                );
+                                let submit = submitted(ui, &response);
+                                let clicked = ui
+                                    .small_button("Add alternative")
+                                    .on_hover_text("Add alternative (Enter)")
+                                    .clicked();
+                                if clicked || submit {
+                                    self.prefs.aliases.add_alternative(kind, input.clone());
+                                    alternative_added = true;
+                                    changed = true;
+                                }
+                            });
+                            self.alternative_inputs.insert(
+                                kind.id().to_string(),
+                                if alternative_added {
+                                    String::new()
+                                } else {
+                                    input
+                                },
+                            );
                         });
                 }
                 if changed {

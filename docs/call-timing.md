@@ -55,6 +55,13 @@ Preferences; the padding is always added. Calls are computed from the
 **rendered alias**, not the original card text, so a longer alias starts
 earlier.
 
+When alternative-alias shuffling is enabled, the timeline first chooses one of
+the applicable templates for each call (the active template or one of its
+alternatives), then computes syllables and the lead from that wording. This
+keeps the card, TTS, and timing on the same words. An alternative whose
+placeholder has no value for the call (for example a `{direction}` alternative
+on a card that names no direction) is skipped.
+
 The first call can be negative (inside the count-in). Do not clamp it to zero.
 When the dance loops, the same call is scheduled again at
 `music_loop_beats - lead_beats`; the UI and TTS treat that as a wrapped call at

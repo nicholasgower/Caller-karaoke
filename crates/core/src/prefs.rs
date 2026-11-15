@@ -107,6 +107,9 @@ pub struct Preferences {
     pub tts_rate: f32,
     #[serde(default = "default_tts_voice")]
     pub tts_voice: String,
+    /// Speak and show a randomly chosen alternative call alias for moves that
+    /// have one. Off by default so calls stay predictable.
+    pub shuffle_alternatives: bool,
     pub loop_enabled: bool,
     pub count_in_enabled: bool,
     /// Add small, deterministic variations to the accompaniment on later loop
@@ -142,6 +145,7 @@ impl Default for Preferences {
             tts_enabled: false,
             tts_rate: 1.0,
             tts_voice: default_tts_voice(),
+            shuffle_alternatives: false,
             loop_enabled: true,
             count_in_enabled: true,
             accompaniment_variations: true,
@@ -228,8 +232,9 @@ impl Preferences {
             self.schema_version = 4;
         }
         if self.schema_version < 5 {
-            // v5 adds the selectable TTS voice. Existing files keep the
-            // previous default voice.
+            // v5 adds the selectable TTS voice and alternative-alias
+            // shuffling. Existing files keep the previous default voice and
+            // start with shuffling disabled.
             if self.tts_voice.trim().is_empty() {
                 self.tts_voice = default_tts_voice();
             }
@@ -258,6 +263,7 @@ mod tests {
         assert!(!prefs.tts_enabled);
         assert_eq!(prefs.tts_voice, "af_heart");
         assert_eq!(prefs.schema_version, 5);
+        assert!(!prefs.shuffle_alternatives);
     }
 
     #[test]
@@ -284,9 +290,27 @@ mod tests {
         prefs
             .aliases
             .set_override(crate::alias::MoveKind::Swing, "swing it");
+        prefs
+            .aliases
+            .add_alternative(crate::alias::MoveKind::Swing, "swing it around");
+        prefs.shuffle_alternatives = true;
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
         assert_eq!(prefs, restored);
+    }
+
+    #[test]
+    fn alternative_alias_shuffling_is_off_by_default_and_round_trips() {
+        let prefs = Preferences::default();
+        assert!(!prefs.shuffle_alternatives);
+
+        let prefs = Preferences {
+            shuffle_alternatives: true,
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(restored.shuffle_alternatives);
     }
 
     #[test]
@@ -337,12 +361,13 @@ mod tests {
     }
 
     #[test]
-    fn v4_preferences_use_the_default_tts_voice() {
+    fn v4_preferences_use_default_voice_and_disable_alias_shuffling() {
         let json = r#"{"schema_version":4,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
         assert_eq!(migrated.schema_version, 5);
         assert_eq!(migrated.tts_voice, "af_heart");
+        assert!(!migrated.shuffle_alternatives);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
 

@@ -139,6 +139,14 @@ pub struct TimelineConfig {
     pub count_in_beats: f64,
     /// The music loop length. A standard contra tune is 64 dance beats.
     pub music_loop_beats: f64,
+    /// Choose an alternative caller alias for each call when one exists.
+    ///
+    /// The choice is part of the timeline so the displayed call, its syllable
+    /// count, and its lead all describe the same words.
+    pub shuffle_alternatives: bool,
+    /// Seed for the alias shuffle. The same seed and card produce the same
+    /// calls, which keeps tests and rebuilt timelines reproducible.
+    pub alias_seed: u64,
 }
 
 impl Default for TimelineConfig {
@@ -146,6 +154,8 @@ impl Default for TimelineConfig {
         Self {
             count_in_beats: 3.0,
             music_loop_beats: 64.0,
+            shuffle_alternatives: false,
+            alias_seed: 0,
         }
     }
 }
@@ -245,6 +255,7 @@ impl PracticeTimeline {
         let mut phrases = Vec::new();
         let mut cursor = 0.0;
         let mut current_label: Option<String> = None;
+        let mut shuffle_ordinal = 0_u64;
 
         for (figure_index, figure) in dance.figures.iter().enumerate() {
             if let Some(label) = &figure.phrase
@@ -259,7 +270,16 @@ impl PracticeTimeline {
             let allocations = allocate_beats(&parts, figure.beats);
 
             for (part, allocated) in parts.iter().zip(allocations.iter()) {
-                let rendered = aliases.render(part, roles);
+                let rendered = if config.shuffle_alternatives {
+                    shuffle_ordinal = shuffle_ordinal.wrapping_add(1);
+                    aliases.render_shuffled(
+                        part,
+                        roles,
+                        config.alias_seed.wrapping_add(shuffle_ordinal),
+                    )
+                } else {
+                    aliases.render(part, roles)
+                };
                 let lead_beats = lead.lead_beats(rendered.syllables, rendered.words, tempo);
                 let execute_beat = figure_start + allocated.offset;
                 calls.push(CallEvent {
@@ -768,6 +788,158 @@ mod tests {
         assert!(
             slow <= fast,
             "a longer beat should fit the same words in fewer beats"
+        );
+    }
+
+    #[test]
+    fn alias_shuffling_is_off_by_default() {
+        let dance = another_last_dance();
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        let lead = LeadSettings::default();
+        let base = PracticeTimeline::build(
+            &dance,
+            &aliases,
+            &roles,
+            &lead,
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+        let unshuffled = PracticeTimeline::build(
+            &dance,
+            &aliases,
+            &roles,
+            &lead,
+            Tempo::default(),
+            TimelineConfig {
+                shuffle_alternatives: false,
+                alias_seed: 7,
+                ..TimelineConfig::default()
+            },
+        )
+        .expect("timeline");
+        assert_eq!(base, unshuffled);
+    }
+
+    #[test]
+    fn alias_shuffling_is_reproducible_for_a_seed() {
+        let dance = another_last_dance();
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        let lead = LeadSettings::default();
+        let config = TimelineConfig {
+            shuffle_alternatives: true,
+            alias_seed: 42,
+            ..TimelineConfig::default()
+        };
+        let first =
+            PracticeTimeline::build(&dance, &aliases, &roles, &lead, Tempo::default(), config)
+                .expect("timeline");
+        let second =
+            PracticeTimeline::build(&dance, &aliases, &roles, &lead, Tempo::default(), config)
+                .expect("timeline");
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn alias_shuffling_handles_short_and_long_calls_in_a_32_beat_dance() {
+        let mut dance = another_last_dance();
+        dance.figures = vec![
+            Figure::new(Some("A1".into()), 8.0, "neighbors swing"),
+            Figure::new(None, 8.0, "hey"),
+            Figure::new(None, 8.0, "circle left 3 places"),
+            Figure::new(None, 8.0, "partners balance & swing"),
+        ];
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        let lead = LeadSettings::default();
+
+        for alias_seed in 0..16 {
+            let timeline = PracticeTimeline::build(
+                &dance,
+                &aliases,
+                &roles,
+                &lead,
+                Tempo::default(),
+                TimelineConfig {
+                    shuffle_alternatives: true,
+                    alias_seed,
+                    ..TimelineConfig::default()
+                },
+            )
+            .expect("timeline");
+
+            assert_eq!(timeline.total_beats, 32.0);
+            assert!(
+                timeline.calls[0].call_start_beat < 0.0,
+                "the first call should still start in the count-in"
+            );
+            for call in &timeline.calls {
+                let expected = lead.lead_beats(call.syllables, call.words, Tempo::default());
+                assert!((call.lead_beats() - expected).abs() < 1e-9);
+            }
+        }
+    }
+
+    #[test]
+    fn alias_shuffling_uses_alternatives_and_keeps_the_lead_consistent() {
+        let dance = another_last_dance();
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        let lead = LeadSettings::default();
+        let baseline = PracticeTimeline::build(
+            &dance,
+            &aliases,
+            &roles,
+            &lead,
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+
+        let mut varied = false;
+        let mut saw_alternative = false;
+        for alias_seed in 0..64 {
+            let timeline = PracticeTimeline::build(
+                &dance,
+                &aliases,
+                &roles,
+                &lead,
+                Tempo::default(),
+                TimelineConfig {
+                    shuffle_alternatives: true,
+                    alias_seed,
+                    ..TimelineConfig::default()
+                },
+            )
+            .expect("timeline");
+
+            for call in &timeline.calls {
+                // The lead must always describe the words that are actually
+                // displayed and spoken.
+                let expected = lead.lead_beats(call.syllables, call.words, Tempo::default());
+                assert!((call.lead_beats() - expected).abs() < 1e-9);
+                assert!(!call.text.trim().is_empty());
+            }
+
+            varied |= timeline.calls.iter().any(|call| {
+                baseline
+                    .calls
+                    .iter()
+                    .find(|base| base.figure_index == call.figure_index)
+                    .is_some_and(|base| base.text != call.text)
+            });
+            saw_alternative |= timeline
+                .calls
+                .iter()
+                .any(|call| call.text == "neighbor swing");
+        }
+
+        assert!(varied, "shuffling should change at least one call");
+        assert!(
+            saw_alternative,
+            "the built-in \"neighbor swing\" alternative should be used"
         );
     }
 }

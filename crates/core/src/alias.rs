@@ -267,6 +267,54 @@ impl MoveKind {
         }
     }
 
+    /// Built-in alternative caller templates for a move type.
+    ///
+    /// These are only used when the caller enables alternative-alias shuffling
+    /// in preferences. Each alternative must mean exactly the same figure as
+    /// [`MoveKind::default_template`]; templates that need a placeholder are
+    /// skipped for a call that has no value for it.
+    pub fn alternative_templates(self) -> &'static [&'static str] {
+        match self {
+            MoveKind::Swing => &["{actor_singular} swing", "swing with your {actor_singular}"],
+            MoveKind::DoSiDo => &["{actor} dosido {count}", "{actor} back to back {count}"],
+            MoveKind::Allemande => &[
+                "{actor} arm turn {direction} {count}",
+                "{actor} allemande {direction} {count} around",
+            ],
+            MoveKind::Balance => &["{actor} take a balance"],
+            MoveKind::BalanceTheRing => &["take a balance in the ring", "balance the ring once"],
+            MoveKind::BalanceAndSwing => &[
+                "balance and swing with {actor}",
+                "{actor} balance then swing",
+            ],
+            MoveKind::Chain => &["{actor} chain across"],
+            MoveKind::Circle => &[
+                "take hands and circle {direction} {count}",
+                "circle {direction} {count} around",
+            ],
+            MoveKind::Star => &[
+                "make a star {direction} {count}",
+                "star by the {direction} {count}",
+            ],
+            MoveKind::StarPromenade => &["star promenade around"],
+            MoveKind::LongLines => &["lines forward and back"],
+            MoveKind::Hey => &["make a hey", "hey for four"],
+            MoveKind::Promenade => &["promenade around the set", "promenade around"],
+            MoveKind::RightLeftThrough => &["right left through"],
+            MoveKind::PassThrough => &["pass on through"],
+            MoveKind::PassBy => &["pass on by"],
+            MoveKind::Petronella => &["petronella turn"],
+            MoveKind::MadRobin => &["mad robin around"],
+            MoveKind::Slide => &["slide {direction} along"],
+            MoveKind::DownTheHall => &["head down the hall"],
+            MoveKind::UpTheHall => &["head up the hall"],
+            MoveKind::FormLongWaves => &["make long waves"],
+            MoveKind::FormOceanWave => &["make an ocean wave"],
+            MoveKind::CrossTrails => &["cross the trails"],
+            _ => &[],
+        }
+    }
+
     pub fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.id() == id)
     }
@@ -379,6 +427,11 @@ pub struct AliasTable {
     /// Keyed by the normalised lowercase card phrase.
     #[serde(default)]
     pub custom: BTreeMap<String, String>,
+    /// Extra alternative templates keyed by [`MoveKind::id`]. These are
+    /// appended to the built-in alternatives and only used when alias
+    /// shuffling is enabled.
+    #[serde(default)]
+    pub custom_alternatives: BTreeMap<String, Vec<String>>,
 }
 
 impl AliasTable {
@@ -387,6 +440,72 @@ impl AliasTable {
             .get(kind.id())
             .map(String::as_str)
             .unwrap_or_else(|| kind.default_template())
+    }
+
+    /// Every usable alternative template for a move type: built-in
+    /// alternatives first, then templates the caller added, without
+    /// duplicates and without the active template.
+    pub fn alternatives(&self, kind: MoveKind) -> Vec<String> {
+        let active = self.template(kind);
+        let custom = self.custom_alternatives.get(kind.id());
+        let mut out: Vec<String> = Vec::new();
+        for template in kind
+            .alternative_templates()
+            .iter()
+            .copied()
+            .chain(custom.into_iter().flatten().map(String::as_str))
+        {
+            let template = template.trim();
+            if template.is_empty() || template == active {
+                continue;
+            }
+            if out.iter().all(|existing| existing != template) {
+                out.push(template.to_string());
+            }
+        }
+        out
+    }
+
+    /// Alternative templates this caller added for a move type, in the order
+    /// they were added.
+    pub fn custom_alternatives_for(&self, kind: MoveKind) -> &[String] {
+        self.custom_alternatives
+            .get(kind.id())
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+    }
+
+    /// Add an alternative template for a move type.
+    ///
+    /// Empty templates, the active template, and built-in alternatives are
+    /// ignored so the shuffle pool never repeats the same call.
+    pub fn add_alternative(&mut self, kind: MoveKind, template: impl Into<String>) {
+        let template = template.into();
+        let template = template.trim();
+        if template.is_empty()
+            || template == self.template(kind)
+            || kind.alternative_templates().contains(&template)
+        {
+            return;
+        }
+        let list = self
+            .custom_alternatives
+            .entry(kind.id().to_string())
+            .or_default();
+        if !list.iter().any(|existing| existing == template) {
+            list.push(template.to_string());
+        }
+    }
+
+    /// Remove one caller-added alternative template.
+    pub fn remove_alternative(&mut self, kind: MoveKind, template: &str) {
+        let Some(list) = self.custom_alternatives.get_mut(kind.id()) else {
+            return;
+        };
+        list.retain(|existing| existing != template);
+        if list.is_empty() {
+            self.custom_alternatives.remove(kind.id());
+        }
     }
 
     pub fn set_override(&mut self, kind: MoveKind, template: impl Into<String>) {
@@ -418,8 +537,22 @@ impl AliasTable {
         self.custom.remove(&phrase.trim().to_lowercase());
     }
 
-    /// Classify and render one figure phrase.
+    /// Classify and render one figure phrase with the active template.
     pub fn render(&self, text: &str, roles: &RoleTerms) -> RenderedCall {
+        self.render_selected(text, roles, None)
+    }
+
+    /// Classify and render one figure phrase, choosing one of the usable
+    /// alternatives at random when the move has any.
+    ///
+    /// The shuffle includes the active template, so a call sometimes keeps its
+    /// normal wording. `seed` makes the choice deterministic: the same seed
+    /// and card produce the same calls.
+    pub fn render_shuffled(&self, text: &str, roles: &RoleTerms, seed: u64) -> RenderedCall {
+        self.render_selected(text, roles, Some(seed))
+    }
+
+    fn render_selected(&self, text: &str, roles: &RoleTerms, seed: Option<u64>) -> RenderedCall {
         let classified = classify(text);
         let mut used_custom_alias = false;
 
@@ -431,12 +564,14 @@ impl AliasTable {
                 classified.normalized.clone()
             }
         } else {
-            render_template(
-                self.template(classified.kind),
-                &classified.params,
-                roles,
-                &classified.normalized,
-            )
+            let templates = self.usable_templates(classified.kind, &classified.params);
+            let template = match seed {
+                Some(seed) if templates.len() > 1 => {
+                    &templates[shuffle_index(seed, templates.len())]
+                }
+                _ => &templates[0],
+            };
+            render_template(template, &classified.params, roles, &classified.normalized)
         };
 
         let rendered = roles.apply(&rendered);
@@ -456,6 +591,18 @@ impl AliasTable {
             params: classified.params,
             used_custom_alias,
         }
+    }
+
+    /// The active template followed by every alternative that can fill its
+    /// placeholders for this call.
+    fn usable_templates(&self, kind: MoveKind, params: &MoveParams) -> Vec<String> {
+        let mut out = vec![self.template(kind).to_string()];
+        for template in self.alternatives(kind) {
+            if template_is_applicable(&template, params) {
+                out.push(template);
+            }
+        }
+        out
     }
 }
 
@@ -651,6 +798,24 @@ fn has_word(haystack: &str, needle: &str) -> bool {
     haystack
         .split(|c: char| !c.is_alphanumeric())
         .any(|word| word == needle)
+}
+
+fn template_is_applicable(template: &str, params: &MoveParams) -> bool {
+    (!template.contains("{actor") || params.actor.is_some())
+        && (!template.contains("{direction}") || params.direction.is_some())
+        && (!template.contains("{count}") || params.count.is_some())
+}
+
+/// Map a seed to an index in `0..len` with the SplitMix64 finaliser.
+///
+/// A dependency-free mixer is enough here: the goal is variety between calls,
+/// not cryptographic unpredictability.
+fn shuffle_index(seed: u64, len: usize) -> usize {
+    let mut value = seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    value ^= value >> 31;
+    (value % len as u64) as usize
 }
 
 fn render_template(
@@ -874,5 +1039,71 @@ mod tests {
         let roles = RoleTerms::preset(crate::roles::RolePreset::LadiesGentlemen);
         let call = aliases.render("ladles chain", &roles);
         assert_eq!(call.text, "ladies chain");
+    }
+
+    #[test]
+    fn swing_has_a_built_in_alternative_for_partner_swing() {
+        assert!(
+            MoveKind::Swing
+                .alternative_templates()
+                .contains(&"{actor_singular} swing")
+        );
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        let texts: std::collections::BTreeSet<String> = (0..64)
+            .map(|seed| aliases.render_shuffled("partners swing", &roles, seed).text)
+            .collect();
+        assert!(texts.contains("partner swing"));
+        assert!(texts.contains("swing your partner"));
+        assert_eq!(texts.len(), 3, "expected the default plus two alternatives");
+    }
+
+    #[test]
+    fn caller_can_add_and_remove_alternative_templates() {
+        let mut aliases = AliasTable::default();
+        aliases.add_alternative(MoveKind::Swing, "{actor_singular} swing again");
+        assert!(
+            aliases
+                .alternatives(MoveKind::Swing)
+                .iter()
+                .any(|template| template == "{actor_singular} swing again")
+        );
+
+        aliases.remove_alternative(MoveKind::Swing, "{actor_singular} swing again");
+        assert!(
+            aliases
+                .alternatives(MoveKind::Swing)
+                .iter()
+                .all(|template| template != "{actor_singular} swing again")
+        );
+    }
+
+    #[test]
+    fn alternatives_that_need_a_missing_placeholder_are_skipped() {
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        // The circle alternatives need a direction; this card only has a count.
+        for seed in 0..64 {
+            let call = aliases.render_shuffled("circle 3 places", &roles, seed);
+            assert_eq!(call.text, "circle three places");
+        }
+    }
+
+    #[test]
+    fn added_alternative_is_used_by_the_shuffle() {
+        let mut aliases = AliasTable::default();
+        aliases.add_alternative(
+            MoveKind::Swing,
+            "grab a quick swing with your {actor_singular}",
+        );
+        let roles = RoleTerms::default();
+        let texts: std::collections::BTreeSet<String> = (0..256)
+            .map(|seed| {
+                aliases
+                    .render_shuffled("neighbors swing", &roles, seed)
+                    .text
+            })
+            .collect();
+        assert!(texts.contains("grab a quick swing with your neighbor"));
     }
 }

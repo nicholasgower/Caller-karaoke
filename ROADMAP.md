@@ -132,6 +132,10 @@ Advanced settings:
 - Calling lead: automatic or manual, minimum/maximum beats, syllables per
   second, word gap, extra pause.
 - TTS voice (Kokoro Heart, Bella, Nicole, Michael, or Fenrir on desktop) and rate.
+- Alternative call aliases (default off): randomly uses an alternative wording
+  for moves that have one, such as “partner swing” instead of “swing your
+  partner”. The chosen wording is shown and spoken, and its lead is computed
+  from it. Callers can add their own alternatives per move type.
 - Count-in on/off (default on), loop (default on).
 - Accompaniment variations on each loop (default on): a few added emphasis
   notes and an occasional bar of melody alone, chosen deterministically from
@@ -162,6 +166,13 @@ Advanced settings:
   `{actor_object_plural}`, `{direction}`, and `{count}`.
 - The caller can override any template and add aliases for figures the parser
   does not recognise.
+- Each move type may also have built-in **alternative** templates. When the
+  optional shuffle setting is on, each call picks one of the applicable
+  templates (default plus alternatives) at random. The timeline stores the
+  chosen wording, so the card, TTS, syllable count, and lead all agree.
+- Callers can add their own alternative templates for any move type in the
+  alias editor. An alternative that needs a placeholder the call lacks is
+  skipped, and alternatives never repeat the active template.
 - The rendered alias replaces the card text during a session; an optional
   advanced setting can show the original figure as secondary text.
 - Lead timing is computed from the rendered alias, so making a call longer

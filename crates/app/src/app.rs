@@ -149,6 +149,9 @@ pub struct ContraApp {
     alias_filter: String,
     custom_key: String,
     custom_alias: String,
+    alternative_inputs: std::collections::BTreeMap<String, String>,
+    /// Seed for the alternative-alias shuffle. Selecting a dance advances it.
+    alias_seed: u64,
 }
 
 impl ContraApp {
@@ -212,7 +215,7 @@ impl ContraApp {
 
         let dance = defaults::default_dance();
         let tune = defaults::default_tune();
-        let timeline = build_timeline(&dance, &prefs).unwrap_or_else(|_| empty_timeline());
+        let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
         speech.prewarm(call_texts(&timeline));
         let length_warning = length_warning_for(&dance, &tune);
 
@@ -273,6 +276,8 @@ impl ContraApp {
             alias_filter: String::new(),
             custom_key: String::new(),
             custom_alias: String::new(),
+            alternative_inputs: std::collections::BTreeMap::new(),
+            alias_seed: 0,
         }
     }
 
@@ -374,7 +379,7 @@ impl ContraApp {
     }
 
     fn rebuild_timeline(&mut self) {
-        match build_timeline(&self.dance, &self.prefs) {
+        match build_timeline(&self.dance, &self.prefs, self.alias_seed) {
             Ok(timeline) => {
                 self.timeline = timeline;
                 self.speech.prewarm(call_texts(&self.timeline));
@@ -534,6 +539,8 @@ impl ContraApp {
         self.audio.stop();
         self.speech.stop();
         self.started = false;
+        // Give a newly selected dance a fresh shuffle of alternative aliases.
+        self.alias_seed = self.alias_seed.wrapping_add(1);
         self.rebuild_timeline();
         self.save_prefs();
         self.status = "Dance selected".into();
@@ -974,7 +981,11 @@ fn format_length_mismatch(mismatch: LengthMismatch) -> String {
     format!("Length check: {mismatch}. Calls and music can drift out of sync.")
 }
 
-fn build_timeline(dance: &Dance, prefs: &Preferences) -> Result<PracticeTimeline, String> {
+fn build_timeline(
+    dance: &Dance,
+    prefs: &Preferences,
+    alias_seed: u64,
+) -> Result<PracticeTimeline, String> {
     PracticeTimeline::build(
         dance,
         &prefs.aliases,
@@ -984,6 +995,8 @@ fn build_timeline(dance: &Dance, prefs: &Preferences) -> Result<PracticeTimeline
         TimelineConfig {
             count_in_beats: if prefs.count_in_enabled { 3.0 } else { 0.0 },
             music_loop_beats: 64.0,
+            shuffle_alternatives: prefs.shuffle_alternatives,
+            alias_seed,
         },
     )
     .map_err(|error| format!("Could not build the call timeline: {error}"))
