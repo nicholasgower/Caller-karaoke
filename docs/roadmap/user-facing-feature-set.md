@@ -84,8 +84,9 @@ Listed in this order:
    - Second accompaniment: Accordion countermelody (default), Fiddle
      countermelody, or Off for a duo. Melody plus both accompaniments is the
      default trio.
+   - Percussion: Off (default), Foot taps on each dance beat, or Drumset.
    - Melody/accompaniment volume; the second accompaniment follows the
-     accompaniment volume.
+     accompaniment volume. Percussion has its own volume.
    - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.
 5. **Interface animations** — smooth tab and screen transitions, on by

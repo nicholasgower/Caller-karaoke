@@ -22,7 +22,7 @@ pub use library::{
 };
 pub use prefs::{
     AccompanimentInstrument, AccompanimentRhythm, CallTone, ChangeSet, MelodyInstrument,
-    Preferences, SecondAccompaniment, SoundFontSetting, Theme, TuneRotation,
+    Percussion, Preferences, SecondAccompaniment, SoundFontSetting, Theme, TuneRotation,
 };
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};

@@ -28,6 +28,7 @@ The export contains:
 
 - three tracks when the second accompaniment is on — melody, accompaniment, and
   second accompaniment (countermelody) — or two tracks when it is **Off**;
+- a fourth track on the General MIDI drum channel when percussion is on;
 - the selected accompaniment rhythm;
 - the tempo, meter, key, and program changes;
 - the arranged 64-beat loop.

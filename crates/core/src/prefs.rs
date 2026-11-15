@@ -109,6 +109,40 @@ impl SecondAccompaniment {
     }
 }
 
+/// Optional percussion layer under the band.
+///
+/// Percussion is off by default. When it is enabled, a soft foot tap on every
+/// dance beat is the default; a simple drum kit is the alternative. Either way
+/// it sits on the same dance-beat grid as the music and adds no timing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Percussion {
+    /// No percussion (default).
+    #[default]
+    Off,
+    /// A soft foot tap on each dance beat.
+    FootTaps,
+    /// A basic kit: kick, snare, and hi-hat.
+    Drumset,
+}
+
+impl Percussion {
+    /// Every choice, in display order.
+    pub const ALL: [Self; 3] = [Self::Off, Self::FootTaps, Self::Drumset];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Off => "Off",
+            Self::FootTaps => "Foot taps",
+            Self::Drumset => "Drumset",
+        }
+    }
+
+    /// Whether the layer plays at all.
+    pub fn is_enabled(self) -> bool {
+        !matches!(self, Self::Off)
+    }
+}
+
 /// Rhythm pattern used to realise the accompaniment chords.
 ///
 /// The pattern only decides when the chord and bass notes sound inside the
@@ -337,6 +371,8 @@ pub struct Preferences {
     /// The countermelody voice that completes the default trio; see
     /// [`SecondAccompaniment`].
     pub second_accompaniment: SecondAccompaniment,
+    /// Optional percussion layer; see [`Percussion`].
+    pub percussion: Percussion,
     pub theme: Theme,
     /// Smooth transitions for tab changes, highlights, and screen entries.
     pub animations_enabled: bool,
@@ -360,6 +396,8 @@ pub struct Preferences {
     pub show_original: bool,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
+    /// Level of the optional percussion layer, when it is enabled.
+    pub percussion_volume: f32,
     pub master_volume: f32,
     pub soundfont: Option<SoundFontSetting>,
     pub web_proxy_url: Option<String>,
@@ -383,7 +421,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 7;
+pub const CURRENT_SCHEMA_VERSION: u32 = 8;
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -438,6 +476,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "tts-tone-v7",
         version: 7,
         apply: migrate_v6_tts_tone,
+    },
+    Migration {
+        tag: "percussion-v8",
+        version: 8,
+        apply: migrate_v7_percussion,
     },
 ];
 
@@ -499,6 +542,12 @@ fn migrate_v6_tts_tone(_prefs: &mut Preferences) {
     // adjust.
 }
 
+fn migrate_v7_percussion(_prefs: &mut Preferences) {
+    // v8 adds the optional percussion layer. `serde` supplies the disabled
+    // default, so existing sessions keep their current sound until the user
+    // turns percussion on.
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -540,6 +589,7 @@ impl Default for Preferences {
             accompaniment: AccompanimentInstrument::default(),
             accompaniment_rhythm: AccompanimentRhythm::default(),
             second_accompaniment: SecondAccompaniment::default(),
+            percussion: Percussion::default(),
             theme: Theme::default(),
             animations_enabled: true,
             lead: LeadSettings::default(),
@@ -555,6 +605,7 @@ impl Default for Preferences {
             show_original: false,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
+            percussion_volume: 0.5,
             master_volume: 0.8,
             soundfont: None,
             web_proxy_url: None,
@@ -586,6 +637,7 @@ impl Preferences {
         self.tts_rate = self.tts_rate.clamp(0.5, 2.0);
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
         self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
+        self.percussion_volume = self.percussion_volume.clamp(0.0, 2.0);
         self.master_volume = self.master_volume.clamp(0.0, 2.0);
         if self.web_proxy_url.as_deref().is_some_and(str::is_empty) {
             self.web_proxy_url = None;
@@ -660,8 +712,10 @@ impl Preferences {
                 || self.accompaniment != old.accompaniment
                 || self.accompaniment_rhythm != old.accompaniment_rhythm
                 || self.second_accompaniment != old.second_accompaniment
+                || self.percussion != old.percussion
                 || self.melody_volume != old.melody_volume
                 || self.accompaniment_volume != old.accompaniment_volume
+                || self.percussion_volume != old.percussion_volume
                 || self.soundfont != old.soundfont,
             tone: self.tts_tone != old.tts_tone,
         }
@@ -686,6 +740,8 @@ mod tests {
             prefs.second_accompaniment.instrument().is_some(),
             "the default session is a trio"
         );
+        assert_eq!(prefs.percussion, Percussion::Off);
+        assert!(!prefs.percussion.is_enabled());
         assert_eq!(prefs.theme, Theme::Dark);
         assert!(prefs.animations_enabled);
         assert_eq!(prefs.tempo_bpm, 240.0);
@@ -823,7 +879,7 @@ mod tests {
         let json = r#"{"schema_version":6,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 7);
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(migrated.tts_tone, CallTone::Commanding);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -886,6 +942,27 @@ mod tests {
             SecondAccompaniment::Accordion.gm_program(),
             Some(MelodyInstrument::Accordion.gm_program())
         );
+    }
+
+    #[test]
+    fn percussion_is_off_by_default_and_round_trips() {
+        let prefs = Preferences::default();
+        assert_eq!(prefs.percussion, Percussion::Off);
+        assert!(!prefs.percussion.is_enabled());
+        assert_eq!(prefs.percussion_volume, 0.5);
+
+        for style in [Percussion::FootTaps, Percussion::Drumset] {
+            let prefs = Preferences {
+                percussion: style,
+                percussion_volume: 0.8,
+                ..Preferences::default()
+            };
+            let json = prefs.to_json().expect("serialize");
+            let restored = Preferences::from_json(&json).expect("deserialize");
+            assert_eq!(restored.percussion, style);
+            assert_eq!(restored.percussion_volume, 0.8);
+            assert!(restored.percussion.is_enabled());
+        }
     }
 
     #[test]
@@ -1117,6 +1194,17 @@ mod tests {
         second.second_accompaniment = SecondAccompaniment::Off;
         assert_eq!(
             second.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: true,
+                tone: false
+            }
+        );
+
+        let mut percussion = base.clone();
+        percussion.percussion = Percussion::FootTaps;
+        assert_eq!(
+            percussion.changes_since(&base),
             ChangeSet {
                 timeline: false,
                 audio: true,

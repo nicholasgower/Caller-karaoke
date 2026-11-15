@@ -147,6 +147,9 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         inline_field(ui, true, "Second accompaniment", |ui| {
             second_accompaniment_combo(ui, true, &mut app.prefs);
         });
+        inline_field(ui, true, "Percussion", |ui| {
+            percussion_combo(ui, true, &mut app.prefs);
+        });
     } else {
         egui::Grid::new("instruments")
             .num_columns(2)
@@ -171,12 +174,30 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                     );
                 });
                 ui.end_row();
+                ui.label("Percussion");
+                ui.horizontal(|ui| {
+                    percussion_combo(ui, false, &mut app.prefs);
+                    ui.label(
+                        egui::RichText::new("optional")
+                            .small()
+                            .color(theme::muted(ui)),
+                    );
+                });
+                ui.end_row();
             });
     }
     ui.label(
         egui::RichText::new(
             "The melody, the chordal accompaniment, and a countermelody make the default trio. \
              Choose Off for a duo; the countermelody follows the accompaniment volume.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    ui.label(
+        egui::RichText::new(
+            "Percussion is optional: foot taps keep the dance beat, or a simple drum kit adds \
+             kick, snare, and hi-hat. It starts with the count-in.",
         )
         .small()
         .color(theme::muted(ui)),
@@ -189,6 +210,15 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             &mut app.prefs.accompaniment_volume,
             0.0..=1.5,
         ))
+    });
+    let percussion_enabled = app.prefs.percussion.is_enabled();
+    ui.add_enabled_ui(percussion_enabled, |ui| {
+        slider_row(ui, compact, "Percussion volume", |ui| {
+            ui.add(egui::Slider::new(
+                &mut app.prefs.percussion_volume,
+                0.0..=1.5,
+            ))
+        });
     });
     ui.separator();
 }
@@ -233,6 +263,17 @@ fn second_accompaniment_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Pref
         .show_ui(ui, |ui| {
             for option in SecondAccompaniment::ALL {
                 ui.selectable_value(&mut prefs.second_accompaniment, option, option.label());
+            }
+        });
+}
+
+fn percussion_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+    let combo = egui::ComboBox::from_id_salt("percussion");
+    responsive_combo(combo, ui, compact)
+        .selected_text(prefs.percussion.label())
+        .show_ui(ui, |ui| {
+            for option in Percussion::ALL {
+                ui.selectable_value(&mut prefs.percussion, option, option.label());
             }
         });
 }
