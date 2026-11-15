@@ -196,6 +196,13 @@ Do not commit if `fmt`, `clippy`, or tests fail. Do not disable a lint globally
 to silence one call site; fix the cause or use a narrowly scoped `allow` with a
 comment.
 
+The toolchain is pinned in `rust-toolchain.toml`. Do not run a repository-wide
+`cargo fmt` as part of an unrelated change: a formatting sweep rewrites files
+other branches are editing, so it belongs in its own commit, ideally in a quiet
+moment just after a merge into `dev`. When a dependency raises the toolchain,
+bump the pin in a commit of its own, then run `cargo fmt --all` and commit that
+separately.
+
 ---
 
 ## 5. Rust coding standards
