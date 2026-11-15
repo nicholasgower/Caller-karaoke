@@ -12,6 +12,12 @@ in-app instruction is paired with a screenshot generated from the real
 application. It replaces the first draft with a version aligned to the code
 that now exists on `main`.
 
+> **Screenshot cadence (2026-11-15):** Screenshots are regenerated in one pass
+> when preparing a release, not in every feature worktree. Prose and the
+> manifest still change with the code. CI validates the manifest and builds the
+> site; it does not regenerate PNGs. Sections below that describe a per-PR
+> screenshot diff workflow are superseded by this decision.
+
 ---
 
 ## 0. Baseline after the rebase
@@ -120,7 +126,8 @@ remaining images are OS installer dialogs that are not part of the app. The old
 4. Generate those screenshots from the real `eframe` application with fixed
    viewports, themes, and fixture data. No mockups and no manual crops for
    in-app screens.
-5. Make stale screenshots fail CI rather than silently ship.
+5. Make the release screenshot refresh a deliberate, reviewed step while CI
+   validates the manifest and builds the site.
 6. Keep the site offline-friendly, private, accessible, and consistent with the
    app's grey theme.
 
@@ -1041,7 +1048,8 @@ Use a muted Prism theme for code.
 ### 6.8 Version banner
 
 “These docs track the 0.1.0 nightly build. Screenshots are regenerated from
-`main`.” One version constant; no dropdown until 1.0.
+`main` when a release is prepared.” One version constant; no dropdown until
+1.0.
 
 ---
 
@@ -1186,8 +1194,10 @@ WSL/Docker or via the CI artifact.
 ### 7.4 Cost
 
 - Rust cache + npm cache.
-- Docs build is Node-only; screenshots are committed.
-- Estimated: screenshots 4–8 min cold, 2–3 min warm; docs 1–2 min.
+- Docs build is Node-only; screenshots are committed and refreshed at release
+  prep.
+- Estimated: release screenshot refresh 4–8 min cold, 2–3 min warm; docs 1–2
+  min.
 
 ---
 
@@ -1295,7 +1305,7 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 | Synchronous music render | Play blocks; no “preparing” screen | Do not screenshot a state that does not exist; document the pending-rebuild message |
 | No paused/playing status label | Pause screenshot is ambiguous | Add a session status label before P1, or drop the shot |
 | Mobile two-column pickers | Cramped at 390 px; bad screenshots | Do a responsive pass or use full-width stacked layout |
-| UI churn | Every PR changes images | Focus crops, gallery, batch bless |
+| UI churn | Every release changes images | Focus crops, gallery, one release refresh |
 | GPU raster differences | Flaky checks | Linux + lavapipe, PREDICTABLE, tolerance, artifact |
 | Screenshot suite slow | Slow CI | Cache, `--filter`, parallel prefixes |
 | PNG bloat | Large clone | 2× only, 300 KB budget, lazy loading, LFS/artifacts if > 25 MB |

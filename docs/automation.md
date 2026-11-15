@@ -174,7 +174,8 @@ more detail.
 
 The docs site uses a separate headless renderer rather than the live MCP
 connection. It runs the same `ContraApp` with a silent transport, in-memory
-cache, stub speech, and no preference file:
+cache, stub speech, and no preference file. Run it when preparing a release,
+not in every feature worktree:
 
 ```sh
 cd website
@@ -185,7 +186,7 @@ That writes raw PNGs to `website/screenshots/raw/`, drives `photocraft-cli` to
 draw the focus ring from `website/screenshots/emphasis.json`, and writes the
 final images to `website/static/img/screens/`. `npm run annotate` repeats only
 the PhotoCraft pass. The renderer opens no window, audio device, network client,
-or system TTS. It is the preferred path for repeatable CI screenshots; MCP is
+or system TTS. It is the deterministic path for documentation captures; MCP is
 for interactive live-app inspection.
 
 ## Safety

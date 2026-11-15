@@ -207,7 +207,8 @@ the other tools. See `docs/automation.md` for client configuration, the tool
 list, and safety notes.
 
 Documentation screenshots can also be rendered without a window or audio device,
-then annotated with PhotoCraft:
+then annotated with PhotoCraft. Refresh them when preparing a release, not for
+every change:
 
 ```sh
 cd website

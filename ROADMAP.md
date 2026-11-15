@@ -867,6 +867,9 @@ Optional **`pages.yml`** deploys the web build to GitHub Pages.
 ### 9.4 Release checklist
 
 - [ ] `cargo fmt`, `clippy`, and tests pass on Windows and Linux.
+- [ ] Documentation screenshots are regenerated in one pass
+      (`cd website && npm run screenshots`), reviewed, and committed with updated
+      manifest dimensions and emphasis regions.
 - [ ] Web build loads and plays audio in Chrome and Firefox.
 - [ ] Android APK installs and plays audio on a real device.
 - [ ] Default dance and tune load offline.
@@ -1105,6 +1108,7 @@ Exit: all release-checklist items pass.
 | 2026-11-14 | App name Contra Karaoke | Matches repository and product intent |
 | 2026-11-14 | Version stays 0.1.0 | Owner instruction until declared released |
 | 2026-11-14 | Dated nightly tags + rolling nightly | Traceable builds without changing semantic version |
+| 2026-11-15 | Refresh documentation screenshots only at release prep | Per-worktree regeneration was slow and noisy; prose still tracks every change |
 
 ---
 

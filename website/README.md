@@ -20,8 +20,8 @@ npm install
 npm start      # http://localhost:3000/Contra-karaoke/
 npm test       # screenshot manifest, uniqueness, and emphasis regions
 npm run check  # npm test + production build
-npm run screenshots  # headless renderer + PhotoCraft annotation
-npm run annotate     # re-apply PhotoCraft to the existing raw PNGs
+npm run screenshots  # release prep only: headless renderer + PhotoCraft annotation
+npm run annotate     # release prep only: re-apply PhotoCraft to existing raw PNGs
 npm run build
 npm run serve
 npm run clear
