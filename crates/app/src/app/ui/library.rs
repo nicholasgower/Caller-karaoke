@@ -247,7 +247,7 @@ impl ContraApp {
                 }
             } else {
                 ui.label(
-                    egui::RichText::new("Preview a saved dance to see its card.")
+                    egui::RichText::new("Select a saved dance to see its card.")
                         .color(theme::muted(ui)),
                 );
             }
@@ -283,7 +283,7 @@ impl ContraApp {
                             }
                         } else {
                             ui.label(
-                                egui::RichText::new("Preview a saved dance to see its card.")
+                                egui::RichText::new("Select a saved dance to see its card.")
                                     .color(theme::muted(ui)),
                             );
                         }
@@ -324,7 +324,7 @@ impl ContraApp {
                 }
             } else {
                 ui.label(
-                    egui::RichText::new("Preview a saved dance to see its card.")
+                    egui::RichText::new("Select a saved dance to see its card.")
                         .color(theme::muted(ui)),
                 );
             }
@@ -595,7 +595,7 @@ impl ContraApp {
                 }
             } else {
                 ui.label(
-                    egui::RichText::new("Preview a saved tune to see its sheet music.")
+                    egui::RichText::new("Select a saved tune to see its sheet music.")
                         .color(theme::muted(ui)),
                 );
             }
@@ -632,7 +632,7 @@ impl ContraApp {
                             }
                         } else {
                             ui.label(
-                                egui::RichText::new("Preview a saved tune to see its sheet music.")
+                                egui::RichText::new("Select a saved tune to see its sheet music.")
                                     .color(theme::muted(ui)),
                             );
                         }
@@ -673,7 +673,7 @@ impl ContraApp {
                 }
             } else {
                 ui.label(
-                    egui::RichText::new("Preview a saved tune to see its sheet music.")
+                    egui::RichText::new("Select a saved tune to see its sheet music.")
                         .color(theme::muted(ui)),
                 );
             }
@@ -1014,63 +1014,86 @@ fn saved_dance_row(
         animate,
     );
     let mut action = None;
-    egui::Frame::group(ui.style())
+    let mut prepared = egui::Frame::group(ui.style())
         .fill(lerp_color(
             theme::call_upcoming_bg(ui),
             theme::call_active_bg(ui),
             selected_t,
         ))
         .inner_margin(egui::Margin::same(8))
-        .show(ui, |ui| {
-            if compact {
-                ui.set_width(ui.available_width());
-                dance_row_text(ui, entry, folders, &mut action, true);
-            } else {
-                ui.horizontal(|ui| {
-                    ui.vertical(|ui| dance_row_text(ui, entry, folders, &mut action, false));
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                        if ui.small_button("Use").clicked() {
-                            action = Some(LibraryAction::UseDance(entry.item.clone()));
-                        }
-                        if ui.small_button("Preview").clicked() {
-                            action = Some(LibraryAction::PreviewDance(entry.item.clone()));
-                        }
-                    });
-                });
+        .begin(ui);
+    let hovered = {
+        let ui = &mut prepared.content_ui;
+        // The card body is the preview target. It is drawn before the action
+        // buttons so a button click is never swallowed by the card body.
+        let body = dance_row_body(ui, entry, compact);
+        if body.clicked() {
+            action = Some(LibraryAction::PreviewDance(entry.item.clone()));
+        }
+        ui.horizontal_wrapped(|ui| {
+            if row_button(ui, compact, "Use").clicked() {
+                action = Some(LibraryAction::UseDance(entry.item.clone()));
             }
+            folder_menu(ui, entry, folders, &mut action);
         });
+        body.hovered()
+    };
+    if hovered {
+        prepared.frame.fill = lerp_color(
+            prepared.frame.fill,
+            ui.visuals().widgets.hovered.weak_bg_fill,
+            0.35,
+        );
+    }
+    prepared.end(ui);
     action
 }
 
-fn dance_row_text(
+/// Draw the title and metadata of a saved card, and return the whole body as
+/// one click target so the card previews the dance when it is clicked.
+fn dance_row_body(
     ui: &mut egui::Ui,
     entry: &contra_core::LibraryEntry<Dance>,
-    folders: &[String],
-    action: &mut Option<LibraryAction>,
     compact: bool,
-) {
-    ui.label(egui::RichText::new(&entry.item.title).strong());
-    ui.label(
-        egui::RichText::new(format!(
-            "{} · {}",
-            empty_label(&entry.item.choreographer, "unknown"),
-            empty_label(&entry.item.formation, "unknown")
-        ))
-        .small()
-        .color(theme::muted(ui)),
-    );
+) -> egui::Response {
+    let body = ui
+        .vertical(|ui| {
+            ui.set_width(ui.available_width());
+            if compact {
+                ui.set_min_height(theme::TOUCH_TARGET);
+            }
+            ui.label(egui::RichText::new(&entry.item.title).strong());
+            ui.label(
+                egui::RichText::new(format!(
+                    "{} · {}",
+                    empty_label(&entry.item.choreographer, "unknown"),
+                    empty_label(&entry.item.formation, "unknown")
+                ))
+                .small()
+                .color(theme::muted(ui)),
+            );
+        })
+        .response;
+    let response = ui
+        .interact(
+            body.rect,
+            ui.scope_id()
+                .with(("preview-dance", entry.item.source.id.as_str())),
+            egui::Sense::click(),
+        )
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text("Preview this dance");
+    let label = format!("Preview {}", entry.item.title);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
+    response
+}
+
+/// A row action button: touch sized on a phone, dense on a desktop.
+fn row_button(ui: &mut egui::Ui, compact: bool, label: &str) -> egui::Response {
     if compact {
-        ui.horizontal_wrapped(|ui| {
-            if ui.button("Use").clicked() {
-                *action = Some(LibraryAction::UseDance(entry.item.clone()));
-            }
-            if ui.button("Preview").clicked() {
-                *action = Some(LibraryAction::PreviewDance(entry.item.clone()));
-            }
-            folder_menu(ui, entry, folders, action);
-        });
+        ui.button(label)
     } else {
-        folder_menu(ui, entry, folders, action);
+        ui.small_button(label)
     }
 }
 
@@ -1172,78 +1195,28 @@ fn saved_tune_row(
         animate,
     );
     let mut action = None;
-    egui::Frame::group(ui.style())
+    let mut prepared = egui::Frame::group(ui.style())
         .fill(lerp_color(
             theme::call_upcoming_bg(ui),
             theme::call_active_bg(ui),
             selected_t,
         ))
         .inner_margin(egui::Margin::same(8))
-        .show(ui, |ui| {
-            if compact {
-                ui.set_width(ui.available_width());
-                tune_row_text(ui, entry, folders, &mut action, true, in_rotation);
-            } else {
-                ui.horizontal(|ui| {
-                    ui.vertical(|ui| {
-                        tune_row_text(ui, entry, folders, &mut action, false, in_rotation)
-                    });
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                        if ui.small_button("Use").clicked() {
-                            action = Some(LibraryAction::UseTune(entry.item.clone()));
-                        }
-                        if ui.small_button("Preview").clicked() {
-                            action = Some(LibraryAction::PreviewTune(entry.item.clone()));
-                        }
-                        let set_label = if in_rotation { "In set" } else { "Add to set" };
-                        if ui
-                            .small_button(set_label)
-                            .on_hover_text(if in_rotation {
-                                "Remove this tune from the set"
-                            } else {
-                                "Include this tune when Cycle tunes is on"
-                            })
-                            .clicked()
-                        {
-                            action = Some(LibraryAction::ToggleRotation(entry.item.clone()));
-                        }
-                    });
-                });
-            }
-        });
-    action
-}
-
-fn tune_row_text(
-    ui: &mut egui::Ui,
-    entry: &contra_core::LibraryEntry<Tune>,
-    folders: &[String],
-    action: &mut Option<LibraryAction>,
-    compact: bool,
-    in_rotation: bool,
-) {
-    ui.label(egui::RichText::new(&entry.item.title).strong());
-    ui.label(
-        egui::RichText::new(format!(
-            "{} · {} · {}",
-            empty_label(&entry.item.composer, "unknown"),
-            entry.item.display_key(),
-            entry.item.display_rhythm()
-        ))
-        .small()
-        .color(theme::muted(ui)),
-    );
-    if compact {
+        .begin(ui);
+    let hovered = {
+        let ui = &mut prepared.content_ui;
+        // The card body is the preview target. It is drawn before the action
+        // buttons so a button click is never swallowed by the card body.
+        let body = tune_row_body(ui, entry, compact);
+        if body.clicked() {
+            action = Some(LibraryAction::PreviewTune(entry.item.clone()));
+        }
         ui.horizontal_wrapped(|ui| {
-            if ui.button("Use").clicked() {
-                *action = Some(LibraryAction::UseTune(entry.item.clone()));
-            }
-            if ui.button("Preview").clicked() {
-                *action = Some(LibraryAction::PreviewTune(entry.item.clone()));
+            if row_button(ui, compact, "Use").clicked() {
+                action = Some(LibraryAction::UseTune(entry.item.clone()));
             }
             let set_label = if in_rotation { "In set" } else { "Add to set" };
-            if ui
-                .button(set_label)
+            if row_button(ui, compact, set_label)
                 .on_hover_text(if in_rotation {
                     "Remove this tune from the set"
                 } else {
@@ -1251,13 +1224,61 @@ fn tune_row_text(
                 })
                 .clicked()
             {
-                *action = Some(LibraryAction::ToggleRotation(entry.item.clone()));
+                action = Some(LibraryAction::ToggleRotation(entry.item.clone()));
             }
-            tune_folder_menu(ui, entry, folders, action);
+            tune_folder_menu(ui, entry, folders, &mut action);
         });
-    } else {
-        tune_folder_menu(ui, entry, folders, action);
+        body.hovered()
+    };
+    if hovered {
+        prepared.frame.fill = lerp_color(
+            prepared.frame.fill,
+            ui.visuals().widgets.hovered.weak_bg_fill,
+            0.35,
+        );
     }
+    prepared.end(ui);
+    action
+}
+
+/// Draw the title and metadata of a saved tune, and return the whole body as
+/// one click target so the card previews the tune when it is clicked.
+fn tune_row_body(
+    ui: &mut egui::Ui,
+    entry: &contra_core::LibraryEntry<Tune>,
+    compact: bool,
+) -> egui::Response {
+    let body = ui
+        .vertical(|ui| {
+            ui.set_width(ui.available_width());
+            if compact {
+                ui.set_min_height(theme::TOUCH_TARGET);
+            }
+            ui.label(egui::RichText::new(&entry.item.title).strong());
+            ui.label(
+                egui::RichText::new(format!(
+                    "{} · {} · {}",
+                    empty_label(&entry.item.composer, "unknown"),
+                    entry.item.display_key(),
+                    entry.item.display_rhythm()
+                ))
+                .small()
+                .color(theme::muted(ui)),
+            );
+        })
+        .response;
+    let response = ui
+        .interact(
+            body.rect,
+            ui.scope_id()
+                .with(("preview-tune", entry.item.source.id.as_str())),
+            egui::Sense::click(),
+        )
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text("Preview this tune");
+    let label = format!("Preview {}", entry.item.title);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
+    response
 }
 
 fn tune_folder_menu(

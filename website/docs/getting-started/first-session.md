@@ -40,8 +40,8 @@ already there, and the current dance is not replaced until you choose **Use**.
 
 <Steps>
   <Step shot="dance-library">
-    Select **Select dance** in the top tab row. Search saved content, preview a
-    card, and press **Use** to load it.
+    Select **Select dance** in the top tab row. Search saved content, select a
+    card to preview it, and press **Use** to load it.
   </Step>
   <Step shot="dance-picker-open">
     To add another dance, select **Download dance**. This opens the ContraDB
@@ -70,7 +70,8 @@ panel work like the dance library.
 
 <Steps>
   <Step shot="tune-library">
-    Select **Select tune** in the top tab row.
+    Select **Select tune** in the top tab row, then select a saved tune to see
+    its sheet music.
   </Step>
   <Step shot="tune-picker-open">
     Select **Download tune** to search ABC Session Tunes for another melody.

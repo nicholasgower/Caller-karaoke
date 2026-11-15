@@ -23,8 +23,8 @@ Type into **Search saved** to filter the list. The search is local and matches:
 - and the words of the figures on the card.
 
 Every word you type must match, so `belle ralph` finds Belle of the Ball but
-`belle erik` does not. Select a card's **Preview** to read its figures, beat
-total, and source link on the right. Select **Use** to load it.
+`belle erik` does not. Select a saved card to read its figures, beat total, and
+source link on the right. Select **Use** to load it.
 
 <Shot id="dance-library-search" />
 
