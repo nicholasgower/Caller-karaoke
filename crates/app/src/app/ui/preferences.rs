@@ -411,26 +411,12 @@ impl ContraApp {
 
         self.prefs.validate();
         if self.prefs != before {
-            let timeline_changed = self.prefs.role_terms != before.role_terms
-                || self.prefs.aliases != before.aliases
-                || self.prefs.lead != before.lead
-                || self.prefs.tempo_bpm != before.tempo_bpm
-                || self.prefs.count_in_enabled != before.count_in_enabled
-                || self.prefs.shuffle_alternatives != before.shuffle_alternatives;
-            let audio_changed = self.prefs.tempo_bpm != before.tempo_bpm
-                || self.prefs.count_in_enabled != before.count_in_enabled
-                || self.prefs.accompaniment_variations != before.accompaniment_variations
-                || self.prefs.melody != before.melody
-                || self.prefs.accompaniment != before.accompaniment
-                || self.prefs.accompaniment_rhythm != before.accompaniment_rhythm
-                || self.prefs.melody_volume != before.melody_volume
-                || self.prefs.accompaniment_volume != before.accompaniment_volume
-                || self.prefs.soundfont != before.soundfont;
-            if timeline_changed {
+            let changes = self.prefs.changes_since(&before);
+            if changes.timeline {
                 self.rebuild_timeline();
                 self.last_spoken = None;
             }
-            if audio_changed {
+            if changes.audio {
                 // Apply on the next frame once the user releases the control.
                 // Keep playing the old buffer in the meantime so changing a
                 // setting never restarts playback.
