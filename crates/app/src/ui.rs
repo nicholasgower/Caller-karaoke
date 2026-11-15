@@ -384,6 +384,7 @@ impl ContraApp {
         if music_dirty {
             self.needs_render = true;
             self.audio.stop();
+            self.speech.stop();
             self.started = false;
             self.last_spoken = None;
         }
@@ -1141,6 +1142,7 @@ impl ContraApp {
             if audio_changed {
                 self.needs_render = true;
                 self.audio.stop();
+                self.speech.stop();
                 self.started = false;
             }
             if !self.prefs.tts_enabled {

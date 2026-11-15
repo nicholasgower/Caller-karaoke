@@ -289,6 +289,7 @@ impl ContraApp {
         self.screen = Screen::Session;
         self.needs_render = true;
         self.audio.stop();
+        self.speech.stop();
         self.started = false;
         self.rebuild_timeline();
         self.save_prefs();
@@ -304,6 +305,7 @@ impl ContraApp {
         self.screen = Screen::Session;
         self.needs_render = true;
         self.audio.stop();
+        self.speech.stop();
         self.started = false;
         self.save_prefs();
         self.status = "Tune selected".into();
