@@ -119,7 +119,7 @@ pub struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: 2,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
@@ -152,7 +152,7 @@ impl Preferences {
     /// Clamp values that came from a preference file or a UI control.
     pub fn validate(&mut self) {
         if self.schema_version == 0 {
-            self.schema_version = 1;
+            self.schema_version = 2;
         }
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
@@ -174,8 +174,32 @@ impl Preferences {
 
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         let mut prefs: Self = serde_json::from_str(json)?;
+        prefs.migrate();
         prefs.validate();
         Ok(prefs)
+    }
+
+    /// Upgrade stored preferences without overwriting values the user changed
+    /// away from the previous defaults.
+    fn migrate(&mut self) {
+        if self.schema_version < 2 {
+            // v1 calibrated at 6.5 syllables/s, a 2-beat maximum, and small
+            // word/pause allowances. The measured delivery is 4.0 syllables/s
+            // with no additional gaps, and a 5-beat maximum.
+            if (self.lead.syllables_per_second - 6.5).abs() < 1e-6 {
+                self.lead.syllables_per_second = 4.0;
+            }
+            if (self.lead.max_beats - 2.0).abs() < 1e-6 {
+                self.lead.max_beats = 5.0;
+            }
+            if (self.lead.word_gap_seconds - 0.04).abs() < 1e-6 {
+                self.lead.word_gap_seconds = 0.0;
+            }
+            if (self.lead.extra_pause_seconds - 0.10).abs() < 1e-6 {
+                self.lead.extra_pause_seconds = 0.0;
+            }
+            self.schema_version = 2;
+        }
     }
 }
 
@@ -230,6 +254,36 @@ mod tests {
     fn missing_fields_use_defaults() {
         let prefs = Preferences::from_json("{}").expect("deserialize");
         assert_eq!(prefs, Preferences::default());
+    }
+
+    #[test]
+    fn migrates_v1_lead_defaults_to_measured_calibration() {
+        let mut old = Preferences::default();
+        old.schema_version = 1;
+        old.lead.syllables_per_second = 6.5;
+        old.lead.max_beats = 2.0;
+        old.lead.word_gap_seconds = 0.04;
+        old.lead.extra_pause_seconds = 0.10;
+        let json = old.to_json().expect("serialize");
+        let migrated = Preferences::from_json(&json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, 2);
+        assert_eq!(migrated.lead.syllables_per_second, 4.0);
+        assert_eq!(migrated.lead.max_beats, 5.0);
+        assert_eq!(migrated.lead.word_gap_seconds, 0.0);
+        assert_eq!(migrated.lead.extra_pause_seconds, 0.0);
+    }
+
+    #[test]
+    fn migration_preserves_custom_lead_values() {
+        let mut old = Preferences::default();
+        old.schema_version = 1;
+        old.lead.min_beats = 2.0;
+        old.lead.syllables_per_second = 7.25;
+        let json = old.to_json().expect("serialize");
+        let migrated = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(migrated.lead.min_beats, 2.0);
+        assert_eq!(migrated.lead.syllables_per_second, 7.25);
     }
 
     #[test]
