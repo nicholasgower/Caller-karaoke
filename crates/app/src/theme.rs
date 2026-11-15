@@ -3,6 +3,13 @@
 use contra_core::Theme;
 use eframe::egui;
 
+/// Minimum height of a control in the phone session layout, in points.
+///
+/// ROADMAP §8.2 sets 44 px for touch targets. The compact session tab applies
+/// this to its sliders, transport buttons, toggles, and tab row; the desktop
+/// layout keeps egui's 40 pt rows so it stays dense.
+pub const TOUCH_TARGET: f32 = 44.0;
+
 /// Colours for the parts of the UI that paint their own backgrounds and text
 /// instead of relying on egui's widget visuals.
 ///
