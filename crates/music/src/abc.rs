@@ -29,9 +29,25 @@ pub enum AbcError {
 
 type Result<T> = std::result::Result<T, AbcError>;
 
+/// Normalize source ABC before handing it to `abc-parser`.
+///
+/// Source transcriptions are not always clean. ABC Session Tunes returns some
+/// tunes with Windows line endings and trailing blank lines; the parser treats
+/// a blank line as the end of a tune, so a file that ends with one fails at EOF
+/// even though the tune is complete, and a stray `\r` is a syntax error of its
+/// own. Strip the byte-order mark, canonicalize newlines, and trim surrounding
+/// blank lines. Anything inside the tune, including comments, is left as-is.
+fn normalize_abc(input: &str) -> String {
+    let without_bom = input.strip_prefix('\u{feff}').unwrap_or(input);
+    let unified = without_bom.replace("\r\n", "\n").replace('\r', "\n");
+    unified.trim().to_string()
+}
+
 /// Parse an ABC tune into a score whose times are dance beats.
 pub fn parse_abc(input: &str) -> Result<Score> {
-    let book = abc::tune_book(input).map_err(|error| AbcError::Parse(format!("{error:?}")))?;
+    let normalized = normalize_abc(input);
+    let book =
+        abc::tune_book(&normalized).map_err(|error| AbcError::Parse(format!("{error:?}")))?;
     let tune = book.tunes.first().ok_or(AbcError::NoTune)?;
     let body = tune.body.as_ref().ok_or(AbcError::NoBody)?;
 
@@ -633,6 +649,34 @@ eg |: "A"a2 g2 e2 g2 | ed c2 A2 a2- | a2 g2 e2 g2 | "G"a3 b a2 eg |
             "duration was {}",
             score.duration_beats
         );
+    }
+
+    #[test]
+    fn imports_raw_abc_with_trailing_blank_lines() {
+        // ABC Session Tunes tune 38058 (Angeline the Baker) arrives with a
+        // leading blank line and two trailing ones. A blank line ends a tune,
+        // so the parser used to reject this at EOF even though it is complete.
+        let abc = "\nX:509\nT:Angeline the Baker\nM:4/4\nL:1/8\nK:D\n\
+dB|A2 B2 d3 A|B2 d4 dB|A2 B2 dB A2|\n\
+B6 dB|A2 B2 d3 e|f2 e2 d3 e|f2 e2 d2 B2|A3 B A2:|\n\n\n";
+        let score = parse_abc(abc).expect("raw ABC with blank lines should import");
+        assert_eq!(score.title, "Angeline the Baker");
+        assert!(!score.notes.is_empty());
+    }
+
+    #[test]
+    fn imports_crlf_abc_with_bom() {
+        let abc = "\u{feff}X:1\r\nT:Windows Tune\r\nM:4/4\r\nL:1/8\r\nK:D\r\n\
+A2 A2 A2 A2|\r\n\r\n";
+        let score = parse_abc(abc).expect("CRLF ABC should import");
+        assert_eq!(score.title, "Windows Tune");
+        assert_eq!(score.notes.len(), 4);
+    }
+
+    #[test]
+    fn normalizes_line_endings_and_blank_lines() {
+        assert_eq!(normalize_abc("\u{feff}X:1\r\nT:x\r\n\r\n\r\n"), "X:1\nT:x");
+        assert_eq!(normalize_abc("X:1\nT:x"), "X:1\nT:x");
     }
 
     #[test]

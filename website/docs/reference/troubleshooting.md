@@ -32,6 +32,11 @@ message in Preferences.
 A failed network request or parse is shown in the bottom panel with the source's
 message. The currently loaded dance and tune are not replaced.
 
+Source ABC is normalized before it is parsed: a leading byte-order mark, Windows
+or classic Mac line endings, and leading or trailing blank lines are ignored, so
+tunes edited in other tools still load. A tune whose music itself is malformed
+still reports the parser error.
+
 <Shot id="error-network" />
 
 <Shot id="error-parse" />
