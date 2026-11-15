@@ -15,6 +15,9 @@ Keep a Changelog and the project uses Conventional Commits.
   “larks allemande left once and a half”.
 - ABC parsing (notes, chords, repeats, ties, keys, meters), chord inference,
   and a 64-beat arrangement.
+- Fixed the bundled *Sandy Boys* B ending to a full bar, giving it a 64-beat
+  AABB body, and added a runtime dance/tune length check with a visible warning
+  when the two do not match.
 - Built-in fiddle/accordion/piano/guitar synthesizer and offline PCM rendering.
 - Optional user-supplied SoundFont rendering through `rustysynth`.
 - Standard MIDI File export.

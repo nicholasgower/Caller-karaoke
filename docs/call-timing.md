@@ -60,11 +60,16 @@ The first call can be negative (inside the count-in). Do not clamp it to zero.
 - Calls use cumulative figure beats. The music always uses a 64-beat grid, so a
   card that is shorter leaves music at the end and a longer card loops the
   music.
+- The app compares the dance total (cumulative figure beats) with the tune body
+  length, excluding the pickup, and shows a warning when they differ. It does
+  not rescale either one.
 - The UI has three states: upcoming, call now, executing.
 
 ## Tests
 
 `crates/core/src/timing.rs` covers the default dance, the negative first call,
-the 1–2 beat clamp, manual leads, sub-call splitting, and tempo sensitivity.
-`crates/music/src/arrange.rs` verifies the bundled Sandy Boys tune forms a
-64-beat loop with a pickup and an A-major count-in.
+the 1–5 beat clamp, manual leads, sub-call splitting, and tempo sensitivity.
+`crates/music/src/arrange.rs` verifies the bundled Sandy Boys tune has a
+64-beat AABB body plus a 0.5-beat pickup, and checks the dance/tune length
+comparison. `crates/app/src/defaults.rs` asserts that the bundled dance and
+tune are both 64 beats.

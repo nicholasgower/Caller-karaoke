@@ -424,10 +424,15 @@ and keep the previous tune loaded. Do not panic.
   boundaries. If it is longer, take the first 32 bars, preferring complete
   parts.
 - Align the loop to bar boundaries.
-- Preserve pickup notes: place them immediately before beat 0 if needed.
+- Preserve pickup notes separately: they play during the count-in only and are
+  **not** included when the music loop repeats. The tune body itself must still
+  fill the 64-beat grid; fix a short B ending in the ABC rather than hiding it
+  by repeating the opening notes.
 - Apply a short fade at loop boundaries to avoid clicks.
 - Chords: use quoted symbols; when absent, infer a simple diatonic progression
   from the key and strong-beat melody notes, and tell the user.
+- Compare the dance's total beats with the tune body length (excluding the
+  pickup). Show a warning when they differ; do not silently rescale either one.
 - Arrangement warnings (extended/trimmed tune) appear in the tune picker.
 
 ### 6.3 Accompaniment

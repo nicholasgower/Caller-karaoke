@@ -6,6 +6,9 @@ use eframe::egui;
 pub const CALL_ACTIVE_BG: egui::Color32 = egui::Color32::from_rgb(58, 58, 58);
 pub const CALL_UPCOMING_BG: egui::Color32 = egui::Color32::from_rgb(38, 38, 38);
 pub const MUTED: egui::Color32 = egui::Color32::from_rgb(154, 154, 154);
+/// A desaturated warm grey for non-blocking warnings; still part of the
+/// neutral theme rather than an accent colour.
+pub const WARNING: egui::Color32 = egui::Color32::from_rgb(205, 180, 135);
 
 pub fn apply(ctx: &egui::Context, theme: Theme) {
     let dark = visuals_for(true);

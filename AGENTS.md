@@ -182,6 +182,8 @@ These must remain true:
 seconds_per_dance_beat = 120 / bpm
 count_in_beats          = 3
 music_loop_beats        = 64
+tune_body_beats         = music_loop_beats        // excluding the pickup
+dance_total_beats       = tune_body_beats         // warn, do not rescale
 lead_beats             in [min_lead, max_lead]   // default 1..5
 call_start_beat         = execute_beat - lead_beats
 ```

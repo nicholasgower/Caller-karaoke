@@ -90,6 +90,20 @@ impl ContraApp {
                 );
             });
         }
+        if let Some(warning) = &self.length_warning {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(
+                    egui::RichText::new(warning)
+                        .strong()
+                        .color(theme::WARNING),
+                );
+            });
+        }
+        if let Some(arrangement) = &self.arrangement {
+            for warning in &arrangement.warnings {
+                ui.label(egui::RichText::new(warning).small().color(theme::MUTED));
+            }
+        }
         if let Some(error) = &self.audio_error {
             ui.colored_label(
                 egui::Color32::from_rgb(210, 140, 140),

@@ -9,7 +9,7 @@ use contra_core::{
     AccompanimentInstrument, AliasTable, Dance, MelodyInstrument, MoveKind, PracticeTimeline,
     Preferences, RolePreset, RoleTerms, Theme, TimelineConfig, Tune,
 };
-use contra_music::{Arrangement, RenderRequest, export_midi, parse_abc, render};
+use contra_music::{Arrangement, LengthMismatch, RenderRequest, export_midi, parse_abc, render};
 #[cfg(not(target_arch = "wasm32"))]
 use contra_sources::FileCache;
 use contra_sources::{
@@ -64,6 +64,7 @@ pub struct ContraApp {
     preview_loading: bool,
     status: String,
     error: Option<String>,
+    length_warning: Option<String>,
     last_spoken: Option<usize>,
     last_beat: f64,
     cache_clear_confirm: bool,
@@ -129,6 +130,7 @@ impl ContraApp {
         let dance = defaults::default_dance();
         let tune = defaults::default_tune();
         let timeline = build_timeline(&dance, &prefs).unwrap_or_else(|_| empty_timeline());
+        let length_warning = length_warning_for(&dance, &tune);
 
         let soundfont = prefs
             .soundfont
@@ -175,6 +177,7 @@ impl ContraApp {
             preview_loading: false,
             status: "Ready".into(),
             error: None,
+            length_warning,
             last_spoken: None,
             last_beat: 0.0,
             cache_clear_confirm: false,
@@ -215,11 +218,17 @@ impl ContraApp {
         let score = match parse_abc(&self.tune.abc) {
             Ok(score) => score,
             Err(error) => {
+                self.length_warning = None;
                 self.error = Some(format!("Could not parse tune: {error}"));
                 return;
             }
         };
         let arrangement = Arrangement::from_score(&score, 64.0);
+        let dance_beats = self.dance.total_beats();
+        self.length_warning = arrangement
+            .check_dance_length(dance_beats)
+            .err()
+            .map(format_length_mismatch);
         let request = RenderRequest {
             arrangement: arrangement.clone(),
             bpm: self.prefs.tempo_bpm,
@@ -283,11 +292,13 @@ impl ContraApp {
     fn use_dance(&mut self, dance: Dance) {
         self.error = None;
         self.dance = dance;
+        self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_dance = Some(self.dance.source.clone());
         self.dance_preview = None;
         self.dance_selected = None;
         self.screen = Screen::Session;
         self.needs_render = true;
+        self.arrangement = None;
         self.audio.stop();
         self.speech.stop();
         self.started = false;
@@ -299,11 +310,13 @@ impl ContraApp {
     fn use_tune(&mut self, tune: Tune) {
         self.error = None;
         self.tune = tune;
+        self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_tune = Some(self.tune.source.clone());
         self.tune_preview = None;
         self.tune_selected = None;
         self.screen = Screen::Session;
         self.needs_render = true;
+        self.arrangement = None;
         self.audio.stop();
         self.speech.stop();
         self.started = false;
@@ -585,6 +598,23 @@ fn build_cache(cache_dir: &Path) -> Cache {
     }
 }
 
+/// Parse the current tune and compare its body with the dance card.
+///
+/// This runs at startup and whenever a dance or tune is selected, so a mismatch
+/// is visible before the first Play as well as after the music is rebuilt.
+fn length_warning_for(dance: &Dance, tune: &Tune) -> Option<String> {
+    let score = parse_abc(&tune.abc).ok()?;
+    let arrangement = Arrangement::from_score(&score, 64.0);
+    arrangement
+        .check_dance_length(dance.total_beats())
+        .err()
+        .map(format_length_mismatch)
+}
+
+fn format_length_mismatch(mismatch: LengthMismatch) -> String {
+    format!("Length check: {mismatch}. Calls and music can drift out of sync.")
+}
+
 fn build_timeline(dance: &Dance, prefs: &Preferences) -> Result<PracticeTimeline, String> {
     PracticeTimeline::build(
         dance,
@@ -624,6 +654,28 @@ fn safe_filename(title: &str) -> String {
         .collect::<String>()
         .trim()
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_defaults_pass_the_length_check() {
+        let dance = crate::defaults::default_dance();
+        let tune = crate::defaults::default_tune();
+        assert!(length_warning_for(&dance, &tune).is_none());
+    }
+
+    #[test]
+    fn a_short_dance_produces_a_visible_warning() {
+        let mut dance = crate::defaults::default_dance();
+        dance.figures[0].beats -= 0.5;
+        let tune = crate::defaults::default_tune();
+        let warning = length_warning_for(&dance, &tune).expect("length mismatch");
+        assert!(warning.contains("63.5"), "{warning}");
+        assert!(warning.contains("64.0"), "{warning}");
+    }
 }
 
 // The rest of the UI is implemented in `ui.rs` to keep this file navigable.

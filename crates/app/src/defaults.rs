@@ -25,3 +25,23 @@ pub fn default_tune() -> Tune {
         credits: "ABC transcription: Josh Larios · chords from Sarah Comer".into(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_defaults_have_the_same_length() {
+        let dance = default_dance();
+        let tune = default_tune();
+        let score = contra_music::parse_abc(&tune.abc).expect("bundled tune parses");
+        let arrangement = contra_music::Arrangement::from_score(&score, 64.0);
+
+        assert_eq!(dance.total_beats(), 64.0);
+        assert_eq!(arrangement.body_beats, 64.0);
+        assert!(
+            arrangement.check_dance_length(dance.total_beats()).is_ok(),
+            "the bundled dance and tune must share a 64-beat grid"
+        );
+    }
+}
