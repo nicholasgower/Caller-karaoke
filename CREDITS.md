@@ -60,7 +60,7 @@ application binary or of a normal release artifact.
 
 - Inno Setup (Windows installer) — <https://jrsoftware.org/isinfo.php>
 - Trunk (web build) — <https://trunkrs.dev>
-- `cargo-deb`, `linuxdeploy`, `appimagetool`, `flatpak-builder`
+- `cargo-apk`, `cargo-deb`, `linuxdeploy`, `appimagetool`, `flatpak-builder`
 - `git-cliff` (changelog), `cargo-deny`, `cargo-machete`
 - GitHub Actions
 

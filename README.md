@@ -123,6 +123,13 @@ cargo install trunk --locked
 cd crates/web && trunk build --release
 ```
 
+Android (requires the Android SDK/NDK, cargo-apk, and minSdk 26):
+
+```sh
+rustup target add aarch64-linux-android armv7-linux-androideabi
+cargo apk build --release --lib -p contra-app
+```
+
 Windows installer and portable archive are built from
 `packaging/windows/`; Linux `.deb`, AppImage, and Flatpak files live under
 `packaging/linux/` and `packaging/flatpak/`.
