@@ -6,6 +6,11 @@ use contra_core::AccompanimentInstrument;
 use crate::chord::{Chord, resolve_chords};
 use crate::score::{ChordEvent, Key, Meter, NoteEvent, Score};
 
+/// Number of distinct accompaniment passes rendered back to back for one
+/// practice tune. Pass 0 is the plain pattern; the others carry small
+/// variations so a looping session does not repeat note for note.
+pub const VARIATION_PASSES: u32 = 4;
+
 /// The music for one practice loop.
 #[derive(Clone, Debug)]
 pub struct Arrangement {
@@ -209,8 +214,39 @@ impl Arrangement {
             })
     }
 
-    /// Generate the backing track for the selected instrument.
+    /// Generate the plain backing track for the selected instrument.
+    ///
+    /// This is pass 0: no variations. MIDI export and callers that want one
+    /// unchanged loop use it.
     pub fn accompaniment_notes(&self, instrument: AccompanimentInstrument) -> Vec<NoteEvent> {
+        self.accompaniment_notes_for_pass(instrument, 0)
+    }
+
+    /// Generate the backing track for one loop pass.
+    ///
+    /// Pass 0 is the plain pattern. Later passes are the same pattern with
+    /// deterministic variations: a few extra chord stabs for emphasis, and
+    /// now and then one bar where the accompaniment drops out so the melody
+    /// plays alone. The variations never move existing notes, so the pulse and
+    /// the 64-beat grid are unchanged.
+    pub fn accompaniment_notes_for_pass(
+        &self,
+        instrument: AccompanimentInstrument,
+        pass: u32,
+    ) -> Vec<NoteEvent> {
+        let mut notes = self.plain_accompaniment(instrument);
+        if pass > 0 {
+            self.vary_accompaniment(&mut notes, pass);
+        }
+        notes.sort_by(|a, b| {
+            a.start_beat
+                .total_cmp(&b.start_beat)
+                .then(a.midi.cmp(&b.midi))
+        });
+        notes
+    }
+
+    fn plain_accompaniment(&self, instrument: AccompanimentInstrument) -> Vec<NoteEvent> {
         let mut notes = Vec::new();
         for chord_event in &self.chords {
             let chord = Chord::parse(&chord_event.symbol).unwrap_or_else(|| self.count_in_chord());
@@ -284,6 +320,115 @@ impl Arrangement {
             }
         }
         notes
+    }
+
+    /// Apply one pass of variations in place.
+    ///
+    /// The seed comes from the arrangement itself, so a given tune always
+    /// produces the same variations and the audio, like the rest of `music`,
+    /// stays deterministic and offline.
+    fn vary_accompaniment(&self, notes: &mut Vec<NoteEvent>, pass: u32) {
+        let mut rng = VariationRng::new(self.variation_seed(), pass);
+        let bars = self.bars().floor() as i64;
+
+        // Rarely leave one bar to the melody. Skip the opening bars so the
+        // dancers always get a clear start.
+        let rest_bar = if pass >= 2 && bars > 7 && rng.chance(3) {
+            let first = 4;
+            let last = bars - 3;
+            Some(first + rng.below((last - first + 1) as u64) as i64)
+        } else {
+            None
+        };
+        if let Some(bar) = rest_bar {
+            let rest_start = bar as f64 * 2.0;
+            let rest_end = (rest_start + 2.0).min(self.loop_beats);
+            notes.retain(|note| note.start_beat < rest_start - 1e-9 || note.start_beat >= rest_end);
+        }
+
+        // A few short chord stabs on the back half of the bar, above the
+        // regular pattern, add emphasis without disturbing the pulse.
+        for bar in 0..bars {
+            if rest_bar == Some(bar) {
+                continue;
+            }
+            if !rng.chance(6) {
+                continue;
+            }
+            let at = bar as f64 * 2.0 + 1.5;
+            if at >= self.loop_beats {
+                continue;
+            }
+            for midi in self.chord_at(at).voicing(64) {
+                notes.push(NoteEvent {
+                    start_beat: at,
+                    duration_beats: 0.3,
+                    midi,
+                    velocity: 46,
+                });
+            }
+        }
+    }
+
+    fn chord_at(&self, beat: f64) -> Chord {
+        self.chords
+            .iter()
+            .find(|chord| beat >= chord.start_beat && beat < chord.end_beat())
+            .and_then(|chord| Chord::parse(&chord.symbol))
+            .unwrap_or_else(|| self.count_in_chord())
+    }
+
+    /// FNV-1a over the chord track and the first part of the melody. The tune
+    /// content selects the variations; nothing external is involved.
+    fn variation_seed(&self) -> u64 {
+        const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+        const PRIME: u64 = 0x0000_0100_0000_01b3;
+        let mut hash = OFFSET;
+        let mut feed = |value: u64| {
+            hash ^= value;
+            hash = hash.wrapping_mul(PRIME);
+        };
+        for chord in &self.chords {
+            for byte in chord.symbol.bytes() {
+                feed(byte as u64);
+            }
+            feed((chord.start_beat * 1000.0).round() as u64);
+        }
+        for note in self.melody.iter().take(64) {
+            feed(note.midi as u64);
+            feed((note.start_beat * 1000.0).round() as u64);
+        }
+        hash
+    }
+}
+
+/// Small deterministic generator (SplitMix64) used for the variation choices.
+struct VariationRng {
+    state: u64,
+}
+
+impl VariationRng {
+    fn new(seed: u64, pass: u32) -> Self {
+        Self {
+            state: seed ^ (pass as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15),
+        }
+    }
+
+    fn next(&mut self) -> u64 {
+        self.state = self.state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut value = self.state;
+        value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        value ^ (value >> 31)
+    }
+
+    /// True roughly once in `n`.
+    fn chance(&mut self, n: u64) -> bool {
+        n > 0 && self.next().is_multiple_of(n)
+    }
+
+    fn below(&mut self, n: u64) -> u64 {
+        if n == 0 { 0 } else { self.next() % n }
     }
 }
 
@@ -410,6 +555,81 @@ mod tests {
             let notes = arrangement.accompaniment_notes(instrument);
             assert!(!notes.is_empty());
             assert!(notes.iter().all(|note| note.midi <= 108));
+        }
+    }
+
+    #[test]
+    fn variation_passes_add_notes_without_leaving_the_loop() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        for instrument in [
+            AccompanimentInstrument::Piano,
+            AccompanimentInstrument::Guitar,
+            AccompanimentInstrument::Accordion,
+        ] {
+            let plain = arrangement.accompaniment_notes(instrument);
+            let mut changed = false;
+            for pass in 1..VARIATION_PASSES {
+                let notes = arrangement.accompaniment_notes_for_pass(instrument, pass);
+                assert!(!notes.is_empty(), "pass {pass} must keep playing");
+                assert!(
+                    notes
+                        .iter()
+                        .all(|note| note.start_beat >= 0.0 && note.end_beat() <= 64.0 + 1e-6),
+                    "pass {pass} must stay inside the 64-beat loop"
+                );
+                assert!(
+                    notes.iter().any(|note| note.start_beat < 2.0),
+                    "pass {pass} must keep the opening bar so dancers get a clear start"
+                );
+                changed |= notes != plain;
+            }
+            assert!(changed, "variation passes must differ from the plain loop");
+        }
+    }
+
+    #[test]
+    fn variation_passes_are_deterministic() {
+        let first = Arrangement::from_score(&simple_score(), 64.0);
+        let second = Arrangement::from_score(&simple_score(), 64.0);
+        for pass in 0..VARIATION_PASSES {
+            assert_eq!(
+                first.accompaniment_notes_for_pass(AccompanimentInstrument::Piano, pass),
+                second.accompaniment_notes_for_pass(AccompanimentInstrument::Piano, pass),
+            );
+        }
+    }
+
+    #[test]
+    fn first_variation_emphasises_some_bars() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        // Pass 1 never rests, so its only change is extra emphasis notes.
+        let plain = arrangement.accompaniment_notes(AccompanimentInstrument::Piano);
+        let varied = arrangement.accompaniment_notes_for_pass(AccompanimentInstrument::Piano, 1);
+        assert!(
+            varied.len() > plain.len(),
+            "{} should have more notes than {}",
+            varied.len(),
+            plain.len()
+        );
+    }
+
+    #[test]
+    fn variations_keep_the_bundled_tune_on_the_grid() {
+        let abc = include_str!("../../../assets/defaults/sandy_boys.abc");
+        let score = crate::abc::parse_abc(abc).expect("parse bundled tune");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        for pass in 0..VARIATION_PASSES {
+            for instrument in [
+                AccompanimentInstrument::Piano,
+                AccompanimentInstrument::Guitar,
+                AccompanimentInstrument::Accordion,
+            ] {
+                let notes = arrangement.accompaniment_notes_for_pass(instrument, pass);
+                assert!(!notes.is_empty());
+                assert!(notes.iter().all(|note| {
+                    note.start_beat >= 0.0 && note.end_beat() <= arrangement.loop_beats + 1e-6
+                }));
+            }
         }
     }
 

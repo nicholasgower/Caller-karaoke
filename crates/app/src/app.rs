@@ -266,6 +266,11 @@ impl ContraApp {
                 0.0
             },
             sample_rate: self.audio.sample_rate(),
+            variation_passes: if self.prefs.accompaniment_variations {
+                contra_music::VARIATION_PASSES
+            } else {
+                1
+            },
         };
         match render(&request, self.soundfont.as_ref()) {
             Ok(buffer) => {

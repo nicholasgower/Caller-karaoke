@@ -1100,6 +1100,15 @@ impl ContraApp {
             }
             ui.checkbox(&mut self.prefs.loop_enabled, "Loop the dance and music");
             ui.checkbox(&mut self.prefs.count_in_enabled, "Three-beat count-in");
+            ui.checkbox(
+                &mut self.prefs.accompaniment_variations,
+                "Vary the accompaniment on each loop",
+            );
+            ui.label(
+                egui::RichText::new("Adds small emphasis notes and the occasional bar with melody alone.")
+                    .small()
+                    .color(theme::muted(ui)),
+            );
             ui.checkbox(&mut self.prefs.show_original, "Show original card text");
             ui.separator();
 
@@ -1188,6 +1197,7 @@ impl ContraApp {
                 || self.prefs.count_in_enabled != before.count_in_enabled;
             let audio_changed = self.prefs.tempo_bpm != before.tempo_bpm
                 || self.prefs.count_in_enabled != before.count_in_enabled
+                || self.prefs.accompaniment_variations != before.accompaniment_variations
                 || self.prefs.melody != before.melody
                 || self.prefs.accompaniment != before.accompaniment
                 || self.prefs.melody_volume != before.melody_volume

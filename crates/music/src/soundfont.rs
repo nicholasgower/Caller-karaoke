@@ -46,7 +46,9 @@ pub fn render_soundfont(
     let beat_seconds = 120.0 / request.bpm.max(1.0);
     let samples_per_beat = beat_seconds * sample_rate as f64;
     let count_in_samples = (request.count_in_beats.max(0.0) * samples_per_beat).round() as u64;
-    let loop_samples = (request.arrangement.loop_beats.max(1.0) * samples_per_beat).round() as u64;
+    let pass_samples = (request.arrangement.loop_beats.max(1.0) * samples_per_beat).round() as u64;
+    let passes = request.variation_passes.max(1);
+    let loop_samples = pass_samples * passes as u64;
     let total_samples = count_in_samples + loop_samples;
 
     let mut settings = SynthesizerSettings::new(sample_rate as i32);
@@ -72,30 +74,29 @@ pub fn render_soundfont(
     );
 
     let mut scheduled = Vec::new();
-    schedule_notes(
-        &mut scheduled,
-        &request.arrangement.melody,
-        0,
-        count_in_samples,
-        samples_per_beat,
-    );
-    schedule_notes(
-        &mut scheduled,
-        &request.arrangement.pickup,
-        0,
-        count_in_samples,
-        samples_per_beat,
-    );
-    let accompaniment = request
-        .arrangement
-        .accompaniment_notes(request.accompaniment);
-    schedule_notes(
-        &mut scheduled,
-        &accompaniment,
-        1,
-        count_in_samples,
-        samples_per_beat,
-    );
+    for pass in 0..passes {
+        let offset = count_in_samples + pass as u64 * pass_samples;
+        schedule_notes(
+            &mut scheduled,
+            &request.arrangement.melody,
+            0,
+            offset,
+            samples_per_beat,
+        );
+        if pass == 0 {
+            schedule_notes(
+                &mut scheduled,
+                &request.arrangement.pickup,
+                0,
+                offset,
+                samples_per_beat,
+            );
+        }
+        let accompaniment = request
+            .arrangement
+            .accompaniment_notes_for_pass(request.accompaniment, pass);
+        schedule_notes(&mut scheduled, &accompaniment, 1, offset, samples_per_beat);
+    }
     schedule_count_in(&mut scheduled, request, samples_per_beat, count_in_samples);
 
     scheduled.sort_by(|a, b| a.sample.cmp(&b.sample).then(a.order.cmp(&b.order)));
@@ -144,6 +145,7 @@ pub fn render_soundfont(
         count_in_samples,
         loop_start_sample: count_in_samples,
         loop_end_sample: total_samples,
+        loop_pass_samples: pass_samples,
         samples_per_beat,
     })
 }

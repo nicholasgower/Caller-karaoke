@@ -25,7 +25,9 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
     let beat_seconds = 120.0 / request.bpm.max(1.0);
     let samples_per_beat = beat_seconds * sample_rate as f64;
     let count_in_samples = (request.count_in_beats.max(0.0) * samples_per_beat).round() as u64;
-    let loop_samples = (request.arrangement.loop_beats.max(1.0) * samples_per_beat).round() as u64;
+    let pass_samples = (request.arrangement.loop_beats.max(1.0) * samples_per_beat).round() as u64;
+    let passes = request.variation_passes.max(1);
+    let loop_samples = pass_samples * passes as u64;
     let total_samples = count_in_samples + loop_samples;
 
     let mut samples = vec![0.0f32; total_samples as usize * 2];
@@ -37,41 +39,48 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         samples_per_beat,
         sample_rate,
     );
-    let melody_timbre = melody_timbre(request.melody);
-    render_notes(
-        &mut samples,
-        &request.arrangement.pickup,
-        melody_timbre,
-        request.melody_volume,
-        count_in_samples as i64,
-        samples_per_beat,
-        sample_rate,
-        -0.10,
-    );
-    render_notes(
-        &mut samples,
-        &request.arrangement.melody,
-        melody_timbre,
-        request.melody_volume,
-        count_in_samples as i64,
-        samples_per_beat,
-        sample_rate,
-        -0.10,
-    );
 
-    let accompaniment = request
-        .arrangement
-        .accompaniment_notes(request.accompaniment);
-    render_notes(
-        &mut samples,
-        &accompaniment,
-        accompaniment_timbre(request.accompaniment),
-        request.accompaniment_volume,
-        count_in_samples as i64,
-        samples_per_beat,
-        sample_rate,
-        0.10,
-    );
+    let melody_timbre = melody_timbre(request.melody);
+    let accompaniment_timbre = accompaniment_timbre(request.accompaniment);
+    for pass in 0..passes {
+        let offset = count_in_samples as i64 + pass as i64 * pass_samples as i64;
+        if pass == 0 {
+            render_notes(
+                &mut samples,
+                &request.arrangement.pickup,
+                melody_timbre,
+                request.melody_volume,
+                offset,
+                samples_per_beat,
+                sample_rate,
+                -0.10,
+            );
+        }
+        render_notes(
+            &mut samples,
+            &request.arrangement.melody,
+            melody_timbre,
+            request.melody_volume,
+            offset,
+            samples_per_beat,
+            sample_rate,
+            -0.10,
+        );
+
+        let accompaniment = request
+            .arrangement
+            .accompaniment_notes_for_pass(request.accompaniment, pass);
+        render_notes(
+            &mut samples,
+            &accompaniment,
+            accompaniment_timbre,
+            request.accompaniment_volume,
+            offset,
+            samples_per_beat,
+            sample_rate,
+            0.10,
+        );
+    }
 
     apply_fades(&mut samples, sample_rate, total_samples as usize);
     normalize(&mut samples);
@@ -83,6 +92,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         count_in_samples,
         loop_start_sample: count_in_samples,
         loop_end_sample: total_samples,
+        loop_pass_samples: pass_samples,
         samples_per_beat,
     }
 }
@@ -441,6 +451,7 @@ mod tests {
             accompaniment_volume: 0.65,
             count_in_beats: 3.0,
             sample_rate: 24_000,
+            variation_passes: 1,
         }
     }
 
@@ -461,6 +472,26 @@ mod tests {
         // 3 count-in beats + 64 loop beats at 240 BPM = 33.5 s.
         let expected = 33.5 * 24_000.0;
         assert!((buffer.frames() as f64 - expected).abs() < 2.0);
+    }
+
+    #[test]
+    fn variation_passes_extend_the_buffer_but_not_the_beat_clock() {
+        let mut request = request();
+        request.variation_passes = crate::VARIATION_PASSES;
+        let buffer = render_builtin(&request);
+
+        let pass_seconds = 64.0 * 0.5;
+        let expected = (3.0 * 0.5 + pass_seconds * crate::VARIATION_PASSES as f64) * 24_000.0;
+        assert!((buffer.frames() as f64 - expected).abs() < 2.0);
+        assert_eq!(
+            buffer.loop_end_sample - buffer.loop_start_sample,
+            buffer.loop_pass_samples * crate::VARIATION_PASSES as u64
+        );
+
+        // The transport wraps every pass, so later passes still read as 0..64.
+        let beat = buffer.beat_at_sample(buffer.loop_start_sample + buffer.loop_pass_samples + 1);
+        assert!((0.0..0.1).contains(&beat), "beat {beat}");
+        assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
     }
 
     #[test]

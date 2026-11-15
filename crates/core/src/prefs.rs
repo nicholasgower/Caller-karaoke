@@ -107,6 +107,9 @@ pub struct Preferences {
     pub tts_rate: f32,
     pub loop_enabled: bool,
     pub count_in_enabled: bool,
+    /// Add small, deterministic variations to the accompaniment on later loop
+    /// passes (extra emphasis notes; now and then one bar of melody alone).
+    pub accompaniment_variations: bool,
     pub show_original: bool,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
@@ -121,7 +124,7 @@ pub struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            schema_version: 3,
+            schema_version: 4,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
@@ -134,6 +137,7 @@ impl Default for Preferences {
             tts_rate: 1.0,
             loop_enabled: true,
             count_in_enabled: true,
+            accompaniment_variations: true,
             show_original: false,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
@@ -155,7 +159,7 @@ impl Preferences {
     /// Clamp values that came from a preference file or a UI control.
     pub fn validate(&mut self) {
         if self.schema_version == 0 {
-            self.schema_version = 3;
+            self.schema_version = 4;
         }
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
@@ -208,6 +212,11 @@ impl Preferences {
             // default for older files, so only the version needs recording.
             self.schema_version = 3;
         }
+        if self.schema_version < 4 {
+            // Accompaniment variations are a new v4 field. `serde` supplies
+            // the enabled default for older files.
+            self.schema_version = 4;
+        }
     }
 }
 
@@ -227,6 +236,7 @@ mod tests {
         assert_eq!(prefs.tempo_bpm, 240.0);
         assert!(prefs.loop_enabled);
         assert!(prefs.count_in_enabled);
+        assert!(prefs.accompaniment_variations);
         assert!(!prefs.tts_enabled);
     }
 
@@ -278,7 +288,7 @@ mod tests {
         let json = old.to_json().expect("serialize");
         let migrated = Preferences::from_json(&json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 3);
+        assert_eq!(migrated.schema_version, 4);
         assert_eq!(migrated.lead.syllables_per_second, 4.0);
         assert_eq!(migrated.lead.max_beats, 5.0);
         assert_eq!(migrated.lead.word_gap_seconds, 0.0);
@@ -290,9 +300,30 @@ mod tests {
         let json = r#"{"schema_version":2,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 3);
+        assert_eq!(migrated.schema_version, 4);
         assert!(migrated.animations_enabled);
         assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn v3_preferences_enable_accompaniment_variations_by_default() {
+        let json = r#"{"schema_version":3,"tempo_bpm":220.0}"#;
+        let migrated = Preferences::from_json(json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, 4);
+        assert!(migrated.accompaniment_variations);
+        assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn accompaniment_variations_can_be_disabled_and_round_trip() {
+        let prefs = Preferences {
+            accompaniment_variations: false,
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(!restored.accompaniment_variations);
     }
 
     #[test]

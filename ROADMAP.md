@@ -129,6 +129,9 @@ Advanced settings:
   second, word gap, extra pause.
 - TTS voice and rate.
 - Count-in on/off (default on), loop (default on).
+- Accompaniment variations on each loop (default on): a few added emphasis
+  notes and an occasional bar of melody alone, chosen deterministically from
+  the tune.
 - Cache size, clear cache, refresh cached content.
 - Web data proxy URL and token (web build only).
 
