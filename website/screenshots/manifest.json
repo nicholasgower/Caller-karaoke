@@ -64,8 +64,8 @@
     },
     {
       "id": "tune-picker-preview",
-      "alt": "The Select tune screen with Sandy Boys selected, metadata, ABC text, an Open on ABC Session Tunes link, and the Use this tune button visible.",
-      "caption": "Check the tune metadata, ABC, and source link before loading it.",
+      "alt": "The Select Tune preview showing the tune metadata, credits, source link, Show ABC toggle, and rendered sheet music.",
+      "caption": "The preview engraves the ABC as sheet music; Show ABC switches to the source text.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -104,8 +104,16 @@
     },
     {
       "id": "session-changes-pending",
-      "alt": "The session screen with the message Press Play to prepare the music with these settings after a settings change.",
-      "caption": "Settings changes stop playback and wait for the next Play to rebuild.",
+      "alt": "The session screen showing the message Playback settings will apply without restarting; press Play to apply them now, with the current call still visible.",
+      "caption": "Playback settings apply without restarting; press Play to apply them immediately.",
+      "status": "ready",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "id": "session-upcoming-move",
+      "alt": "The session screen while a figure is being danced, showing the UPCOMING MOVE prompt naming the next call and the beats until it starts.",
+      "caption": "While dancers execute a figure, the prompt switches to the move the caller must say next.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -129,7 +137,7 @@
     {
       "id": "prefs-open",
       "alt": "The Preferences screen with Role terms at the top, followed by role preset controls and the Instruments section.",
-      "caption": "Preferences are saved automatically; most changes apply on the next Play.",
+      "caption": "Playback settings apply without restarting; role and alias changes rebuild the call timeline.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -149,6 +157,14 @@
       "status": "ready",
       "width": 1280,
       "height": 800
+    },
+    {
+      "id": "prefs-interface",
+      "alt": "The Preferences screen showing the Theme buttons and the Interface section with Smooth animations and the keyboard shortcut reference.",
+      "caption": "Interface settings control the screen transitions and show the keyboard shortcuts.",
+      "status": "ready",
+      "width": 1280,
+      "height": 1000
     },
     {
       "id": "session-roles-applied",
@@ -204,7 +220,7 @@
       "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-instrument-accompaniment",
@@ -212,7 +228,7 @@
       "caption": "Piano is the default accompaniment; Guitar and Accordion are available.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-instrument-mix",
@@ -220,7 +236,15 @@
       "caption": "Balance the melody against the accompaniment before starting a session.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
+    },
+    {
+      "id": "prefs-accompaniment-variations",
+      "alt": "The Text to speech section showing the Vary the accompaniment on each loop checkbox and its descriptive note.",
+      "caption": "Accompaniment variations add small emphasis notes and the occasional melody-only bar.",
+      "status": "ready",
+      "width": 1280,
+      "height": 2150
     },
     {
       "id": "prefs-sf2-loaded",
@@ -228,7 +252,7 @@
       "caption": "A user-supplied SoundFont replaces the built-in instrument voices.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-sf2-removed",
@@ -236,7 +260,7 @@
       "caption": "Remove a SoundFont to return to the built-in synth.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "error-sf2",
@@ -244,7 +268,7 @@
       "caption": "An unreadable or unsupported SoundFont leaves the previous instrument setup in place.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-timing-mode",
@@ -252,23 +276,23 @@
       "caption": "Automatic lead derives the call time from the rendered words.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-timing-bounds",
-      "alt": "The Calling lead section showing Minimum and Maximum beat sliders and the Speech rate slider.",
-      "caption": "The default lead is clamped to one to five dance beats.",
+      "alt": "The Calling lead section showing Minimum speech lead and Maximum speech lead sliders, the Speech rate slider, and the 0.5 s padding note.",
+      "caption": "The speech lead is clamped to one to five beats; every call then adds 0.5 s of safety padding.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-timing-speech-rate",
-      "alt": "The Speech rate slider in the Calling lead section set to 6.5 syllables per second.",
+      "alt": "The Calling lead section with the Speech rate slider showing syllables per second and the padding note.",
       "caption": "A lower speech rate moves longer calls earlier.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-timing-rebuild",
@@ -276,7 +300,7 @@
       "caption": "Rebuild the timeline after changing lead settings if the session does not do it automatically.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "session-lead-countdown",
@@ -300,7 +324,7 @@
       "caption": "The rate applies to spoken calls and does not change the visual timing.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-tts-unavailable",
@@ -308,7 +332,7 @@
       "caption": "If the system has no speech voice, visual calls still work.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-cache-confirm",
@@ -316,7 +340,7 @@
       "caption": "Clearing the cache is a two-step action.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-cache-cleared",
@@ -324,7 +348,7 @@
       "caption": "Clearing the source cache does not remove the bundled default dance or tune.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-proxy",
@@ -332,7 +356,7 @@
       "caption": "Desktop and Android fetch sources directly; the web build can use a proxy.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "prefs-theme-light",
@@ -356,7 +380,7 @@
       "caption": "MIDI export is desktop-only in 0.1.0; clearing cache works on every platform.",
       "status": "ready",
       "width": 1280,
-      "height": 1900
+      "height": 2150
     },
     {
       "id": "error-network",

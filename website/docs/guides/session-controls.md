@@ -24,14 +24,16 @@ volume settings.
 <Shot id="transport-tempo" />
 
 Changing tempo, count-in, an instrument, a melody/accompaniment volume, or a
-SoundFont marks the music as pending and stops playback. The session master
-**Volume** applies immediately. The session shows:
+SoundFont marks the music for a rebuild. Playback settings apply without
+restarting the music: release the control and the app re-renders the loop and
+keeps the current beat. The session master **Volume** applies immediately. If
+the session is not playing, it shows:
 
 > Press Play to prepare the music with these settings.
 
-Press **Play** to render again. The app renders synchronously on that press;
+Press **Play** to render and start. The app renders synchronously on that press;
 there is no separate “preparing music” screen in 0.1.0. Role, alias, and lead
-changes rebuild the call timeline without necessarily re-rendering the music.
+changes rebuild the call timeline without re-rendering the music.
 
 ## Keyboard
 
@@ -39,6 +41,8 @@ changes rebuild the call timeline without necessarily re-rendering the music.
 - **R** restarts from the count-in.
 - **Esc** returns to the session from a picker, Preferences, or the alias
   editor.
+- **1–4** switch between Session, Select dance, Select Tune, and Preferences.
+- **Enter** starts a search from a search field or adds a custom alias.
 
 Shortcuts are ignored while a text field has focus. See
 [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
@@ -53,17 +57,19 @@ states:
 | Ready | `READY`, `Press Play to begin` | Press **Play** to build the music. |
 | Count-in | `COUNT-IN`, a large number, and either **CALL NOW** or `Listen for the first chord` | Wait for the loop, or say the first call if it is already due. |
 | Calling | `CALL NOW` | Say the words now. The line below counts down to the execute beat. |
-| Executing | `DANCING`, with `figure in progress` below | The figure is happening; the prompt is muted. |
+| Executing | `UPCOMING MOVE`, the next call, and `call in N beats` | The figure is happening; prepare to say the next call. The dance card still highlights the figure in progress. |
 | Finished | `Dance complete` | With looping off, press **Restart** to run again. |
 
-The next call is shown as **Next:** below the prompt; it is not a separate
-“upcoming” state in the current UI.
+While a figure executes, the prompt switches to the move you must say next. The
+**Next:** line remains below the prompt for the following call.
+
+<Shot id="session-upcoming-move" />
 
 <Shot id="session-call-now" />
 
 The **executes in N beats** line is the remaining lead. A short call may show
-about one beat; a long call up to five by default. See
-[Timing and lead](/docs/guides/timing-and-lead).
+about two beats; a long call up to six by default once the 0.5 s safety padding
+is included. See [Timing and lead](/docs/guides/timing-and-lead).
 
 If **Show original card text** is enabled in Preferences, the original card
 wording appears in small muted text next to the rendered call.

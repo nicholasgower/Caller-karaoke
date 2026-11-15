@@ -32,11 +32,25 @@ The session's tune summary shows the selected pair above the call prompt.
 
 The session **Volume** control is a master level applied on top of this mix.
 
+## Vary the accompaniment
+
+<Steps>
+  <Step shot="prefs-accompaniment-variations">
+    In **Preferences → Text to speech**, enable **Vary the accompaniment on
+    each loop**. The arranger adds small emphasis notes and the occasional bar
+    with melody alone.
+  </Step>
+</Steps>
+
+The variation is deterministic for a given tune and arrangement; it does not
+change the dance timing or the 64-beat loop length.
+
 ## Apply the change
 
-Instrument and volume changes mark the music as pending and stop playback. Press
-**Play** to render a new loop. Volume changes made in the session are applied
-immediately to the existing buffer; instrument changes require a rebuild.
+Instrument, volume, and accompaniment-variation changes apply without restarting
+the music. Release the control and the app re-renders the loop, keeping the
+current beat. If the session is not playing, press **Play** to render and start.
+Session **Volume** changes apply immediately to the existing buffer.
 
 ## Optional SoundFont
 

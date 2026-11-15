@@ -1,6 +1,6 @@
 ---
 title: Choosing a tune
-description: Search ABC Session Tunes by title, composer, key, meter, and genre, preview the ABC, and load a 64-beat arrangement.
+description: Search ABC Session Tunes by title, composer, key, meter, and genre, preview the sheet music or ABC, and load a 64-beat arrangement.
 sidebar_position: 2
 ---
 
@@ -43,19 +43,21 @@ accepts other values, but the UI keeps the common contra choices short.
 
 Results are ten per page; **Previous** and **Next** sit below the columns.
 
-## Preview the ABC
+## Preview the sheet music and ABC
 
 <Steps>
   <Step shot="tune-picker-preview">
     Select **Preview** on a result. The right column shows the title, composer,
-    key, meter, credits, the ABC source, and an **Open on ABC Session Tunes**
-    link. Select **Use this tune** to load it.
+    key, meter, credits, the rendered sheet music, and an **Open on ABC Session
+    Tunes** link. Use **Show ABC** to switch between the staff and the source.
+    Select **Use this tune** to load it.
   </Step>
 </Steps>
 
-
-The ABC text is displayed in a preview field. Edits are local to that field and
-do not change the loaded tune or the stored cache.
+The sheet music is engraved from the ABC by the app. The **Show ABC** view
+displays the source text in a preview field; edits there are local and do not
+change the loaded tune or the stored cache. If the engraver cannot render the
+tune, the app explains why and the ABC view remains available.
 
 ## What happens to the tune
 

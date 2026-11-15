@@ -48,13 +48,10 @@ does not rescale either one. Prefer 64-beat cards.
 
 ## Accessibility
 
-The app is keyboard-operable for Space, R, and Esc, but the accessibility tree
-is still being audited. Several search, alias, and slider controls are visually
-labelled without a formal accessible-name association. Screen-reader support is
-incomplete.
-
-The light theme is usable, but some chrome (the top tab bar and active-call
-cards) still uses dark-theme colors in 0.1.0, so contrast is uneven.
+The app is keyboard-operable for Space, R, Esc, 1–4, and Enter, but the
+accessibility tree is still being audited. Several search, alias, and slider
+controls are visually labelled without a formal accessible-name association.
+Screen-reader support is incomplete.
 
 ## Data and privacy
 

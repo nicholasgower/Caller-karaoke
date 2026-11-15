@@ -105,6 +105,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     {
         let app = harness.state_mut();
         app.audio.seek_beat(9.0);
+    }
+    capture(&mut harness, out, "session-upcoming-move")?;
+    {
+        let app = harness.state_mut();
         app.audio.pause();
     }
     capture(&mut harness, out, "session-paused")?;
@@ -130,9 +134,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         let app = harness.state_mut();
         app.prefs.role_terms =
             contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
-        app.prefs
-            .aliases
-            .set_override(contra_core::MoveKind::Swing, "swing that {actor}");
+        app.prefs.aliases.set_override(
+            contra_core::MoveKind::BalanceAndSwing,
+            "partners balance and swing with your partner",
+        );
         app.rebuild_timeline();
         app.started = true;
         app.needs_render = false;
@@ -346,6 +351,18 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     capture(&mut harness, out, "prefs-roles-custom")?;
     {
         let app = harness.state_mut();
+        app.screen = Screen::Preferences;
+        app.prefs.animations_enabled = true;
+    }
+    harness.set_size(Vec2::new(1280.0, 1000.0));
+    capture(&mut harness, out, "prefs-interface")?;
+    harness.set_size(DESKTOP);
+    {
+        let app = harness.state_mut();
+        app.prefs.animations_enabled = false;
+    }
+    {
+        let app = harness.state_mut();
         app.screen = Screen::Aliases;
         app.alias_filter.clear();
     }
@@ -372,7 +389,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     capture(&mut harness, out, "prefs-alias-reset-all")?;
 
     // Preferences sections that sit below the fold at 1280x800.
-    harness.set_size(Vec2::new(1280.0, 1900.0));
+    harness.set_size(Vec2::new(1280.0, 2150.0));
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
@@ -401,6 +418,12 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     capture(&mut harness, out, "prefs-instrument-mix")?;
     {
         let app = harness.state_mut();
+        app.prefs.accompaniment_variations = true;
+    }
+    capture(&mut harness, out, "prefs-accompaniment-variations")?;
+    {
+        let app = harness.state_mut();
+        app.prefs.accompaniment_variations = false;
         app.prefs.lead.auto = false;
     }
     capture(&mut harness, out, "prefs-timing-mode")?;

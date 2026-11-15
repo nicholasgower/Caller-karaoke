@@ -1,7 +1,7 @@
 # Documentation Website and Automated Screenshot Plan
 
-**Status:** documentation complete; 66 in-app screenshots rendered headlessly
-**Baseline:** local `main` at `e7eeef8`
+**Status:** documentation complete; 69 in-app screenshots rendered headlessly
+**Baseline:** local `main` at `8adac2f`
 **Date:** 2026-11-14
 **Owner:** docs track, running alongside app generation
 **Targets:** Docusaurus 3.10 · Node 24 LTS · `egui`/`eframe` 0.37 · `egui_kittest` 0.37 · Rust 1.95
@@ -56,9 +56,9 @@ that now exists on `main`.
 - Many inputs are not associated with their labels, and several labels repeat
   (`Preview`, `Reset to default`). The headless renderer disables the automatic
   accessibility check; a label pass remains future work.
-- The rebase was applied; `HEAD` is now `e7eeef8`. The plan below uses this
-  baseline. The `mcp` crate and `inspection` feature add a live-app automation
-  path; the docs screenshots use the separate headless binary instead.
+- The branch is rebased onto `main` at `8adac2f`. The `mcp` crate and
+  `inspection` feature add a live-app automation path; the docs screenshots use
+  the separate headless binary instead.
 
 The Docusaurus, Pages, and `egui_kittest` parts of the first draft remain
 valid. The coverage matrix and app hand-off have been corrected to match the
@@ -75,8 +75,8 @@ The first writing pass now exists under `website/`:
   themes, MIDI, troubleshooting, keyboard shortcuts, limitations, and reference
   material;
 - `<Shot>`, `<Step>`, `<Steps>`, and `<CommandStep>` MDX components;
-- a 75-entry screenshot manifest with alt text and captions;
-- 66 rendered in-app screenshots plus nine manual OS placeholders;
+- a 78-entry screenshot manifest with alt text and captions;
+- 69 rendered in-app screenshots plus nine manual OS placeholders;
 - a dependency-free manifest/docs checker (`npm run check:shots`);
 - a successful production build under `/Contra-karaoke/`.
 
@@ -184,7 +184,7 @@ real app.
 | Data | Bundled defaults + synthetic fixtures, offline | Deterministic, no network, no licensing surprises |
 | Storage | PNGs committed under `website/static/img/screens/` | Reviewable diffs, fast docs builds |
 | Instruction API | `<Step shot="id">` MDX component | Makes “instruction without screenshot” impossible |
-| App baseline | `e7eeef8`, headless renderer added | Library and `contra-headless` exist; live MCP inspection also exists |
+| App baseline | `8adac2f`, headless renderer added | Library, `contra-headless`, sheet-music preview, keyboard shortcuts, and live MCP inspection exist |
 | Manual images | Windows/Android OS dialogs only | Automating OS UI is disproportionate for three images |
 | Analytics | None | Matches app privacy rules |
 
@@ -661,7 +661,7 @@ prefs are fixed.
 {
   "schemaVersion": 1,
   "appVersion": "0.1.0",
-  "appCommit": "e7eeef8",
+  "appCommit": "8adac2f",
   "egui": "0.37.0",
   "renderer": "wgpu-vulkan-llvmpipe",
   "shots": {
@@ -1331,7 +1331,7 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 - [x] Scaffold `website/`, theme, sidebars, landing, download, privacy stub.
 - [x] Add `Shot`, `Step`, `Steps`, and `CommandStep`; `Figure` and
       `PlatformTabs` remain for the manual/platform pages.
-- [x] Author the P1 manifest with alt/caption/viewport (75 planned shots).
+- [x] Author the P1 manifest with alt/caption/viewport (78 planned shots).
 - [x] Add `check-screenshots.mjs` and `npm run check`.
 - [x] Write the first 25 user-facing pages and land a successful production
       build under `/Contra-karaoke/`.

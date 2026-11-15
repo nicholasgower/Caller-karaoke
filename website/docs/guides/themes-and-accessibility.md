@@ -20,11 +20,24 @@ colour.
   </Step>
 </Steps>
 
-The light theme uses the same structure with inverted values: a light grey page,
-near-black text, and the same muted secondary text. It is intended for bright
-rooms and projectors. In 0.1.0 some chrome still uses dark theme constants: the
-top tab bar and active-call cards can have lower contrast in light mode. This is
-a known polish issue, not a separate theme.
+The light theme uses the same structure with its own light card and text palette:
+a light grey page, near-black text, and muted secondary text. It is intended for
+bright rooms and projectors.
+
+<Shot id="main-light" />
+
+## Interface and motion
+
+<Steps>
+  <Step shot="prefs-interface">
+    Open **Preferences → Interface** to turn **Smooth animations** on or off.
+    The keyboard reference sits below the checkbox.
+  </Step>
+</Steps>
+
+Smooth animations fade and slide between screens and animate tab and highlight
+changes. Turn them off to reduce motion; the app then switches screens
+immediately. The docs site also respects `prefers-reduced-motion`.
 
 ## Touch and narrow windows
 
@@ -42,6 +55,8 @@ current UI has no separate mobile sheet; it keeps the same screen structure.
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
 - **Esc** returns to **Session** from a picker, Preferences, or the alias editor.
+- **1–4** switch tabs.
+- **Enter** submits a search or adds a custom alias.
 
 Shortcuts are ignored while a text field has focus. See
 [Keyboard shortcuts](/docs/reference/keyboard-shortcuts) for details.
@@ -62,8 +77,9 @@ added to the label pass.
 ## Motion and flashing
 
 The app does not flash or pulse the call prompt. The progress bar moves
-continuously with playback. The docs site respects `prefers-reduced-motion` and
-uses no animated screenshots.
+continuously with playback. If screen transitions are distracting, turn off
+**Smooth animations** in **Preferences → Interface**. The docs site respects
+`prefers-reduced-motion` and uses no animated screenshots.
 
 ## Text-to-speech
 

@@ -33,7 +33,8 @@ if a long call is still being spoken.
 </Steps>
 
 The TTS rate does **not** change the visual lead. If a slower voice needs more
-time, raise the maximum lead in [Timing and lead](/docs/guides/timing-and-lead).
+time, raise the maximum speech lead in
+[Timing and lead](/docs/guides/timing-and-lead).
 
 ## If no voice is available
 

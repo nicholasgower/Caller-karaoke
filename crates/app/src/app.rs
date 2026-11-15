@@ -116,6 +116,9 @@ pub struct ContraApp {
     screen_anim: f32,
     /// The screen the animation progress belongs to; a mismatch restarts it.
     screen_anim_screen: Screen,
+    /// True for `contra-headless`: ignore global shortcuts so the renderer can
+    /// hold an arbitrary screen and state.
+    headless: bool,
     dance: Dance,
     tune: Tune,
     timeline: PracticeTimeline,
@@ -239,6 +242,7 @@ impl ContraApp {
             screen: Screen::Session,
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
+            headless: false,
             dance,
             tune,
             timeline,
@@ -372,6 +376,8 @@ impl ContraApp {
         let (source_tx, source_rx): (Sender<SourceEvent>, Receiver<SourceEvent>) = channel();
         let mut prefs = Preferences::default();
         prefs.validate();
+        // Screenshot frames must not be captured mid-transition.
+        prefs.animations_enabled = false;
 
         let audio = AudioEngine::headless_clock(48_000, prefs.tempo_bpm);
         audio.set_looping(prefs.loop_enabled);
@@ -405,6 +411,7 @@ impl ContraApp {
             screen: Screen::Session,
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
+            headless: true,
             dance,
             tune,
             timeline,
@@ -821,7 +828,7 @@ impl eframe::App for ContraApp {
         theme::apply(&ctx, self.prefs.theme, self.prefs.animations_enabled);
         self.handle_source_events();
 
-        if !ctx.egui_wants_keyboard_input() {
+        if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
         }
 

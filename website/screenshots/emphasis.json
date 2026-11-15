@@ -12,71 +12,971 @@
     }
   },
   "shots": {
-    "main-idle": { "size": [1280, 800], "regions": [[266, 56, 74, 58]] },
-    "main-dance-loaded": { "size": [1280, 800], "regions": [[8, 468, 192, 72]] },
-    "main-light": { "size": [1280, 800], "regions": [[266, 56, 74, 58]] },
-    "transport-tempo": { "size": [1280, 800], "regions": [[8, 64, 172, 40]] },
-    "transport-summary": { "size": [1280, 800], "regions": [[8, 250, 625, 22]] },
-    "transport-volume": { "size": [1280, 800], "regions": [[748, 69, 172, 32]] },
-    "transport-loop-off": { "size": [1280, 800], "regions": [[495, 72, 72, 26]] },
-    "transport-tts-on": { "size": [1280, 800], "regions": [[645, 72, 104, 26]] },
-    "session-count-in": { "size": [1280, 800], "regions": [[8, 260, 343, 116]] },
-    "session-first-call": { "size": [1280, 800], "regions": [[8, 260, 343, 116]] },
-    "session-call-now": { "size": [1280, 800], "regions": [[8, 260, 560, 142]] },
-    "session-lead-countdown": { "size": [1280, 800], "regions": [[20, 352, 180, 24]] },
-    "session-paused": { "size": [1280, 800], "regions": [[340, 56, 68, 58]] },
-    "session-finished": { "size": [1280, 800], "regions": [[8, 260, 227, 78]] },
-    "session-changes-pending": { "size": [1280, 800], "regions": [[8, 119, 420, 22]] },
-    "session-length-warning": { "size": [1280, 800], "regions": [[8, 119, 670, 22]] },
-    "session-roles-applied": { "size": [1280, 800], "regions": [[20, 296, 550, 60]] },
-    "session-alias-call": { "size": [1280, 800], "regions": [[20, 296, 550, 60]] },
-    "main-mobile": { "size": [390, 844], "regions": [[275, 112, 56, 34]] },
-    "session-mobile-controls": { "size": [390, 844], "regions": [[8, 448, 332, 176]] },
-    "dance-picker-open": { "size": [1280, 800], "regions": [[128, 144, 278, 37]] },
-    "dance-picker-search": { "size": [1280, 800], "regions": [[8, 626, 250, 65]] },
-    "dance-picker-preview": { "size": [1280, 800], "regions": [[636, 180, 630, 300]] },
-    "dance-sort": { "size": [1280, 800], "regions": [[128, 528, 110, 37]] },
-    "dance-pagination": { "size": [1280, 1050], "regions": [[8, 793, 220, 37]] },
-    "dance-preview-beats": { "size": [1280, 800], "regions": [[645, 240, 160, 18]] },
-    "dance-filter-user": { "size": [1280, 800], "regions": [[128, 240, 278, 37]] },
-    "dance-filter-hook": { "size": [1280, 800], "regions": [[128, 288, 278, 37]] },
-    "dance-filter-figure-type": { "size": [1280, 800], "regions": [[128, 384, 110, 37]] },
-    "error-dance-load": { "size": [1280, 800], "regions": [[8, 764, 300, 30]] },
-    "tune-picker-open": { "size": [1280, 800], "regions": [[92, 145, 278, 37]] },
-    "tune-picker-preview": { "size": [1280, 800], "regions": [[636, 180, 630, 300]] },
-    "tune-search": { "size": [1280, 800], "regions": [[8, 440, 230, 63]] },
-    "tune-filter-key": { "size": [1280, 800], "regions": [[92, 240, 128, 37]] },
-    "tune-filter-meter": { "size": [1280, 800], "regions": [[92, 288, 115, 37]] },
-    "tune-filter-genre": { "size": [1280, 800], "regions": [[92, 336, 118, 37]] },
-    "error-tune-load": { "size": [1280, 800], "regions": [[8, 764, 300, 30]] },
-    "prefs-open": { "size": [1280, 800], "regions": [[8, 119, 965, 22]] },
-    "prefs-roles-presets": { "size": [1280, 800], "regions": [[8, 188, 135, 37]] },
-    "prefs-roles-custom": { "size": [1280, 800], "regions": [[8, 232, 400, 165]] },
-    "prefs-theme-light": { "size": [1280, 1000], "regions": [[8, 792, 140, 36]] },
-    "prefs-alias-list": { "size": [1280, 800], "regions": [[8, 197, 1264, 107]] },
-    "prefs-alias-editor": { "size": [1280, 800], "regions": [[20, 247, 1245, 38]] },
-    "prefs-alias-placeholders": { "size": [1280, 800], "regions": [[8, 112, 925, 22]] },
-    "prefs-alias-custom": { "size": [1280, 800], "regions": [[8, 225, 560, 80]] },
-    "prefs-alias-reset": { "size": [1280, 800], "regions": [[8, 290, 148, 25]] },
-    "prefs-alias-reset-all": { "size": [1280, 800], "regions": [[340, 145, 145, 37]] },
-    "prefs-instrument-melody": { "size": [1280, 1900], "regions": [[130, 555, 104, 36]] },
-    "prefs-instrument-accompaniment": { "size": [1280, 1900], "regions": [[130, 603, 104, 36]] },
-    "prefs-instrument-mix": { "size": [1280, 1900], "regions": [[104, 648, 270, 92]] },
-    "prefs-timing-mode": { "size": [1280, 1900], "regions": [[8, 893, 260, 24]] },
-    "prefs-timing-bounds": { "size": [1280, 1900], "regions": [[8, 928, 240, 75]] },
-    "prefs-timing-speech-rate": { "size": [1280, 1900], "regions": [[8, 1000, 260, 38]] },
-    "prefs-timing-rebuild": { "size": [1280, 1900], "regions": [[8, 1040, 132, 34]] },
-    "prefs-tts-rate": { "size": [1280, 1900], "regions": [[8, 1232, 160, 36]] },
-    "prefs-tts-unavailable": { "size": [1280, 1900], "regions": [[8, 1256, 360, 22]] },
-    "prefs-sf2-loaded": { "size": [1280, 1900], "regions": [[8, 1436, 200, 100]] },
-    "prefs-sf2-removed": { "size": [1280, 1900], "regions": [[8, 1476, 180, 22]] },
-    "error-sf2": { "size": [1280, 1900], "regions": [[8, 1436, 500, 130]] },
-    "prefs-cache-confirm": { "size": [1280, 1900], "regions": [[8, 1758, 300, 40]] },
-    "prefs-cache-cleared": { "size": [1280, 1900], "regions": [[8, 1734, 300, 80]] },
-    "prefs-proxy": { "size": [1280, 1900], "regions": [[8, 1596, 370, 112]] },
-    "prefs-maintenance": { "size": [1280, 1900], "regions": [[8, 1734, 300, 80]] },
-    "error-network": { "size": [1280, 800], "regions": [[8, 764, 300, 30]] },
-    "error-parse": { "size": [1280, 800], "regions": [[8, 764, 360, 30]] },
-    "error-audio": { "size": [1280, 800], "regions": [[8, 112, 340, 22]] }
+    "main-idle": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          266,
+          56,
+          74,
+          58
+        ]
+      ]
+    },
+    "main-dance-loaded": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          468,
+          192,
+          72
+        ]
+      ]
+    },
+    "main-light": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          266,
+          56,
+          74,
+          58
+        ]
+      ]
+    },
+    "transport-tempo": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          64,
+          172,
+          40
+        ]
+      ]
+    },
+    "transport-summary": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          250,
+          625,
+          22
+        ]
+      ]
+    },
+    "transport-volume": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          748,
+          69,
+          172,
+          32
+        ]
+      ]
+    },
+    "transport-loop-off": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          495,
+          72,
+          72,
+          26
+        ]
+      ]
+    },
+    "transport-tts-on": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          645,
+          72,
+          104,
+          26
+        ]
+      ]
+    },
+    "session-count-in": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          260,
+          343,
+          116
+        ]
+      ]
+    },
+    "session-first-call": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          260,
+          343,
+          116
+        ]
+      ]
+    },
+    "session-call-now": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          260,
+          560,
+          142
+        ]
+      ]
+    },
+    "session-lead-countdown": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          20,
+          352,
+          180,
+          24
+        ]
+      ]
+    },
+    "session-upcoming-move": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          260,
+          440,
+          130
+        ]
+      ]
+    },
+    "session-paused": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          340,
+          56,
+          68,
+          58
+        ]
+      ]
+    },
+    "session-finished": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          260,
+          227,
+          78
+        ]
+      ]
+    },
+    "session-changes-pending": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          120,
+          700,
+          22
+        ]
+      ]
+    },
+    "session-length-warning": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          119,
+          670,
+          22
+        ]
+      ]
+    },
+    "session-roles-applied": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          20,
+          292,
+          700,
+          66
+        ]
+      ]
+    },
+    "session-alias-call": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          20,
+          292,
+          700,
+          66
+        ]
+      ]
+    },
+    "main-mobile": {
+      "size": [
+        390,
+        844
+      ],
+      "regions": [
+        [
+          275,
+          112,
+          56,
+          34
+        ]
+      ]
+    },
+    "session-mobile-controls": {
+      "size": [
+        390,
+        844
+      ],
+      "regions": [
+        [
+          8,
+          448,
+          332,
+          176
+        ]
+      ]
+    },
+    "dance-picker-open": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          128,
+          154,
+          278,
+          37
+        ]
+      ]
+    },
+    "dance-picker-search": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          636,
+          250,
+          65
+        ]
+      ]
+    },
+    "dance-picker-preview": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          636,
+          190,
+          630,
+          300
+        ]
+      ]
+    },
+    "dance-sort": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          128,
+          538,
+          110,
+          37
+        ]
+      ]
+    },
+    "dance-pagination": {
+      "size": [
+        1280,
+        1050
+      ],
+      "regions": [
+        [
+          8,
+          803,
+          220,
+          37
+        ]
+      ]
+    },
+    "dance-preview-beats": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          645,
+          250,
+          160,
+          18
+        ]
+      ]
+    },
+    "dance-filter-user": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          128,
+          250,
+          278,
+          37
+        ]
+      ]
+    },
+    "dance-filter-hook": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          128,
+          298,
+          278,
+          37
+        ]
+      ]
+    },
+    "dance-filter-figure-type": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          128,
+          394,
+          110,
+          37
+        ]
+      ]
+    },
+    "error-dance-load": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          764,
+          300,
+          30
+        ]
+      ]
+    },
+    "tune-picker-open": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          92,
+          155,
+          278,
+          37
+        ]
+      ]
+    },
+    "tune-picker-preview": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          636,
+          430,
+          630,
+          340
+        ]
+      ]
+    },
+    "tune-search": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          450,
+          230,
+          63
+        ]
+      ]
+    },
+    "tune-filter-key": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          92,
+          250,
+          128,
+          37
+        ]
+      ]
+    },
+    "tune-filter-meter": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          92,
+          298,
+          115,
+          37
+        ]
+      ]
+    },
+    "tune-filter-genre": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          92,
+          346,
+          118,
+          37
+        ]
+      ]
+    },
+    "error-tune-load": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          764,
+          300,
+          30
+        ]
+      ]
+    },
+    "prefs-open": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          119,
+          965,
+          22
+        ]
+      ]
+    },
+    "prefs-roles-presets": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          188,
+          135,
+          37
+        ]
+      ]
+    },
+    "prefs-roles-custom": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          232,
+          400,
+          165
+        ]
+      ]
+    },
+    "prefs-interface": {
+      "size": [
+        1280,
+        1000
+      ],
+      "regions": [
+        [
+          8,
+          845,
+          700,
+          105
+        ]
+      ]
+    },
+    "prefs-theme-light": {
+      "size": [
+        1280,
+        1000
+      ],
+      "regions": [
+        [
+          8,
+          770,
+          140,
+          36
+        ]
+      ]
+    },
+    "prefs-alias-list": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          197,
+          1264,
+          107
+        ]
+      ]
+    },
+    "prefs-alias-editor": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          20,
+          247,
+          1245,
+          38
+        ]
+      ]
+    },
+    "prefs-alias-placeholders": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          112,
+          925,
+          22
+        ]
+      ]
+    },
+    "prefs-alias-custom": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          225,
+          560,
+          80
+        ]
+      ]
+    },
+    "prefs-alias-reset": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          290,
+          148,
+          25
+        ]
+      ]
+    },
+    "prefs-alias-reset-all": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          340,
+          145,
+          145,
+          37
+        ]
+      ]
+    },
+    "prefs-instrument-melody": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          130,
+          552,
+          104,
+          34
+        ]
+      ]
+    },
+    "prefs-instrument-accompaniment": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          130,
+          602,
+          104,
+          34
+        ]
+      ]
+    },
+    "prefs-instrument-mix": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          104,
+          650,
+          270,
+          82
+        ]
+      ]
+    },
+    "prefs-accompaniment-variations": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1585,
+          480,
+          50
+        ]
+      ]
+    },
+    "prefs-timing-mode": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1037,
+          260,
+          24
+        ]
+      ]
+    },
+    "prefs-timing-bounds": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1086,
+          240,
+          78
+        ]
+      ]
+    },
+    "prefs-timing-speech-rate": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1178,
+          260,
+          34
+        ]
+      ]
+    },
+    "prefs-timing-rebuild": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1245,
+          132,
+          36
+        ]
+      ]
+    },
+    "prefs-tts-rate": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1402,
+          160,
+          34
+        ]
+      ]
+    },
+    "prefs-tts-unavailable": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1428,
+          360,
+          22
+        ]
+      ]
+    },
+    "prefs-sf2-loaded": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1700,
+          200,
+          80
+        ]
+      ]
+    },
+    "prefs-sf2-removed": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1738,
+          180,
+          22
+        ]
+      ]
+    },
+    "error-sf2": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1700,
+          500,
+          90
+        ]
+      ]
+    },
+    "prefs-cache-confirm": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1998,
+          300,
+          35
+        ]
+      ]
+    },
+    "prefs-cache-cleared": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1950,
+          300,
+          85
+        ]
+      ]
+    },
+    "prefs-proxy": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1810,
+          370,
+          80
+        ]
+      ]
+    },
+    "prefs-maintenance": {
+      "size": [
+        1280,
+        2150
+      ],
+      "regions": [
+        [
+          8,
+          1950,
+          300,
+          85
+        ]
+      ]
+    },
+    "error-network": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          764,
+          300,
+          30
+        ]
+      ]
+    },
+    "error-parse": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          764,
+          360,
+          30
+        ]
+      ]
+    },
+    "error-audio": {
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          8,
+          120,
+          340,
+          22
+        ]
+      ]
+    }
   }
 }

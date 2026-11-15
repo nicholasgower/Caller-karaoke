@@ -48,15 +48,18 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const emphasis = JSON.parse(fs.readFileSync(emphasisPath, 'utf8'));
 if (emphasis.schemaVersion !== 1) fail('emphasis.json: schemaVersion must be 1');
 
-const ready = manifest.shots.filter((shot) => shot.status === 'ready');
-const readyIds = new Set(ready.map((shot) => shot.id));
+const manifestIds = new Set(manifest.shots.map((shot) => shot.id));
+const rendered = manifest.shots.filter((shot) =>
+  fs.existsSync(path.join(rawDir, `${shot.id}.png`)),
+);
+const renderedIds = new Set(rendered.map((shot) => shot.id));
 const configured = new Set(Object.keys(emphasis.shots ?? {}));
 
-for (const id of readyIds) {
-  if (!configured.has(id)) fail(`emphasis.json has no region for ready shot "${id}"`);
+for (const id of renderedIds) {
+  if (!configured.has(id)) fail(`emphasis.json has no region for rendered shot "${id}"`);
 }
 for (const id of configured) {
-  if (!readyIds.has(id)) fail(`emphasis.json names "${id}", which is not a ready shot`);
+  if (!manifestIds.has(id)) fail(`emphasis.json names "${id}", which is not in the manifest`);
 }
 
 const style = emphasis.style ?? {};
@@ -68,7 +71,7 @@ const shadow = style.shadow ?? {color: '#000000', opacity: 55, distance: 0, size
 fs.mkdirSync(outDir, {recursive: true});
 
 let annotated = 0;
-for (const shot of ready) {
+for (const shot of rendered) {
   const entry = emphasis.shots[shot.id];
   const source = path.join(rawDir, `${shot.id}.png`);
   if (!fs.existsSync(source)) {

@@ -35,11 +35,12 @@ words          = word count
 speech_seconds = syllables / syllables_per_second
                + (words - 1) × word_gap_seconds
                + extra_pause_seconds
-lead_beats     = clamp(
-                   (speech_seconds / seconds_per_dance_beat) × lead_scale,
-                   min_lead_beats,
-                   max_lead_beats
-                 )
+speech_lead_beats = clamp(
+                      (speech_seconds / seconds_per_dance_beat) × lead_scale,
+                      min_lead_beats,
+                      max_lead_beats
+                    )
+lead_beats = speech_lead_beats + 0.5 s (converted to dance beats)
 call_start_beat = execute_beat - lead_beats
 ```
 
@@ -51,23 +52,25 @@ Defaults:
 | word gap | 0.0 s | No |
 | extra pause | 0.0 s | No |
 | lead scale | 1.0 | No |
-| minimum lead | 1.0 beat | Yes |
-| maximum lead | 5.0 beats | Yes |
+| minimum speech lead | 1.0 beat | Yes |
+| maximum speech lead | 5.0 beats | Yes |
 | manual lead | 1.5 beats | Yes, when automatic is off |
+| safety padding | 0.5 s | No |
 
-The maximum can be raised to 6.0 beats for learning sessions or slower TTS
-voices. The defaults are calibrated from a measured 2.25 s delivery of the
-nine-syllable call “larks allemande left once and a half”, which is 4.5 beats
-at 240 BPM.
+The maximum speech lead can be raised to 6.0 beats for learning sessions or
+slower TTS voices. Every call adds the flat 0.5 s padding after the clamp. The
+defaults are calibrated from a measured 2.25 s delivery of the nine-syllable
+call “larks allemande left once and a half”, which is 4.5 beats of speech plus
+1 beat of padding at 240 BPM.
 
 ## Worked examples at 240 BPM
 
-| Call | Lead | Call starts |
-| --- | ---: | ---: |
-| `swing` | 1.0 beat | 0.5 s before the move |
-| `circle left three` | 2.0 beats | 1.0 s before the move |
-| `neighbors do-si-do once` | 3.0 beats | 1.5 s before the move |
-| `larks allemande left once and a half` | 4.5 beats | 2.25 s before the move |
+| Call | Speech lead | Total lead | Call starts |
+| --- | ---: | ---: | ---: |
+| `swing` | 1.0 beat | 2.0 beats | 1.0 s before the move |
+| `circle left three` | 2.0 beats | 3.0 beats | 1.5 s before the move |
+| `neighbors do-si-do once` | 3.0 beats | 4.0 beats | 2.0 s before the move |
+| `larks allemande left once and a half` | 4.5 beats | 5.5 beats | 2.75 s before the move |
 
 These values are illustrative and depend on the current alias text. The
 application computes the real values from the rendered words.
@@ -91,8 +94,9 @@ call start can be before beat 0:
 
 ```
 first execute beat = 0
-first lead         = 2 beats
-first call start   = -2 beats
+first speech lead  = 2 beats
+first padding      = 1 beat (0.5 s at 240 BPM)
+first call start   = -3 beats
 ```
 
 The count-in is not a clamp. The app shows and speaks the first call during the
@@ -115,7 +119,7 @@ fit, otherwise the parts are split evenly.
 
 Calls are sorted by call start beat, then by execute beat. The application does
 not reorder figures to hide an overlap. If two calls crowd each other, the
-answer is a shorter alias, a lower maximum lead, or a slower tempo.
+answer is a shorter alias, a lower maximum speech lead, or a slower tempo.
 
 ## The 64-beat grid
 

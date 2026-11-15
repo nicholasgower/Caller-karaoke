@@ -21,8 +21,9 @@ rendered words.
 
 <Steps>
   <Step shot="prefs-timing-bounds">
-    Adjust **Minimum** and **Maximum** in beats. The defaults are 1.0 and 5.0.
-    The maximum can be raised to 6.0 for learning sessions or slow voices.
+    Adjust **Minimum speech lead** and **Maximum speech lead** in beats. The
+    defaults are 1.0 and 5.0. The maximum can be raised to 6.0 for learning
+    sessions or slow voices.
   </Step>
   <Step shot="prefs-timing-speech-rate">
     Adjust **Speech rate** in syllables per second. The default is 4.0. A lower
@@ -36,18 +37,21 @@ The automatic lead uses:
 speech_seconds = syllables / speech_rate
                + (words - 1) × word_gap
                + extra_pause
-lead_beats    = clamp(
-                  speech_seconds / seconds_per_dance_beat × lead_scale,
-                  min_beats,
-                  max_beats
-                )
+speech_lead_beats = clamp(
+                      speech_seconds / seconds_per_dance_beat × lead_scale,
+                      min_beats,
+                      max_beats
+                    )
+lead_beats = speech_lead_beats + 0.5 s (converted to dance beats)
 ```
 
 Only speech rate, minimum, and maximum are exposed in the UI. The word gap and
-extra pause are fixed at 0.0, and the lead scale at 1.0.
+extra pause are fixed at 0.0, and the lead scale at 1.0. Every call also gets a
+flat **0.5 s safety padding** after the speech-lead clamp.
 
 The default is calibrated from a measured 2.25 s delivery of the nine-syllable
-call “larks allemande left once and a half”. At 240 BPM that is 4.5 beats.
+call “larks allemande left once and a half”. At 240 BPM that is 4.5 beats of
+speech plus 1 beat of padding, so the call starts 5.5 beats before the move.
 
 ## Manual lead
 
@@ -77,9 +81,10 @@ render and start.
   </Step>
 </Steps>
 
-A short call such as `swing` will get close to the 1-beat minimum. A longer
-phrase will approach the 5-beat default maximum. If you raise the maximum to 6,
-long calls can start earlier.
+A short call such as `swing` gets the 1-beat minimum speech lead plus the 1-beat
+padding at 240 BPM, so it starts about two beats early. A longer phrase
+approaches the 5-beat default maximum plus padding. If you raise the maximum to
+6, long calls can start even earlier.
 
 ## The first call can be negative
 

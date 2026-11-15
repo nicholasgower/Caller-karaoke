@@ -10,8 +10,9 @@ what to say, while a band-style arrangement of an ABC tune plays underneath.
 
 The important difference from a metronome is **lead time**. Every call is placed
 before the beat where the dancers execute the figure. The amount of lead comes
-from the rendered words themselves: a short `swing` starts one beat early, a
-longer phrase such as `neighbors do-si-do once` starts around three beats early.
+from the rendered words themselves, plus a flat 0.5 s safety padding: a short
+`swing` starts about two beats early, a longer phrase such as
+`neighbors do-si-do once` starts about four beats early.
 
 <Shot id="main-idle" />
 
