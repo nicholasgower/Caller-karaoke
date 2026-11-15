@@ -72,6 +72,14 @@ impl Screen {
     }
 }
 
+/// Keys that select the top-row tabs, in tab order.
+const TAB_KEYS: [egui::Key; 4] = [
+    egui::Key::Num1,
+    egui::Key::Num2,
+    egui::Key::Num3,
+    egui::Key::Num4,
+];
+
 /// Map the number-key tab shortcuts to screens.
 fn screen_for_tab_key(key: egui::Key) -> Option<Screen> {
     match key {
@@ -81,6 +89,18 @@ fn screen_for_tab_key(key: egui::Key) -> Option<Screen> {
         egui::Key::Num4 => Some(Screen::Preferences),
         _ => None,
     }
+}
+
+/// The screen selected by a tab shortcut pressed this frame, if any.
+///
+/// The key must actually have been pressed: resolving the first key in
+/// [`TAB_KEYS`] regardless of input would pin the app to the session screen
+/// every frame and undo any click on another tab.
+fn tab_shortcut(input: &egui::InputState) -> Option<Screen> {
+    TAB_KEYS
+        .into_iter()
+        .find(|key| input.key_pressed(*key))
+        .and_then(screen_for_tab_key)
 }
 
 pub struct ContraApp {
@@ -256,19 +276,11 @@ impl ContraApp {
     /// field never triggers play, restart, or a tab change.
     fn handle_shortcuts(&mut self, ui: &egui::Ui) {
         let (space, restart, escape, tab) = ui.input(|input| {
-            let tab = [
-                egui::Key::Num1,
-                egui::Key::Num2,
-                egui::Key::Num3,
-                egui::Key::Num4,
-            ]
-            .into_iter()
-            .find_map(screen_for_tab_key);
             (
                 input.key_pressed(egui::Key::Space),
                 input.key_pressed(egui::Key::R),
                 input.key_pressed(egui::Key::Escape),
-                tab,
+                tab_shortcut(input),
             )
         });
 
@@ -1032,6 +1044,46 @@ mod tests {
         );
         assert_eq!(screen_for_tab_key(egui::Key::Num5), None);
         assert_eq!(screen_for_tab_key(egui::Key::Space), None);
+    }
+
+    /// Run one egui frame with `raw_input` and read the tab shortcut it saw.
+    fn tab_shortcut_for(raw_input: egui::RawInput) -> Option<Screen> {
+        let ctx = egui::Context::default();
+        let mut screen = None;
+        let mut output = ctx.run_ui(raw_input, |ui| {
+            screen = ui.input(tab_shortcut);
+        });
+        output.textures_delta.clear();
+        screen
+    }
+
+    fn key_press(key: egui::Key) -> egui::RawInput {
+        egui::RawInput {
+            events: vec![egui::Event::Key {
+                key,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn tab_shortcuts_only_fire_for_a_pressed_key() {
+        // No input must not select a tab; otherwise the screen snaps back to
+        // the session on the next frame and tab clicks appear to do nothing.
+        assert_eq!(tab_shortcut_for(egui::RawInput::default()), None);
+        assert_eq!(
+            tab_shortcut_for(key_press(egui::Key::Num2)),
+            Some(Screen::DancePicker)
+        );
+        assert_eq!(
+            tab_shortcut_for(key_press(egui::Key::Num4)),
+            Some(Screen::Preferences)
+        );
+        assert_eq!(tab_shortcut_for(key_press(egui::Key::Num5)), None);
     }
 
     #[test]
