@@ -1,0 +1,237 @@
+//! Persisted application preferences.
+
+use serde::{Deserialize, Serialize};
+
+use crate::alias::AliasTable;
+use crate::dance::SourceRef;
+use crate::roles::RoleTerms;
+use crate::time::Tempo;
+use crate::timing::LeadSettings;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MelodyInstrument {
+    #[default]
+    Fiddle,
+    Accordion,
+}
+
+impl MelodyInstrument {
+    pub const ALL: [Self; 2] = [Self::Fiddle, Self::Accordion];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Fiddle => "Fiddle",
+            Self::Accordion => "Accordion",
+        }
+    }
+
+    /// General MIDI program number (zero-based) used with a loaded soundfont.
+    pub fn gm_program(self) -> u8 {
+        match self {
+            Self::Fiddle => 40,    // Violin
+            Self::Accordion => 21, // Accordion
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AccompanimentInstrument {
+    #[default]
+    Piano,
+    Guitar,
+    Accordion,
+}
+
+impl AccompanimentInstrument {
+    pub const ALL: [Self; 3] = [Self::Piano, Self::Guitar, Self::Accordion];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Piano => "Piano",
+            Self::Guitar => "Guitar",
+            Self::Accordion => "Accordion",
+        }
+    }
+
+    /// General MIDI program number (zero-based) used with a loaded soundfont.
+    pub fn gm_program(self) -> u8 {
+        match self {
+            Self::Piano => 0,      // Acoustic Grand Piano
+            Self::Guitar => 25,    // Acoustic Guitar (steel)
+            Self::Accordion => 21, // Accordion
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Theme {
+    #[default]
+    Dark,
+    Light,
+}
+
+impl Theme {
+    pub const ALL: [Self; 2] = [Self::Dark, Self::Light];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Dark => "Dark",
+            Self::Light => "Light",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SoundFontSetting {
+    /// Display name, usually the file stem.
+    pub name: String,
+    /// Native/Android path. Web builds may keep the file only in memory.
+    #[serde(default)]
+    pub path: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Preferences {
+    pub schema_version: u32,
+    pub role_terms: RoleTerms,
+    pub aliases: AliasTable,
+    pub melody: MelodyInstrument,
+    pub accompaniment: AccompanimentInstrument,
+    pub theme: Theme,
+    pub lead: LeadSettings,
+    pub tempo_bpm: f64,
+    pub tts_enabled: bool,
+    pub tts_rate: f32,
+    pub loop_enabled: bool,
+    pub count_in_enabled: bool,
+    pub show_original: bool,
+    pub melody_volume: f32,
+    pub accompaniment_volume: f32,
+    pub master_volume: f32,
+    pub soundfont: Option<SoundFontSetting>,
+    pub web_proxy_url: Option<String>,
+    pub web_proxy_token: Option<String>,
+    pub last_dance: Option<SourceRef>,
+    pub last_tune: Option<SourceRef>,
+}
+
+impl Default for Preferences {
+    fn default() -> Self {
+        Self {
+            schema_version: 1,
+            role_terms: RoleTerms::default(),
+            aliases: AliasTable::default(),
+            melody: MelodyInstrument::default(),
+            accompaniment: AccompanimentInstrument::default(),
+            theme: Theme::default(),
+            lead: LeadSettings::default(),
+            tempo_bpm: Tempo::DEFAULT_BPM,
+            tts_enabled: false,
+            tts_rate: 1.0,
+            loop_enabled: true,
+            count_in_enabled: true,
+            show_original: false,
+            melody_volume: 0.75,
+            accompaniment_volume: 0.65,
+            master_volume: 0.8,
+            soundfont: None,
+            web_proxy_url: None,
+            web_proxy_token: None,
+            last_dance: None,
+            last_tune: None,
+        }
+    }
+}
+
+impl Preferences {
+    pub fn tempo(&self) -> Tempo {
+        Tempo::new(self.tempo_bpm)
+    }
+
+    /// Clamp values that came from a preference file or a UI control.
+    pub fn validate(&mut self) {
+        if self.schema_version == 0 {
+            self.schema_version = 1;
+        }
+        self.lead.validate();
+        self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
+        self.tts_rate = self.tts_rate.clamp(0.5, 2.0);
+        self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
+        self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
+        self.master_volume = self.master_volume.clamp(0.0, 2.0);
+        if self.web_proxy_url.as_deref().is_some_and(str::is_empty) {
+            self.web_proxy_url = None;
+        }
+        if self.web_proxy_token.as_deref().is_some_and(str::is_empty) {
+            self.web_proxy_token = None;
+        }
+    }
+
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
+    }
+
+    pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
+        let mut prefs: Self = serde_json::from_str(json)?;
+        prefs.validate();
+        Ok(prefs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_match_product_spec() {
+        let prefs = Preferences::default();
+        assert_eq!(prefs.role_terms.left_plural, "larks");
+        assert_eq!(prefs.role_terms.right_plural, "robins");
+        assert_eq!(prefs.melody, MelodyInstrument::Fiddle);
+        assert_eq!(prefs.accompaniment, AccompanimentInstrument::Piano);
+        assert_eq!(prefs.theme, Theme::Dark);
+        assert_eq!(prefs.tempo_bpm, 240.0);
+        assert!(prefs.loop_enabled);
+        assert!(prefs.count_in_enabled);
+        assert!(!prefs.tts_enabled);
+    }
+
+    #[test]
+    fn clamps_bad_values() {
+        let mut prefs = Preferences::default();
+        prefs.tempo_bpm = 10_000.0;
+        prefs.melody_volume = 99.0;
+        prefs.lead.syllables_per_second = 0.0;
+        prefs.validate();
+        assert_eq!(prefs.tempo_bpm, Tempo::MAX_BPM);
+        assert_eq!(prefs.melody_volume, 2.0);
+        assert!(prefs.lead.syllables_per_second >= 0.5);
+    }
+
+    #[test]
+    fn json_round_trip() {
+        let mut prefs = Preferences::default();
+        prefs.tts_enabled = true;
+        prefs.tempo_bpm = 220.0;
+        prefs
+            .aliases
+            .set_override(crate::alias::MoveKind::Swing, "swing it");
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(prefs, restored);
+    }
+
+    #[test]
+    fn missing_fields_use_defaults() {
+        let prefs = Preferences::from_json("{}").expect("deserialize");
+        assert_eq!(prefs, Preferences::default());
+    }
+
+    #[test]
+    fn instrument_gm_programs_are_sensible() {
+        assert_eq!(MelodyInstrument::Fiddle.gm_program(), 40);
+        assert_eq!(AccompanimentInstrument::Piano.gm_program(), 0);
+        assert_eq!(AccompanimentInstrument::Guitar.gm_program(), 25);
+    }
+}
