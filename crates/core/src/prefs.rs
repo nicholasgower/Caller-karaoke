@@ -181,7 +181,7 @@ pub enum PercussionRhythm {
     DoubleTime,
     /// A swung long-short feel.
     Shuffle,
-    /// A long-short-short gallop.
+    /// A one-and-a triplet gallop.
     Gallop,
     /// Alternating accents in steady eighth notes.
     Train,
