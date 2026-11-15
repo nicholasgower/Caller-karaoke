@@ -26,6 +26,7 @@ message in Preferences.
 | SoundFont loading is unavailable | The browser and Android builds cannot load `.sf2` in 0.1.0; they play the bundled Fluid R3 GM subset. |
 | MIDI export is unavailable | Export is desktop-only in 0.1.0; the browser and Android builds report the limitation. |
 | A card does not total 64 beats | The card is allowed; the music keeps its 64-beat grid. Check the preview total. |
+| The window opens behind other windows | The app asks for the keyboard focus once the window is painted, so it normally comes up in front. If the desktop still keeps it in the background, click the window or pick it from the taskbar. |
 
 ## Source errors
 
@@ -93,6 +94,12 @@ loaded. Choose **Use bundled** and try a different file.
 <Shot id="error-sf2" />
 
 ## Window and displays
+
+Contra Karaoke asks for the keyboard focus when it starts, so it opens in front
+of the program that launched it: the window is shown only after its first frame
+is painted, and an explicit focus request keeps it from appearing behind the
+terminal or file manager. The request is made during startup only; if you move
+to another window, the app does not take the focus back.
 
 Contra Karaoke keeps its logical window size when you drag it between monitors
 with different display scaling, so the controls and the dance card stay the size

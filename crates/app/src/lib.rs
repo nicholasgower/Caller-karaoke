@@ -25,7 +25,12 @@ pub fn run_desktop() -> eframe::Result {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_inner_size([1120.0, 780.0])
             .with_min_inner_size([360.0, 560.0])
-            .with_title("Contra Karaoke"),
+            .with_title("Contra Karaoke")
+            // Ask to be the focused window at launch. eframe shows the window
+            // only after the first frame, which on its own can open it behind
+            // the program that launched it; `window::LaunchFocus` requests the
+            // focus again once the window is on screen.
+            .with_active(true),
         ..Default::default()
     };
     eframe::run_native(
