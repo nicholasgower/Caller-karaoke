@@ -258,8 +258,10 @@ mod tests {
 
     #[test]
     fn migrates_v1_lead_defaults_to_measured_calibration() {
-        let mut old = Preferences::default();
-        old.schema_version = 1;
+        let mut old = Preferences {
+            schema_version: 1,
+            ..Preferences::default()
+        };
         old.lead.syllables_per_second = 6.5;
         old.lead.max_beats = 2.0;
         old.lead.word_gap_seconds = 0.04;
@@ -276,8 +278,10 @@ mod tests {
 
     #[test]
     fn migration_preserves_custom_lead_values() {
-        let mut old = Preferences::default();
-        old.schema_version = 1;
+        let mut old = Preferences {
+            schema_version: 1,
+            ..Preferences::default()
+        };
         old.lead.min_beats = 2.0;
         old.lead.syllables_per_second = 7.25;
         let json = old.to_json().expect("serialize");
