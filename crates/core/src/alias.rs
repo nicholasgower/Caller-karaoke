@@ -231,7 +231,7 @@ impl MoveKind {
             MoveKind::LongLines => "long lines forward and back",
             MoveKind::Hey => "hey",
             MoveKind::DolphinHey => "dolphin hey",
-            MoveKind::Gyre => "{actor} gyre",
+            MoveKind::Gyre => "right shoulder round",
             MoveKind::Promenade => "promenade",
             MoveKind::RightLeftThrough => "right and left through",
             MoveKind::PassThrough => "pass through",
@@ -772,6 +772,17 @@ mod tests {
             aliases.render("partners swing", &roles).text,
             "swing your partner"
         );
+    }
+
+    #[test]
+    fn gypsy_renders_as_right_shoulder_round() {
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        assert_eq!(
+            aliases.render("neighbors gypsy", &roles).text,
+            "right shoulder round"
+        );
+        assert_eq!(classify("neighbors gypsy").kind, MoveKind::Gyre);
     }
 
     #[test]
