@@ -51,7 +51,8 @@ The same Rust codebase targets Windows, Linux, the web (WASM), and Android.
 | Theme | Dark grey by default; light grey option |
 | Version until further notice | **0.1.0** |
 | Windows packaging | Inno Setup installer + portable ZIP |
-| Nightly releases | Every push to `main`, dated tags plus a rolling `nightly` release |
+| Nightly releases | Every push to `dev`, dated tags plus a rolling `nightly` release |
+| Branching | Feature work merges into `dev`; `main` advances only for releases |
 
 The default dance is **Another Last Dance** (ContraDB dance 2409).
 The default tune is **Sandy Boys** (ABC Session Tunes tune 75815).
@@ -834,7 +835,7 @@ Notes:
 
 ### 9.2 CI
 
-**`ci.yml`** on pull requests and pushes:
+**`ci.yml`** on pull requests and pushes to `main` or `dev`:
 
 - `cargo fmt --all --check`
 - `cargo clippy --workspace --all-targets -- -D warnings`
@@ -844,7 +845,7 @@ Notes:
 - `cargo deny check` with an allowlist of permissive licenses
 - `cargo machete`
 
-**`nightly.yml`** on every push to `main`:
+**`nightly.yml`** on every push to `dev`:
 
 - Build all release targets.
 - Generate release notes with `git-cliff`.
@@ -862,8 +863,11 @@ Notes:
 also builds the WASM app and stages it under `/app/` so the guide can embed a
 hosted copy.
 
-### 9.3 Versioning
+### 9.3 Versioning and branches
 
+- Feature work from worktrees and pull requests merges into `dev` first. Test it
+  on `dev`; only merge `dev` into `main` when a release is ready.
+- `main` is the source for official release builds.
 - Stay at **0.1.0** until the project owner declares a release.
 - Nightly artifacts carry the date and short SHA, not a new semantic version.
 - The changelog keeps an `[Unreleased]` section.
@@ -1055,7 +1059,7 @@ placeholder screens.
 - [ ] `CREDITS.md`, README, and docs.
 - [ ] Artifact checksums and release notes.
 
-Exit: a push to `main` produces a complete nightly release.
+Exit: a push to `dev` produces a complete nightly release.
 
 ### M6 — Release hardening
 

@@ -228,6 +228,12 @@ The user guide is a Docusaurus site in `website/`; run `npm install && npm start
 there. It is published to GitHub Pages by `.github/workflows/docs.yml`.
 Development notes live in `docs/`.
 
+## Branches and releases
+
+Feature work from worktrees and pull requests merges into `dev` first. `dev` is
+the integration branch where new code is tested. `main` only advances when a
+release is ready; official release builds come from `main`.
+
 ## Project documents
 
 - `ROADMAP.md` — full product and milestone plan.
