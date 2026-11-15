@@ -84,7 +84,7 @@ pub enum AccompanimentRhythm {
     Arpeggio,
     /// Swung boom-chuck with a long-short feel.
     Shuffle,
-    /// Continuous chord strums on every half beat.
+    /// Alternating down and up strums on every half beat.
     Strum,
     /// One chord per harmony, held as long as the changes allow.
     Sustained,
