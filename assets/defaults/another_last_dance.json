@@ -1,0 +1,21 @@
+{
+  "source": {
+    "provider": "contradb",
+    "id": "2409",
+    "url": "https://contradb.com/dances/2409"
+  },
+  "title": "Another Last Dance",
+  "choreographer": "Erik Hoffman",
+  "formation": "improper",
+  "preamble": "",
+  "notes": "",
+  "figures": [
+    { "phrase": "A1", "beats": 8.0, "text": "neighbors do si do once" },
+    { "phrase": null, "beats": 8.0, "text": "ladles allemande left 1½" },
+    { "phrase": "A2", "beats": 16.0, "text": "partners balance & swing" },
+    { "phrase": "B1", "beats": 8.0, "text": "circle left 3 places" },
+    { "phrase": null, "beats": 8.0, "text": "neighbors swing" },
+    { "phrase": "B2", "beats": 8.0, "text": "long lines forward & back" },
+    { "phrase": null, "beats": 8.0, "text": "star left 4 places" }
+  ]
+}

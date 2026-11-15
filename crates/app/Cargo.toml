@@ -12,14 +12,17 @@ name = "contra-karaoke"
 path = "src/main.rs"
 
 [dependencies]
-anyhow.workspace = true
+arc-swap.workspace = true
 contra-core = { path = "../core" }
 contra-music = { path = "../music" }
 contra-sources = { path = "../sources" }
 cpal.workspace = true
+directories.workspace = true
 eframe.workspace = true
 ehttp.workspace = true
 env_logger.workspace = true
-log.workspace = true
+percent-encoding.workspace = true
+rfd.workspace = true
+rustysynth.workspace = true
 serde_json.workspace = true
 tts.workspace = true
