@@ -28,7 +28,8 @@ like a band on first launch without any downloads.
   <Step shot="prefs-instrument-percussion">
     Choose **Foot taps** to keep the dance beat with a soft tap, choose
     **Drumset** for kick, snare, and hi-hat, or leave **Off** for no percussion.
-    Then choose a **Percussion rhythm**.
+    Then choose a **Percussion rhythm**; **Match style** gives foot taps a
+    gallop and the drumset its basic kit.
   </Step>
 </Steps>
 
@@ -49,10 +50,11 @@ During a variation pass it rests in the same bar as the accompaniment, so a
 
 ## Percussion
 
-Percussion is optional and off by default. **Foot taps** place a soft tap on
-every dance beat by default, accented at the start of each bar. **Drumset** adds
+Percussion is optional and off by default. **Foot taps** play a gallop by
+default (long-short-short), accented at the start of each bar. **Drumset** adds
 a basic kick, snare, and hi-hat pattern: the hats subdivide each beat in half for
-reels and in thirds for compound meters such as jigs.
+reels and in thirds for compound meters such as jigs. The rhythm menu can change
+either pattern.
 
 Percussion starts with the count-in when enabled and sits on the same 64-beat
 grid. It does not change the dance timing or the calls. **Percussion volume**
@@ -67,13 +69,14 @@ soundfont, a user-supplied font, and the built-in synth.
 
 | Rhythm | What it plays |
 | --- | --- |
-| Match style | Foot taps on each beat, or the basic kick/snare/hat kit. |
+| Match style | Gallop foot taps, or the basic kick/snare/hat kit. |
 | Basic | The style's basic pattern. |
 | On the beat | An accent on each dance beat. |
 | Offbeats | Accents between the dance beats. |
 | Half time | One accent per bar, with a sparse kit. |
 | Double time | Two accents per dance beat. |
 | Shuffle | A swung long-short feel. |
+| Gallop | A long-short-short gallop. |
 | Train beat | Alternating accents in steady eighth notes. |
 
 The count-in stays one clear note per beat regardless of the selected rhythm.

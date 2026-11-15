@@ -286,8 +286,8 @@
     },
     {
       "id": "prefs-instrument-percussion",
-      "alt": "The Instruments section with the Percussion menu set to Foot taps, the Percussion rhythm menu set to Shuffle, and the optional note beside them.",
-      "caption": "Percussion is optional; Foot taps keep the dance beat, Drumset adds kick, snare, and hi-hat, and the rhythm menu changes the pattern.",
+      "alt": "The Instruments section with the Percussion menu set to Foot taps, the Percussion rhythm menu set to Gallop, and the optional note beside them.",
+      "caption": "Percussion is optional; Foot taps play a gallop by default, Drumset adds kick, snare, and hi-hat, and the rhythm menu changes the pattern.",
       "status": "pending"
     },
     {

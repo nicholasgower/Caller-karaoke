@@ -567,7 +567,7 @@ fn preference_shots(
     {
         let app = harness.state_mut();
         app.prefs.percussion = contra_core::Percussion::FootTaps;
-        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
+        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Gallop;
     }
     capture(harness, out, "prefs-instrument-percussion")?;
     {

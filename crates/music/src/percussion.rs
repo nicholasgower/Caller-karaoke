@@ -44,7 +44,7 @@ pub fn notes(
 fn resolve(style: Percussion, rhythm: PercussionRhythm) -> PercussionRhythm {
     match rhythm {
         PercussionRhythm::Auto => match style {
-            Percussion::FootTaps => PercussionRhythm::Beat,
+            Percussion::FootTaps => PercussionRhythm::Gallop,
             Percussion::Drumset => PercussionRhythm::Basic,
             Percussion::Off => PercussionRhythm::Auto,
         },
@@ -169,6 +169,23 @@ fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64, rhythm: PercussionRhyt
                 bar += 2.0;
             }
         }
+        PercussionRhythm::Gallop => {
+            let mut bar = 0.0;
+            while bar < loop_beats - 1e-9 {
+                for (index, offset) in [0.0, 0.25, 0.375, 1.0, 1.25, 1.375].into_iter().enumerate()
+                {
+                    push(
+                        notes,
+                        bar + offset,
+                        if index % 3 == 0 { 0.12 } else { 0.08 },
+                        SIDE_STICK,
+                        if index % 3 == 0 { 92 } else { 66 },
+                        loop_beats,
+                    );
+                }
+                bar += 2.0;
+            }
+        }
         PercussionRhythm::Train => {
             let mut bar = 0.0;
             while bar < loop_beats - 1e-9 {
@@ -237,6 +254,24 @@ fn drumset(notes: &mut Vec<NoteEvent>, loop_beats: f64, meter: Meter, rhythm: Pe
                 push(notes, bar + 1.67, 0.1, SNARE, 92, bar_end);
                 for (offset, velocity) in [(0.0, 54), (0.67, 42), (1.0, 50), (1.67, 42)] {
                     push(notes, bar + offset, 0.05, CLOSED_HAT, velocity, bar_end);
+                }
+            }
+            PercussionRhythm::Gallop => {
+                for base in [0.0, 1.0] {
+                    push(notes, bar + base, 0.14, KICK, 106, bar_end);
+                    push(notes, bar + base + 0.25, 0.08, SNARE, 92, bar_end);
+                    push(notes, bar + base + 0.375, 0.08, SNARE, 88, bar_end);
+                }
+                for (index, offset) in [0.0, 0.25, 0.375, 1.0, 1.25, 1.375].into_iter().enumerate()
+                {
+                    push(
+                        notes,
+                        bar + offset,
+                        0.04,
+                        CLOSED_HAT,
+                        if index % 3 == 0 { 52 } else { 40 },
+                        bar_end,
+                    );
                 }
             }
             PercussionRhythm::Train => {
@@ -470,7 +505,7 @@ mod tests {
             64.0,
             Meter::default(),
             Percussion::FootTaps,
-            PercussionRhythm::Auto,
+            PercussionRhythm::Beat,
         );
         assert_eq!(notes.len(), 128);
         assert!(notes.iter().all(|note| note.midi == SIDE_STICK));
@@ -542,12 +577,24 @@ mod tests {
         let meter = Meter::default();
         assert_eq!(
             notes(64.0, meter, Percussion::FootTaps, PercussionRhythm::Auto),
-            notes(64.0, meter, Percussion::FootTaps, PercussionRhythm::Beat)
+            notes(64.0, meter, Percussion::FootTaps, PercussionRhythm::Gallop)
         );
         assert_eq!(
             notes(64.0, meter, Percussion::Drumset, PercussionRhythm::Auto),
             notes(64.0, meter, Percussion::Drumset, PercussionRhythm::Basic)
         );
+    }
+
+    #[test]
+    fn gallop_is_the_default_foot_tap_pattern() {
+        let notes = notes(
+            2.0,
+            Meter::default(),
+            Percussion::FootTaps,
+            PercussionRhythm::Gallop,
+        );
+        let positions = notes.iter().map(|note| note.start_beat).collect::<Vec<_>>();
+        assert_eq!(positions, vec![0.0, 0.25, 0.375, 1.0, 1.25, 1.375]);
     }
 
     #[test]
