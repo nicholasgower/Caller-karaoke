@@ -150,6 +150,9 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         inline_field(ui, true, "Percussion", |ui| {
             percussion_combo(ui, true, &mut app.prefs);
         });
+        inline_field(ui, true, "Percussion rhythm", |ui| {
+            percussion_rhythm_combo(ui, true, &mut app.prefs);
+        });
     } else {
         egui::Grid::new("instruments")
             .num_columns(2)
@@ -177,11 +180,8 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 ui.label("Percussion");
                 ui.horizontal(|ui| {
                     percussion_combo(ui, false, &mut app.prefs);
-                    ui.label(
-                        egui::RichText::new("optional")
-                            .small()
-                            .color(theme::muted(ui)),
-                    );
+                    ui.label("Rhythm");
+                    percussion_rhythm_combo(ui, false, &mut app.prefs);
                 });
                 ui.end_row();
             });
@@ -197,7 +197,8 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.label(
         egui::RichText::new(
             "Percussion is optional: foot taps keep the dance beat, or a simple drum kit adds \
-             kick, snare, and hi-hat. It starts with the count-in.",
+             kick, snare, and hi-hat. The rhythm menu changes the pattern; it starts with the \
+             count-in.",
         )
         .small()
         .color(theme::muted(ui)),
@@ -274,6 +275,17 @@ fn percussion_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
         .show_ui(ui, |ui| {
             for option in Percussion::ALL {
                 ui.selectable_value(&mut prefs.percussion, option, option.label());
+            }
+        });
+}
+
+fn percussion_rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+    let combo = egui::ComboBox::from_id_salt("percussion_rhythm");
+    responsive_combo(combo, ui, compact)
+        .selected_text(prefs.percussion_rhythm.label())
+        .show_ui(ui, |ui| {
+            for option in PercussionRhythm::ALL {
+                ui.selectable_value(&mut prefs.percussion_rhythm, option, option.label());
             }
         });
 }

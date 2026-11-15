@@ -99,6 +99,7 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
         app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
         app.prefs.percussion = contra_core::Percussion::Drumset;
+        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
     }
     capture(harness, out, "transport-summary")?;
     {
@@ -107,6 +108,7 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Piano;
         app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
         app.prefs.percussion = contra_core::Percussion::Off;
+        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Auto;
         app.prefs.master_volume = 0.5;
     }
     capture(harness, out, "transport-volume")?;
@@ -565,6 +567,7 @@ fn preference_shots(
     {
         let app = harness.state_mut();
         app.prefs.percussion = contra_core::Percussion::FootTaps;
+        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
     }
     capture(harness, out, "prefs-instrument-percussion")?;
     {

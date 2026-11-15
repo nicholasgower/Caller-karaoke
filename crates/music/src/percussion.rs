@@ -8,7 +8,7 @@
 
 use std::f32::consts::TAU;
 
-use contra_core::Percussion;
+use contra_core::{Percussion, PercussionRhythm};
 
 use crate::render::{AudioBuffer, RenderRequest};
 use crate::score::{Meter, NoteEvent};
@@ -20,12 +20,17 @@ pub const SNARE: u8 = 38;
 pub const CLOSED_HAT: u8 = 42;
 
 /// The percussion pattern for one 64-beat loop pass.
-pub fn notes(loop_beats: f64, meter: Meter, style: Percussion) -> Vec<NoteEvent> {
+pub fn notes(
+    loop_beats: f64,
+    meter: Meter,
+    style: Percussion,
+    rhythm: PercussionRhythm,
+) -> Vec<NoteEvent> {
     let mut notes = Vec::new();
     match style {
         Percussion::Off => {}
-        Percussion::FootTaps => foot_taps(&mut notes, loop_beats),
-        Percussion::Drumset => drumset(&mut notes, loop_beats, meter),
+        Percussion::FootTaps => foot_taps(&mut notes, loop_beats, rhythm),
+        Percussion::Drumset => drumset(&mut notes, loop_beats, meter, rhythm),
     }
     notes.sort_by(|a, b| {
         a.start_beat
@@ -33,6 +38,18 @@ pub fn notes(loop_beats: f64, meter: Meter, style: Percussion) -> Vec<NoteEvent>
             .then(a.midi.cmp(&b.midi))
     });
     notes
+}
+
+/// Resolve `Auto` to the pattern that suits the selected style.
+fn resolve(style: Percussion, rhythm: PercussionRhythm) -> PercussionRhythm {
+    match rhythm {
+        PercussionRhythm::Auto => match style {
+            Percussion::FootTaps => PercussionRhythm::Beat,
+            Percussion::Drumset => PercussionRhythm::Basic,
+            Percussion::Off => PercussionRhythm::Auto,
+        },
+        explicit => explicit,
+    }
 }
 
 /// The percussion pattern for the count-in, one note per count-in beat.
@@ -69,50 +86,188 @@ pub fn count_in_notes(style: Percussion, beats: usize) -> Vec<NoteEvent> {
     notes
 }
 
-/// One soft tap per dance beat, accented at the start of each bar.
-fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64) {
-    let mut beat = 0.0;
-    while beat < loop_beats - 1e-9 {
-        let step = (beat * 2.0).round() as i64;
-        notes.push(NoteEvent {
-            start_beat: beat,
-            duration_beats: 0.12,
-            midi: SIDE_STICK,
-            velocity: if step.rem_euclid(4) == 0 { 80 } else { 62 },
-        });
-        beat += 0.5;
+/// Foot taps in the selected rhythm.
+fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64, rhythm: PercussionRhythm) {
+    let rhythm = resolve(Percussion::FootTaps, rhythm);
+    match rhythm {
+        // `resolve` never leaves Auto for foot taps.
+        PercussionRhythm::Auto | PercussionRhythm::Basic | PercussionRhythm::Beat => {
+            let mut beat = 0.0;
+            while beat < loop_beats - 1e-9 {
+                let step = (beat * 2.0).round() as i64;
+                push(
+                    notes,
+                    beat,
+                    0.12,
+                    SIDE_STICK,
+                    if step.rem_euclid(4) == 0 { 92 } else { 76 },
+                    loop_beats,
+                );
+                beat += 0.5;
+            }
+        }
+        PercussionRhythm::Offbeat => {
+            let mut beat = 0.25;
+            while beat < loop_beats - 1e-9 {
+                let step = (beat * 2.0).round() as i64;
+                push(
+                    notes,
+                    beat,
+                    0.1,
+                    SIDE_STICK,
+                    if step.rem_euclid(4) == 0 { 78 } else { 62 },
+                    loop_beats,
+                );
+                beat += 0.5;
+            }
+        }
+        PercussionRhythm::HalfTime => {
+            let mut bar = 0.0;
+            while bar < loop_beats - 1e-9 {
+                push(notes, bar, 0.16, SIDE_STICK, 94, loop_beats);
+                bar += 2.0;
+            }
+        }
+        PercussionRhythm::DoubleTime => {
+            let mut beat = 0.0;
+            while beat < loop_beats - 1e-9 {
+                let step = (beat * 4.0).round() as i64;
+                push(
+                    notes,
+                    beat,
+                    0.08,
+                    SIDE_STICK,
+                    if step.rem_euclid(8) == 0 {
+                        88
+                    } else if step.rem_euclid(2) == 0 {
+                        72
+                    } else {
+                        58
+                    },
+                    loop_beats,
+                );
+                beat += 0.25;
+            }
+        }
+        PercussionRhythm::Shuffle => {
+            let mut bar = 0.0;
+            while bar < loop_beats - 1e-9 {
+                for offset in [0.0, 0.67, 1.0, 1.67] {
+                    push(
+                        notes,
+                        bar + offset,
+                        0.12,
+                        SIDE_STICK,
+                        if offset == 0.0 || offset == 1.0 {
+                            86
+                        } else {
+                            66
+                        },
+                        loop_beats,
+                    );
+                }
+                bar += 2.0;
+            }
+        }
+        PercussionRhythm::Train => {
+            let mut bar = 0.0;
+            while bar < loop_beats - 1e-9 {
+                for (index, offset) in [0.0, 0.5, 1.0, 1.5].into_iter().enumerate() {
+                    push(
+                        notes,
+                        bar + offset,
+                        0.1,
+                        SIDE_STICK,
+                        if index % 2 == 0 { 84 } else { 66 },
+                        loop_beats,
+                    );
+                }
+                bar += 2.0;
+            }
+        }
     }
 }
 
-/// Kick, snare, and hi-hat on the dance-beat grid.
+/// Kick, snare, and hi-hat in the selected rhythm.
 ///
 /// The hi-hat subdivides each dance beat in half for reels and in thirds for
 /// compound meters, so a jig keeps its own lilt without moving the beat.
-fn drumset(notes: &mut Vec<NoteEvent>, loop_beats: f64, meter: Meter) {
+fn drumset(notes: &mut Vec<NoteEvent>, loop_beats: f64, meter: Meter, rhythm: PercussionRhythm) {
+    let rhythm = resolve(Percussion::Drumset, rhythm);
     let hat_step = if meter.is_compound() { 1.0 / 3.0 } else { 0.5 };
     let mut bar = 0.0;
     while bar < loop_beats - 1e-9 {
         let bar_end = (bar + 2.0).min(loop_beats);
-        push(notes, bar, 0.15, KICK, 108, bar_end);
-        push(notes, bar + 1.0, 0.12, SNARE, 96, bar_end);
-        // A lighter kick on the second half of the bar gives the pattern a
-        // little forward motion without turning it into a march.
-        push(notes, bar + 1.5, 0.12, KICK, 74, bar_end);
-
-        let mut hat = bar;
-        while hat < bar_end - 1e-9 {
-            let step = ((hat - bar) / hat_step).round() as i64;
-            push(
-                notes,
-                hat,
-                0.05,
-                CLOSED_HAT,
-                if step.rem_euclid(4) == 0 { 58 } else { 44 },
-                bar_end,
-            );
-            hat += hat_step;
+        match rhythm {
+            // `resolve` never leaves Auto for the drumset.
+            PercussionRhythm::Auto | PercussionRhythm::Basic => {
+                push(notes, bar, 0.15, KICK, 108, bar_end);
+                push(notes, bar + 1.0, 0.12, SNARE, 96, bar_end);
+                push(notes, bar + 1.5, 0.12, KICK, 74, bar_end);
+                hats(notes, bar, bar_end, hat_step, 58, 44);
+            }
+            PercussionRhythm::Beat => {
+                push(notes, bar, 0.15, KICK, 108, bar_end);
+                push(notes, bar + 1.0, 0.12, KICK, 92, bar_end);
+                push(notes, bar + 1.0, 0.12, SNARE, 88, bar_end);
+                hats(notes, bar, bar_end, hat_step, 56, 44);
+            }
+            PercussionRhythm::Offbeat => {
+                push(notes, bar, 0.15, KICK, 104, bar_end);
+                push(notes, bar + 0.5, 0.1, SNARE, 90, bar_end);
+                push(notes, bar + 1.5, 0.1, SNARE, 90, bar_end);
+                hats(notes, bar, bar_end, hat_step, 48, 38);
+            }
+            PercussionRhythm::HalfTime => {
+                push(notes, bar, 0.18, KICK, 108, bar_end);
+                push(notes, bar + 1.0, 0.12, SNARE, 96, bar_end);
+                hats(notes, bar, bar_end, hat_step * 2.0, 54, 42);
+            }
+            PercussionRhythm::DoubleTime => {
+                push(notes, bar, 0.15, KICK, 104, bar_end);
+                push(notes, bar + 1.0, 0.12, KICK, 92, bar_end);
+                push(notes, bar + 0.5, 0.1, SNARE, 88, bar_end);
+                push(notes, bar + 1.5, 0.1, SNARE, 88, bar_end);
+                hats(notes, bar, bar_end, hat_step * 0.5, 52, 40);
+            }
+            PercussionRhythm::Shuffle => {
+                push(notes, bar, 0.15, KICK, 104, bar_end);
+                push(notes, bar + 0.67, 0.1, SNARE, 92, bar_end);
+                push(notes, bar + 1.0, 0.12, KICK, 86, bar_end);
+                push(notes, bar + 1.67, 0.1, SNARE, 92, bar_end);
+                for (offset, velocity) in [(0.0, 54), (0.67, 42), (1.0, 50), (1.67, 42)] {
+                    push(notes, bar + offset, 0.05, CLOSED_HAT, velocity, bar_end);
+                }
+            }
+            PercussionRhythm::Train => {
+                push(notes, bar, 0.15, KICK, 104, bar_end);
+                push(notes, bar + 0.5, 0.1, SNARE, 92, bar_end);
+                push(notes, bar + 1.0, 0.12, KICK, 96, bar_end);
+                push(notes, bar + 1.5, 0.1, SNARE, 92, bar_end);
+                hats(notes, bar, bar_end, hat_step, 46, 38);
+            }
         }
         bar += 2.0;
+    }
+}
+
+fn hats(notes: &mut Vec<NoteEvent>, start: f64, limit: f64, step: f64, accent: u8, normal: u8) {
+    let mut hat = start;
+    while hat < limit - 1e-9 {
+        let index = ((hat - start) / step).round() as i64;
+        push(
+            notes,
+            hat,
+            0.05,
+            CLOSED_HAT,
+            if index.rem_euclid(4) == 0 {
+                accent
+            } else {
+                normal
+            },
+            limit,
+        );
+        hat += step;
     }
 }
 
@@ -137,8 +292,8 @@ fn push(
 
 /// Mix the percussion pattern into a rendered buffer.
 ///
-/// Only the loop passes are covered: the count-in stays accompaniment-only and
-/// the once-only ending keeps its own arrangement.
+/// The count-in gets one clear note per beat, the loop passes use the selected
+/// rhythm, and the once-only ending keeps its own arrangement.
 pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
     if !request.percussion.is_enabled() {
         return;
@@ -147,6 +302,7 @@ pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
         request.arrangement.loop_beats,
         request.arrangement.meter,
         request.percussion,
+        request.percussion_rhythm,
     );
     if notes.is_empty() {
         return;
@@ -220,9 +376,12 @@ fn render_note(
 
     let (style_gain, decay) = match midi {
         KICK => (0.95, 24.0),
-        SNARE => (0.55, 30.0),
-        CLOSED_HAT => (0.30, 90.0),
-        _ => (0.55, 38.0), // foot tap / side stick
+        SNARE => (0.65, 30.0),
+        CLOSED_HAT => (0.35, 90.0),
+        // Foot tap / side stick: a bright enough body to carry on small
+        // speakers, with a short scuff for the attack.
+        SIDE_STICK => (1.25, 42.0),
+        _ => (1.0, 45.0),
     };
     let release_samples = (sample_rate * 0.005).max(1.0);
     let attack_samples = (sample_rate * 0.002).max(1.0);
@@ -249,9 +408,16 @@ fn render_note(
                 last_noise = value;
                 high * 0.7
             }
+            SIDE_STICK => {
+                // A foot on a wooden floor: a short mid body, a low thump, and
+                // a scuff. The midrange keeps it audible on small speakers.
+                let body = (TAU * 190.0 * t).sin() * 0.55 + (TAU * 95.0 * t).sin() * 0.35;
+                let scuff = noise.next() * (-t * 260.0).exp() * 0.6;
+                body + scuff
+            }
             _ => {
-                // A dull, low foot tap with a little scuff.
-                (TAU * 84.0 * t).sin() * 0.8 + noise.next() * 0.12
+                // A fallback tap for any other percussion note.
+                (TAU * 190.0 * t).sin() * 0.6 + noise.next() * 0.15
             }
         };
         let value = sample * gain * style_gain * envelope * 0.55;
@@ -300,7 +466,12 @@ mod tests {
 
     #[test]
     fn foot_taps_land_on_every_dance_beat() {
-        let notes = notes(64.0, Meter::default(), Percussion::FootTaps);
+        let notes = notes(
+            64.0,
+            Meter::default(),
+            Percussion::FootTaps,
+            PercussionRhythm::Auto,
+        );
         assert_eq!(notes.len(), 128);
         assert!(notes.iter().all(|note| note.midi == SIDE_STICK));
         assert!(notes.iter().all(|note| {
@@ -329,7 +500,12 @@ mod tests {
 
     #[test]
     fn drumset_has_a_kick_snare_and_hat_pattern() {
-        let notes = notes(64.0, Meter::default(), Percussion::Drumset);
+        let notes = notes(
+            64.0,
+            Meter::default(),
+            Percussion::Drumset,
+            PercussionRhythm::Auto,
+        );
         for midi in [KICK, SNARE, CLOSED_HAT] {
             assert!(
                 notes.iter().any(|note| note.midi == midi),
@@ -352,13 +528,103 @@ mod tests {
     #[test]
     fn compound_meter_subdivides_the_hat_in_thirds() {
         let meter = Meter::parse("6/8").expect("6/8");
-        let notes = notes(8.0, meter, Percussion::Drumset);
+        let notes = notes(8.0, meter, Percussion::Drumset, PercussionRhythm::Auto);
         let hats = notes
             .iter()
             .filter(|note| note.midi == CLOSED_HAT)
             .map(|note| note.start_beat)
             .collect::<Vec<_>>();
         assert!(hats.iter().any(|beat| (beat - 1.0 / 3.0).abs() < 1e-9));
+    }
+
+    #[test]
+    fn auto_rhythm_matches_each_styles_basic_pattern() {
+        let meter = Meter::default();
+        assert_eq!(
+            notes(64.0, meter, Percussion::FootTaps, PercussionRhythm::Auto),
+            notes(64.0, meter, Percussion::FootTaps, PercussionRhythm::Beat)
+        );
+        assert_eq!(
+            notes(64.0, meter, Percussion::Drumset, PercussionRhythm::Auto),
+            notes(64.0, meter, Percussion::Drumset, PercussionRhythm::Basic)
+        );
+    }
+
+    #[test]
+    fn every_rhythm_stays_inside_the_loop() {
+        for style in [Percussion::FootTaps, Percussion::Drumset] {
+            for rhythm in PercussionRhythm::ALL {
+                let notes = notes(64.0, Meter::default(), style, rhythm);
+                assert!(!notes.is_empty(), "{style:?} with {rhythm:?} must play");
+                assert!(
+                    notes
+                        .iter()
+                        .all(|note| { note.start_beat >= 0.0 && note.end_beat() <= 64.0 + 1e-6 })
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rhythms_change_the_density_of_foot_taps() {
+        let meter = Meter::default();
+        let beat = notes(64.0, meter, Percussion::FootTaps, PercussionRhythm::Beat);
+        let offbeat = notes(64.0, meter, Percussion::FootTaps, PercussionRhythm::Offbeat);
+        let half = notes(
+            64.0,
+            meter,
+            Percussion::FootTaps,
+            PercussionRhythm::HalfTime,
+        );
+        let double = notes(
+            64.0,
+            meter,
+            Percussion::FootTaps,
+            PercussionRhythm::DoubleTime,
+        );
+        assert!(half.len() < beat.len());
+        assert!(beat.len() < double.len());
+        assert!(offbeat.iter().all(|note| {
+            let position = (note.start_beat * 4.0).round() as i64;
+            position.rem_euclid(2) == 1
+        }));
+    }
+
+    #[test]
+    fn foot_taps_are_audible_alone() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let request = RenderRequest {
+            arrangement,
+            bpm: 240.0,
+            melody: contra_core::MelodyInstrument::Fiddle,
+            accompaniment: contra_core::AccompanimentInstrument::Piano,
+            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
+            second_accompaniment: contra_core::SecondAccompaniment::Off,
+            percussion: Percussion::FootTaps,
+            percussion_rhythm: PercussionRhythm::Beat,
+            melody_volume: 0.0,
+            accompaniment_volume: 0.0,
+            percussion_volume: 1.0,
+            count_in_beats: 4.0,
+            sample_rate: 24_000,
+            variation_passes: 1,
+            ending: false,
+        };
+        let buffer = crate::render::render(&request, None).expect("render taps");
+        let peak = buffer
+            .samples
+            .iter()
+            .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+        let rms = (buffer
+            .samples
+            .iter()
+            .map(|sample| sample * sample)
+            .sum::<f32>()
+            / buffer.samples.len() as f32)
+            .sqrt();
+        assert!(peak > 0.05, "foot taps peak at only {peak}");
+        assert!(rms > 0.01, "foot taps RMS at only {rms}");
     }
 
     #[test]
@@ -373,6 +639,7 @@ mod tests {
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
             second_accompaniment: contra_core::SecondAccompaniment::Accordion,
             percussion: Percussion::FootTaps,
+            percussion_rhythm: PercussionRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,

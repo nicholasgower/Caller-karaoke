@@ -26,8 +26,9 @@ volume settings.
 <Shot id="transport-tempo" />
 
 Changing tempo, count-in, an instrument, second-accompaniment, or percussion
-choice, an accompaniment rhythm, melody/accompaniment/percussion volume, or a
-SoundFont marks the music for a rebuild. Playback settings apply without
+choice, a percussion rhythm, an accompaniment rhythm,
+melody/accompaniment/percussion volume, or a SoundFont marks the music for a
+rebuild. Playback settings apply without
 restarting the music: release the control and the app re-renders the loop and
 keeps the current beat. The session master **Volume** applies immediately. If
 the session is not playing, it shows:

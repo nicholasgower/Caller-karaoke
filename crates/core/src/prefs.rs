@@ -128,7 +128,8 @@ impl SecondAccompaniment {
 ///
 /// Percussion is off by default. When it is enabled, a soft foot tap on every
 /// dance beat is the default; a simple drum kit is the alternative. Either way
-/// it sits on the same dance-beat grid as the music and adds no timing.
+/// it sits on the same dance-beat grid as the music and adds no timing. The
+/// separate [`PercussionRhythm`] decides the pattern inside that grid.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Percussion {
     /// No percussion (default).
@@ -155,6 +156,58 @@ impl Percussion {
     /// Whether the layer plays at all.
     pub fn is_enabled(self) -> bool {
         !matches!(self, Self::Off)
+    }
+}
+
+/// Rhythm used to place the optional percussion layer.
+///
+/// Like the accompaniment rhythms, these only decide when the percussion
+/// sounds inside the 64-beat grid; they never move the grid, the tempo, or the
+/// call timeline.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PercussionRhythm {
+    /// Use the pattern that suits the selected percussion style.
+    #[default]
+    Auto,
+    /// The style's basic pattern: foot taps on each beat, or a kick/snare/hat kit.
+    Basic,
+    /// One accent on each dance beat.
+    Beat,
+    /// Accents between the dance beats.
+    Offbeat,
+    /// One accent per bar, with a sparse kit.
+    HalfTime,
+    /// Two accents per dance beat.
+    DoubleTime,
+    /// A swung long-short feel.
+    Shuffle,
+    /// Alternating accents in steady eighth notes.
+    Train,
+}
+
+impl PercussionRhythm {
+    pub const ALL: [Self; 8] = [
+        Self::Auto,
+        Self::Basic,
+        Self::Beat,
+        Self::Offbeat,
+        Self::HalfTime,
+        Self::DoubleTime,
+        Self::Shuffle,
+        Self::Train,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Auto => "Match style",
+            Self::Basic => "Basic",
+            Self::Beat => "On the beat",
+            Self::Offbeat => "Offbeats",
+            Self::HalfTime => "Half time",
+            Self::DoubleTime => "Double time",
+            Self::Shuffle => "Shuffle",
+            Self::Train => "Train beat",
+        }
     }
 }
 
@@ -388,6 +441,8 @@ pub struct Preferences {
     pub second_accompaniment: SecondAccompaniment,
     /// Optional percussion layer; see [`Percussion`].
     pub percussion: Percussion,
+    /// Rhythm used to place the percussion layer; see [`PercussionRhythm`].
+    pub percussion_rhythm: PercussionRhythm,
     pub theme: Theme,
     /// Smooth transitions for tab changes, highlights, and screen entries.
     pub animations_enabled: bool,
@@ -438,7 +493,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 8;
+pub const CURRENT_SCHEMA_VERSION: u32 = 9;
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -498,6 +553,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "percussion-v8",
         version: 8,
         apply: migrate_v7_percussion,
+    },
+    Migration {
+        tag: "percussion-rhythm-v9",
+        version: 9,
+        apply: migrate_v8_percussion_rhythm,
     },
 ];
 
@@ -565,6 +625,11 @@ fn migrate_v7_percussion(_prefs: &mut Preferences) {
     // turns percussion on.
 }
 
+fn migrate_v8_percussion_rhythm(_prefs: &mut Preferences) {
+    // v9 adds the percussion rhythm. `serde` supplies Auto, which keeps the
+    // style's existing pattern.
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -607,6 +672,7 @@ impl Default for Preferences {
             accompaniment_rhythm: AccompanimentRhythm::default(),
             second_accompaniment: SecondAccompaniment::default(),
             percussion: Percussion::default(),
+            percussion_rhythm: PercussionRhythm::default(),
             theme: Theme::default(),
             animations_enabled: true,
             lead: LeadSettings::default(),
@@ -735,6 +801,7 @@ impl Preferences {
                 || self.accompaniment_rhythm != old.accompaniment_rhythm
                 || self.second_accompaniment != old.second_accompaniment
                 || self.percussion != old.percussion
+                || self.percussion_rhythm != old.percussion_rhythm
                 || self.melody_volume != old.melody_volume
                 || self.accompaniment_volume != old.accompaniment_volume
                 || self.percussion_volume != old.percussion_volume
@@ -986,19 +1053,24 @@ mod tests {
         let prefs = Preferences::default();
         assert_eq!(prefs.percussion, Percussion::Off);
         assert!(!prefs.percussion.is_enabled());
+        assert_eq!(prefs.percussion_rhythm, PercussionRhythm::Auto);
         assert_eq!(prefs.percussion_volume, 0.5);
 
         for style in [Percussion::FootTaps, Percussion::Drumset] {
-            let prefs = Preferences {
-                percussion: style,
-                percussion_volume: 0.8,
-                ..Preferences::default()
-            };
-            let json = prefs.to_json().expect("serialize");
-            let restored = Preferences::from_json(&json).expect("deserialize");
-            assert_eq!(restored.percussion, style);
-            assert_eq!(restored.percussion_volume, 0.8);
-            assert!(restored.percussion.is_enabled());
+            for rhythm in PercussionRhythm::ALL {
+                let prefs = Preferences {
+                    percussion: style,
+                    percussion_rhythm: rhythm,
+                    percussion_volume: 0.8,
+                    ..Preferences::default()
+                };
+                let json = prefs.to_json().expect("serialize");
+                let restored = Preferences::from_json(&json).expect("deserialize");
+                assert_eq!(restored.percussion, style);
+                assert_eq!(restored.percussion_rhythm, rhythm);
+                assert_eq!(restored.percussion_volume, 0.8);
+                assert!(restored.percussion.is_enabled());
+            }
         }
     }
 
@@ -1242,6 +1314,17 @@ mod tests {
         percussion.percussion = Percussion::FootTaps;
         assert_eq!(
             percussion.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: true,
+                tone: false
+            }
+        );
+
+        let mut rhythm_changed = base.clone();
+        rhythm_changed.percussion_rhythm = PercussionRhythm::Shuffle;
+        assert_eq!(
+            rhythm_changed.changes_since(&base),
             ChangeSet {
                 timeline: false,
                 audio: true,

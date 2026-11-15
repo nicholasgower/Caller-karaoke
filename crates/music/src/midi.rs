@@ -8,7 +8,8 @@ use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, PercussionRhythm,
+    SecondAccompaniment,
 };
 
 use crate::arrange::Arrangement;
@@ -18,6 +19,7 @@ pub const TICKS_PER_QUARTER: u16 = 480;
 pub const TICKS_PER_DANCE_BEAT: u64 = TICKS_PER_QUARTER as u64 * 2;
 
 /// Build a Standard MIDI File for the arranged loop.
+#[allow(clippy::too_many_arguments)]
 pub fn export_midi(
     arrangement: &Arrangement,
     melody: MelodyInstrument,
@@ -25,6 +27,7 @@ pub fn export_midi(
     accompaniment_rhythm: AccompanimentRhythm,
     second_accompaniment: SecondAccompaniment,
     percussion: Percussion,
+    percussion_rhythm: PercussionRhythm,
     bpm: f64,
 ) -> Vec<u8> {
     let accompaniment_notes =
@@ -66,7 +69,12 @@ pub fn export_midi(
             9,
             0,
             "Percussion",
-            &crate::percussion::notes(arrangement.loop_beats, arrangement.meter, percussion),
+            &crate::percussion::notes(
+                arrangement.loop_beats,
+                arrangement.meter,
+                percussion,
+                percussion_rhythm,
+            ),
             false,
             bpm,
             arrangement,
@@ -225,6 +233,7 @@ mod tests {
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Off,
             Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         assert!(bytes.starts_with(b"MThd"));
@@ -258,6 +267,7 @@ mod tests {
             AccompanimentRhythm::Block,
             SecondAccompaniment::Off,
             Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         let sustained = export_midi(
@@ -267,6 +277,7 @@ mod tests {
             AccompanimentRhythm::Sustained,
             SecondAccompaniment::Off,
             Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         assert_ne!(
@@ -286,6 +297,7 @@ mod tests {
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Accordion,
             Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         let second = export_midi(
@@ -295,6 +307,7 @@ mod tests {
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Accordion,
             Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         assert_eq!(first, second);
@@ -311,6 +324,7 @@ mod tests {
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Accordion,
             Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         let smf = Smf::parse(&trio).expect("parse midi");
@@ -341,6 +355,7 @@ mod tests {
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Accordion,
             Percussion::Drumset,
+            PercussionRhythm::Auto,
             240.0,
         );
         let smf = Smf::parse(&bytes).expect("parse midi");

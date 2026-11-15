@@ -84,6 +84,9 @@ An optional percussion layer is off by default:
 - Render it with small procedural voices rather than a soundfont preset, so the
   bundled subset and user fonts both work.
 - Give it its own volume setting; it never changes the grid or the calls.
+- Give it a rhythm menu like the accompaniment: match style, basic, on the beat,
+  offbeats, half time, double time, shuffle, and train beat. The count-in stays
+  one clear note per beat.
 
 ### 6.4 Count-in
 

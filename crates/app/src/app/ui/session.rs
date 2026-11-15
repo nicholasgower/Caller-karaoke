@@ -333,6 +333,9 @@ impl ContraApp {
         }
         if self.prefs.percussion.is_enabled() {
             instruments.push_str(&format!(" · Percussion: {}", self.prefs.percussion.label()));
+            if self.prefs.percussion_rhythm != PercussionRhythm::Auto {
+                instruments.push_str(&format!(" ({})", self.prefs.percussion_rhythm.label()));
+            }
         }
         if compact {
             // Two deliberate lines instead of one wrapped line, so the tune

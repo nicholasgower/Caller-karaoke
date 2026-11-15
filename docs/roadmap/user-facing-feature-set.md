@@ -85,6 +85,8 @@ Listed in this order:
      countermelody, or Off for a duo. Melody plus both accompaniments is the
      default trio.
    - Percussion: Off (default), Foot taps on each dance beat, or Drumset.
+   - Percussion rhythm: match style (default), basic, on the beat, offbeats,
+     half time, double time, shuffle, or train beat.
    - Melody/accompaniment volume; the second accompaniment follows the
      accompaniment volume. Percussion has its own volume.
    - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.

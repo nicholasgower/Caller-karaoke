@@ -22,8 +22,8 @@ pub use library::{
 };
 pub use prefs::{
     AccompanimentInstrument, AccompanimentRhythm, CallTone, ChangeSet, MAX_TTS_RATE, MIN_TTS_RATE,
-    MelodyInstrument, Percussion, Preferences, SecondAccompaniment, SoundFontSetting,
-    TTS_RATE_SCALE, Theme, TuneRotation,
+    MelodyInstrument, Percussion, PercussionRhythm, Preferences, SecondAccompaniment,
+    SoundFontSetting, TTS_RATE_SCALE, Theme, TuneRotation,
 };
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};

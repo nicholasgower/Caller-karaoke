@@ -286,8 +286,8 @@
     },
     {
       "id": "prefs-instrument-percussion",
-      "alt": "The Instruments section with the Percussion menu set to Foot taps and the optional note beside it.",
-      "caption": "Percussion is optional; Foot taps keep the dance beat, and Drumset adds kick, snare, and hi-hat.",
+      "alt": "The Instruments section with the Percussion menu set to Foot taps, the Percussion rhythm menu set to Shuffle, and the optional note beside them.",
+      "caption": "Percussion is optional; Foot taps keep the dance beat, Drumset adds kick, snare, and hi-hat, and the rhythm menu changes the pattern.",
       "status": "pending"
     },
     {
@@ -556,7 +556,7 @@
     },
     {
       "id": "transport-summary",
-      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, accompaniment, second accompaniment, and percussion.",
+      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, accompaniment, second accompaniment, and percussion with its rhythm.",
       "caption": "The summary confirms what will play before you start.",
       "status": "ready",
       "width": 1280,

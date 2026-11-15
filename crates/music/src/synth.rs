@@ -569,6 +569,7 @@ mod tests {
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
             second_accompaniment: contra_core::SecondAccompaniment::Accordion,
             percussion: contra_core::Percussion::Off,
+            percussion_rhythm: contra_core::PercussionRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,

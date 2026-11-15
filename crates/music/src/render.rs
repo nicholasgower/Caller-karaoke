@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, PercussionRhythm,
+    SecondAccompaniment,
 };
 use rustysynth::SoundFont;
 
@@ -21,6 +22,8 @@ pub struct RenderRequest {
     pub second_accompaniment: SecondAccompaniment,
     /// Optional percussion layer; [`Percussion::Off`] renders no percussion.
     pub percussion: Percussion,
+    /// Rhythm used to place the percussion layer.
+    pub percussion_rhythm: PercussionRhythm,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
     /// Level of the optional percussion layer.
