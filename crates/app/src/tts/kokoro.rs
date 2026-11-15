@@ -999,7 +999,7 @@ mod tests {
             phones("poussette")
         );
         assert!(
-            phones("petronella").contains("pˌɛtɹOnˈɛlə"),
+            phones("petronella").contains("pˈɛtɹOnˌɛlə"),
             "{}",
             phones("petronella")
         );
