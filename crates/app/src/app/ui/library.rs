@@ -285,6 +285,16 @@ impl ContraApp {
             )
             .color(theme::muted(ui)),
         );
+        if self.prefs.tune_rotation.enabled {
+            let count = self.rotation_tunes().len();
+            ui.label(
+                egui::RichText::new(format!(
+                    "Tune set: {count} saved tunes. Use Add to set, then turn on Cycle tunes in the session controls."
+                ))
+                .small()
+                .color(theme::muted(ui)),
+            );
+        }
         ui.add_space(4.0);
 
         ui.horizontal_wrapped(|ui| {
@@ -420,9 +430,14 @@ impl ContraApp {
                 ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
             }
             for entry in &entries {
-                if let Some(next) =
-                    saved_tune_row(ui, entry, selected_id.as_deref(), &folders, animate)
-                {
+                if let Some(next) = saved_tune_row(
+                    ui,
+                    entry,
+                    selected_id.as_deref(),
+                    &folders,
+                    animate,
+                    self.tune_in_rotation(&entry.item),
+                ) {
                     action = Some(next);
                 }
             }
@@ -447,9 +462,14 @@ impl ContraApp {
                             ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
                         }
                         for entry in &entries {
-                            if let Some(next) =
-                                saved_tune_row(ui, entry, selected_id.as_deref(), &folders, animate)
-                            {
+                            if let Some(next) = saved_tune_row(
+                                ui,
+                                entry,
+                                selected_id.as_deref(),
+                                &folders,
+                                animate,
+                                self.tune_in_rotation(&entry.item),
+                            ) {
                                 action = Some(next);
                             }
                         }
@@ -479,9 +499,14 @@ impl ContraApp {
                         ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
                     }
                     for entry in &entries {
-                        if let Some(next) =
-                            saved_tune_row(ui, entry, selected_id.as_deref(), &folders, animate)
-                        {
+                        if let Some(next) = saved_tune_row(
+                            ui,
+                            entry,
+                            selected_id.as_deref(),
+                            &folders,
+                            animate,
+                            self.tune_in_rotation(&entry.item),
+                        ) {
                             action = Some(next);
                         }
                     }
@@ -530,9 +555,25 @@ impl ContraApp {
             }
         });
         ui.add_space(4.0);
+        let in_rotation = self.tune_in_rotation(tune);
         ui.horizontal_wrapped(|ui| {
             if ui.button("Use this tune").clicked() {
                 action = Some(LibraryAction::UseTune(tune.clone()));
+            }
+            if ui
+                .button(if in_rotation {
+                    "Remove from tune set"
+                } else {
+                    "Add to tune set"
+                })
+                .on_hover_text(if in_rotation {
+                    "Remove this tune from the set"
+                } else {
+                    "Include this tune when Cycle tunes is on"
+                })
+                .clicked()
+            {
+                action = Some(LibraryAction::ToggleRotation(tune.clone()));
             }
             if ui.small_button("Remove from saved tunes").clicked() {
                 action = Some(LibraryAction::RemoveTune(tune.source.id.clone()));
@@ -595,6 +636,7 @@ impl ContraApp {
             }
             LibraryAction::UseTune(tune) => self.use_tune(tune),
             LibraryAction::RemoveTune(id) => self.remove_saved_tune(&id),
+            LibraryAction::ToggleRotation(tune) => self.toggle_rotation_tune(&tune),
             LibraryAction::MoveTune { id, folder } => self.move_saved_tune(&id, folder),
         }
     }
@@ -914,6 +956,7 @@ fn saved_tune_row(
     selected_id: Option<&str>,
     folders: &[String],
     animate: bool,
+    in_rotation: bool,
 ) -> Option<LibraryAction> {
     let selected = selected_id == Some(entry.item.source.id.as_str());
     let selected_t = animate_amount(
@@ -977,6 +1020,18 @@ fn saved_tune_row(
                     }
                     if ui.small_button("Preview").clicked() {
                         action = Some(LibraryAction::PreviewTune(entry.item.clone()));
+                    }
+                    let set_label = if in_rotation { "In set" } else { "Add to set" };
+                    if ui
+                        .small_button(set_label)
+                        .on_hover_text(if in_rotation {
+                            "Remove this tune from the set"
+                        } else {
+                            "Include this tune when Cycle tunes is on"
+                        })
+                        .clicked()
+                    {
+                        action = Some(LibraryAction::ToggleRotation(entry.item.clone()));
                     }
                 });
             });

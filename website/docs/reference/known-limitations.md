@@ -41,6 +41,9 @@ development release. These are the limitations to know before relying on it.
   clearing the cache and downloading an item again are the maintenance actions.
 - The first **Play** renders the music synchronously. There is no progress bar
   or cancel control while it runs.
+- **Cycle tunes** renders the next tune during the current tune's last time
+  through on desktop and Android. The web build has no render worker and
+  prepares the next tune at the change, which can pause briefly.
 
 ## Dance cards
 

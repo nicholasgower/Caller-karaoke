@@ -53,8 +53,11 @@ being device-tested.
 ### Controls
 
 - **Play / Pause / Restart** — control the session.
+- **End tune** — slow the last bar, hold the final chord, and stop.
 - **Tempo** — 120–320 BPM (default 240).
 - **Loop** — repeat the 64-beat music and dance loop.
+- **Cycle tunes** — play a set of saved tunes in turn, changing at a repeat
+  (default every eight times through, about four minutes at 240 BPM).
 - **Count-in** — three accompaniment beats before the loop.
 - **Speak calls** — use the local neural voice (platform TTS on web/Android).
 - **Alternative call aliases** — off by default. When on, moves with more than
@@ -63,9 +66,9 @@ being device-tested.
   Add your own alternatives per move type in Preferences → Aliases.
 - **Select dance** — search saved dances, organise them into folders, and load
   one. **Download dance** searches ContraDB, previews the card, and saves it.
-- **Select tune** — search saved tunes, organise them into folders, and load
-  one. **Download tune** searches ABC Session Tunes and previews the sheet
-  music (or the ABC source).
+- **Select tune** — search saved tunes, organise them into folders, load one,
+  and add tunes to the **tune set** for **Cycle tunes**. **Download tune**
+  searches ABC Session Tunes and previews the sheet music (or the ABC source).
 - **Preferences** — role terms, aliases, instruments, theme, animations, lead
   settings, TTS, soundfont, proxy, cache tools, and accompaniment variations.
 

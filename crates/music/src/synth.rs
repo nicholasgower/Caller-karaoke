@@ -9,6 +9,7 @@ use std::f32::consts::TAU;
 
 use contra_core::{AccompanimentInstrument, MelodyInstrument};
 
+use crate::arrange::EndingNote;
 use crate::render::{AudioBuffer, RenderRequest};
 use crate::score::NoteEvent;
 
@@ -28,7 +29,18 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
     let pass_samples = (request.arrangement.loop_beats.max(1.0) * samples_per_beat).round() as u64;
     let passes = request.variation_passes.max(1);
     let loop_samples = pass_samples * passes as u64;
-    let total_samples = count_in_samples + loop_samples;
+    let ending = request.ending.then(|| {
+        request.arrangement.ending(
+            request.bpm,
+            request.accompaniment,
+            request.accompaniment_rhythm,
+        )
+    });
+    let ending_samples = ending
+        .as_ref()
+        .map(|ending| (ending.seconds * sample_rate as f64).round() as u64)
+        .unwrap_or(0);
+    let total_samples = count_in_samples + loop_samples + ending_samples;
 
     let mut samples = vec![0.0f32; total_samples as usize * 2];
 
@@ -86,6 +98,35 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         );
     }
 
+    if let Some(ending) = &ending {
+        let offset = (count_in_samples + loop_samples) as i64;
+        render_ending_notes(
+            &mut samples,
+            &ending.melody,
+            melody_timbre,
+            request.melody_volume,
+            offset,
+            sample_rate,
+            -0.10,
+        );
+        render_ending_notes(
+            &mut samples,
+            &ending.accompaniment,
+            accompaniment_timbre,
+            request.accompaniment_volume,
+            offset,
+            sample_rate,
+            0.10,
+        );
+        apply_ending_fade(
+            &mut samples,
+            sample_rate,
+            (count_in_samples + loop_samples) as usize,
+            ending.seconds,
+            ending.seconds - ending.linger_start_seconds,
+        );
+    }
+
     apply_fades(&mut samples, sample_rate, total_samples as usize);
     normalize(&mut samples);
 
@@ -95,9 +136,14 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         channels: 2,
         count_in_samples,
         loop_start_sample: count_in_samples,
-        loop_end_sample: total_samples,
+        loop_end_sample: count_in_samples + loop_samples,
         loop_pass_samples: pass_samples,
         samples_per_beat,
+        ending_from_beat: ending
+            .as_ref()
+            .map(|ending| ending.from_beat)
+            .unwrap_or(0.0),
+        ending_start_sample: ending.is_some().then_some(count_in_samples + loop_samples),
     }
 }
 
@@ -182,6 +228,58 @@ fn render_notes(
             pan,
         );
     }
+}
+
+/// Render the ending's notes, which are timed in seconds because the ending
+/// deliberately leaves the dance-beat grid.
+#[allow(clippy::too_many_arguments)]
+fn render_ending_notes(
+    samples: &mut [f32],
+    notes: &[EndingNote],
+    timbre: Timbre,
+    volume: f32,
+    offset: i64,
+    sample_rate: u32,
+    pan: f32,
+) {
+    for note in notes {
+        let start = offset + (note.start_seconds * sample_rate as f64).round() as i64;
+        let duration = (note.duration_seconds * sample_rate as f64)
+            .round()
+            .max(1.0) as usize;
+        if start < 0 {
+            continue;
+        }
+        render_note(
+            samples,
+            start as usize,
+            duration,
+            note.midi,
+            note.velocity,
+            timbre,
+            sample_rate as f32,
+            volume,
+            pan,
+        );
+    }
+}
+
+/// Let the held final chord decay to silence instead of stopping at a buffer
+/// edge. The fade never starts before the linger, so the last note still rings.
+fn apply_ending_fade(
+    samples: &mut [f32],
+    sample_rate: u32,
+    ending_start: usize,
+    ending_seconds: f64,
+    linger_seconds: f64,
+) {
+    crate::render::fade_ending(
+        samples,
+        sample_rate,
+        ending_start as u64,
+        ending_seconds,
+        linger_seconds,
+    );
 }
 
 fn accompaniment_timbre(instrument: AccompanimentInstrument) -> Timbre {
@@ -457,6 +555,7 @@ mod tests {
             count_in_beats: 3.0,
             sample_rate: 24_000,
             variation_passes: 1,
+            ending: false,
         }
     }
 
@@ -497,6 +596,46 @@ mod tests {
         let beat = buffer.beat_at_sample(buffer.loop_start_sample + buffer.loop_pass_samples + 1);
         assert!((0.0..0.1).contains(&beat), "beat {beat}");
         assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
+    }
+
+    #[test]
+    fn a_rendered_ending_is_appended_outside_the_loop() {
+        let plain = render_builtin(&request());
+        let mut with_ending = request();
+        with_ending.ending = true;
+        let ended = render_builtin(&with_ending);
+
+        assert_eq!(ended.loop_end_sample, plain.loop_end_sample);
+        let start = ended.ending_start_sample.expect("ending region");
+        assert_eq!(start, ended.loop_end_sample);
+
+        // The ending is a three-second ritardando plus a four-second hold at
+        // 240 BPM, and it is added after the unchanged loop.
+        let added = ended.frames() - plain.frames();
+        let expected = (7.0 * 24_000.0) as usize;
+        assert!(
+            added.abs_diff(expected) < 100,
+            "added {added} frames, expected about {expected}"
+        );
+        assert!(
+            ended.samples[start as usize * 2..]
+                .iter()
+                .any(|sample| sample.abs() > 0.001),
+            "the ending must contain audio"
+        );
+        assert!((ended.beat_at_sample(start) - ended.loop_beats()).abs() < 1e-9);
+        assert!(ended.in_ending(start));
+        assert!(!ended.in_ending(start - 1));
+
+        // The hold decays instead of stopping at a hard buffer edge.
+        let tail = &ended.samples[ended.samples.len() - 200..];
+        assert!(tail.iter().all(|sample| sample.abs() < 0.02));
+        assert!(
+            ended.samples[ended.samples.len() - 2..]
+                .iter()
+                .all(|sample| sample.abs() < 1e-6),
+            "the final frame must reach silence"
+        );
     }
 
     #[test]

@@ -143,6 +143,87 @@ pub struct SoundFontSetting {
     pub path: Option<String>,
 }
 
+/// A set of saved tunes played in turn during a long session.
+///
+/// One *pass* is one 64-beat time through the dance. A real band usually keeps
+/// a tune for several minutes and changes at a repeat, so the default keeps
+/// each tune for eight passes (about four minutes at 240 BPM).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TuneRotation {
+    pub enabled: bool,
+    /// Passes per tune before moving to the next entry.
+    pub passes_per_tune: u32,
+    /// Saved tunes in play order, by source. Resolved against the saved-tune
+    /// library at runtime; a stale entry is skipped.
+    pub tunes: Vec<SourceRef>,
+}
+
+impl Default for TuneRotation {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            passes_per_tune: 8,
+            tunes: Vec::new(),
+        }
+    }
+}
+
+impl TuneRotation {
+    /// Shortest rotation interval offered by the UI.
+    pub const MIN_PASSES: u32 = 1;
+    /// Longest rotation interval offered by the UI.
+    pub const MAX_PASSES: u32 = 16;
+
+    /// Whether the set has enough resolvable tunes to rotate.
+    ///
+    /// Two or more entries are required. The current tune may be one of them
+    /// or not; a single entry can never change what is playing.
+    pub fn can_rotate(tune_count: usize) -> bool {
+        tune_count >= 2
+    }
+
+    /// Repair a hand-edited or older value: clamp the interval and drop
+    /// duplicate source references.
+    pub fn validate(&mut self) {
+        self.passes_per_tune = self
+            .passes_per_tune
+            .clamp(Self::MIN_PASSES, Self::MAX_PASSES);
+        let mut seen = std::collections::BTreeSet::new();
+        self.tunes
+            .retain(|tune| seen.insert((tune.provider.clone(), tune.id.clone())));
+    }
+
+    /// Seconds each tune stays, at a given tempo.
+    ///
+    /// One pass is the 64-beat dance loop, so this is the interval the session
+    /// uses for its "about N minutes" label.
+    pub fn seconds_per_tune(&self, bpm: f64) -> f64 {
+        let bpm = bpm.max(1.0);
+        f64::from(self.passes_per_tune) * 64.0 * (120.0 / bpm)
+    }
+
+    /// Whether a source is already in the set.
+    pub fn contains(&self, source: &SourceRef) -> bool {
+        self.tunes
+            .iter()
+            .any(|tune| tune.provider == source.provider && tune.id == source.id)
+    }
+
+    /// Add a tune if it is not already in the set.
+    pub fn add(&mut self, source: SourceRef) {
+        if !self.contains(&source) {
+            self.tunes.push(source);
+        }
+    }
+
+    /// Remove a tune by its provider and source id.
+    pub fn remove(&mut self, provider: &str, id: &str) {
+        self.tunes
+            .retain(|tune| tune.provider != provider || tune.id != id);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Preferences {
@@ -179,6 +260,8 @@ pub struct Preferences {
     pub web_proxy_token: Option<String>,
     pub last_dance: Option<SourceRef>,
     pub last_tune: Option<SourceRef>,
+    /// Play several saved tunes in turn during a long session.
+    pub tune_rotation: TuneRotation,
     /// Migration tags this file has already been through.
     ///
     /// Recorded by name rather than inferred from [`Self::schema_version`] so
@@ -194,7 +277,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 6;
+pub const CURRENT_SCHEMA_VERSION: u32 = 7;
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -234,6 +317,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "accompaniment-rhythm-v6",
         version: 6,
         apply: migrate_v5_accompaniment_rhythm,
+    },
+    Migration {
+        tag: "tune-rotation-v7",
+        version: 7,
+        apply: migrate_v6_tune_rotation,
     },
 ];
 
@@ -276,6 +364,11 @@ fn migrate_v4_tts_voice(prefs: &mut Preferences) {
 fn migrate_v5_accompaniment_rhythm(_prefs: &mut Preferences) {
     // v6 adds the selectable accompaniment rhythm and the adjustable safety
     // padding; `serde` supplies the defaults for older files.
+}
+
+fn migrate_v6_tune_rotation(_prefs: &mut Preferences) {
+    // v7 adds the optional tune rotation; `serde` supplies the disabled
+    // default for older files.
 }
 
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
@@ -336,6 +429,7 @@ impl Default for Preferences {
             web_proxy_token: None,
             last_dance: None,
             last_tune: None,
+            tune_rotation: TuneRotation::default(),
             applied_migrations: applied_tags(),
         }
     }
@@ -356,6 +450,7 @@ impl Preferences {
         }
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
+        self.tune_rotation.validate();
         self.tts_rate = self.tts_rate.clamp(0.5, 2.0);
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
         self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
@@ -460,8 +555,10 @@ mod tests {
         assert!(prefs.accompaniment_variations);
         assert!(!prefs.tts_enabled);
         assert_eq!(prefs.tts_voice, "af_heart");
-        assert_eq!(prefs.schema_version, 6);
+        assert_eq!(prefs.schema_version, 7);
         assert!(!prefs.shuffle_alternatives);
+        assert!(!prefs.tune_rotation.enabled);
+        assert_eq!(prefs.tune_rotation.passes_per_tune, 8);
     }
 
     #[test]
@@ -531,7 +628,7 @@ mod tests {
         let json = old.to_json().expect("serialize");
         let migrated = Preferences::from_json(&json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, 7);
         assert_eq!(migrated.tts_voice, "af_heart");
         assert_eq!(migrated.lead.syllables_per_second, 4.0);
         assert_eq!(migrated.lead.max_beats, 5.0);
@@ -544,7 +641,7 @@ mod tests {
         let json = r#"{"schema_version":2,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, 7);
         assert!(migrated.animations_enabled);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -554,7 +651,7 @@ mod tests {
         let json = r#"{"schema_version":3,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, 7);
         assert!(migrated.accompaniment_variations);
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
@@ -564,7 +661,7 @@ mod tests {
         let json = r#"{"schema_version":4,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, 7);
         assert_eq!(migrated.tts_voice, "af_heart");
         assert!(!migrated.shuffle_alternatives);
         assert_eq!(migrated.tempo_bpm, 220.0);
@@ -575,7 +672,7 @@ mod tests {
         let json = r#"{"schema_version":5,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 6);
+        assert_eq!(migrated.schema_version, 7);
         assert_eq!(migrated.accompaniment_rhythm, AccompanimentRhythm::Auto);
         assert_eq!(migrated.lead.padding_seconds, LEAD_PADDING_SECONDS);
         assert_eq!(migrated.tempo_bpm, 220.0);
@@ -590,6 +687,61 @@ mod tests {
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
         assert_eq!(restored.accompaniment_rhythm, AccompanimentRhythm::Shuffle);
+    }
+
+    #[test]
+    fn tune_rotation_is_off_by_default_and_round_trips() {
+        let prefs = Preferences::default();
+        assert!(!prefs.tune_rotation.enabled);
+        assert_eq!(prefs.tune_rotation.passes_per_tune, 8);
+        assert!(prefs.tune_rotation.tunes.is_empty());
+
+        let mut prefs = Preferences {
+            tune_rotation: TuneRotation {
+                enabled: true,
+                passes_per_tune: 4,
+                tunes: vec![
+                    SourceRef::new("abcsessiontunes", "1", "https://example.invalid/1"),
+                    SourceRef::new("abcsessiontunes", "2", "https://example.invalid/2"),
+                ],
+            },
+            ..Preferences::default()
+        };
+        prefs.validate();
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.tune_rotation, prefs.tune_rotation);
+    }
+
+    #[test]
+    fn tune_rotation_adds_without_duplicating_and_clamps_the_interval() {
+        let mut rotation = TuneRotation::default();
+        let first = SourceRef::new("abcsessiontunes", "1", "https://example.invalid/1");
+        rotation.add(first.clone());
+        rotation.add(first.clone());
+        assert_eq!(rotation.tunes.len(), 1);
+        assert!(rotation.contains(&first));
+
+        rotation.remove("abcsessiontunes", "1");
+        assert!(rotation.tunes.is_empty());
+
+        rotation.passes_per_tune = 0;
+        rotation.validate();
+        assert_eq!(rotation.passes_per_tune, TuneRotation::MIN_PASSES);
+        rotation.passes_per_tune = 999;
+        rotation.validate();
+        assert_eq!(rotation.passes_per_tune, TuneRotation::MAX_PASSES);
+    }
+
+    #[test]
+    fn tune_rotation_duration_follows_the_tempo() {
+        let rotation = TuneRotation {
+            passes_per_tune: 8,
+            ..TuneRotation::default()
+        };
+        // Eight 32-second passes at 240 BPM.
+        assert!((rotation.seconds_per_tune(240.0) - 256.0).abs() < 1e-9);
+        assert!((rotation.seconds_per_tune(120.0) - 512.0).abs() < 1e-9);
     }
 
     #[test]
@@ -647,7 +799,7 @@ mod tests {
 
     #[test]
     fn a_file_records_every_migration_it_has_seen() {
-        let prefs = Preferences::from_json(r#"{"schema_version": 6}"#).expect("deserialize");
+        let prefs = Preferences::from_json(r#"{"schema_version": 7}"#).expect("deserialize");
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
         for migration in MIGRATIONS {
             assert!(
@@ -700,7 +852,7 @@ mod tests {
     fn a_file_without_tags_does_not_rerun_old_migrations() {
         // A v6 file still holds the v1 lead default only because the user
         // chose it; the version says the v2 migration is already done.
-        let json = r#"{"schema_version": 6, "lead": {"syllables_per_second": 6.5}}"#;
+        let json = r#"{"schema_version": 7, "lead": {"syllables_per_second": 6.5}}"#;
         let prefs = Preferences::from_json(json).expect("deserialize");
         assert_eq!(prefs.lead.syllables_per_second, 6.5);
     }

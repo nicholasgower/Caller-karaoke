@@ -102,7 +102,7 @@
     },
     {
       "id": "transport-tempo",
-      "alt": "The session controls with the Tempo slider set to 240 BPM beside Play, Pause, Restart, Loop, Count-in, Speak calls, and Volume.",
+      "alt": "The session controls with the Tempo slider set to 240 BPM beside Play, Pause, Restart, End tune, Loop, Cycle tunes, Count-in, Speak calls, and Volume.",
       "caption": "Tempo changes mark the music for a rebuild; press Play to apply them.",
       "status": "ready",
       "width": 1280,
@@ -163,6 +163,24 @@
       "status": "ready",
       "width": 1280,
       "height": 800
+    },
+    {
+      "id": "session-ending",
+      "alt": "The session screen during the slow ending, showing SLOW FINISH, the tune title, the message Slowing down and holding the last note, and a full progress bar.",
+      "caption": "End tune slows the last bar, holds the final chord, and then stops.",
+      "status": "pending"
+    },
+    {
+      "id": "session-tune-set",
+      "alt": "The session controls with Cycle tunes on, the tune-set line naming the next tune and the change interval, and the Change tune every slider.",
+      "caption": "Cycle tunes changes to the next saved tune at a repeat, using music rendered during the previous pass.",
+      "status": "pending"
+    },
+    {
+      "id": "tune-library-tune-set",
+      "alt": "The Select tune screen with one saved tune marked In set and another offering Add to set, beside the tune-set hint.",
+      "caption": "Add saved tunes to the set; Cycle tunes then plays them in turn.",
+      "status": "pending"
     },
     {
       "id": "prefs-open",
@@ -542,7 +560,7 @@
     },
     {
       "id": "session-mobile-controls",
-      "alt": "The session screen at phone width with one-row tabs, full-width Tempo and Volume sliders, Play, Pause, and Restart on one row, and a green CALL NOW prompt above the dance card.",
+      "alt": "The session screen at phone width with one-row tabs, full-width Tempo and Volume sliders, Play, Pause, Restart, and End on one row, and a green CALL NOW prompt above the dance card.",
       "caption": "The phone layout gives the sliders the full width and every control a 44-pixel touch target.",
       "status": "ready",
       "width": 390,

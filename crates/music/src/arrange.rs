@@ -11,6 +11,48 @@ use crate::score::{ChordEvent, Key, Meter, NoteEvent, Score};
 /// variations so a looping session does not repeat note for note.
 pub const VARIATION_PASSES: u32 = 4;
 
+/// How much longer the tune's last bar takes in the slow ending than at the
+/// session tempo. Three times is a deliberate, audible ritardando, not a
+/// subtle easing.
+pub const ENDING_LAST_BAR_STRETCH: f64 = 3.0;
+
+/// Shape of the ritardando inside the ending's last bar. Above 1 the bar starts
+/// at the session tempo and the following beats stretch more and more, so the
+/// ending eases into the slowdown instead of lurching.
+pub const ENDING_SLOWDOWN_CURVE: f64 = 2.0;
+
+/// Dance beats the final harmony is held before the audio fades out.
+pub const ENDING_LINGER_BEATS: f64 = 8.0;
+
+/// One note of the once-only ending.
+///
+/// Unlike [`NoteEvent`], an ending note is timed in seconds because the ending
+/// deliberately leaves the fixed dance-beat grid.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EndingNote {
+    /// Seconds from the start of the ending.
+    pub start_seconds: f64,
+    pub duration_seconds: f64,
+    pub midi: u8,
+    pub velocity: u8,
+}
+
+/// The once-only slow finish appended to the practice loop.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ending {
+    /// The stretched closing melody.
+    pub melody: Vec<EndingNote>,
+    /// The closing bar's backing plus the held final chord.
+    pub accompaniment: Vec<EndingNote>,
+    /// Beat in a normal 64-beat pass where the ending replaces the remaining
+    /// music. It is the start of the tune's last bar.
+    pub from_beat: f64,
+    /// When the held final chord begins, in seconds from the ending's start.
+    pub linger_start_seconds: f64,
+    /// Total length of the ending in seconds.
+    pub seconds: f64,
+}
+
 /// The music for one practice loop.
 #[derive(Clone, Debug)]
 pub struct Arrangement {
@@ -214,6 +256,126 @@ impl Arrangement {
             })
     }
 
+    /// Build the once-only slow ending.
+    ///
+    /// The last bar is replayed at a falling tempo and the final harmony is
+    /// held. The ending replaces that bar when the transport reaches
+    /// [`Ending::from_beat`], so the tune's own closing bar is not heard twice:
+    /// the caller hears the normal tune up to the last bar, then the same bar
+    /// stretched into a cadence.
+    pub fn ending(
+        &self,
+        bpm: f64,
+        instrument: AccompanimentInstrument,
+        rhythm: AccompanimentRhythm,
+    ) -> Ending {
+        let beat_seconds = 120.0 / bpm.max(1.0);
+        let bar_beats = self.meter.bar_dance_beats().clamp(1.0, self.loop_beats);
+        let bar_start = (self.loop_beats - bar_beats).max(0.0);
+        let normal_bar_seconds = bar_beats * beat_seconds;
+        let ritard_seconds = normal_bar_seconds * ENDING_LAST_BAR_STRETCH;
+        let linger_seconds = ENDING_LINGER_BEATS * beat_seconds;
+        // Start at the session tempo, then stretch each beat more than the one
+        // before: the linear term keeps the opening of the bar honest and the
+        // power term supplies the ritardando.
+        let slowdown = (ritard_seconds - normal_bar_seconds).max(0.0);
+        let warp = |beat: f64| {
+            let progress = ((beat - bar_start) / bar_beats).clamp(0.0, 1.0);
+            normal_bar_seconds * progress + slowdown * progress.powf(ENDING_SLOWDOWN_CURVE)
+        };
+
+        let mut melody = Vec::new();
+        for note in self
+            .melody
+            .iter()
+            .filter(|note| note.start_beat >= bar_start - 1e-9)
+        {
+            let start = warp(note.start_beat);
+            let end = warp(note.end_beat());
+            melody.push(EndingNote {
+                start_seconds: start,
+                duration_seconds: (end - start).max(beat_seconds * 0.12),
+                midi: note.midi,
+                velocity: note.velocity,
+            });
+        }
+        melody.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
+
+        // A tune can rest through its written last bar. Hold the last pitch it
+        // did play, under the final chord, rather than ending with no melody.
+        if melody.is_empty()
+            && let Some(note) = self.melody.last()
+        {
+            melody.push(EndingNote {
+                start_seconds: ritard_seconds,
+                duration_seconds: linger_seconds * 0.96,
+                midi: note.midi,
+                velocity: note.velocity,
+            });
+        }
+
+        // Hold the closing melody note through the final chord, unless the
+        // fallback above already begins on the final chord.
+        if let Some(last) = melody.last_mut()
+            && last.start_seconds < ritard_seconds
+        {
+            last.duration_seconds =
+                (ritard_seconds - last.start_seconds).max(0.05) + linger_seconds;
+        }
+
+        let mut accompaniment =
+            self.ending_bar_accompaniment(instrument, rhythm, bar_start, bar_beats);
+        for note in &mut accompaniment {
+            let start = warp(note.start_seconds);
+            let end = warp(note.start_seconds + note.duration_seconds);
+            note.start_seconds = start;
+            note.duration_seconds = (end - start).max(beat_seconds * 0.08);
+        }
+        accompaniment.extend(final_chord_notes(
+            &self.chord_at((self.loop_beats - 1e-6).max(0.0)),
+            ritard_seconds,
+            linger_seconds,
+        ));
+        accompaniment.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
+
+        Ending {
+            melody,
+            accompaniment,
+            from_beat: bar_start,
+            linger_start_seconds: ritard_seconds,
+            seconds: ritard_seconds + linger_seconds,
+        }
+    }
+
+    /// The last bar's backing notes, expressed in beats from the bar start.
+    fn ending_bar_accompaniment(
+        &self,
+        instrument: AccompanimentInstrument,
+        rhythm: AccompanimentRhythm,
+        bar_start: f64,
+        bar_beats: f64,
+    ) -> Vec<EndingNote> {
+        let rhythm = resolve_rhythm(instrument, rhythm);
+        let chord = self.chord_at(bar_start);
+        let mut notes = Vec::new();
+        self.render_rhythm(
+            &mut notes,
+            rhythm,
+            &chord,
+            bar_start,
+            (bar_start + bar_beats).min(self.loop_beats),
+        );
+        notes
+            .into_iter()
+            .map(|note| EndingNote {
+                start_seconds: note.start_beat - bar_start,
+                duration_seconds: note.duration_beats,
+                midi: note.midi,
+                velocity: note.velocity,
+            })
+            .collect()
+    }
+
     /// Generate the plain backing track for the selected instrument.
     ///
     /// This is pass 0 with the instrument's default rhythm. MIDI export and
@@ -273,14 +435,7 @@ impl Arrangement {
         instrument: AccompanimentInstrument,
         rhythm: AccompanimentRhythm,
     ) -> Vec<NoteEvent> {
-        let rhythm = match rhythm {
-            AccompanimentRhythm::Auto => match instrument {
-                AccompanimentInstrument::Piano => AccompanimentRhythm::BoomChuck,
-                AccompanimentInstrument::Guitar => AccompanimentRhythm::Strum,
-                AccompanimentInstrument::Accordion => AccompanimentRhythm::Sustained,
-            },
-            explicit => explicit,
-        };
+        let rhythm = resolve_rhythm(instrument, rhythm);
         let mut notes = Vec::new();
         for chord_event in &self.chords {
             let chord = Chord::parse(&chord_event.symbol).unwrap_or_else(|| self.count_in_chord());
@@ -498,6 +653,50 @@ fn push_chord(
     for midi in chord.voicing(low) {
         push_note(notes, start_beat, duration_beats, midi, velocity, limit);
     }
+}
+
+/// Resolve an instrument's signature pattern when the user chose "match
+/// instrument".
+fn resolve_rhythm(
+    instrument: AccompanimentInstrument,
+    rhythm: AccompanimentRhythm,
+) -> AccompanimentRhythm {
+    match rhythm {
+        AccompanimentRhythm::Auto => match instrument {
+            AccompanimentInstrument::Piano => AccompanimentRhythm::BoomChuck,
+            AccompanimentInstrument::Guitar => AccompanimentRhythm::Strum,
+            AccompanimentInstrument::Accordion => AccompanimentRhythm::Sustained,
+        },
+        explicit => explicit,
+    }
+}
+
+/// The held final harmony: a low bass note plus a full close-position chord.
+fn final_chord_notes(chord: &Chord, start: f64, linger_seconds: f64) -> Vec<EndingNote> {
+    let duration_seconds = (linger_seconds * 0.96).max(0.3);
+    let mut notes = vec![EndingNote {
+        start_seconds: start,
+        duration_seconds,
+        midi: chord.bass_midi(),
+        velocity: 66,
+    }];
+    for midi in chord.voicing(55) {
+        notes.push(EndingNote {
+            start_seconds: start,
+            duration_seconds,
+            midi,
+            velocity: 58,
+        });
+    }
+    for midi in chord.voicing(67) {
+        notes.push(EndingNote {
+            start_seconds: start,
+            duration_seconds,
+            midi,
+            velocity: 48,
+        });
+    }
+    notes
 }
 
 /// Small deterministic generator (SplitMix64) used for the variation choices.
@@ -932,5 +1131,186 @@ mod tests {
         assert_eq!(mismatch.tune_beats, 64.0);
         assert!(mismatch.to_string().contains("63.5"));
         assert!(mismatch.to_string().contains("64.0"));
+    }
+
+    #[test]
+    fn the_ending_replaces_the_last_bar_and_holds_the_final_chord() {
+        let mut score = simple_score();
+        score.notes.push(NoteEvent {
+            start_beat: 62.0,
+            duration_beats: 1.0,
+            midi: 64,
+            velocity: 80,
+        });
+        score.notes.push(NoteEvent {
+            start_beat: 63.0,
+            duration_beats: 1.0,
+            midi: 66,
+            velocity: 80,
+        });
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+        );
+
+        // A two-beat bar at 240 BPM lasts 1 s; stretched three times, then an
+        // eight-beat (4 s) hold.
+        assert!((ending.from_beat - 62.0).abs() < 1e-9);
+        assert!((ending.linger_start_seconds - 3.0).abs() < 1e-9);
+        assert!((ending.seconds - 7.0).abs() < 1e-9);
+        assert!(!ending.melody.is_empty());
+        assert!(!ending.accompaniment.is_empty());
+
+        let mut seconds: Vec<f64> = ending
+            .melody
+            .iter()
+            .chain(ending.accompaniment.iter())
+            .map(|note| note.start_seconds + note.duration_seconds)
+            .collect();
+        seconds.sort_by(f64::total_cmp);
+        assert!(
+            seconds
+                .last()
+                .is_some_and(|end| *end <= ending.seconds + 1e-9)
+        );
+        assert!(seconds.last().is_some_and(|end| *end > 6.5));
+        assert!(
+            ending
+                .melody
+                .iter()
+                .chain(ending.accompaniment.iter())
+                .all(|note| note.midi <= 108 && note.start_seconds >= 0.0)
+        );
+
+        // The last melody note rings through the final chord instead of being
+        // cut when the bar ends.
+        assert!(
+            ending
+                .melody
+                .iter()
+                .any(|note| note.duration_seconds >= 5.0),
+            "the closing melody note should linger: {:?}",
+            ending.melody
+        );
+        assert!(
+            ending
+                .accompaniment
+                .iter()
+                .any(|note| note.start_seconds >= 2.99 && note.start_seconds <= 3.01),
+            "the final chord should arrive at the end of the ritardando"
+        );
+    }
+
+    #[test]
+    fn the_ending_slows_down_more_as_the_last_bar_closes() {
+        let mut score = simple_score();
+        for (beat, midi) in [(62.0, 64), (62.5, 65), (63.0, 66), (63.5, 67)] {
+            score.notes.push(NoteEvent {
+                start_beat: beat,
+                duration_beats: 0.5,
+                midi,
+                velocity: 80,
+            });
+        }
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+        );
+
+        let mut starts: Vec<f64> = ending
+            .melody
+            .iter()
+            .filter(|note| note.start_seconds < ending.linger_start_seconds)
+            .map(|note| note.start_seconds)
+            .collect();
+        starts.sort_by(f64::total_cmp);
+        assert!(starts.len() >= 4, "starts: {starts:?}");
+        let first_gap = starts[1] - starts[0];
+        let last_gap = starts[starts.len() - 1] - starts[starts.len() - 2];
+        assert!(
+            last_gap > first_gap * 1.5,
+            "gaps should grow as the tempo falls: {starts:?}"
+        );
+    }
+
+    #[test]
+    fn the_ending_follows_the_session_tempo() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let slow = arrangement.ending(
+            120.0,
+            AccompanimentInstrument::Guitar,
+            AccompanimentRhythm::Auto,
+        );
+        let fast = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Guitar,
+            AccompanimentRhythm::Auto,
+        );
+        assert!((slow.seconds - fast.seconds * 2.0).abs() < 1e-9);
+        assert!(slow.melody[0].duration_seconds > fast.melody[0].duration_seconds);
+    }
+
+    #[test]
+    fn every_instrument_and_rhythm_can_play_the_ending() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        for instrument in [
+            AccompanimentInstrument::Piano,
+            AccompanimentInstrument::Guitar,
+            AccompanimentInstrument::Accordion,
+        ] {
+            for rhythm in AccompanimentRhythm::ALL {
+                let ending = arrangement.ending(240.0, instrument, rhythm);
+                assert!(!ending.melody.is_empty());
+                assert!(
+                    !ending.accompaniment.is_empty(),
+                    "{} with {} produced no ending backing",
+                    instrument.label(),
+                    rhythm.label()
+                );
+                assert!(
+                    ending
+                        .melody
+                        .iter()
+                        .chain(ending.accompaniment.iter())
+                        .all(|note| note.start_seconds >= 0.0
+                            && note.start_seconds + note.duration_seconds <= ending.seconds + 1e-9)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_ending_uses_the_same_two_beat_bar_for_a_jig() {
+        let mut score = simple_score();
+        score.meter = Meter {
+            numerator: 6,
+            denominator: 8,
+        };
+        score.notes.push(NoteEvent {
+            start_beat: 62.0,
+            duration_beats: 1.0,
+            midi: 64,
+            velocity: 80,
+        });
+        score.notes.push(NoteEvent {
+            start_beat: 63.0,
+            duration_beats: 1.0,
+            midi: 66,
+            velocity: 80,
+        });
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Accordion,
+            AccompanimentRhythm::Auto,
+        );
+        assert!((ending.from_beat - 62.0).abs() < 1e-9);
+        assert!((ending.seconds - 7.0).abs() < 1e-9);
+        assert!(!ending.melody.is_empty());
+        assert!(!ending.accompaniment.is_empty());
     }
 }

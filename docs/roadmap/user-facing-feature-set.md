@@ -5,7 +5,9 @@
 - Top tab row: **Select dance**, **Select tune**, **Preferences**.
 - Session controls directly below the tabs:
   - Tempo (default 240 BPM), with stepper and slider.
-  - Play/pause, restart, loop toggle.
+  - Play/pause, restart, loop toggle, and **End tune** (a slow, held final
+    cadence).
+  - **Cycle tunes**: play a set of saved tunes in turn, changing at a repeat.
   - TTS on/off.
   - Master volume and current tune/instrument summary.
 - The remaining space is the dance area:
@@ -57,6 +59,10 @@ The saved-tune library, available offline:
     sheet is the default view; if it cannot be engraved the source remains
     available in the ABC view.
 - The default tune is downloaded on first run and remains usable offline.
+- **Tune set**: saved tunes can be added to an ordered set. With **Cycle tunes**
+  on, the session keeps each tune for a configurable number of 64-beat times
+  through (default 8, about four minutes at 240 BPM) and changes at the repeat.
+  The next tune is rendered ahead of the boundary.
 
 ### 3.4 Preferences
 

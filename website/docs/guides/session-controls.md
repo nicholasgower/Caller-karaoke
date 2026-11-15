@@ -1,6 +1,6 @@
 ---
 title: Session controls
-description: Use tempo, play/pause, restart, looping, count-in, spoken calls, and volume, and understand the call prompt and dance card.
+description: Use tempo, play/pause, restart, ending, looping, count-in, spoken calls, and volume, and understand the call prompt and dance card.
 sidebar_position: 3
 ---
 
@@ -16,7 +16,9 @@ volume settings.
 | **Play** | — | Renders pending music, then starts or resumes. |
 | **Pause** | — | Stops the music and any speech; the position is retained. |
 | **Restart** | — | Returns to the count-in and clears the call state. |
+| **End tune** | — | Slows the tune's last bar, holds the final chord, then stops. |
 | **Loop** | on by default | Repeats the 64-beat music loop. |
+| **Cycle tunes** | off by default | Plays through a set of saved tunes, changing at a repeat. |
 | **Count-in** | on by default | Three accompaniment beats built from the tune's first chord. |
 | **Speak calls** | off by default | Speaks the active call if a system voice is available. |
 | **Volume** | 0–1, default 0.8 | Master playback volume. |
@@ -59,7 +61,7 @@ states:
 | Count-in | `COUNT-IN`, a large number, and either **CALL NOW** or `Listen for the first chord` | Wait for the loop, or say the first call if it is already due. |
 | Calling | `CALL NOW`, green card | Say the words now. The line below counts down to the execute beat. |
 | Executing | `UPCOMING MOVE`, red card, the next call, and `call in N beats` | The figure is happening; prepare to say the next call. The dance card still highlights the figure in progress. |
-| Finished | `Dance complete` | With looping off, press **Restart** to run again. |
+| Finished | `Dance complete` | Press **Restart** to run again. End tune also finishes here. |
 
 While a figure executes, the prompt switches to the move you must say next. The
 **Next:** line remains below the prompt for the following call.
@@ -114,6 +116,41 @@ count-in it stays at zero.
 
 <Shot id="session-finished" />
 
+## Ending the tune
+
+Select **End tune** while music is playing (or paused) to finish the way a band
+would. At the start of the tune's last bar the arranger splices into a rendered
+ending: the closing bar slows down, the final melody note rings, and the last
+chord is held for a few seconds before the audio fades out. The prompt shows
+**SLOW FINISH** while the ending plays, and **Dance complete** when it is over.
+
+The ending is prepared with the music, so it starts without a delay. Press
+**Cancel ending** before the last bar begins to keep playing normally. With
+**Loop** off, **End tune** still plays the slow ending instead of stopping
+abruptly.
+
+<Shot id="session-ending" />
+
+## Cycling tunes
+
+Contra bands usually stay on one tune for several minutes and change at a
+repeat. **Cycle tunes** does the same with your saved tunes:
+
+1. Open **Select tune** and add each tune with **Add to set** (or **Add to
+   tune set** in the preview).
+2. Turn on **Cycle tunes** in the session controls.
+3. Set **Change tune every** to the number of 64-beat times through. The default
+   is eight, about four minutes at 240 BPM; the session line shows the actual
+   time at the current tempo.
+
+The next tune is rendered during the current tune's last time through, so the
+change is ready at the boundary. The call timeline continues unchanged, and the
+new tune starts at beat 0 without a second count-in. **Cycle tunes** needs
+**Loop** on, because a non-looping run stops after one pass. The web build has
+no background renderer, so it prepares the next tune at the change instead.
+
+<Shot id="session-tune-set" />
+
 ## Spoken calls
 
 Enable **Speak calls** in the session controls or in Preferences. The visual
@@ -150,9 +187,10 @@ open, the transport and tab shortcuts are suspended.
 At phone width the session tab uses its compact layout. The top row keeps four
 short tabs — **Session**, **Dance**, **Tune**, and **Prefs** — beside the
 pinned **About** button, without the wordmark. The tempo and volume sliders
-span the screen with their value boxes, and **Play**, **Pause**, and
-**Restart** split one row evenly. Loop, count-in, and spoken calls stay on one
-wrapping row. Every control keeps a 44-pixel touch target.
+span the screen with their value boxes, and **Play**, **Pause**,
+**Restart**, and **End** split one row evenly. Loop, cycle tunes, count-in, and
+spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch
+target.
 
 When the window is too short to show the controls, prompt, progress, and dance
 card together, the whole session page scrolls instead of squeezing the card.

@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use rustysynth::{SoundFont, Synthesizer, SynthesizerSettings};
 
+use crate::arrange::EndingNote;
 use crate::render::{AudioBuffer, RenderError, RenderRequest};
 use crate::score::NoteEvent;
 
@@ -50,7 +51,18 @@ pub fn render_soundfont(
     let pass_samples = (request.arrangement.loop_beats.max(1.0) * samples_per_beat).round() as u64;
     let passes = request.variation_passes.max(1);
     let loop_samples = pass_samples * passes as u64;
-    let total_samples = count_in_samples + loop_samples;
+    let ending = request.ending.then(|| {
+        request.arrangement.ending(
+            request.bpm,
+            request.accompaniment,
+            request.accompaniment_rhythm,
+        )
+    });
+    let ending_samples = ending
+        .as_ref()
+        .map(|ending| (ending.seconds * sample_rate as f64).round() as u64)
+        .unwrap_or(0);
+    let total_samples = count_in_samples + loop_samples + ending_samples;
 
     let mut settings = SynthesizerSettings::new(sample_rate as i32);
     settings.block_size = 64;
@@ -103,6 +115,17 @@ pub fn render_soundfont(
         schedule_notes(&mut scheduled, &accompaniment, 1, offset, samples_per_beat);
     }
     schedule_count_in(&mut scheduled, request, samples_per_beat, count_in_samples);
+    if let Some(ending) = &ending {
+        let offset = count_in_samples + loop_samples;
+        schedule_ending_notes(&mut scheduled, &ending.melody, 0, offset, sample_rate);
+        schedule_ending_notes(
+            &mut scheduled,
+            &ending.accompaniment,
+            1,
+            offset,
+            sample_rate,
+        );
+    }
 
     scheduled.sort_by(|a, b| a.sample.cmp(&b.sample).then(a.order.cmp(&b.order)));
 
@@ -141,6 +164,15 @@ pub fn render_soundfont(
         position = block_end;
     }
 
+    if let Some(ending) = &ending {
+        crate::render::fade_ending(
+            &mut samples,
+            sample_rate,
+            count_in_samples + loop_samples,
+            ending.seconds,
+            ending.seconds - ending.linger_start_seconds,
+        );
+    }
     normalize(&mut samples);
 
     Ok(AudioBuffer {
@@ -149,9 +181,14 @@ pub fn render_soundfont(
         channels: 2,
         count_in_samples,
         loop_start_sample: count_in_samples,
-        loop_end_sample: total_samples,
+        loop_end_sample: count_in_samples + loop_samples,
         loop_pass_samples: pass_samples,
         samples_per_beat,
+        ending_from_beat: ending
+            .as_ref()
+            .map(|ending| ending.from_beat)
+            .unwrap_or(0.0),
+        ending_start_sample: ending.is_some().then_some(count_in_samples + loop_samples),
     })
 }
 
@@ -169,6 +206,44 @@ fn schedule_notes(
         }
         let start = start as u64;
         let duration = (note.duration_beats * samples_per_beat).round().max(1.0) as u64;
+        scheduled.push(Scheduled {
+            sample: start,
+            order: 1,
+            kind: ScheduledKind::NoteOn {
+                channel,
+                key: note.midi as i32,
+                velocity: note.velocity.clamp(1, 127) as i32,
+            },
+        });
+        scheduled.push(Scheduled {
+            sample: start + duration,
+            order: 0,
+            kind: ScheduledKind::NoteOff {
+                channel,
+                key: note.midi as i32,
+            },
+        });
+    }
+}
+
+/// Schedule ending notes, which are timed in seconds rather than dance beats.
+fn schedule_ending_notes(
+    scheduled: &mut Vec<Scheduled>,
+    notes: &[EndingNote],
+    channel: i32,
+    offset_samples: u64,
+    sample_rate: u32,
+) {
+    for note in notes {
+        let start =
+            offset_samples as i64 + (note.start_seconds * sample_rate as f64).round() as i64;
+        if start < 0 {
+            continue;
+        }
+        let start = start as u64;
+        let duration = (note.duration_seconds * sample_rate as f64)
+            .round()
+            .max(1.0) as u64;
         scheduled.push(Scheduled {
             sample: start,
             order: 1,

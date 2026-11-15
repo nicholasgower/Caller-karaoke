@@ -111,9 +111,32 @@ Soundfont file selection:
   beat instead of restarting the loop.
 - Show a "Preparing music…" state while rendering.
 
-### 6.7 MIDI export
+### 6.7 Slow ending
+
+- The rendered buffer appends a once-only ending after the loop passes, so the
+  transport can request it without another render.
+- Requesting the ending splices into it at the start of the tune's last bar;
+  that bar is stretched with a falling tempo (a ritardando) and the final
+  harmony is held for eight dance beats before a short fade.
+- The ending leaves the 64-beat grid. The UI reports the loop end, stops calls,
+  and shows a slow-finish state while it plays.
+- With looping off, the ending replaces the abrupt stop at the loop boundary.
+
+### 6.8 Tune rotation
+
+- A session may keep an ordered set of saved tunes and change at a 64-beat
+  boundary after a configurable number of passes (default 8).
+- The next tune is parsed and rendered on a worker thread during the current
+  tune's last pass, then installed at the boundary without a count-in.
+- The call timeline does not change with the tune; calls keep their positions
+  on the 64-beat grid.
+- Rotation requires looping. The web build has no render worker and prepares
+  the next tune at the boundary instead.
+
+### 6.9 MIDI export
 
 - Export the arranged 64-beat loop as a Standard MIDI File using `midly`.
+- The once-only slow ending is a live transport action and is not exported.
 - Two tracks: melody and accompaniment.
 - Include tempo, meter, key, and program changes.
 - The export must match what the synth plays.

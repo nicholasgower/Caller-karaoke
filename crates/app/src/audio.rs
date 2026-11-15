@@ -19,6 +19,9 @@ struct Shared {
     playing: AtomicBool,
     looping: AtomicBool,
     finished: AtomicBool,
+    /// Play the once-only ending at the end of the current pass instead of
+    /// looping. The app sets this from the **End tune** control.
+    ending: AtomicBool,
     volume: AtomicU32,
     speech: ArcSwapOption<Vec<f32>>,
     speech_position: AtomicU64,
@@ -81,6 +84,8 @@ impl AudioEngine {
             loop_end_sample,
             loop_pass_samples: (64.0 * samples_per_beat).round() as u64,
             samples_per_beat,
+            ending_from_beat: 62.0,
+            ending_start_sample: None,
         };
         let audio = Self::silent(sample_rate);
         audio.set_buffer(buffer);
@@ -107,6 +112,7 @@ impl AudioEngine {
         self.shared.buffer.store(Some(Arc::new(buffer)));
         self.shared.position.store(0, Ordering::Relaxed);
         self.shared.finished.store(false, Ordering::Relaxed);
+        self.shared.ending.store(false, Ordering::Relaxed);
     }
 
     /// Mix a mono speech buffer into the next output frames. The buffer is
@@ -131,6 +137,7 @@ impl AudioEngine {
         if self.shared.finished.load(Ordering::Relaxed) {
             self.shared.position.store(0, Ordering::Relaxed);
             self.shared.finished.store(false, Ordering::Relaxed);
+            self.shared.ending.store(false, Ordering::Relaxed);
         }
         self.shared.playing.store(true, Ordering::Relaxed);
         if let Some(stream) = &self.stream {
@@ -143,18 +150,52 @@ impl AudioEngine {
         self.stop_speech();
     }
 
+    /// Stop music output without touching speech.
+    ///
+    /// A tune change swaps the pre-rendered buffer at a pass boundary while the
+    /// caller may still be speaking the call that straddles the boundary.
+    pub fn pause_music(&self) {
+        self.shared.playing.store(false, Ordering::Relaxed);
+    }
+
     pub fn stop(&self) {
         self.shared.playing.store(false, Ordering::Relaxed);
         self.shared.position.store(0, Ordering::Relaxed);
         self.shared.finished.store(false, Ordering::Relaxed);
+        self.shared.ending.store(false, Ordering::Relaxed);
         self.stop_speech();
     }
 
     pub fn restart(&self) {
         self.shared.position.store(0, Ordering::Relaxed);
         self.shared.finished.store(false, Ordering::Relaxed);
+        self.shared.ending.store(false, Ordering::Relaxed);
         self.stop_speech();
         self.play();
+    }
+
+    /// Make the transport take the once-only ending at the end of this pass.
+    ///
+    /// The audio thread splices into the ending at the start of the tune's last
+    /// bar, so the ending can stretch that bar rather than repeat it.
+    pub fn request_ending(&self) {
+        self.shared.ending.store(true, Ordering::Relaxed);
+    }
+
+    pub fn cancel_ending(&self) {
+        self.shared.ending.store(false, Ordering::Relaxed);
+    }
+
+    pub fn ending_requested(&self) -> bool {
+        self.shared.ending.load(Ordering::Relaxed)
+    }
+
+    /// Whether the transport is currently inside the once-only ending.
+    pub fn in_ending(&self) -> bool {
+        let Some(buffer) = self.shared.buffer.load_full() else {
+            return false;
+        };
+        buffer.in_ending(self.position_samples())
     }
 
     pub fn set_looping(&self, looping: bool) {
@@ -213,6 +254,7 @@ impl Shared {
             playing: AtomicBool::new(false),
             looping: AtomicBool::new(true),
             finished: AtomicBool::new(false),
+            ending: AtomicBool::new(false),
             volume: AtomicU32::new(1.0f32.to_bits()),
             speech: ArcSwapOption::empty(),
             speech_position: AtomicU64::new(0),
@@ -257,21 +299,7 @@ where
         .filter(|_| music_playing)
         .map(|buffer| buffer.as_ref());
     let looping = shared.looping.load(Ordering::Relaxed);
-    // The buffer holds one pass, or several when the accompaniment varies.
-    // One-shot playback plays the first pass, not every variation.
-    let end_sample = music
-        .map(|buffer| {
-            if looping {
-                buffer.loop_end_sample
-            } else {
-                buffer
-                    .loop_start_sample
-                    .saturating_add(buffer.loop_pass_samples)
-                    .min(buffer.loop_end_sample)
-            }
-        })
-        .unwrap_or(0);
-    let loop_start = music.map(|buffer| buffer.loop_start_sample).unwrap_or(0);
+    let ending_requested = shared.ending.load(Ordering::Relaxed);
     let mut music_position = shared.position.load(Ordering::Relaxed);
     let mut music_finished = false;
 
@@ -284,11 +312,53 @@ where
         let (mut left, mut right) = (0.0f32, 0.0f32);
 
         if let Some(buffer) = music {
-            if music_position >= end_sample {
-                if looping {
-                    music_position = loop_start;
+            if ending_requested {
+                // The ending replaces the tune's last bar. Splice into the
+                // appended region as soon as playback reaches that bar, so the
+                // bar is heard once, stretched, instead of twice.
+                if let Some(ending_start) = buffer.ending_start_sample {
+                    if music_position < ending_start {
+                        let pass_samples = buffer.loop_pass_samples.max(1);
+                        let position_in_pass =
+                            music_position.saturating_sub(buffer.loop_start_sample) % pass_samples;
+                        let jump_at = (buffer.ending_from_beat.max(0.0) * buffer.samples_per_beat)
+                            .round() as u64;
+                        let jump_at = jump_at.min(pass_samples.saturating_sub(1));
+                        if music_position >= buffer.loop_start_sample && position_in_pass >= jump_at
+                        {
+                            music_position = ending_start;
+                        }
+                    }
+                    if music_position >= buffer.frames() as u64 {
+                        music_finished = true;
+                    }
                 } else {
-                    music_finished = true;
+                    // No ending was rendered (for example the synthetic
+                    // headless clock); stop cleanly at the end of this pass
+                    // instead of looping.
+                    let pass_end = buffer
+                        .loop_start_sample
+                        .saturating_add(buffer.loop_pass_samples)
+                        .min(buffer.loop_end_sample);
+                    if music_position >= pass_end {
+                        music_finished = true;
+                    }
+                }
+            } else {
+                let end_sample = if looping {
+                    buffer.loop_end_sample
+                } else {
+                    buffer
+                        .loop_start_sample
+                        .saturating_add(buffer.loop_pass_samples)
+                        .min(buffer.loop_end_sample)
+                };
+                if music_position >= end_sample {
+                    if looping {
+                        music_position = buffer.loop_start_sample;
+                    } else {
+                        music_finished = true;
+                    }
                 }
             }
             if !music_finished {
@@ -356,6 +426,8 @@ mod tests {
             loop_end_sample: 3_000,
             loop_pass_samples: 2_000,
             samples_per_beat: 500.0,
+            ending_from_beat: 0.0,
+            ending_start_sample: None,
         }
     }
 
@@ -411,5 +483,66 @@ mod tests {
         engine.stop_speech();
         assert!(!engine.shared.speech_playing.load(Ordering::Relaxed));
         assert_eq!(engine.shared.speech_position.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn pausing_music_for_a_tune_change_keeps_speech() {
+        let engine = AudioEngine::silent(48_000);
+        engine.play_speech(vec![0.5, 0.5]);
+        engine.play();
+        engine.pause_music();
+        assert!(!engine.is_playing());
+        assert!(engine.shared.speech_playing.load(Ordering::Relaxed));
+    }
+
+    fn ending_buffer() -> AudioBuffer {
+        let mut buffer = test_buffer();
+        // Extend the buffer with a one-second ending region at sample 3000.
+        buffer.samples.resize(4_000 * 2, 0.5);
+        buffer.ending_start_sample = Some(3_000);
+        buffer.ending_from_beat = 1.0;
+        buffer
+    }
+
+    #[test]
+    fn requesting_the_ending_splices_in_at_the_last_bar() {
+        let shared = Shared::new();
+        shared.buffer.store(Some(Arc::new(ending_buffer())));
+        shared.playing.store(true, Ordering::Relaxed);
+        shared.ending.store(true, Ordering::Relaxed);
+        // `ending_from_beat = 1` means the jump happens one beat into a pass;
+        // position 1_100 is only 0.2 beats in, so playback must continue.
+        shared.position.store(1_100, Ordering::Relaxed);
+        let mut data = [0.0f32; 200];
+        write_data(&mut data, 2, &shared);
+        assert_eq!(shared.position.load(Ordering::Relaxed), 1_200);
+        assert!(shared.ending.load(Ordering::Relaxed));
+        assert!(!shared.finished.load(Ordering::Relaxed));
+
+        // Position 2_500 is 3 beats into the pass (past the jump), so the
+        // callback must move to the appended ending and play it.
+        shared.position.store(2_500, Ordering::Relaxed);
+        let mut data = [0.0f32; 200];
+        write_data(&mut data, 2, &shared);
+        assert!(
+            data[0] > 0.4,
+            "the first frame should come from the ending region"
+        );
+        assert_eq!(shared.position.load(Ordering::Relaxed), 3_100);
+    }
+
+    #[test]
+    fn the_ending_plays_to_the_end_and_finishes() {
+        let shared = Shared::new();
+        shared.buffer.store(Some(Arc::new(ending_buffer())));
+        shared.playing.store(true, Ordering::Relaxed);
+        shared.ending.store(true, Ordering::Relaxed);
+        shared.position.store(3_900, Ordering::Relaxed);
+        let mut data = [0.0f32; 400];
+        write_data(&mut data, 2, &shared);
+        assert!(shared.finished.load(Ordering::Relaxed));
+        assert!(!shared.playing.load(Ordering::Relaxed));
+        assert_eq!(shared.position.load(Ordering::Relaxed), 4_000);
+        assert!(data[0] > 0.4);
     }
 }

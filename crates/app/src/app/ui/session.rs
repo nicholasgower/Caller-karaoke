@@ -42,7 +42,7 @@ fn session_controls(
         // each is a full touch target.
         ui.horizontal(|ui| {
             let spacing = ui.spacing().item_spacing.x;
-            let width = ((ui.available_width() - 2.0 * spacing) / 3.0).max(72.0);
+            let width = ((ui.available_width() - 3.0 * spacing) / 4.0).max(62.0);
             for (label, hover, action) in [
                 ("Play", "Play (Space)", "play"),
                 ("Pause", "Pause (Space)", "pause"),
@@ -56,11 +56,42 @@ fn session_controls(
                     changes.action = Some(action);
                 }
             }
+            let ending = audio.ending_requested();
+            let in_ending = audio.in_ending();
+            let can_end = !in_ending && !audio.is_finished() && audio.has_buffer();
+            let end_label = if in_ending {
+                "Ending…"
+            } else if ending {
+                "Cancel"
+            } else {
+                "End"
+            };
+            let response = ui
+                .add_enabled_ui(can_end, |ui| {
+                    ui.add_sized([width, theme::TOUCH_TARGET], egui::Button::new(end_label))
+                })
+                .inner
+                .on_hover_text(if ending {
+                    "Cancel the slow ending"
+                } else {
+                    "End the tune slowly after this time through"
+                });
+            if response.clicked() {
+                changes.action = Some(if ending { "cancel-ending" } else { "end" });
+            }
         });
 
         ui.horizontal_wrapped(|ui| {
             if ui.checkbox(&mut prefs.loop_enabled, "Loop").changed() {
                 audio.set_looping(prefs.loop_enabled);
+                changes.save = true;
+            }
+            if ui
+                .checkbox(&mut prefs.tune_rotation.enabled, "Cycle tunes")
+                .on_hover_text("Play through the tune set, changing at a repeat")
+                .changed()
+            {
+                changes.rotation_dirty = true;
                 changes.save = true;
             }
             if ui
@@ -113,8 +144,37 @@ fn session_controls(
             if ui.button("Restart").on_hover_text("Restart (R)").clicked() {
                 changes.action = Some("restart");
             }
+            let ending = audio.ending_requested();
+            let in_ending = audio.in_ending();
+            let can_end = !in_ending && !audio.is_finished() && audio.has_buffer();
+            let end_label = if in_ending {
+                "Ending…"
+            } else if ending {
+                "Cancel ending"
+            } else {
+                "End tune"
+            };
+            if ui
+                .add_enabled(can_end, egui::Button::new(end_label))
+                .on_hover_text(if ending {
+                    "Cancel the slow ending"
+                } else {
+                    "End the tune slowly after this time through"
+                })
+                .clicked()
+            {
+                changes.action = Some(if ending { "cancel-ending" } else { "end" });
+            }
             if ui.checkbox(&mut prefs.loop_enabled, "Loop").changed() {
                 audio.set_looping(prefs.loop_enabled);
+                changes.save = true;
+            }
+            if ui
+                .checkbox(&mut prefs.tune_rotation.enabled, "Cycle tunes")
+                .on_hover_text("Play through the tune set, changing at a repeat")
+                .changed()
+            {
+                changes.rotation_dirty = true;
                 changes.save = true;
             }
             if ui
@@ -179,6 +239,7 @@ impl ContraApp {
         let SessionControlChanges {
             timeline_dirty,
             music_dirty,
+            rotation_dirty,
             save,
             action,
         } = session_controls(
@@ -188,6 +249,7 @@ impl ContraApp {
             &mut self.speech,
             compact,
         );
+        let mut rotation_changed = rotation_dirty;
 
         if self.needs_render {
             ui.horizontal_wrapped(|ui| {
@@ -302,6 +364,60 @@ impl ContraApp {
                     .color(theme::muted(ui)),
                 );
             });
+        }
+
+        if self.prefs.tune_rotation.enabled {
+            let tunes = self.rotation_tunes();
+            let position = self.rotation_position();
+            let next = self.next_rotation_tune().map(|tune| tune.title);
+            let interval = self.prefs.tune_rotation.passes_per_tune;
+            let minutes = self
+                .prefs
+                .tune_rotation
+                .seconds_per_tune(self.prefs.tempo_bpm)
+                / 60.0;
+            let summary = if tunes.len() < 2 {
+                format!(
+                    "Tune set: add at least two saved tunes in Select tune ({} now).",
+                    tunes.len()
+                )
+            } else {
+                let place = match position {
+                    Some(index) => format!("Tune {} of {}", index + 1, tunes.len()),
+                    None => "Current tune is not in the set".to_string(),
+                };
+                let next = next.unwrap_or_else(|| "the first tune".to_string());
+                format!(
+                    "{place} · next: {next} · changes every {interval} times through (≈{minutes:.1} min)"
+                )
+            };
+            let mut edit = false;
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(summary).small().color(theme::muted(ui)));
+                if ui.small_button("Edit tune set").clicked() {
+                    edit = true;
+                }
+            });
+            if tunes.len() >= 2 {
+                ui.horizontal(|ui| {
+                    let label = ui.label("Change tune every");
+                    let response = ui.add(
+                        egui::Slider::new(
+                            &mut self.prefs.tune_rotation.passes_per_tune,
+                            contra_core::TuneRotation::MIN_PASSES
+                                ..=contra_core::TuneRotation::MAX_PASSES,
+                        )
+                        .text("times through"),
+                    );
+                    let response = response.labelled_by(label.id);
+                    if response.changed() {
+                        rotation_changed = true;
+                    }
+                });
+            }
+            if edit {
+                self.screen = Screen::TunePicker;
+            }
         }
 
         ui.add_space(8.0);
@@ -484,7 +600,21 @@ impl ContraApp {
                     }
                 } else if self.audio.is_finished() {
                     ui.label(egui::RichText::new("Dance complete").size(28.0).strong());
+                    if self.audio.ending_requested() {
+                        ui.label("The tune finished on a held last note.");
+                    }
                     ui.label("Press Restart to run it again.");
+                } else if self.audio.in_ending() {
+                    ui.label(
+                        egui::RichText::new("SLOW FINISH")
+                            .small()
+                            .color(theme::muted(ui)),
+                    );
+                    ui.label(egui::RichText::new(&self.tune.title).size(28.0).strong());
+                    ui.label(
+                        egui::RichText::new("Slowing down and holding the last note…")
+                            .color(theme::muted(ui)),
+                    );
                 } else {
                     ui.label(
                         egui::RichText::new("Press Play to begin")
@@ -529,13 +659,18 @@ impl ContraApp {
         } else {
             (beat / self.timeline.music_loop_beats).clamp(0.0, 1.0)
         };
+        let progress_text = if self.audio.in_ending() && !self.audio.is_finished() {
+            "Ending · slow finish".to_string()
+        } else {
+            format!(
+                "Beat {:.0} / {:.0}",
+                beat.clamp(0.0, self.timeline.music_loop_beats),
+                self.timeline.music_loop_beats
+            )
+        };
         ui.add(
             egui::ProgressBar::new(progress as f32)
-                .text(format!(
-                    "Beat {:.0} / {:.0}",
-                    beat.clamp(0.0, self.timeline.music_loop_beats),
-                    self.timeline.music_loop_beats
-                ))
+                .text(progress_text)
                 .desired_width(f32::INFINITY),
         );
 
@@ -563,9 +698,13 @@ impl ContraApp {
             Some("play") => self.play(),
             Some("pause") => self.pause(),
             Some("restart") => self.restart(),
+            Some("end") | Some("cancel-ending") => self.end_tune(),
             _ => {}
         }
-        if save || timeline_dirty || music_dirty {
+        if rotation_changed {
+            self.rotation_settings_changed();
+        }
+        if save || timeline_dirty || music_dirty || rotation_changed {
             self.save_prefs();
         }
     }
