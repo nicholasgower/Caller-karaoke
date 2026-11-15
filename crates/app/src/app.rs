@@ -1454,6 +1454,7 @@ fn safe_filename(title: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::ui::{CallPhase, CardMode, CardTone, card_state, card_tone};
 
     #[test]
     fn bundled_defaults_pass_the_length_check() {
@@ -1695,8 +1696,8 @@ mod tests {
     }
 }
 
-// The rest of the UI is implemented in `ui.rs` to keep this file navigable.
-include!("ui.rs");
+// Each screen lives in its own file under `app/ui/`.
+mod ui;
 
 #[cfg(feature = "headless")]
 pub mod headless;
