@@ -74,6 +74,7 @@ fn upcoming_move_card(
     next: &contra_core::ScheduledCall,
     beat: f64,
     show_original: bool,
+    call_size: f32,
 ) {
     ui.label(
         egui::RichText::new("UPCOMING MOVE")
@@ -82,7 +83,7 @@ fn upcoming_move_card(
     );
     ui.label(
         egui::RichText::new(&next.call.text)
-            .size(34.0)
+            .size(call_size)
             .strong()
             .color(theme::on_card(ui)),
     );
@@ -102,6 +103,15 @@ fn upcoming_move_card(
             );
         }
     });
+}
+
+/// What the session controls changed this frame.
+#[derive(Default)]
+struct SessionControlChanges {
+    timeline_dirty: bool,
+    music_dirty: bool,
+    save: bool,
+    action: Option<&'static str>,
 }
 
 impl ContraApp {
@@ -157,87 +167,212 @@ impl ContraApp {
             self.about_open = false;
         }
     }
+}
 
-    fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
-        let animate = self.prefs.animations_enabled;
-        let mut timeline_dirty = false;
-        let mut music_dirty = false;
-        let mut save = false;
-        let mut action: Option<&'static str> = None;
 
+/// The tempo, transport, loop/count-in/speech, and volume controls.
+///
+/// On a phone the controls are stacked so each row owns the full width: a
+/// full-width rail with a value box is usable with a thumb, while the desktop
+/// wrapping row leaves the tempo slider barely a finger wide. The wide layout
+/// keeps the original single wrapping row.
+fn session_controls(
+    ui: &mut egui::Ui,
+    prefs: &mut Preferences,
+    audio: &mut AudioEngine,
+    speech: &mut Speech,
+    compact: bool,
+) -> SessionControlChanges {
+    let mut changes = SessionControlChanges::default();
+
+    if compact {
+        ui.horizontal(|ui| {
+            let label = ui.label("Tempo");
+            // Leave room for the value box and the " BPM" suffix.
+            ui.spacing_mut().slider_width = (ui.available_width() - 100.0).max(96.0);
+            let response = ui.add(
+                egui::Slider::new(&mut prefs.tempo_bpm, 120.0..=320.0)
+                    .fixed_decimals(0)
+                    .suffix(" BPM"),
+            );
+            let response = response.labelled_by(label.id);
+            if response.changed() {
+                changes.timeline_dirty = true;
+                changes.music_dirty = true;
+            }
+        });
+
+        // Equal-width transport buttons: no control hides behind hover and
+        // each is a full touch target.
+        ui.horizontal(|ui| {
+            let spacing = ui.spacing().item_spacing.x;
+            let width = ((ui.available_width() - 2.0 * spacing) / 3.0).max(72.0);
+            for (label, hover, action) in [
+                ("Play", "Play (Space)", "play"),
+                ("Pause", "Pause (Space)", "pause"),
+                ("Restart", "Restart (R)", "restart"),
+            ] {
+                if ui
+                    .add_sized([width, theme::TOUCH_TARGET], egui::Button::new(label))
+                    .on_hover_text(hover)
+                    .clicked()
+                {
+                    changes.action = Some(action);
+                }
+            }
+        });
+
+        ui.horizontal_wrapped(|ui| {
+            if ui.checkbox(&mut prefs.loop_enabled, "Loop").changed() {
+                audio.set_looping(prefs.loop_enabled);
+                changes.save = true;
+            }
+            if ui
+                .checkbox(&mut prefs.count_in_enabled, "Count-in")
+                .changed()
+            {
+                changes.timeline_dirty = true;
+                changes.music_dirty = true;
+            }
+            if ui
+                .checkbox(&mut prefs.tts_enabled, "Speak calls")
+                .changed()
+            {
+                speech.set_enabled(prefs.tts_enabled);
+                if !prefs.tts_enabled {
+                    speech.stop();
+                }
+                changes.save = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            let label = ui.label("Volume");
+            ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
+            let response =
+                ui.add(egui::Slider::new(&mut prefs.master_volume, 0.0..=1.0).max_decimals(2));
+            let response = response.labelled_by(label.id);
+            if response.changed() {
+                audio.set_volume(prefs.master_volume);
+                changes.save = true;
+            }
+        });
+    } else {
         ui.horizontal_wrapped(|ui| {
             ui.label("Tempo");
             if ui
                 .add(
-                    egui::Slider::new(&mut self.prefs.tempo_bpm, 120.0..=320.0)
+                    egui::Slider::new(&mut prefs.tempo_bpm, 120.0..=320.0)
                         .text("BPM")
                         .fixed_decimals(0),
                 )
                 .changed()
             {
-                timeline_dirty = true;
-                music_dirty = true;
+                changes.timeline_dirty = true;
+                changes.music_dirty = true;
             }
             if ui
                 .button("Play")
                 .on_hover_text("Play (Space)")
                 .clicked()
             {
-                action = Some("play");
+                changes.action = Some("play");
             }
             if ui
                 .button("Pause")
                 .on_hover_text("Pause (Space)")
                 .clicked()
             {
-                action = Some("pause");
+                changes.action = Some("pause");
             }
             if ui
                 .button("Restart")
                 .on_hover_text("Restart (R)")
                 .clicked()
             {
-                action = Some("restart");
+                changes.action = Some("restart");
+            }
+            if ui.checkbox(&mut prefs.loop_enabled, "Loop").changed() {
+                audio.set_looping(prefs.loop_enabled);
+                changes.save = true;
             }
             if ui
-                .checkbox(&mut self.prefs.loop_enabled, "Loop")
+                .checkbox(&mut prefs.count_in_enabled, "Count-in")
                 .changed()
             {
-                self.audio.set_looping(self.prefs.loop_enabled);
-                save = true;
+                changes.timeline_dirty = true;
+                changes.music_dirty = true;
             }
             if ui
-                .checkbox(&mut self.prefs.count_in_enabled, "Count-in")
+                .checkbox(&mut prefs.tts_enabled, "Speak calls")
                 .changed()
             {
-                timeline_dirty = true;
-                music_dirty = true;
-            }
-            if ui
-                .checkbox(&mut self.prefs.tts_enabled, "Speak calls")
-                .changed()
-            {
-                self.speech.set_enabled(self.prefs.tts_enabled);
-                if !self.prefs.tts_enabled {
-                    self.speech.stop();
+                speech.set_enabled(prefs.tts_enabled);
+                if !prefs.tts_enabled {
+                    speech.stop();
                 }
-                save = true;
+                changes.save = true;
             }
             ui.label("Volume");
             if ui
-                .add(egui::Slider::new(
-                    &mut self.prefs.master_volume,
-                    0.0..=1.0,
-                ))
+                .add(egui::Slider::new(&mut prefs.master_volume, 0.0..=1.0))
                 .changed()
             {
-                self.audio.set_volume(self.prefs.master_volume);
-                save = true;
+                audio.set_volume(prefs.master_volume);
+                changes.save = true;
             }
         });
+    }
+
+    changes
+}
+
+impl ContraApp {
+    fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
+        let layout = session_layout(ui.available_width(), ui.available_height());
+        if layout.page_scroll {
+            // A short phone cannot fit the controls, prompt, and dance card at
+            // once. Scroll the whole page instead of squeezing the card into a
+            // few pixels or hiding it below the fold.
+            egui::ScrollArea::vertical()
+                .id_salt("session-page")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    self.session_body(ui, beat, layout, false);
+                    ui.add_space(24.0);
+                });
+        } else {
+            self.session_body(ui, beat, layout, true);
+        }
+    }
+
+    fn session_body(
+        &mut self,
+        ui: &mut egui::Ui,
+        beat: f64,
+        layout: SessionLayout,
+        card_scroll: bool,
+    ) {
+        let compact = layout.compact;
+        if compact {
+            // The phone layout gives every interactive control a 44 pt row.
+            ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
+        }
+        let SessionControlChanges {
+            timeline_dirty,
+            music_dirty,
+            save,
+            action,
+        } = session_controls(
+            ui,
+            &mut self.prefs,
+            &mut self.audio,
+            &mut self.speech,
+            compact,
+        );
 
         if self.needs_render {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 let message = if self.started {
                     "Playback settings will apply without restarting; press Play to apply them now."
                 } else {
@@ -293,7 +428,15 @@ impl ContraApp {
         ui.separator();
         ui.add_space(6.0);
 
-        ui.heading(&self.dance.title);
+        if compact {
+            ui.label(
+                egui::RichText::new(&self.dance.title)
+                    .size(22.0)
+                    .strong(),
+            );
+        } else {
+            ui.heading(&self.dance.title);
+        }
         ui.label(
             egui::RichText::new(format!(
                 "{} · {} · {} beats",
@@ -303,11 +446,12 @@ impl ContraApp {
             ))
             .color(theme::muted(ui)),
         );
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Tune:");
+        if compact {
+            // Two deliberate lines instead of one wrapped line, so the tune
+            // and the instrument pair never break mid-phrase at phone width.
             ui.label(
                 egui::RichText::new(format!(
-                    "{} · {} · {}",
+                    "Tune: {} · {} · {}",
                     self.tune.title,
                     self.tune.display_key(),
                     self.tune.display_rhythm()
@@ -322,7 +466,28 @@ impl ContraApp {
                 ))
                 .color(theme::muted(ui)),
             );
-        });
+        } else {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Tune:");
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{} · {} · {}",
+                        self.tune.title,
+                        self.tune.display_key(),
+                        self.tune.display_rhythm()
+                    ))
+                    .strong(),
+                );
+                ui.label(
+                    egui::RichText::new(format!(
+                        "Melody: {} · Accompaniment: {}",
+                        self.prefs.melody.label(),
+                        self.prefs.accompaniment.label()
+                    ))
+                    .color(theme::muted(ui)),
+                );
+            });
+        }
 
         ui.add_space(8.0);
         let active = if self.started {
@@ -345,10 +510,17 @@ impl ContraApp {
             CardTone::Neutral => theme::call_active_bg(ui),
         };
 
+        let call_size = if compact { 30.0 } else { 34.0 };
+        let count_size = if compact { 48.0 } else { 56.0 };
         egui::Frame::group(ui.style())
             .fill(card_fill)
-            .inner_margin(egui::Margin::same(12))
+            .inner_margin(egui::Margin::same(if compact { 10 } else { 12 }))
             .show(ui, |ui| {
+                if compact {
+                    // A content-sized prompt card leaves a ragged strip of
+                    // background on a phone; use the full width for the text.
+                    ui.set_width(ui.available_width());
+                }
                 if !self.started {
                     ui.label(
                         egui::RichText::new("READY")
@@ -373,7 +545,7 @@ impl ContraApp {
                     ui.horizontal(|ui| {
                         ui.label(
                             egui::RichText::new(format!("{:.0}", (-beat).ceil()))
-                                .size(56.0)
+                                .size(count_size)
                                 .strong(),
                         );
                         ui.vertical(|ui| {
@@ -409,7 +581,13 @@ impl ContraApp {
                     match card_mode {
                         CardMode::UpcomingMove => {
                             if let Some(upcoming) = &next {
-                                upcoming_move_card(ui, upcoming, beat, self.prefs.show_original);
+                                upcoming_move_card(
+                                    ui,
+                                    upcoming,
+                                    beat,
+                                    self.prefs.show_original,
+                                    call_size,
+                                );
                             }
                         }
                         CardMode::FinalMove => {
@@ -420,7 +598,7 @@ impl ContraApp {
                             );
                             ui.label(
                                 egui::RichText::new(&call.call.text)
-                                    .size(34.0)
+                                    .size(call_size)
                                     .strong()
                                     .color(theme::muted(ui)),
                             );
@@ -459,7 +637,7 @@ impl ContraApp {
                             );
                             ui.label(
                                 egui::RichText::new(&call.call.text)
-                                    .size(34.0)
+                                    .size(call_size)
                                     .strong()
                                     .color(if phase == CallPhase::Executing {
                                         theme::muted(ui)
@@ -515,17 +693,21 @@ impl ContraApp {
         if let Some(next) = &next
             && card_mode != CardMode::UpcomingMove
         {
+            let timing = if compact {
+                format!(
+                    "beat {:.0} · call {:.1}",
+                    next.execute_beat, next.start_beat
+                )
+            } else {
+                format!(
+                    "at beat {:.0} (call at {:.1})",
+                    next.execute_beat, next.start_beat
+                )
+            };
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new("Next:").color(theme::muted(ui)));
                 ui.label(egui::RichText::new(&next.call.text).strong());
-                ui.label(
-                    egui::RichText::new(format!(
-                        "at beat {:.0} (call at {:.1})",
-                        next.execute_beat, next.start_beat
-                    ))
-                    .small()
-                    .color(theme::muted(ui)),
-                );
+                ui.label(egui::RichText::new(timing).small().color(theme::muted(ui)));
             });
         }
 
@@ -547,87 +729,14 @@ impl ContraApp {
 
         ui.add_space(8.0);
         ui.label(egui::RichText::new("Dance card").strong());
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                let mut cursor = 0.0;
-                for (figure_index, figure) in self.dance.figures.iter().enumerate() {
-                    let figure_end = cursor + figure.beats;
-                    let active_figure = beat >= cursor && beat < figure_end;
-                    let active_t = animate_amount(
-                        ui.ctx(),
-                        ("figure-active", figure_index),
-                        active_figure,
-                        animate,
-                    );
-                    let calls: Vec<(usize, contra_core::CallEvent)> = self
-                        .timeline
-                        .calls
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, call)| call.figure_index == figure_index)
-                        .map(|(index, call)| (index, call.clone()))
-                        .collect();
-                    let fill = lerp_color(
-                        theme::call_upcoming_bg(ui),
-                        theme::call_active_bg(ui),
-                        active_t,
-                    );
-                    egui::Frame::group(ui.style())
-                        .fill(fill)
-                        .inner_margin(egui::Margin::same(8))
-                        .show(ui, |ui| {
-                            ui.horizontal_wrapped(|ui| {
-                                if let Some(phrase) = &figure.phrase {
-                                    ui.label(
-                                        egui::RichText::new(phrase)
-                                            .strong()
-                                            .color(if active_figure {
-                                                theme::on_card(ui)
-                                            } else {
-                                                theme::muted(ui)
-                                            }),
-                                    );
-                                }
-                                ui.label(
-                                    egui::RichText::new(format!("{} beats", figure.beats))
-                                        .small()
-                                        .color(theme::muted(ui)),
-                                );
-                            });
-                            for (index, call) in &calls {
-                                let phase = self
-                                    .timeline
-                                    .scheduled_call_for_index(
-                                        *index,
-                                        beat,
-                                        self.prefs.loop_enabled,
-                                    )
-                                    .as_ref()
-                                    .map(|scheduled| phase_at(scheduled, beat))
-                                    .unwrap_or(CallPhase::Upcoming);
-                                let color = match phase {
-                                    CallPhase::Upcoming => theme::muted(ui),
-                                    CallPhase::Calling => theme::on_card(ui),
-                                    CallPhase::Executing => theme::executing(ui),
-                                };
-                                ui.label(
-                                    egui::RichText::new(&call.text)
-                                        .size(if active_figure { 19.0 } else { 16.0 })
-                                        .color(color),
-                                );
-                                if self.prefs.show_original && call.original_text != call.text {
-                                    ui.label(
-                                        egui::RichText::new(&call.original_text)
-                                            .small()
-                                            .color(theme::subtle(ui)),
-                                    );
-                                }
-                            }
-                        });
-                    cursor = figure_end;
-                }
-            });
+        if card_scroll {
+            egui::ScrollArea::vertical()
+                .id_salt("dance-card")
+                .auto_shrink([false, false])
+                .show(ui, |ui| self.dance_card_list(ui, beat, compact));
+        } else {
+            self.dance_card_list(ui, beat, compact);
+        }
 
         if timeline_dirty && !(music_dirty && self.audio.is_playing()) {
             self.rebuild_timeline();
@@ -646,6 +755,90 @@ impl ContraApp {
         }
         if save || timeline_dirty || music_dirty {
             self.save_prefs();
+        }
+    }
+
+    /// The dance card figures with their call text and beat counts.
+    ///
+    /// `full_width` makes each figure card span the panel on a phone, where a
+    /// content-sized card leaves ragged edges and narrows the call text.
+    fn dance_card_list(&self, ui: &mut egui::Ui, beat: f64, full_width: bool) {
+        let animate = self.prefs.animations_enabled;
+        let mut cursor = 0.0;
+        for (figure_index, figure) in self.dance.figures.iter().enumerate() {
+            let figure_end = cursor + figure.beats;
+            let active_figure = beat >= cursor && beat < figure_end;
+            let active_t = animate_amount(
+                ui.ctx(),
+                ("figure-active", figure_index),
+                active_figure,
+                animate,
+            );
+            let calls: Vec<(usize, contra_core::CallEvent)> = self
+                .timeline
+                .calls
+                .iter()
+                .enumerate()
+                .filter(|(_, call)| call.figure_index == figure_index)
+                .map(|(index, call)| (index, call.clone()))
+                .collect();
+            let fill = lerp_color(
+                theme::call_upcoming_bg(ui),
+                theme::call_active_bg(ui),
+                active_t,
+            );
+            egui::Frame::group(ui.style())
+                .fill(fill)
+                .inner_margin(egui::Margin::same(8))
+                .show(ui, |ui| {
+                    if full_width {
+                        ui.set_width(ui.available_width());
+                    }
+                    ui.horizontal_wrapped(|ui| {
+                        if let Some(phrase) = &figure.phrase {
+                            ui.label(
+                                egui::RichText::new(phrase)
+                                    .strong()
+                                    .color(if active_figure {
+                                        theme::on_card(ui)
+                                    } else {
+                                        theme::muted(ui)
+                                    }),
+                            );
+                        }
+                        ui.label(
+                            egui::RichText::new(format!("{} beats", figure.beats))
+                                .small()
+                                .color(theme::muted(ui)),
+                        );
+                    });
+                    for (index, call) in &calls {
+                        let phase = self
+                            .timeline
+                            .scheduled_call_for_index(*index, beat, self.prefs.loop_enabled)
+                            .as_ref()
+                            .map(|scheduled| phase_at(scheduled, beat))
+                            .unwrap_or(CallPhase::Upcoming);
+                        let color = match phase {
+                            CallPhase::Upcoming => theme::muted(ui),
+                            CallPhase::Calling => theme::on_card(ui),
+                            CallPhase::Executing => theme::executing(ui),
+                        };
+                        ui.label(
+                            egui::RichText::new(&call.text)
+                                .size(if active_figure { 19.0 } else { 16.0 })
+                                .color(color),
+                        );
+                        if self.prefs.show_original && call.original_text != call.text {
+                            ui.label(
+                                egui::RichText::new(&call.original_text)
+                                    .small()
+                                    .color(theme::subtle(ui)),
+                            );
+                        }
+                    }
+                });
+            cursor = figure_end;
         }
     }
 

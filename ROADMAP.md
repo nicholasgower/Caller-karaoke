@@ -782,11 +782,15 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 ### 8.2 Responsive behaviour
 
 - Breakpoint: approximately 640 px.
-- Tabs remain horizontally usable on mobile (scroll if necessary).
-- Session controls wrap into two rows on narrow screens.
+- Tabs remain horizontally usable on mobile (scroll if necessary); the phone
+  layout uses short tab labels and drops the wordmark to keep one row.
+- Session controls stack on narrow screens: tempo and volume sliders span the
+  width, transport buttons split one row, and the remaining toggles wrap.
 - Minimum 44 px touch targets.
 - Avoid hover-only interactions.
-- The dance area scrolls; the current call stays visible.
+- The dance area scrolls; the current call stays visible. On short windows
+  (under about 800 px of session height, including a landscape phone) the whole
+  session page scrolls so the card stays reachable.
 - The pickers become full-screen sheets on mobile and dialogs on desktop.
 - Respect safe-area insets on mobile.
 
