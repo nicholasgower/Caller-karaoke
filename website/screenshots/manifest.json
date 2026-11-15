@@ -350,8 +350,8 @@
     },
     {
       "id": "prefs-tts-rate",
-      "alt": "The Text to speech section showing the Kokoro Voice selector, the voice description, the Rate slider, and the headless-ready status line.",
-      "caption": "Desktop uses a local Kokoro voice; the rate applies to spoken calls without changing visual timing.",
+      "alt": "The Text to speech section showing the Kokoro Voice selector, the voice description, the Rate slider, the Tone selector, and the headless-ready status line.",
+      "caption": "Desktop uses a local Kokoro voice; rate and the calling tone change the spoken delivery without changing visual timing.",
       "status": "ready",
       "width": 1280,
       "height": 2250

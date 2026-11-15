@@ -67,7 +67,7 @@ falls back to bundled/cached content.
 - [ ] Preferences in the specified order.
 - [ ] Alias editor with live preview and reset.
 - [ ] Role-term selector and custom terms.
-- [ ] TTS toggle, voice/rate, and stop-on-pause.
+- [ ] TTS toggle, voice/rate/tone, and stop-on-pause.
 - [ ] Loading, empty, error, and offline states.
 - [ ] Keyboard shortcuts and accessibility labels.
 

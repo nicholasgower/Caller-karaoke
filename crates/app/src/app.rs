@@ -375,6 +375,7 @@ impl ContraApp {
         let mut speech = Speech::new(cache_dir.join("tts"), audio.0.sample_rate());
         speech.set_rate(prefs.tts_rate);
         speech.set_voice(&prefs.tts_voice);
+        speech.set_tone(prefs.tts_tone);
         if prefs.tts_enabled {
             speech.set_enabled(true);
         }
@@ -715,6 +716,7 @@ impl ContraApp {
 
         let mut speech = Speech::stub();
         speech.set_rate(prefs.tts_rate);
+        speech.set_tone(prefs.tts_tone);
 
         let source = SourceClient::new(
             source_tx,

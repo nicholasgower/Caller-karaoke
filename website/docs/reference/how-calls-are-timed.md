@@ -70,11 +70,13 @@ call “larks allemande left once and a half”, which is 4.5 beats of speech pl
 | --- | ---: | ---: | ---: |
 | `swing` | 1.0 beat | 2.0 beats | 1.0 s before the move |
 | `circle left three` | 2.0 beats | 3.0 beats | 1.5 s before the move |
-| `neighbors do-si-do once` | 3.0 beats | 4.0 beats | 2.0 s before the move |
+| `neighbors do-si-do` | 2.5 beats | 3.5 beats | 1.75 s before the move |
 | `larks allemande left once and a half` | 4.5 beats | 5.5 beats | 2.75 s before the move |
 
 These values are illustrative and depend on the current alias text. The
-application computes the real values from the rendered words.
+application computes the real values from the rendered words. A count of one is
+omitted, so `neighbors do-si-do once` is called as `neighbors do-si-do` and gets
+the shorter lead shown.
 
 ## Syllable estimation
 

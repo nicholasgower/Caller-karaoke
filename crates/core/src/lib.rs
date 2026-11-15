@@ -21,8 +21,8 @@ pub use library::{
     FolderError, FolderFilter, LIBRARY_SCHEMA_VERSION, Library, LibraryEntry, LibraryItem,
 };
 pub use prefs::{
-    AccompanimentInstrument, AccompanimentRhythm, ChangeSet, MelodyInstrument, Preferences,
-    SoundFontSetting, Theme,
+    AccompanimentInstrument, AccompanimentRhythm, CallTone, ChangeSet, MelodyInstrument,
+    Preferences, SoundFontSetting, Theme,
 };
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};

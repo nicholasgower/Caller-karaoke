@@ -282,7 +282,7 @@ impl MoveKind {
                 "{actor} allemande {direction} {count} around",
             ],
             MoveKind::Balance => &["{actor} take a balance"],
-            MoveKind::BalanceTheRing => &["take a balance in the ring", "balance the ring once"],
+            MoveKind::BalanceTheRing => &["take a balance in the ring", "balance in the ring"],
             MoveKind::BalanceAndSwing => &[
                 "balance and swing with {actor}",
                 "{actor} balance then swing",
@@ -855,7 +855,12 @@ fn render_template(
         "{direction}",
         params.direction.as_deref().unwrap_or_default(),
     );
-    out = out.replace("{count}", params.count.as_deref().unwrap_or_default());
+    out = out.replace("{count}", {
+        let count = params.count.as_deref().unwrap_or_default();
+        // A caller does not say "once"; the call itself already implies one
+        // pass. Keep fractional counts such as "once and a half".
+        if count == "once" { "" } else { count }
+    });
     out = out.replace("{text}", fallback);
     clean_spaces(&out)
 }
@@ -936,6 +941,30 @@ mod tests {
         let call = aliases.render("ladles allemande left 1½", &roles);
         assert_eq!(call.text, "larks allemande left once and a half");
         assert_eq!(call.kind, MoveKind::Allemande);
+    }
+
+    #[test]
+    fn once_counts_are_omitted_from_the_alias() {
+        let aliases = AliasTable::default();
+        let roles = RoleTerms::default();
+        assert_eq!(
+            aliases.render("neighbors do-si-do once", &roles).text,
+            "neighbors do-si-do"
+        );
+        assert_eq!(
+            aliases.render("ladles allemande left once", &roles).text,
+            "larks allemande left"
+        );
+        assert_eq!(
+            aliases.render("circle left once", &roles).text,
+            "circle left"
+        );
+
+        // A fractional count still needs its "once".
+        assert_eq!(
+            aliases.render("ladles allemande left 1½", &roles).text,
+            "larks allemande left once and a half"
+        );
     }
 
     #[test]
