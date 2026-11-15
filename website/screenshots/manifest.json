@@ -278,16 +278,16 @@
     },
     {
       "id": "prefs-sf2-loaded",
-      "alt": "The Soundfont section showing a loaded SoundFont name, the Load .sf2 button, and the Remove button.",
-      "caption": "A user-supplied SoundFont replaces the built-in instrument voices.",
+      "alt": "The Soundfont section showing a loaded SoundFont name, the Load .sf2 button, and the Use bundled button.",
+      "caption": "A user-supplied SoundFont replaces the bundled instrument voices.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-sf2-removed",
-      "alt": "The Soundfont section showing None (built-in synth) and the Load .sf2 button.",
-      "caption": "Remove a SoundFont to return to the built-in synth.",
+      "alt": "The Soundfont section showing Bundled: Fluid R3 GM and the Load .sf2 button.",
+      "caption": "Use bundled returns the session to the packaged instruments.",
       "status": "ready",
       "width": 1280,
       "height": 2250

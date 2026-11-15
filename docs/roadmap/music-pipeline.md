@@ -66,22 +66,29 @@ Generate a backing track from the chord track:
 
 ### 6.5 Synthesis
 
-Two backends behind one trait:
+Rendering uses `rustysynth` (MIT) with one of two voice sets:
 
-1. **Built-in synth (default, no assets):**
+1. **Bundled Fluid R3 GM subset (default):**
+   - `assets/defaults/fluid-r3-gm-subset.sf2` — FluidR3_GM by Frank Wen, MIT.
+   - Trimmed with `scripts/soundfont-subset.py` to the programs the
+     preferences offer: Violin (GM 40), Accordion (GM 21), Acoustic Grand
+     Piano (GM 0) and Acoustic Guitar steel (GM 25).
+   - ~15 MB. The subset keeps the selected presets' generators, modulators and
+     sample data unchanged, so it renders identically to the full 141 MB bank
+     for those programs (`crates/music/tests/bundled_soundfont.rs`).
+   - Attribution lives in `CREDITS.md` and the About window.
+2. **User-supplied SoundFont (`.sf2`):**
+   - Loaded from Preferences; overrides the bundled subset for the session.
+   - The user is responsible for the file and its license.
+3. **Built-in procedural synth (fallback):**
    - Fiddle: band-limited bowed saw, vibrato, body filter, bowed envelope.
    - Accordion: detuned reeds, tremolo, fast attack.
    - Piano: additive partials, inharmonicity, exponential decay, hammer noise.
    - Guitar: Karplus-Strong pluck and strum.
-   - Simple room reverb and a gentle limiter.
-2. **User-supplied SoundFont (`.sf2`):**
-   - Use `rustysynth` (MIT).
-   - Melody: Violin (GM 40) or Accordion (GM 21).
-   - Accompaniment: Acoustic Grand Piano (GM 0), Nylon/Steel Guitar (GM
-     24/25), or Accordion (GM 21).
-   - Fall back to the built-in voice if a program is missing.
-   - Never bundle an SF2 file; the user supplies it and is responsible for its
-     license.
+   - Used when neither font is available, so the app still plays.
+
+Do not add a full soundfont bank to the repository. A new bundled soundfont
+must be permissively licensed, trimmed to the programs used, and attributed.
 
 Soundfont file selection:
 

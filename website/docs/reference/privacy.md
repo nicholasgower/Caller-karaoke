@@ -17,7 +17,8 @@ does not send usage data to the project.
   locally with timestamps. Native and Android builds use files; the browser uses
   `localStorage`. The cache is cleared manually from Preferences.
 - **SoundFont** — if you load one, the app stores its display name and path in
-  preferences. The file itself remains where you put it.
+  preferences. The file itself remains where you put it. The bundled subset
+  ships inside the application and stores nothing.
 - **Neural voice cache** — on desktop, the Kokoro model and the selected voice
   style file are stored in the app cache after the first download.
 
@@ -56,9 +57,9 @@ application files just as it sees requests for the rest of the site.
 ## Third-party content
 
 Dances and tunes remain the work of their contributors. The app caches them for
-your use but does not redistribute a database. The two bundled defaults are
-attributed on this site. A SoundFont you load is your responsibility, including
-its license.
+your use but does not redistribute a database. The bundled defaults and the
+Fluid R3 GM soundfont subset are attributed on this site and in `CREDITS.md`. A
+SoundFont you load is your responsibility, including its license.
 
 ## Reporting a privacy issue
 

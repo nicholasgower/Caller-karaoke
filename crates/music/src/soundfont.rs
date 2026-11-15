@@ -1,8 +1,9 @@
 //! Optional SoundFont rendering via `rustysynth`.
 //!
-//! Contra Karaoke does not bundle a soundfont. If the user loads one, this
-//! backend renders the same note events as the built-in synth using General
-//! MIDI programs.
+//! The app bundles a trimmed Fluid R3 GM (MIT) subset and renders with it by
+//! default. This module loads whichever bank is active — the bundled subset or
+//! one the user supplied — and renders the same note events as the built-in
+//! synth using General MIDI programs.
 
 use std::io::Cursor;
 use std::sync::Arc;

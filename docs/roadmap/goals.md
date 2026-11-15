@@ -15,5 +15,5 @@
 - Recording or scoring the caller's voice.
 - iOS/macOS releases (the code should remain portable, but these are not
   release targets yet).
-- Bundling a general-purpose soundfont or redistributing a third-party tune or
-  dance database.
+- Bundling a full general-purpose soundfont bank, or redistributing a
+  third-party tune or dance database.

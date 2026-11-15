@@ -9,7 +9,7 @@
 | Audio I/O | `cpal` |
 | ABC parsing | `abc-parser` plus a project-owned sequencer |
 | Default instruments | Fiddle (melody) and piano (accompaniment) |
-| Soundfont support | Built-in synth by default; optional **user-supplied SF2** |
+| Soundfont support | Bundled Fluid R3 GM subset by default; optional user-supplied SF2 |
 | Web data access | Small Cloudflare Worker CORS proxy; bundled defaults as fallback |
 | Theme | Dark grey by default; light grey option |
 | Version until further notice | **0.1.0** |

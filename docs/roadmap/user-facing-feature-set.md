@@ -76,7 +76,7 @@ Listed in this order:
    - Accompaniment rhythm: match instrument (default), block chords,
      boom-chuck, offbeat stabs, arpeggio, shuffle, strum, sustained.
    - Melody/accompaniment volume.
-   - Soundfont: None (built-in synth) or a user-loaded `.sf2`.
+   - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.
 5. **Interface animations** — smooth tab and screen transitions, on by
    default; can be turned off to reduce motion.

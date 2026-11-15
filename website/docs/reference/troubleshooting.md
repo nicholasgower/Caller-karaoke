@@ -22,8 +22,8 @@ message in Preferences.
 | Search returns an error | Dismiss it and retry. Cached content may still be available. In a browser, check the web proxy URL/token. |
 | Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from Maintenance. |
 | No spoken calls | Check the **Speak calls** toggle, **Rate**, the selected **Voice**, and that the music is playing. On desktop, wait for the first voice preparation or select **Retry neural voice**. |
-| SoundFont sounds wrong or silent | On desktop, remove it and return to the built-in synth; check the GM programs required by your file. |
-| SoundFont loading is unavailable | The browser and Android builds cannot load `.sf2` in 0.1.0; use the built-in synth. |
+| SoundFont sounds wrong or silent | On desktop, choose **Use bundled** to return to the packaged instruments; check the GM programs required by your file. |
+| SoundFont loading is unavailable | The browser and Android builds cannot load `.sf2` in 0.1.0; they play the bundled Fluid R3 GM subset. |
 | MIDI export is unavailable | Export is desktop-only in 0.1.0; the browser and Android builds report the limitation. |
 | A card does not total 64 beats | The card is allowed; the music keeps its 64-beat grid. Check the preview total. |
 
@@ -73,7 +73,8 @@ stream reports an error, the app logs it and keeps the UI running.
 
 Android audio and TTS are still being device-tested. If the app opens but has no
 sound, check the media volume and the device's audio route. Loading a SoundFont
-and exporting MIDI are not available in the Android build yet.
+and exporting MIDI are not available in the Android build yet; the bundled
+instruments are used instead.
 
 ## TTS errors
 
@@ -85,9 +86,9 @@ calls continue; see [Text to speech](/docs/guides/text-to-speech).
 
 ## SoundFont errors
 
-A failed `.sf2`/`.sf3` load appears below the current SoundFont name. The app
-keeps the previous SoundFont or the built-in synth. Remove the file and try a
-different one.
+A failed `.sf2` load appears below the current SoundFont name. The app keeps the
+previous font and falls back to the bundled instruments if nothing else is
+loaded. Choose **Use bundled** and try a different file.
 
 <Shot id="error-sf2" />
 

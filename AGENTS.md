@@ -49,9 +49,11 @@ explicit instruction.
 7. **Permissive dependencies only.** MIT, Apache-2.0, BSD, ISC, Zlib, Unlicense,
    CC0, or equivalent. No GPL/AGPL/LGPL in shipped binaries without the owner's
    explicit decision.
-8. **Do not redistribute third-party content.** Only the two attributed default
-   items are bundled. Everything else is fetched and cached locally. Do not
-   commit a soundfont, a dance database, or a tune database.
+8. **Do not redistribute third-party content.** Only the attributed default
+   items are bundled: the default dance, the default tune, and a trimmed subset
+   of the MIT-licensed Fluid R3 GM soundfont. Everything else is fetched and
+   cached locally. Do not commit a full soundfont, a dance database, or a tune
+   database.
 9. **Keep 0.1.0.** Nightly artifacts use dates and SHAs, not a new version.
 10. **No secrets in the repository.** Proxy tokens, signing keys, and store
     credentials belong in CI secrets or local environment variables.
@@ -284,8 +286,9 @@ The calibrated regression case is:
 - The arranger produces exactly 64 dance beats. Pad/repeat/trim at bar
   boundaries; never cut mid-note without a fade.
 - The count-in is accompaniment-only and uses the first chord.
-- Built-in synth is the default. A user-supplied SF2 is optional; do not bundle
-  one.
+- The bundled Fluid R3 GM subset is the default voice; the built-in procedural
+  synth is the fallback when it cannot load. A user-supplied SF2 overrides the
+  bundled font.
 - Map instruments to GM programs when an SF2 is active and fall back to the
   built-in voice when a program is missing.
 - Render offline and loop the PCM buffer. The UI clock derives from the audio
@@ -367,7 +370,7 @@ engine.
   degrade gracefully when a proxy is not configured.
 - Android: minSdk 26 (AAudio/TTS). Use the native activity backend and a
   universal APK with arm64 + armv7. The SF2 picker must not block the rest of the
-  app; fall back to the built-in synth.
+  app; fall back to the bundled instruments (then the built-in synth).
 - Keep platform-specific code in `app`, behind `cfg` or small traits. Do not
   sprinkle `cfg` through domain logic.
 - macOS/iOS are not release targets yet, but avoid choices that make them
@@ -473,7 +476,8 @@ A change is done when:
       release prep, not in the feature worktree.
 - [ ] `npm test` and `npm run check` pass in `website/` after docs changes.
 - [ ] The 0.1.0 version is unchanged unless instructed.
-- [ ] No third-party content or soundfont was added to the repository.
+- [ ] No unlicensed third-party content was added; the bundled Fluid R3 GM
+      subset is trimmed, attributed, and covered by a test.
 
 ---
 

@@ -22,7 +22,8 @@ Licensing rules:
 - `abc-parser`, `eframe`/`egui`, `cpal`, `ehttp`, `scraper`, `midly`,
   `rustysynth`, and `tts` are all permissive; record their exact licenses in
   `CREDITS.md`.
-- Do not bundle a soundfont. Users supply their own.
+- Bundle only the trimmed Fluid R3 GM subset (MIT); do not commit a full
+  soundfont bank. Users may supply their own.
 - Do not redistribute dance or tune databases. Cache locally only.
 - The one default dance and one default tune are bundled with attribution and
   source URLs. Confirm permission/normal attribution practice before release.

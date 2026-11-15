@@ -1,9 +1,9 @@
 //! Small built-in synthesizer.
 //!
 //! This is not a sampled instrument library. It provides recognisable fiddle,
-//! accordion, piano, and guitar timbres from procedural oscillators so the app
-//! has no bundled soundfont and a tiny download. A user-supplied SF2 is used
-//! when available (see `soundfont.rs`).
+//! accordion, piano, and guitar timbres from procedural oscillators, and acts as
+//! the fallback when the bundled Fluid R3 GM subset or a user-supplied SF2
+//! cannot be loaded (see `soundfont.rs`).
 
 use std::f32::consts::TAU;
 

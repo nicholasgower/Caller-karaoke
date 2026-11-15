@@ -377,8 +377,15 @@ fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui) {
         .soundfont
         .as_ref()
         .map(|setting| setting.name.clone())
-        .unwrap_or_else(|| "None (built-in synth)".into());
+        .unwrap_or_else(|| "Bundled: Fluid R3 GM".into());
     ui.label(current);
+    ui.label(
+        egui::RichText::new(
+            "Sampled instruments from Fluid R3 GM (MIT, Frank Wen). Load an .sf2 to use a different bank.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     if let Some(error) = &app.soundfont_error {
         ui.colored_label(theme::error(ui), error);
     }
@@ -386,7 +393,7 @@ fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui) {
         if ui.button("Load .sf2…").clicked() {
             app.load_soundfont();
         }
-        if app.prefs.soundfont.is_some() && ui.button("Remove").clicked() {
+        if app.prefs.soundfont.is_some() && ui.button("Use bundled").clicked() {
             app.remove_soundfont();
         }
     });

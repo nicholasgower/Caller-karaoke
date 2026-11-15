@@ -60,5 +60,6 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 - Parse error: show the source URL and a short reason; do not replace the
   current dance/tune.
 - Audio render: "Preparing music…" with a cancel action.
-- No soundfont: built-in synth remains active.
+- No soundfont at all (bundled and user fonts both unavailable): built-in synth
+  remains active.
 - No TTS: disable the toggle and explain why.

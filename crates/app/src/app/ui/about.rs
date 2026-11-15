@@ -41,9 +41,12 @@ impl ContraApp {
             );
             ui.add_space(8.0);
             ui.label(
-                egui::RichText::new("MIT licensed. Bundled defaults are attributed in CREDITS.md.")
-                    .small()
-                    .color(theme::muted(ui)),
+                egui::RichText::new(
+                    "MIT licensed. Default instruments are a Fluid R3 GM subset by Frank Wen \
+                     (MIT). Bundled defaults are attributed in CREDITS.md.",
+                )
+                .small()
+                .color(theme::muted(ui)),
             );
             ui.add_space(8.0);
             if ui.button("Close").clicked() {
