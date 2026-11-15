@@ -24,5 +24,7 @@ Keep a Changelog and the project uses Conventional Commits.
   preferences, and alias editor.
 - Optional platform text-to-speech.
 - Bundled defaults: Another Last Dance and Sandy Boys.
-- Cloudflare Worker CORS proxy for the future web build.
+- Browser (WASM) build with WebAudio playback, localStorage prefs/cache, and
+  Trunk packaging.
+- Cloudflare Worker CORS proxy for web source access.
 - Windows/Linux packaging scaffolding, CI, and nightly release workflow.

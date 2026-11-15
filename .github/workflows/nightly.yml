@@ -85,7 +85,7 @@ jobs:
         with:
           tool: trunk
       - name: Build web app
-        run: trunk build --release
+        run: cd crates/web && trunk build --release
       - name: Package web app
         run: |
           cd dist
@@ -95,8 +95,35 @@ jobs:
           name: web
           path: dist/*-web.zip
 
+  android:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install SDK components
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-apk
+        run: cargo install cargo-apk --locked
+      - name: Build APK
+        run: cargo apk build --release --lib -p contra-app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: target/release/apk/*.apk
+          if-no-files-found: warn
+
   release:
-    needs: [windows, linux, web]
+    needs: [windows, linux, web, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

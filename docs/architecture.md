@@ -5,6 +5,7 @@ crates/core      pure domain: dances, tunes, roles, aliases, timing, prefs
 crates/music     ABC parsing, chords, arrangement, synth, MIDI, render
 crates/sources   provider traits, ContraDB, ABC Session Tunes, cache
 crates/app       eframe UI, cpal transport, TTS, platform storage
+crates/web       WASM entry point and Trunk page
 ```
 
 The data flow is:

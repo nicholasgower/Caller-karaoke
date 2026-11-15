@@ -82,8 +82,18 @@ impl ContraApp {
                 project.cache_dir().to_path_buf(),
             )
         } else {
-            let base = std::env::temp_dir().join("contra-karaoke");
-            (base.join("config"), base.join("cache"))
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let base = std::env::temp_dir().join("contra-karaoke");
+                (base.join("config"), base.join("cache"))
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                (
+                    PathBuf::from("contra-karaoke-config"),
+                    PathBuf::from("contra-karaoke-cache"),
+                )
+            }
         };
         let _ = std::fs::create_dir_all(&config_dir);
         let _ = std::fs::create_dir_all(&cache_dir);

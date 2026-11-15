@@ -1,7 +1,10 @@
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 fn main() -> eframe::Result {
     contra_app::run_desktop()
 }
+
+#[cfg(target_os = "android")]
+fn main() {}
 
 #[cfg(target_arch = "wasm32")]
 fn main() {}

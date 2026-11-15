@@ -178,6 +178,7 @@ contra-karaoke/
     sources/                 provider traits, ContraDB, ABC Session Tunes,
                              HTTP, cache
     app/                     egui UI, transport, TTS, platform bootstrap
+    web/                     WASM entry point and Trunk page
   xtask/                     packaging/changelog helper commands
   scripts/                   Scripts to aid agents in development
   assets/

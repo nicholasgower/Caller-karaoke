@@ -64,6 +64,10 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo check -p contra-app --target wasm32-unknown-unknown
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+      - run: cd crates/web && trunk build --release
 
   dependency-policy:
     runs-on: ubuntu-latest

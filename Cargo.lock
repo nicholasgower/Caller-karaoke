@@ -866,6 +866,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "contra-web"
+version = "0.1.0"
+dependencies = [
+ "contra-app",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

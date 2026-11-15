@@ -61,6 +61,7 @@ crates/core      domain, timing, aliases, roles, preferences
 crates/music     ABC parsing/sequencing, arrangement, synth, MIDI
 crates/sources   provider traits, ContraDB, ABC Session Tunes, HTTP, cache
 crates/app       egui UI, transport, TTS, platform glue
+crates/web       WASM entry point and Trunk page
 xtask            packaging/changelog helpers
 scripts          Scripts to aid agents in development
 assets           bundled defaults and icons only

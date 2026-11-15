@@ -11,6 +11,8 @@ Android. Version **0.1.0** is the current development version.
 ## What works now
 
 - Native desktop application (Windows and Linux) built with `eframe`/`egui`.
+- Browser build (WASM) with cpal WebAudio playback, localStorage prefs/cache,
+  and the same UI.
 - ContraDB dance search and HTML dance-card parsing.
 - ABC Session Tunes search and JSON tune parsing.
 - ABC → score → 64-beat arrangement → built-in synth playback.
@@ -35,6 +37,12 @@ the audio and windowing development packages listed in `AGENTS.md` /
 The app opens with the default dance and tune. Press **Play** to build and play
 the loop. The first three beats are the count-in; the first call may be spoken
 during it.
+
+On the web, the browser needs a user gesture (the Play button) before it will
+start audio. Online dance/tune search requires the proxy described below.
+
+Android support is configured (`cargo-apk`, minSdk 26) but the APK is still
+being device-tested.
 
 ### Controls
 
@@ -105,6 +113,14 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build --release -p contra-app
+```
+
+Web:
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install trunk --locked
+cd crates/web && trunk build --release
 ```
 
 Windows installer and portable archive are built from
