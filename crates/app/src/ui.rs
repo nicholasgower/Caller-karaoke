@@ -85,10 +85,12 @@ impl ContraApp {
 
         if self.needs_render {
             ui.horizontal(|ui| {
-                ui.label(
-                    egui::RichText::new("Press Play to prepare the music with these settings.")
-                        .color(theme::MUTED),
-                );
+                let message = if self.started {
+                    "Playback settings will apply without restarting; press Play to apply them now."
+                } else {
+                    "Press Play to prepare the music with these settings."
+                };
+                ui.label(egui::RichText::new(message).color(theme::MUTED));
             });
         }
         if let Some(warning) = &self.length_warning {
@@ -408,15 +410,14 @@ impl ContraApp {
                 }
             });
 
-        if timeline_dirty {
+        if timeline_dirty && !(music_dirty && self.audio.is_playing()) {
             self.rebuild_timeline();
         }
         if music_dirty {
+            // Re-render on the next frame after the control is released; the
+            // old buffer keeps playing until then so playback does not restart.
             self.needs_render = true;
-            self.audio.stop();
-            self.speech.stop();
-            self.started = false;
-            self.last_spoken = None;
+            self.pending_audio = true;
         }
         match action {
             Some("play") => self.play(),
@@ -915,7 +916,7 @@ impl ContraApp {
             ui.heading("Preferences");
         });
         ui.label(
-            egui::RichText::new("Changes are saved automatically. Role and alias changes rebuild the call timeline; instrument and tempo changes apply on the next Play.")
+            egui::RichText::new("Changes are saved automatically. Playback settings are applied without restarting the music; role and alias changes rebuild the call timeline.")
                 .color(theme::MUTED),
         );
         ui.add_space(8.0);
@@ -1198,10 +1199,11 @@ impl ContraApp {
                 self.last_spoken = None;
             }
             if audio_changed {
+                // Apply on the next frame once the user releases the control.
+                // Keep playing the old buffer in the meantime so changing a
+                // setting never restarts playback.
                 self.needs_render = true;
-                self.audio.stop();
-                self.speech.stop();
-                self.started = false;
+                self.pending_audio = true;
             }
             if !self.prefs.tts_enabled {
                 self.speech.stop();

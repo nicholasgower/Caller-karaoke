@@ -9,7 +9,9 @@ use contra_core::{
     AccompanimentInstrument, AliasTable, Dance, MelodyInstrument, MoveKind, PracticeTimeline,
     Preferences, RolePreset, RoleTerms, Theme, TimelineConfig, Tune,
 };
-use contra_music::{Arrangement, LengthMismatch, RenderRequest, export_midi, parse_abc, render};
+use contra_music::{
+    Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi, parse_abc, render,
+};
 #[cfg(not(target_arch = "wasm32"))]
 use contra_sources::FileCache;
 use contra_sources::{
@@ -54,6 +56,9 @@ pub struct ContraApp {
     soundfont: Option<Arc<SoundFont>>,
     soundfont_error: Option<String>,
     needs_render: bool,
+    /// Playback settings changed and need a render once the user stops
+    /// adjusting the control.
+    pending_audio: bool,
     render_loading: bool,
     started: bool,
     dance_query: DanceQuery,
@@ -163,6 +168,7 @@ impl ContraApp {
             soundfont,
             soundfont_error: None,
             needs_render: true,
+            pending_audio: false,
             render_loading: false,
             started: false,
             dance_query: DanceQuery {
@@ -238,13 +244,14 @@ impl ContraApp {
         }
     }
 
-    fn rebuild_music(&mut self) {
+    /// Parse and render the current tune with the current playback settings.
+    fn render_music(&mut self) -> Option<(AudioBuffer, Arrangement)> {
         let score = match parse_abc(&self.tune.abc) {
             Ok(score) => score,
             Err(error) => {
                 self.length_warning = None;
                 self.error = Some(format!("Could not parse tune: {error}"));
-                return;
+                return None;
             }
         };
         let arrangement = Arrangement::from_score(&score, 64.0);
@@ -268,24 +275,77 @@ impl ContraApp {
             sample_rate: self.audio.sample_rate(),
         };
         match render(&request, self.soundfont.as_ref()) {
-            Ok(buffer) => {
-                self.audio.set_buffer(buffer);
-                self.arrangement = Some(arrangement);
-                self.audio.set_looping(self.prefs.loop_enabled);
-                self.audio.set_volume(self.prefs.master_volume);
-                self.needs_render = false;
-                self.status = "Music ready".into();
-            }
+            Ok(buffer) => Some((buffer, arrangement)),
             Err(error) => {
                 self.error = Some(format!("Could not render music: {error}"));
+                None
             }
+        }
+    }
+
+    /// Install a freshly rendered loop without restarting the transport.
+    ///
+    /// `resume_beat` is the position captured from the old buffer just before
+    /// the swap, so a settings change keeps the dance where it was.
+    fn install_music(
+        &mut self,
+        buffer: AudioBuffer,
+        arrangement: Arrangement,
+        resume_beat: Option<f64>,
+    ) {
+        // Briefly mute the callback around the swap so the audio thread cannot
+        // play the new buffer from sample zero before the seek lands.
+        let was_playing = self.audio.is_playing();
+        if was_playing {
+            self.audio.pause();
+        }
+        self.audio.set_buffer(buffer);
+        self.arrangement = Some(arrangement);
+        self.audio.set_looping(self.prefs.loop_enabled);
+        self.audio.set_volume(self.prefs.master_volume);
+        self.needs_render = false;
+        self.pending_audio = false;
+        self.status = "Music ready".into();
+        if let Some(beat) = resume_beat {
+            self.audio.seek_beat(beat);
+            self.last_beat = beat;
+            // Do not repeat a call that was already being spoken.
+            self.last_spoken = self
+                .timeline
+                .scheduled_call_at(beat, self.prefs.loop_enabled)
+                .filter(|call| call.is_calling(beat))
+                .map(|call| call.start_beat);
+        }
+        if was_playing {
+            self.audio.play();
+        }
+    }
+
+    /// Re-render after a playback setting changed, keeping the transport where
+    /// it is and resuming playback if it was running.
+    fn apply_audio_settings(&mut self) {
+        self.pending_audio = false;
+        self.rebuild_timeline();
+        let was_playing = self.audio.is_playing();
+        let Some((buffer, arrangement)) = self.render_music() else {
+            return;
+        };
+        // The old buffer kept playing while we rendered, so sample it now to
+        // avoid rewinding by the render time.
+        let resume_beat = self.audio.has_buffer().then(|| self.audio.position_beat());
+        self.install_music(buffer, arrangement, resume_beat);
+        if was_playing {
+            self.audio.play();
+            self.started = true;
+            self.status = "Playing".into();
+        } else if self.started {
+            self.status = "Paused".into();
         }
     }
 
     fn ensure_ready(&mut self) {
         if self.needs_render || !self.audio.has_buffer() {
-            self.rebuild_timeline();
-            self.rebuild_music();
+            self.apply_audio_settings();
         }
     }
 
@@ -604,6 +664,13 @@ impl eframe::App for ContraApp {
                 Screen::Aliases => self.aliases_ui(ui),
             }
         });
+
+        // Playback settings are applied once the mouse button is released, so
+        // dragging a slider does not re-render on every frame. The transport
+        // keeps its position and play state across the re-render.
+        if self.pending_audio && self.started && !ctx.input(|input| input.pointer.primary_down()) {
+            self.apply_audio_settings();
+        }
 
         if self.audio.is_playing() || self.render_loading {
             ctx.request_repaint_after(Duration::from_millis(16));

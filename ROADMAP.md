@@ -497,7 +497,8 @@ Soundfont file selection:
   compensation. Target visual accuracy: ±20 ms.
 - Pause outputs silence but keeps the stream alive; restart resets the sample
   position.
-- Tempo, instrument, or soundfont changes re-render and restart the loop.
+- Tempo, instrument, or soundfont changes re-render and resume at the same
+  beat instead of restarting the loop.
 - Show a "Preparing music…" state while rendering.
 
 ### 6.7 MIDI export
