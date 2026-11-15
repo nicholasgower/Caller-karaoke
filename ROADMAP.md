@@ -923,6 +923,9 @@ Optional **`pages.yml`** deploys the web build to GitHub Pages.
 - Offline start and cached content.
 - Soundfont load/remove/fallback.
 - Tab and screen animations, including with **Smooth animations** turned off.
+- About window: opens from the top-right button, shows the author and project
+  links, closes on Close/Esc/backdrop click, and suspends transport shortcuts
+  while open.
 
 ---
 

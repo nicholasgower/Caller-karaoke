@@ -56,7 +56,8 @@ current UI has no separate mobile sheet; it keeps the same screen structure.
 
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
-- **Esc** returns to **Session** from a picker, Preferences, or the alias editor.
+- **Esc** closes the **About** window or returns to **Session** from a picker,
+  Preferences, or the alias editor.
 - **1–4** switch tabs.
 - **Enter** submits a search or adds a custom alias.
 

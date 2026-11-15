@@ -80,6 +80,13 @@ const TAB_KEYS: [egui::Key; 4] = [
     egui::Key::Num4,
 ];
 
+/// Project links shown in the About window.
+///
+/// The pages may not be live yet; the addresses are the ones the documentation
+/// and packaging use so they start working as soon as the site is published.
+const REPOSITORY_URL: &str = "https://github.com/storytold/Contra-karaoke";
+const DOCUMENTATION_URL: &str = "https://storytold.github.io/Contra-karaoke/";
+
 /// Map the number-key tab shortcuts to screens.
 fn screen_for_tab_key(key: egui::Key) -> Option<Screen> {
     match key {
@@ -119,6 +126,8 @@ pub struct ContraApp {
     /// True for `contra-headless`: ignore global shortcuts so the renderer can
     /// hold an arbitrary screen and state.
     headless: bool,
+    /// The About window is open. It is a modal over every screen.
+    about_open: bool,
     dance: Dance,
     tune: Tune,
     timeline: PracticeTimeline,
@@ -246,6 +255,7 @@ impl ContraApp {
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
             headless: false,
+            about_open: false,
             dance,
             tune,
             timeline,
@@ -294,6 +304,11 @@ impl ContraApp {
     /// Only called while no widget has keyboard focus, so typing in a text
     /// field never triggers play, restart, or a tab change.
     fn handle_shortcuts(&mut self, ui: &egui::Ui) {
+        // The About window is modal: let it handle Escape and ignore the
+        // transport and tab shortcuts until it closes.
+        if self.about_open {
+            return;
+        }
         let (space, restart, escape, tab) = ui.input(|input| {
             (
                 input.key_pressed(egui::Key::Space),
@@ -416,6 +431,7 @@ impl ContraApp {
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
             headless: true,
+            about_open: false,
             dance,
             tune,
             timeline,
@@ -874,39 +890,53 @@ impl eframe::App for ContraApp {
             .frame(egui::Frame::default().inner_margin(egui::Margin::symmetric(12, 8)))
             .show(ui, |ui| {
                 let animate = self.prefs.animations_enabled;
-                ui.horizontal_wrapped(|ui| {
-                    ui.heading("Contra Karaoke");
-                    ui.add_space(12.0);
-                    if tab(ui, self.screen == Screen::Session, "Session", "1", animate) {
-                        self.screen = Screen::Session;
+                // The About button is pinned to the top-right corner; the
+                // heading and tabs share the remaining width and still wrap at
+                // phone width.
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                    if ui
+                        .button("About")
+                        .on_hover_text("About Contra Karaoke")
+                        .clicked()
+                    {
+                        self.about_open = true;
                     }
-                    if tab(
-                        ui,
-                        self.screen == Screen::DancePicker,
-                        "Select dance",
-                        "2",
-                        animate,
-                    ) {
-                        self.screen = Screen::DancePicker;
-                    }
-                    if tab(
-                        ui,
-                        self.screen == Screen::TunePicker,
-                        "Select Tune",
-                        "3",
-                        animate,
-                    ) {
-                        self.screen = Screen::TunePicker;
-                    }
-                    if tab(
-                        ui,
-                        self.screen == Screen::Preferences,
-                        "Preferences",
-                        "4",
-                        animate,
-                    ) {
-                        self.screen = Screen::Preferences;
-                    }
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.heading("Contra Karaoke");
+                            ui.add_space(12.0);
+                            if tab(ui, self.screen == Screen::Session, "Session", "1", animate) {
+                                self.screen = Screen::Session;
+                            }
+                            if tab(
+                                ui,
+                                self.screen == Screen::DancePicker,
+                                "Select dance",
+                                "2",
+                                animate,
+                            ) {
+                                self.screen = Screen::DancePicker;
+                            }
+                            if tab(
+                                ui,
+                                self.screen == Screen::TunePicker,
+                                "Select Tune",
+                                "3",
+                                animate,
+                            ) {
+                                self.screen = Screen::TunePicker;
+                            }
+                            if tab(
+                                ui,
+                                self.screen == Screen::Preferences,
+                                "Preferences",
+                                "4",
+                                animate,
+                            ) {
+                                self.screen = Screen::Preferences;
+                            }
+                        });
+                    });
                 });
             });
 
@@ -944,6 +974,8 @@ impl eframe::App for ContraApp {
         if self.pending_audio && self.started && !ctx.input(|input| input.pointer.primary_down()) {
             self.apply_audio_settings();
         }
+
+        self.about_ui(&ctx);
 
         if self.audio.is_playing() || self.render_loading || self.speech.is_busy() {
             ctx.request_repaint_after(Duration::from_millis(16));

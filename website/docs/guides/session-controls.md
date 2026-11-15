@@ -131,6 +131,18 @@ quiet master with a loud melody is still quiet overall.
 
 <Shot id="transport-volume" />
 
+## About and project links
+
+The **About** button sits in the top-right corner of the tab row on every
+screen. Select it to open a window with the program name, its version, a short
+description, the author (Nicholas Gower), and links to the GitHub repository and
+the documentation site. The project pages may not be live yet.
+
+<Shot id="about-window" />
+
+Close the window with **Close**, **Esc**, or a click outside it. While it is
+open, the transport and tab shortcuts are suspended.
+
 ## Narrow windows
 
 The session controls use wrapping rows. At phone width they take several lines,

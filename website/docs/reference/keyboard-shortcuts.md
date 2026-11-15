@@ -12,7 +12,7 @@ not start or stop the music.
 | --- | --- | --- |
 | **Space** | Play or pause | If the music is playing, Space pauses; otherwise it starts or resumes. |
 | **R** | Restart | Returns to the count-in and resets the call state. |
-| **Esc** | Return to **Session** | Works from **Select dance**, **Select Tune**, **Preferences**, and the alias editor. Does nothing on the session screen. |
+| **Esc** | Close About or return to **Session** | Closes the **About** window. Otherwise works from **Select dance**, **Select Tune**, **Preferences**, and the alias editor. Does nothing else on the session screen. |
 | **1–4** | Switch tabs | 1 Session, 2 Select dance, 3 Select Tune, 4 Preferences. |
 | **Enter** | Submit | Starts a search from a search field, or adds the custom alias when the alias fields are filled. |
 
@@ -23,7 +23,8 @@ not start or stop the music.
 - **R** restarts even while paused; it clears the last-spoken call and starts
   from the count-in.
 - **Esc** does not replace **Use this dance** or **Use this tune**. Leaving a
-  picker does not change the loaded dance or tune.
+  picker does not change the loaded dance or tune. It also closes the **About**
+  window; the other shortcuts are suspended while that window is open.
 - **1–4** are ignored while a text field has focus, so typing a number does not
   change tabs.
 - **Enter** in a search field submits the current filters; in the custom alias
