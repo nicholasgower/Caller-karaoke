@@ -47,8 +47,9 @@ changes rebuild the call timeline without re-rendering the music.
 - **Enter** starts a search from a search field, creates a folder, or adds a
   custom alias.
 
-Shortcuts are ignored while a text field has focus. See
-[Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
+Shortcuts are ignored while a text field has focus. On desktop, the keyboard's
+play/pause media key controls the transport even when the window is in the
+background. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 ## The call prompt
 

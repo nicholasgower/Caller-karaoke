@@ -1,12 +1,13 @@
 ---
 title: Keyboard shortcuts
-description: Play, pause, restart, and leave a picker without using the mouse.
+description: Play, pause, restart, and leave a picker without using the mouse, plus hardware media keys.
 sidebar_position: 1
 ---
 
 Contra Karaoke has a small keyboard shortcut set. Shortcuts are ignored while a
 text field or another control has keyboard focus, so typing a dance title does
-not start or stop the music.
+not start or stop the music. On desktop, the keyboard's media keys control the
+transport from any window; see [Media keys](#media-keys).
 
 | Key | Action | Notes |
 | --- | --- | --- |
@@ -36,5 +37,24 @@ not start or stop the music.
 
 The shortcuts are implemented in the application, not in the docs site. If a
 shortcut does not respond, check that a text field does not have focus.
+
+## Media keys
+
+On Windows and Linux, the keyboard's **Play/Pause** media key controls the
+session even when another window is in front. The app registers with the
+operating system's media session (System Media Transport Controls on Windows,
+MPRIS on Linux), so the desktop routes the key to Contra Karaoke while it is the
+active player. The system media overlay shows the loaded dance as the title and
+the tune as the artist.
+
+- **Play** starts or resumes the session.
+- **Pause** pauses it and stops speech. The beat is kept, so the next Play
+  resumes from the same place.
+- **Stop** pauses. **Next** and **Previous** are ignored.
+
+Media keys are not app shortcuts: they work without clicking the window and
+while a text field has focus. The browser and Android builds do not handle media
+keys in 0.1.0. If another app is playing media, the operating system may send
+the key there instead; pause that app or use **Space** in Contra Karaoke.
 
 Next: [How calls are timed](/docs/reference/how-calls-are-timed).

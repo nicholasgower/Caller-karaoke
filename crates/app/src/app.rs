@@ -253,6 +253,9 @@ pub struct ContraApp {
     /// Takes the focus when the window first appears, so the app opens in front
     /// of the windows that launched it.
     launch_focus: crate::window::LaunchFocus,
+    /// The OS media session, so hardware play/pause keys work while the
+    /// window is in the background.
+    media_keys: Option<crate::media_keys::MediaKeys>,
     /// The About window is open. It is a modal over every screen.
     about_open: bool,
     dance: Dance,
@@ -540,6 +543,7 @@ impl ContraApp {
             headless: false,
             scale_guard: crate::window::ScaleGuard::default(),
             launch_focus: crate::window::LaunchFocus::default(),
+            media_keys: crate::media_keys::MediaKeys::new(cc),
             about_open: false,
             dance,
             tune,
@@ -595,6 +599,36 @@ impl ContraApp {
             rotation: RotationState::default(),
             render_generation: 0,
         }
+    }
+
+    /// Apply hardware media keys from the OS media session.
+    ///
+    /// This runs even while a text field has focus and while another window is
+    /// in front: a hardware play/pause key is a global transport control, not
+    /// an app shortcut.
+    fn handle_media_keys(&mut self) {
+        let Some(media) = self.media_keys.as_mut() else {
+            return;
+        };
+        let commands = media.poll();
+        for command in commands {
+            let playing = self.audio.is_playing();
+            match (command.desired(playing), playing) {
+                (true, false) => self.play(),
+                (false, true) => self.pause(),
+                _ => {}
+            }
+        }
+    }
+
+    /// Publish the transport state and loaded item to the OS media controls.
+    fn sync_media_session(&mut self) {
+        let playing = self.audio.is_playing();
+        let Some(media) = self.media_keys.as_mut() else {
+            return;
+        };
+        media.set_playback(playing);
+        media.set_track(&self.dance.title, &self.tune.title);
     }
 
     /// Handle app-wide keyboard shortcuts.
@@ -845,6 +879,7 @@ impl ContraApp {
             headless: true,
             scale_guard: crate::window::ScaleGuard::default(),
             launch_focus: crate::window::LaunchFocus::default(),
+            media_keys: None,
             about_open: false,
             dance,
             tune,
@@ -1658,6 +1693,7 @@ impl eframe::App for ContraApp {
         }
         theme::apply(&ctx, self.prefs.theme, self.prefs.animations_enabled);
         self.handle_source_events();
+        self.handle_media_keys();
 
         if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
@@ -1757,6 +1793,7 @@ impl eframe::App for ContraApp {
         }
 
         self.about_ui(&ctx);
+        self.sync_media_session();
 
         if self.audio.is_playing() || self.render_loading || self.speech.is_busy() {
             ctx.request_repaint_after(Duration::from_millis(16));
