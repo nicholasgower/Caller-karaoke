@@ -14,6 +14,10 @@ pub struct Palette {
     pub call_active_bg: egui::Color32,
     /// Background of an upcoming figure card.
     pub call_upcoming_bg: egui::Color32,
+    /// Background of the prompt card while the caller must speak now.
+    pub call_now_bg: egui::Color32,
+    /// Background of the prompt card while it looks ahead to the next move.
+    pub upcoming_move_bg: egui::Color32,
     /// Secondary and hint text.
     pub muted: egui::Color32,
     /// Strong text drawn on a call or result card.
@@ -31,6 +35,8 @@ pub struct Palette {
 const DARK: Palette = Palette {
     call_active_bg: egui::Color32::from_rgb(58, 58, 58),
     call_upcoming_bg: egui::Color32::from_rgb(38, 38, 38),
+    call_now_bg: egui::Color32::from_rgb(30, 74, 46),
+    upcoming_move_bg: egui::Color32::from_rgb(96, 36, 36),
     muted: egui::Color32::from_rgb(154, 154, 154),
     on_card: egui::Color32::WHITE,
     executing: egui::Color32::from_gray(180),
@@ -42,6 +48,8 @@ const DARK: Palette = Palette {
 const LIGHT: Palette = Palette {
     call_active_bg: egui::Color32::from_rgb(214, 214, 214),
     call_upcoming_bg: egui::Color32::from_rgb(230, 230, 230),
+    call_now_bg: egui::Color32::from_rgb(203, 232, 210),
+    upcoming_move_bg: egui::Color32::from_rgb(244, 208, 208),
     muted: egui::Color32::from_rgb(92, 92, 92),
     on_card: egui::Color32::from_rgb(24, 24, 24),
     executing: egui::Color32::from_gray(96),
@@ -65,6 +73,16 @@ pub fn call_active_bg(ui: &egui::Ui) -> egui::Color32 {
 
 pub fn call_upcoming_bg(ui: &egui::Ui) -> egui::Color32 {
     palette_for(ui).call_upcoming_bg
+}
+
+/// Card background cue for "speak this now".
+pub fn call_now_bg(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).call_now_bg
+}
+
+/// Card background cue for "the move after this one".
+pub fn upcoming_move_bg(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).upcoming_move_bg
 }
 
 pub fn muted(ui: &egui::Ui) -> egui::Color32 {
@@ -241,6 +259,44 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    /// The prompt card only ever draws `on_card` and `muted` text (the label,
+    /// the call wording and the beat hint), and in green/red it must stay as
+    /// legible as the grey card it replaces.
+    #[test]
+    fn prompt_card_text_contrasts_with_the_green_and_red_fills() {
+        for dark_mode in [true, false] {
+            let palette = palette(dark_mode);
+            for background in [palette.call_now_bg, palette.upcoming_move_bg] {
+                for (foreground, min) in [(palette.on_card, 4.5), (palette.muted, 3.0)] {
+                    let ratio = contrast(background, foreground);
+                    assert!(
+                        ratio >= min,
+                        "dark_mode={dark_mode} background={background:?} foreground={foreground:?} ratio={ratio}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Green means "speak now" and red means "look ahead"; the hue has to
+    /// survive as a cue, so each fill must be recognisably its own colour.
+    #[test]
+    fn prompt_card_fills_are_green_for_call_now_and_red_for_upcoming() {
+        for dark_mode in [true, false] {
+            let palette = palette(dark_mode);
+            let now = palette.call_now_bg;
+            let upcoming = palette.upcoming_move_bg;
+            assert!(
+                now.g() > now.r() && now.g() > now.b(),
+                "dark_mode={dark_mode} call_now_bg={now:?} is not green"
+            );
+            assert!(
+                upcoming.r() > upcoming.g() && upcoming.r() > upcoming.b(),
+                "dark_mode={dark_mode} upcoming_move_bg={upcoming:?} is not red"
+            );
         }
     }
 

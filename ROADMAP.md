@@ -757,11 +757,20 @@ Dark (default):
 | Primary text | `#e6e6e6` |
 | Muted text | `#9a9a9a` |
 | Active call | `#f2f2f2` on `#303030` |
+| Call-now prompt card | `#1e4a2e` (green fill, white text) |
+| Upcoming-move prompt card | `#602424` (red fill, white text) |
 | Borders | `#3a3a3a` |
 
 Light theme uses the same neutral structure with inverted values. No accent
 colours; the active call is distinguished by contrast, weight, and a border.
 All colours live in a theme module; do not hard-code colours in widgets.
+
+The one deliberate exception is the large prompt card: it is green while the
+caller must speak the shown call ("CALL NOW") and red while it looks ahead to
+the move after the one being danced ("UPCOMING MOVE"), so the state is
+readable at a glance across the room. The label text still states the state,
+so the fill is never the only cue, and both fills keep white text at 4.5:1 or
+better in the dark theme and dark text at 4.5:1 or better in the light theme.
 
 ### 8.2 Responsive behaviour
 

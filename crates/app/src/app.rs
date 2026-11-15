@@ -1160,6 +1160,49 @@ mod tests {
     }
 
     #[test]
+    fn speaking_now_turns_the_card_green() {
+        for has_next in [true, false] {
+            let mode = card_state(Some(CallPhase::Calling), has_next);
+            assert_eq!(
+                card_tone(true, Some(CallPhase::Calling), mode),
+                CardTone::CallNow
+            );
+        }
+    }
+
+    #[test]
+    fn looking_ahead_turns_the_card_red() {
+        let mode = card_state(Some(CallPhase::Executing), true);
+        assert_eq!(
+            card_tone(true, Some(CallPhase::Executing), mode),
+            CardTone::UpcomingMove
+        );
+    }
+
+    #[test]
+    fn other_card_states_stay_grey() {
+        for (started, phase) in [
+            (false, None),
+            (false, Some(CallPhase::Upcoming)),
+            (true, None),
+            (true, Some(CallPhase::Upcoming)),
+            (true, Some(CallPhase::Executing)),
+        ] {
+            let mode = card_state(phase, false);
+            assert_eq!(
+                card_tone(started, phase, mode),
+                CardTone::Neutral,
+                "started={started} phase={phase:?}"
+            );
+        }
+        // The count-in card without a pending call is not a "speak now" cue.
+        assert_eq!(
+            card_tone(true, None, CardMode::CurrentCall),
+            CardTone::Neutral
+        );
+    }
+
+    #[test]
     fn color_lerp_moves_between_endpoints_and_clamps() {
         use egui::Color32;
         assert_eq!(
