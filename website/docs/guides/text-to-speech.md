@@ -101,6 +101,10 @@ Pause stops speech immediately. Restart clears the last-spoken call so the first
 call is spoken again when the new pass begins. Changing an alias or role term
 rebuilds the timeline and also clears the spoken state.
 
+The first call is spoken once per run even when playback starts after its lead
+window: during the count-in, or at beat 0 when the count-in is off. Resuming a
+paused dance does not repeat it.
+
 ## What is spoken
 
 The app speaks the **rendered alias**, not the original card text. That means

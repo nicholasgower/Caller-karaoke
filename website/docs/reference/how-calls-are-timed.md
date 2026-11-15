@@ -105,8 +105,14 @@ first call start   = -3 beats
 ```
 
 The count-in is not a clamp. The app shows and speaks the first call during the
-count-in when necessary. Do not “fix” this by starting the call at beat 0; that
+count-in when necessary. Do not "fix" this by starting the call at beat 0; that
 would make the first figure late.
+
+The transport cannot always reach the start of that lead: a lead can be longer
+than the three-beat count-in, and the count-in can be turned off. When playback
+starts at or after the first call's execute beat, TTS still speaks the first call
+as soon as the run starts (during the count-in, or at beat 0 without one). It is
+announced once per run; resuming a paused dance does not repeat it.
 
 ## Sub-calls
 
