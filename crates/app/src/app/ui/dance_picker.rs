@@ -33,20 +33,22 @@ impl ContraApp {
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
                 ui.label("Title");
-                submit |= submit_text_edit(ui, &mut self.dance_query.title);
+                submit |= submit_text_edit(ui, &mut self.picker.dance_query.title);
                 ui.end_row();
                 ui.label("Choreographer");
-                submit |= submit_text_edit(ui, &mut self.dance_query.choreographer);
+                submit |= submit_text_edit(ui, &mut self.picker.dance_query.choreographer);
                 ui.end_row();
                 ui.label("User");
-                submit |= submit_text_edit(ui, &mut self.dance_query.user);
+                submit |= submit_text_edit(ui, &mut self.picker.dance_query.user);
                 ui.end_row();
                 ui.label("Hook");
-                submit |= submit_text_edit(ui, &mut self.dance_query.hook);
+                submit |= submit_text_edit(ui, &mut self.picker.dance_query.hook);
                 ui.end_row();
                 ui.label("Formation");
                 egui::ComboBox::from_id_salt("formation")
-                    .selected_text(formation_label(self.dance_query.formation.as_deref()))
+                    .selected_text(formation_label(
+                        self.picker.dance_query.formation.as_deref(),
+                    ))
                     .show_ui(ui, |ui| {
                         for (value, label) in [
                             ("", "Any formation"),
@@ -56,9 +58,9 @@ impl ContraApp {
                             ("everything else", "Everything else"),
                         ] {
                             let selected =
-                                self.dance_query.formation.as_deref().unwrap_or("") == value;
+                                self.picker.dance_query.formation.as_deref().unwrap_or("") == value;
                             if ui.selectable_label(selected, label).clicked() {
-                                self.dance_query.formation = if value.is_empty() {
+                                self.picker.dance_query.formation = if value.is_empty() {
                                     None
                                 } else {
                                     Some(value.to_string())
@@ -87,6 +89,7 @@ impl ContraApp {
                     ("mad robin", "Mad robin"),
                 ];
                 let selected = self
+                    .picker
                     .dance_query
                     .figure_move
                     .as_deref()
@@ -102,9 +105,10 @@ impl ContraApp {
                     .show_ui(ui, |ui| {
                         for (value, label) in figure_options {
                             let is_selected =
-                                self.dance_query.figure_move.as_deref().unwrap_or("") == value;
+                                self.picker.dance_query.figure_move.as_deref().unwrap_or("")
+                                    == value;
                             if ui.selectable_label(is_selected, label).clicked() {
-                                self.dance_query.figure_move = if value.is_empty() {
+                                self.picker.dance_query.figure_move = if value.is_empty() {
                                     None
                                 } else {
                                     Some(value.to_string())
@@ -114,17 +118,21 @@ impl ContraApp {
                     });
                 ui.end_row();
                 ui.label("Figure contains");
-                submit |= submit_text_edit(ui, &mut self.dance_query.figure_text);
+                submit |= submit_text_edit(ui, &mut self.picker.dance_query.figure_text);
                 ui.end_row();
                 ui.label("Verified only");
-                ui.checkbox(&mut self.dance_query.verified, "");
+                ui.checkbox(&mut self.picker.dance_query.verified, "");
                 ui.end_row();
                 ui.label("Sort");
                 egui::ComboBox::from_id_salt("dance-sort")
-                    .selected_text(self.dance_query.sort.label())
+                    .selected_text(self.picker.dance_query.sort.label())
                     .show_ui(ui, |ui| {
                         for sort in DanceSort::ALL {
-                            ui.selectable_value(&mut self.dance_query.sort, sort, sort.label());
+                            ui.selectable_value(
+                                &mut self.picker.dance_query.sort,
+                                sort,
+                                sort.label(),
+                            );
                         }
                     });
                 ui.end_row();
@@ -134,16 +142,19 @@ impl ContraApp {
         }
         ui.horizontal(|ui| {
             let search = ui
-                .add_enabled(!self.search_loading, egui::Button::new("Search dances"))
+                .add_enabled(
+                    !self.picker.search_loading,
+                    egui::Button::new("Search dances"),
+                )
                 .on_hover_text("Search dances (Enter)");
             if search.clicked() {
                 self.search_dances();
             }
-            if self.search_loading {
+            if self.picker.search_loading {
                 ui.spinner();
                 ui.label("Searching…");
             }
-            if let Some(results) = &self.dance_results {
+            if let Some(results) = &self.picker.dance_results {
                 ui.label(
                     egui::RichText::new(format!("{} matches", results.total))
                         .color(theme::muted(ui)),
@@ -157,11 +168,12 @@ impl ContraApp {
                 .id_salt("dance-results")
                 .max_height(420.0)
                 .show(&mut columns[0], |ui| {
-                    let Some(results) = self.dance_results.clone() else {
+                    let Some(results) = self.picker.dance_results.clone() else {
                         return;
                     };
                     for dance in results.dances {
                         let selected = self
+                            .picker
                             .dance_selected
                             .as_ref()
                             .is_some_and(|value| value.id == dance.id);
@@ -200,9 +212,9 @@ impl ContraApp {
                                         }
                                     });
                                     if ui.small_button("Preview").clicked() {
-                                        self.dance_selected = Some(dance.clone());
+                                        self.picker.dance_selected = Some(dance.clone());
                                         self.source.load_dance(dance.id.clone());
-                                        self.preview_loading = true;
+                                        self.picker.preview_loading = true;
                                     }
                                 });
                             });
@@ -212,13 +224,13 @@ impl ContraApp {
                 .id_salt("dance-preview")
                 .max_height(420.0)
                 .show(&mut columns[1], |ui| {
-                    if self.preview_loading {
+                    if self.picker.preview_loading {
                         ui.horizontal(|ui| {
                             ui.spinner();
                             ui.label("Loading dance…");
                         });
                     }
-                    if let Some(dance) = self.dance_preview.clone() {
+                    if let Some(dance) = self.picker.dance_preview.clone() {
                         ui.heading(&dance.title);
                         ui.label(
                             egui::RichText::new(format!(
@@ -277,7 +289,7 @@ impl ContraApp {
                                 figure.text
                             ));
                         }
-                    } else if !self.preview_loading {
+                    } else if !self.picker.preview_loading {
                         ui.label(
                             egui::RichText::new("Preview a dance to see its card.")
                                 .color(theme::muted(ui)),

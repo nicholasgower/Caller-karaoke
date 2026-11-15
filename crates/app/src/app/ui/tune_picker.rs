@@ -33,16 +33,16 @@ impl ContraApp {
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
                 ui.label("Search");
-                submit |= submit_text_edit(ui, &mut self.tune_query.search);
+                submit |= submit_text_edit(ui, &mut self.picker.tune_query.search);
                 ui.end_row();
                 ui.label("Composer");
-                submit |= submit_text_edit(ui, &mut self.tune_query.composer);
+                submit |= submit_text_edit(ui, &mut self.picker.tune_query.composer);
                 ui.end_row();
                 ui.label("Key");
                 combo_option(
                     ui,
                     "tune-key",
-                    &mut self.tune_query.key,
+                    &mut self.picker.tune_query.key,
                     &[
                         ("", "Any key"),
                         ("D", "D major"),
@@ -64,7 +64,7 @@ impl ContraApp {
                 combo_option(
                     ui,
                     "tune-meter",
-                    &mut self.tune_query.meter,
+                    &mut self.picker.tune_query.meter,
                     &[
                         ("", "Any meter"),
                         ("4/4", "4/4"),
@@ -81,7 +81,7 @@ impl ContraApp {
                 combo_option(
                     ui,
                     "tune-rhythm",
-                    &mut self.tune_query.rhythm,
+                    &mut self.picker.tune_query.rhythm,
                     &[
                         ("", "Any genre"),
                         ("reel", "Reel"),
@@ -101,16 +101,19 @@ impl ContraApp {
         }
         ui.horizontal(|ui| {
             let search = ui
-                .add_enabled(!self.search_loading, egui::Button::new("Search tunes"))
+                .add_enabled(
+                    !self.picker.search_loading,
+                    egui::Button::new("Search tunes"),
+                )
                 .on_hover_text("Search tunes (Enter)");
             if search.clicked() {
                 self.search_tunes();
             }
-            if self.search_loading {
+            if self.picker.search_loading {
                 ui.spinner();
                 ui.label("Searching…");
             }
-            if let Some(results) = &self.tune_results {
+            if let Some(results) = &self.picker.tune_results {
                 ui.label(
                     egui::RichText::new(format!("{} matches", results.total))
                         .color(theme::muted(ui)),
@@ -124,11 +127,11 @@ impl ContraApp {
                 .id_salt("tune-results")
                 .max_height(420.0)
                 .show(&mut columns[0], |ui| {
-                    let Some(results) = self.tune_results.clone() else {
+                    let Some(results) = self.picker.tune_results.clone() else {
                         return;
                     };
                     for tune in results.tunes {
-                        let selected = self
+                        let selected = self.picker
                             .tune_selected
                             .as_ref()
                             .is_some_and(|value| value.id == tune.id);
@@ -171,9 +174,9 @@ impl ContraApp {
                                         }
                                     });
                                     if ui.small_button("Preview").clicked() {
-                                        self.tune_selected = Some(tune.clone());
+                                        self.picker.tune_selected = Some(tune.clone());
                                         self.source.load_tune(tune.id.clone());
-                                        self.preview_loading = true;
+                                        self.picker.preview_loading = true;
                                     }
                                 });
                             });
@@ -183,13 +186,13 @@ impl ContraApp {
                 .id_salt("tune-preview")
                 .max_height(420.0)
                 .show(&mut columns[1], |ui| {
-                    if self.preview_loading {
+                    if self.picker.preview_loading {
                         ui.horizontal(|ui| {
                             ui.spinner();
                             ui.label("Loading tune…");
                         });
                     }
-                    if let Some(tune) = self.tune_preview.clone() {
+                    if let Some(tune) = self.picker.tune_preview.clone() {
                         ui.heading(&tune.title);
                         ui.label(
                             egui::RichText::new(format!(
@@ -279,7 +282,7 @@ impl ContraApp {
                                 );
                             }
                         }
-                    } else if !self.preview_loading {
+                    } else if !self.picker.preview_loading {
                         ui.label(
                             egui::RichText::new("Preview a tune to see its sheet music.")
                                 .color(theme::muted(ui)),

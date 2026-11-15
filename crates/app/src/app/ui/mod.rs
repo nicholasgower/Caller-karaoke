@@ -177,17 +177,17 @@ pub(super) struct SessionControlChanges {
 impl ContraApp {
     pub(super) fn pagination_ui(&mut self, ui: &mut egui::Ui, dance: bool) {
         let (page, page_size, total) = if dance {
-            let results = self.dance_results.as_ref();
+            let results = self.picker.dance_results.as_ref();
             (
-                self.dance_query.page.max(1),
-                self.dance_query.page_size.max(1),
+                self.picker.dance_query.page.max(1),
+                self.picker.dance_query.page_size.max(1),
                 results.map(|page| page.total).unwrap_or(0),
             )
         } else {
-            let results = self.tune_results.as_ref();
+            let results = self.picker.tune_results.as_ref();
             (
-                self.tune_query.page.max(1),
-                self.tune_query.page_size.max(1),
+                self.picker.tune_query.page.max(1),
+                self.picker.tune_query.page_size.max(1),
                 results.map(|page| page.total).unwrap_or(0),
             )
         };
@@ -198,13 +198,13 @@ impl ContraApp {
                 .clicked()
             {
                 if dance {
-                    self.dance_query.page = page - 1;
-                    self.source.search_dances(self.dance_query.clone());
+                    self.picker.dance_query.page = page - 1;
+                    self.source.search_dances(self.picker.dance_query.clone());
                 } else {
-                    self.tune_query.page = page - 1;
-                    self.source.search_tunes(self.tune_query.clone());
+                    self.picker.tune_query.page = page - 1;
+                    self.source.search_tunes(self.picker.tune_query.clone());
                 }
-                self.search_loading = true;
+                self.picker.search_loading = true;
             }
             ui.label(format!("Page {page} of {}", pages.max(1)));
             if ui
@@ -212,13 +212,13 @@ impl ContraApp {
                 .clicked()
             {
                 if dance {
-                    self.dance_query.page = page + 1;
-                    self.source.search_dances(self.dance_query.clone());
+                    self.picker.dance_query.page = page + 1;
+                    self.source.search_dances(self.picker.dance_query.clone());
                 } else {
-                    self.tune_query.page = page + 1;
-                    self.source.search_tunes(self.tune_query.clone());
+                    self.picker.tune_query.page = page + 1;
+                    self.source.search_tunes(self.picker.tune_query.clone());
                 }
-                self.search_loading = true;
+                self.picker.search_loading = true;
             }
         });
     }

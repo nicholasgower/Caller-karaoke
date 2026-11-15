@@ -218,11 +218,11 @@ fn dance_library_shots(
         app.dance_library = library_dances();
         app.dance_library_query.clear();
         app.dance_library_folder = FolderFilter::All;
-        app.dance_preview = app
+        app.picker.dance_preview = app
             .dance_library
             .get("contradb", "2409")
             .map(|entry| entry.item.clone());
-        app.dance_selected = None;
+        app.picker.dance_selected = None;
         app.screen = Screen::DancePicker;
         app.error = None;
     }
@@ -231,7 +231,7 @@ fn dance_library_shots(
         let app = harness.state_mut();
         app.dance_library_query = "belle".into();
         app.dance_library_folder = FolderFilter::Folder("Warmups".into());
-        app.dance_preview = app
+        app.picker.dance_preview = app
             .dance_library
             .get("contradb", "2154")
             .map(|entry| entry.item.clone());
@@ -252,33 +252,33 @@ fn dance_picker_shots(
         app.screen = Screen::DanceDownload;
         app.dance_library_query.clear();
         app.dance_library_folder = FolderFilter::All;
-        app.dance_results = None;
-        app.dance_preview = None;
-        app.dance_query.title.clear();
-        app.dance_query.user.clear();
-        app.dance_query.hook.clear();
-        app.dance_query.figure_move = None;
+        app.picker.dance_results = None;
+        app.picker.dance_preview = None;
+        app.picker.dance_query.title.clear();
+        app.picker.dance_query.user.clear();
+        app.picker.dance_query.hook.clear();
+        app.picker.dance_query.figure_move = None;
     }
     capture(harness, out, "dance-picker-open")?;
 
     {
         let app = harness.state_mut();
-        app.dance_results = Some(dance_results());
-        app.dance_query.title = "last".into();
-        app.dance_preview = None;
-        app.dance_selected = None;
+        app.picker.dance_results = Some(dance_results());
+        app.picker.dance_query.title = "last".into();
+        app.picker.dance_preview = None;
+        app.picker.dance_selected = None;
     }
     capture(harness, out, "dance-picker-search")?;
     {
         let app = harness.state_mut();
-        app.dance_query.sort = contra_sources::DanceSort::TitleAsc;
+        app.picker.dance_query.sort = contra_sources::DanceSort::TitleAsc;
     }
     capture(harness, out, "dance-sort")?;
     {
         let app = harness.state_mut();
-        app.dance_query.sort = contra_sources::DanceSort::Relevancy;
-        app.dance_query.page = 2;
-        app.dance_results = Some(dance_results_page_two());
+        app.picker.dance_query.sort = contra_sources::DanceSort::Relevancy;
+        app.picker.dance_query.page = 2;
+        app.picker.dance_results = Some(dance_results_page_two());
     }
     // The pagination row sits below the fold at 800 px.
     harness.set_size(Vec2::new(1280.0, 1050.0));
@@ -286,14 +286,14 @@ fn dance_picker_shots(
     harness.set_size(DESKTOP);
     {
         let app = harness.state_mut();
-        app.dance_query.page = 1;
-        app.dance_results = Some(dance_results());
+        app.picker.dance_query.page = 1;
+        app.picker.dance_results = Some(dance_results());
     }
 
     {
         let app = harness.state_mut();
         let dance = super::defaults::default_dance();
-        app.dance_selected = Some(DanceSummary {
+        app.picker.dance_selected = Some(DanceSummary {
             id: dance.source.id.clone(),
             title: dance.title.clone(),
             choreographer: dance.choreographer.clone(),
@@ -301,25 +301,25 @@ fn dance_picker_shots(
             hook: String::new(),
             user: "Koren A Wake".into(),
         });
-        app.dance_preview = Some(dance);
+        app.picker.dance_preview = Some(dance);
     }
     capture(harness, out, "dance-picker-preview")?;
 
     {
         let app = harness.state_mut();
-        app.dance_query.user = "Koren".into();
+        app.picker.dance_query.user = "Koren".into();
     }
     capture(harness, out, "dance-filter-user")?;
     {
         let app = harness.state_mut();
-        app.dance_query.user.clear();
-        app.dance_query.hook = "star".into();
+        app.picker.dance_query.user.clear();
+        app.picker.dance_query.hook = "star".into();
     }
     capture(harness, out, "dance-filter-hook")?;
     {
         let app = harness.state_mut();
-        app.dance_query.hook.clear();
-        app.dance_query.figure_move = Some("swing".into());
+        app.picker.dance_query.hook.clear();
+        app.picker.dance_query.figure_move = Some("swing".into());
     }
     capture(harness, out, "dance-filter-figure-type")?;
 
@@ -330,7 +330,7 @@ fn dance_picker_shots(
         dance.figures[0].beats -= 0.5;
         app.length_warning = super::length_warning_for(&dance, &app.tune);
         app.dance = dance.clone();
-        app.dance_preview = Some(dance);
+        app.picker.dance_preview = Some(dance);
         app.rebuild_timeline();
     }
     capture(harness, out, "dance-preview-beats")?;
@@ -357,12 +357,12 @@ fn tune_library_shots(
         app.tune_library = library_tunes();
         app.tune_library_query.clear();
         app.tune_library_folder = FolderFilter::All;
-        app.tune_preview = app
+        app.picker.tune_preview = app
             .tune_library
             .get("abcsessiontunes", "75815")
             .map(|entry| entry.item.clone());
         app.tune_sheet = None;
-        app.tune_selected = None;
+        app.picker.tune_selected = None;
         app.screen = Screen::TunePicker;
     }
     capture(harness, out, "tune-library")?;
@@ -370,7 +370,7 @@ fn tune_library_shots(
         let app = harness.state_mut();
         app.tune_library_query = "saint".into();
         app.tune_library_folder = FolderFilter::Folder("Reels".into());
-        app.tune_preview = app
+        app.picker.tune_preview = app
             .tune_library
             .get("abcsessiontunes", "75412")
             .map(|entry| entry.item.clone());
@@ -395,18 +395,18 @@ fn tune_picker_shots(
         app.dance = super::defaults::default_dance();
         app.rebuild_timeline();
         app.length_warning = super::length_warning_for(&app.dance, &app.tune);
-        app.tune_results = None;
-        app.tune_preview = None;
-        app.tune_selected = None;
+        app.picker.tune_results = None;
+        app.picker.tune_preview = None;
+        app.picker.tune_selected = None;
         app.tune_sheet = None;
     }
     capture(harness, out, "tune-picker-open")?;
     {
         let app = harness.state_mut();
-        app.tune_results = Some(tune_results());
-        app.tune_query.search = "sandy".into();
-        app.tune_preview = Some(super::defaults::default_tune());
-        app.tune_selected = Some(TuneSummary {
+        app.picker.tune_results = Some(tune_results());
+        app.picker.tune_query.search = "sandy".into();
+        app.picker.tune_preview = Some(super::defaults::default_tune());
+        app.picker.tune_selected = Some(TuneSummary {
             id: "75815".into(),
             title: "Sandy Boys".into(),
             composer: String::new(),
@@ -418,28 +418,28 @@ fn tune_picker_shots(
     capture(harness, out, "tune-picker-preview")?;
     {
         let app = harness.state_mut();
-        app.tune_preview = None;
-        app.tune_selected = None;
-        app.tune_query.search = "sandy".into();
+        app.picker.tune_preview = None;
+        app.picker.tune_selected = None;
+        app.picker.tune_query.search = "sandy".into();
     }
     capture(harness, out, "tune-search")?;
 
     {
         let app = harness.state_mut();
-        app.tune_query.search.clear();
-        app.tune_query.key = Some("Amix".into());
+        app.picker.tune_query.search.clear();
+        app.picker.tune_query.key = Some("Amix".into());
     }
     capture(harness, out, "tune-filter-key")?;
     {
         let app = harness.state_mut();
-        app.tune_query.key = None;
-        app.tune_query.meter = Some("4/4".into());
+        app.picker.tune_query.key = None;
+        app.picker.tune_query.meter = Some("4/4".into());
     }
     capture(harness, out, "tune-filter-meter")?;
     {
         let app = harness.state_mut();
-        app.tune_query.meter = None;
-        app.tune_query.rhythm = Some("reel".into());
+        app.picker.tune_query.meter = None;
+        app.picker.tune_query.rhythm = Some("reel".into());
     }
     capture(harness, out, "tune-filter-genre")?;
 
@@ -455,7 +455,7 @@ fn preference_shots(
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
-        app.tune_query.rhythm = None;
+        app.picker.tune_query.rhythm = None;
         app.prefs.theme = contra_core::Theme::Dark;
         app.error = None;
     }

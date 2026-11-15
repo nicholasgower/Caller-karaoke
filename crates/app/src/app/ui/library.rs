@@ -19,8 +19,8 @@ impl ContraApp {
                     .on_hover_text("Search ContraDB and add a card to your saved dances")
                     .clicked()
                 {
-                    self.dance_preview = None;
-                    self.dance_selected = None;
+                    self.picker.dance_preview = None;
+                    self.picker.dance_selected = None;
                     self.screen = Screen::DanceDownload;
                 }
             });
@@ -142,6 +142,7 @@ impl ContraApp {
         entries.sort_by_key(|entry| entry.item.title.to_lowercase());
         let folders = self.dance_library.folders.clone();
         let selected_id = self
+            .picker
             .dance_preview
             .as_ref()
             .map(|dance| dance.source.id.clone())
@@ -270,8 +271,8 @@ impl ContraApp {
                     .on_hover_text("Search ABC Session Tunes and add a tune to your saved tunes")
                     .clicked()
                 {
-                    self.tune_preview = None;
-                    self.tune_selected = None;
+                    self.picker.tune_preview = None;
+                    self.picker.tune_selected = None;
                     self.tune_sheet = None;
                     self.screen = Screen::TuneDownload;
                 }
@@ -394,6 +395,7 @@ impl ContraApp {
         entries.sort_by_key(|entry| entry.item.title.to_lowercase());
         let folders = self.tune_library.folders.clone();
         let selected_id = self
+            .picker
             .tune_preview
             .as_ref()
             .map(|tune| tune.source.id.clone())
@@ -573,22 +575,23 @@ impl ContraApp {
     fn apply_library_action(&mut self, action: LibraryAction) {
         match action {
             LibraryAction::PreviewDance(dance) => {
-                self.dance_preview = Some(dance);
-                self.dance_selected = None;
+                self.picker.dance_preview = Some(dance);
+                self.picker.dance_selected = None;
             }
             LibraryAction::UseDance(dance) => self.use_dance(dance),
             LibraryAction::RemoveDance(id) => self.remove_saved_dance(&id),
             LibraryAction::MoveDance { id, folder } => self.move_saved_dance(&id, folder),
             LibraryAction::PreviewTune(tune) => {
                 if self
+                    .picker
                     .tune_preview
                     .as_ref()
                     .is_none_or(|current| current.source != tune.source)
                 {
                     self.tune_sheet = None;
                 }
-                self.tune_preview = Some(tune);
-                self.tune_selected = None;
+                self.picker.tune_preview = Some(tune);
+                self.picker.tune_selected = None;
             }
             LibraryAction::UseTune(tune) => self.use_tune(tune),
             LibraryAction::RemoveTune(id) => self.remove_saved_tune(&id),

@@ -261,8 +261,8 @@ pub struct ContraApp {
     pending_audio: bool,
     render_loading: bool,
     started: bool,
-    dance_query: DanceQuery,
-    tune_query: TuneQuery,
+    /// Transient state of the dance and tune download screens.
+    picker: PickerState,
     dance_library: Library<Dance>,
     tune_library: Library<Tune>,
     dance_library_query: String,
@@ -275,16 +275,8 @@ pub struct ContraApp {
     renaming_tune_folder: Option<String>,
     folder_rename_text: String,
     library_status: Option<String>,
-    dance_results: Option<DanceSearchPage>,
-    tune_results: Option<TuneSearchPage>,
-    dance_preview: Option<Dance>,
-    tune_preview: Option<Tune>,
     tune_view: TuneView,
     tune_sheet: Option<Result<SheetPreview, String>>,
-    dance_selected: Option<DanceSummary>,
-    tune_selected: Option<TuneSummary>,
-    search_loading: bool,
-    preview_loading: bool,
     status: String,
     error: Option<String>,
     length_warning: Option<String>,
@@ -300,6 +292,25 @@ pub struct ContraApp {
     alternative_inputs: std::collections::BTreeMap<String, String>,
     /// Seed for the alternative-alias shuffle. Selecting a dance advances it.
     alias_seed: u64,
+}
+
+/// Transient state of the two download screens.
+///
+/// The dance and tune pickers have the same shape, so they share one struct: a
+/// new search or preview field belongs here instead of being threaded through
+/// the app struct and both constructors.
+#[derive(Default)]
+pub(in crate::app) struct PickerState {
+    dance_query: DanceQuery,
+    tune_query: TuneQuery,
+    dance_results: Option<DanceSearchPage>,
+    tune_results: Option<TuneSearchPage>,
+    dance_preview: Option<Dance>,
+    tune_preview: Option<Tune>,
+    dance_selected: Option<DanceSummary>,
+    tune_selected: Option<TuneSummary>,
+    search_loading: bool,
+    preview_loading: bool,
 }
 
 impl ContraApp {
@@ -421,13 +432,16 @@ impl ContraApp {
             pending_audio: false,
             render_loading: false,
             started: false,
-            dance_query: DanceQuery {
-                page_size: 10,
-                ..DanceQuery::default()
-            },
-            tune_query: TuneQuery {
-                page_size: 10,
-                ..TuneQuery::default()
+            picker: PickerState {
+                dance_query: DanceQuery {
+                    page_size: 10,
+                    ..DanceQuery::default()
+                },
+                tune_query: TuneQuery {
+                    page_size: 10,
+                    ..TuneQuery::default()
+                },
+                ..PickerState::default()
             },
             dance_library,
             tune_library,
@@ -441,16 +455,10 @@ impl ContraApp {
             renaming_tune_folder: None,
             folder_rename_text: String::new(),
             library_status: None,
-            dance_results: None,
-            tune_results: None,
-            dance_preview: None,
-            tune_preview: None,
+
             tune_view: TuneView::default(),
             tune_sheet: None,
-            dance_selected: None,
-            tune_selected: None,
-            search_loading: false,
-            preview_loading: false,
+
             status: "Ready".into(),
             error: None,
             length_warning,
@@ -505,20 +513,20 @@ impl ContraApp {
 
     /// Start a dance search from the current filters.
     fn search_dances(&mut self) {
-        if self.search_loading {
+        if self.picker.search_loading {
             return;
         }
-        self.search_loading = true;
-        self.source.search_dances(self.dance_query.clone());
+        self.picker.search_loading = true;
+        self.source.search_dances(self.picker.dance_query.clone());
     }
 
     /// Start a tune search from the current filters.
     fn search_tunes(&mut self) {
-        if self.search_loading {
+        if self.picker.search_loading {
             return;
         }
-        self.search_loading = true;
-        self.source.search_tunes(self.tune_query.clone());
+        self.picker.search_loading = true;
+        self.source.search_tunes(self.picker.tune_query.clone());
     }
 
     fn save_dance_library(&self) {
@@ -570,11 +578,12 @@ impl ContraApp {
         };
         self.save_dance_library();
         if self
+            .picker
             .dance_preview
             .as_ref()
             .is_some_and(|dance| dance.source.id == id)
         {
-            self.dance_preview = None;
+            self.picker.dance_preview = None;
         }
         self.library_status = Some(format!(
             "Removed \"{}\" from saved dances.",
@@ -588,11 +597,12 @@ impl ContraApp {
         };
         self.save_tune_library();
         if self
+            .picker
             .tune_preview
             .as_ref()
             .is_some_and(|tune| tune.source.id == id)
         {
-            self.tune_preview = None;
+            self.picker.tune_preview = None;
             self.tune_sheet = None;
         }
         self.library_status = Some(format!(
@@ -717,13 +727,16 @@ impl ContraApp {
             pending_audio: false,
             render_loading: false,
             started: false,
-            dance_query: DanceQuery {
-                page_size: 10,
-                ..DanceQuery::default()
-            },
-            tune_query: TuneQuery {
-                page_size: 10,
-                ..TuneQuery::default()
+            picker: PickerState {
+                dance_query: DanceQuery {
+                    page_size: 10,
+                    ..DanceQuery::default()
+                },
+                tune_query: TuneQuery {
+                    page_size: 10,
+                    ..TuneQuery::default()
+                },
+                ..PickerState::default()
             },
             dance_library,
             tune_library,
@@ -737,16 +750,10 @@ impl ContraApp {
             renaming_tune_folder: None,
             folder_rename_text: String::new(),
             library_status: None,
-            dance_results: None,
-            tune_results: None,
-            dance_preview: None,
-            tune_preview: None,
+
             tune_view: TuneView::default(),
             tune_sheet: None,
-            dance_selected: None,
-            tune_selected: None,
-            search_loading: false,
-            preview_loading: false,
+
             status: "Ready".into(),
             error: None,
             length_warning,
@@ -945,8 +952,8 @@ impl ContraApp {
         self.dance = dance;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_dance = Some(self.dance.source.clone());
-        self.dance_preview = None;
-        self.dance_selected = None;
+        self.picker.dance_preview = None;
+        self.picker.dance_selected = None;
         self.screen = Screen::Session;
         self.needs_render = true;
         self.arrangement = None;
@@ -966,9 +973,9 @@ impl ContraApp {
         self.tune = tune;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_tune = Some(self.tune.source.clone());
-        self.tune_preview = None;
+        self.picker.tune_preview = None;
         self.tune_sheet = None;
-        self.tune_selected = None;
+        self.picker.tune_selected = None;
         self.screen = Screen::Session;
         self.needs_render = true;
         self.arrangement = None;
@@ -983,42 +990,42 @@ impl ContraApp {
         while let Ok(event) = self.source_rx.try_recv() {
             match event {
                 SourceEvent::DanceSearch { query, result } => {
-                    self.search_loading = false;
-                    self.dance_query = query;
+                    self.picker.search_loading = false;
+                    self.picker.dance_query = query;
                     match result {
                         Ok(page) => {
-                            self.dance_results = Some(page);
+                            self.picker.dance_results = Some(page);
                             self.error = None;
                         }
                         Err(error) => self.error = Some(error),
                     }
                 }
                 SourceEvent::Dance { result } => {
-                    self.preview_loading = false;
+                    self.picker.preview_loading = false;
                     match result {
                         Ok(dance) => {
-                            self.dance_preview = Some(dance);
+                            self.picker.dance_preview = Some(dance);
                             self.error = None;
                         }
                         Err(error) => self.error = Some(error),
                     }
                 }
                 SourceEvent::TuneSearch { query, result } => {
-                    self.search_loading = false;
-                    self.tune_query = query;
+                    self.picker.search_loading = false;
+                    self.picker.tune_query = query;
                     match result {
                         Ok(page) => {
-                            self.tune_results = Some(page);
+                            self.picker.tune_results = Some(page);
                             self.error = None;
                         }
                         Err(error) => self.error = Some(error),
                     }
                 }
                 SourceEvent::Tune { result } => {
-                    self.preview_loading = false;
+                    self.picker.preview_loading = false;
                     match result {
                         Ok(tune) => {
-                            self.tune_preview = Some(tune);
+                            self.picker.tune_preview = Some(tune);
                             self.tune_sheet = None;
                             self.error = None;
                         }
