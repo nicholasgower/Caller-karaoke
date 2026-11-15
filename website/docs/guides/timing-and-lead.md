@@ -69,8 +69,9 @@ automatic estimate does not match your delivery.
   </Step>
 </Steps>
 
-The music is marked pending because the call timeline changed. Press **Play** to
-render and start.
+The schedule rebuilds immediately. The **Rebuild call timing** button also marks
+the music for a rebuild; if the session shows the prepare-music message, press
+**Play** to render and start.
 
 ## Watch the countdown
 

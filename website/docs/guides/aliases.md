@@ -131,8 +131,10 @@ gets about two beats when they fit.
 
 ## What triggers a rebuild
 
-Any alias edit rebuilds the call timeline and sets the music to pending. The
-next **Play** renders the new calls and their lead times. The role preset and
-custom role fields rebuild in the same way.
+Any alias edit rebuilds the call timeline immediately. The music keeps playing;
+the new wording and its lead times apply without re-rendering the loop. The role
+preset and custom role fields rebuild in the same way. Only changing an audio
+setting such as tempo, instrument, volume, count-in, or SoundFont marks the
+music for a rebuild.
 
 Next: [Instruments and soundfonts](/docs/guides/instruments-and-soundfonts).
