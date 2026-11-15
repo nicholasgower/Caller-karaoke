@@ -23,6 +23,12 @@
       "height": 800
     },
     {
+      "id": "about-window",
+      "alt": "The About window over the session screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
+      "caption": "About shows the program version, its author, and the project links.",
+      "status": "pending"
+    },
+    {
       "id": "dance-picker-open",
       "alt": "The Select dance screen with Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields above an empty results area.",
       "caption": "Select dance searches ContraDB and previews a card before loading it.",

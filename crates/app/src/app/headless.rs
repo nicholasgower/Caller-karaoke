@@ -45,6 +45,17 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     }
     capture(&mut harness, out, "main-idle")?;
 
+    // About window over the session.
+    {
+        let app = harness.state_mut();
+        app.about_open = true;
+    }
+    capture(&mut harness, out, "about-window")?;
+    {
+        let app = harness.state_mut();
+        app.about_open = false;
+    }
+
     {
         let app = harness.state_mut();
         app.needs_render = false;
