@@ -21,6 +21,7 @@ use rustysynth::SoundFont;
 
 use crate::audio::AudioEngine;
 use crate::defaults;
+use crate::sheet::SheetPreview;
 use crate::source::{SourceClient, SourceEvent};
 use crate::theme;
 use crate::tts::Speech;
@@ -32,6 +33,30 @@ enum Screen {
     TunePicker,
     Preferences,
     Aliases,
+}
+
+/// How the tune picker shows the selected tune.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum TuneView {
+    #[default]
+    Sheet,
+    Abc,
+}
+
+impl TuneView {
+    fn toggled(self) -> Self {
+        match self {
+            Self::Sheet => Self::Abc,
+            Self::Abc => Self::Sheet,
+        }
+    }
+
+    fn toggle_label(self) -> &'static str {
+        match self {
+            Self::Sheet => "Show ABC",
+            Self::Abc => "Show sheet music",
+        }
+    }
 }
 
 pub struct ContraApp {
@@ -62,6 +87,8 @@ pub struct ContraApp {
     tune_results: Option<TuneSearchPage>,
     dance_preview: Option<Dance>,
     tune_preview: Option<Tune>,
+    tune_view: TuneView,
+    tune_sheet: Option<Result<SheetPreview, String>>,
     dance_selected: Option<DanceSummary>,
     tune_selected: Option<TuneSummary>,
     search_loading: bool,
@@ -177,6 +204,8 @@ impl ContraApp {
             tune_results: None,
             dance_preview: None,
             tune_preview: None,
+            tune_view: TuneView::default(),
+            tune_sheet: None,
             dance_selected: None,
             tune_selected: None,
             search_loading: false,
@@ -266,6 +295,11 @@ impl ContraApp {
                 0.0
             },
             sample_rate: self.audio.sample_rate(),
+            variation_passes: if self.prefs.accompaniment_variations {
+                contra_music::VARIATION_PASSES
+            } else {
+                1
+            },
         };
         match render(&request, self.soundfont.as_ref()) {
             Ok(buffer) => {
@@ -337,6 +371,7 @@ impl ContraApp {
         self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_tune = Some(self.tune.source.clone());
         self.tune_preview = None;
+        self.tune_sheet = None;
         self.tune_selected = None;
         self.screen = Screen::Session;
         self.needs_render = true;
@@ -388,6 +423,7 @@ impl ContraApp {
                     match result {
                         Ok(tune) => {
                             self.tune_preview = Some(tune);
+                            self.tune_sheet = None;
                             self.error = None;
                         }
                         Err(error) => self.error = Some(error),

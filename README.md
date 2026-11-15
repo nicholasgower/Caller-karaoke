@@ -17,6 +17,8 @@ Android. Version **0.1.0** is the current development version.
 - ABC Session Tunes search and JSON tune parsing.
 - ABC → score → 64-beat arrangement → built-in synth playback.
 - Three-beat accompaniment count-in built from the tune's first chord.
+- On by default: small accompaniment variations each time the loop repeats —
+  extra emphasis notes and, now and then, a bar left to the melody alone.
 - Call timeline with syllable-based early calls, aliases, and role terms.
 - Optional text-to-speech through the platform TTS backend.
 - User-supplied `.sf2` soundfont support via `rustysynth`.
@@ -52,9 +54,10 @@ being device-tested.
 - **Count-in** — three accompaniment beats before the loop.
 - **Speak calls** — use platform TTS instead of reading the prompt.
 - **Select dance** — search ContraDB, preview the card, load it.
-- **Select Tune** — search ABC Session Tunes, preview the ABC, load it.
+- **Select Tune** — search ABC Session Tunes, preview the sheet music (or the
+  ABC source), load it.
 - **Preferences** — role terms, aliases, instruments, theme, animations, lead
-  settings, TTS, soundfont, proxy, and cache tools.
+  settings, TTS, soundfont, proxy, cache tools, and accompaniment variations.
 
 ## How call timing works
 

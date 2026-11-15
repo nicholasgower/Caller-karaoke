@@ -17,6 +17,12 @@ pub struct RenderRequest {
     pub accompaniment_volume: f32,
     pub count_in_beats: f64,
     pub sample_rate: u32,
+    /// Number of 64-beat accompaniment passes to render back to back.
+    ///
+    /// One pass is the plain loop. With [`crate::VARIATION_PASSES`] the
+    /// melody repeats unchanged while the accompaniment varies on each pass,
+    /// and the transport simply loops the whole region.
+    pub variation_passes: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -29,7 +35,12 @@ pub struct AudioBuffer {
     pub count_in_samples: u64,
     /// Loop bounds for the transport. The count-in only plays once.
     pub loop_start_sample: u64,
+    /// End of the last rendered pass.
     pub loop_end_sample: u64,
+    /// Samples in one 64-beat pass. The transport maps sample positions back
+    /// into this one-pass range so the dance card, calls, and progress bar do
+    /// not see the variation passes.
+    pub loop_pass_samples: u64,
     pub samples_per_beat: f64,
 }
 
@@ -43,7 +54,12 @@ impl AudioBuffer {
     }
 
     pub fn beat_at_sample(&self, sample: u64) -> f64 {
-        (sample as f64 - self.count_in_samples as f64) / self.samples_per_beat
+        let offset = sample as i64 - self.count_in_samples as i64;
+        if offset < 0 {
+            return offset as f64 / self.samples_per_beat;
+        }
+        let pass_samples = self.loop_pass_samples.max(1);
+        (offset as u64 % pass_samples) as f64 / self.samples_per_beat
     }
 
     pub fn sample_at_beat(&self, beat: f64) -> i64 {

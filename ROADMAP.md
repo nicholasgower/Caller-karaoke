@@ -100,8 +100,10 @@ A search screen modelled on ABC Session Tunes:
 - Composer, key, meter, and genre filters.
 - Pagination and result counts.
 - Results show title, composer, key, meter, and rhythm.
-- Selecting a result shows metadata and the ABC source, with a **Use this
-  tune** action.
+- Selecting a result shows metadata and a rendered sheet-music preview, with a
+  **Show ABC** / **Show sheet music** toggle for the source and a **Use this
+  tune** action. The sheet is the default view; if it cannot be engraved the
+  source remains available in the ABC view.
 - The default tune is loaded on first run and remains usable offline.
 
 ### 3.4 Preferences
@@ -131,6 +133,9 @@ Advanced settings:
   second, word gap, extra pause.
 - TTS voice and rate.
 - Count-in on/off (default on), loop (default on).
+- Accompaniment variations on each loop (default on): a few added emphasis
+  notes and an occasional bar of melody alone, chosen deterministically from
+  the tune.
 - Cache size, clear cache, refresh cached content.
 - Web data proxy URL and token (web build only).
 

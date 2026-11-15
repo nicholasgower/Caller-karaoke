@@ -186,10 +186,20 @@ where
     let volume = f32::from_bits(shared.volume.load(Ordering::Relaxed));
     let mut position = shared.position.load(Ordering::Relaxed);
     let looping = shared.looping.load(Ordering::Relaxed);
+    // The buffer holds one pass, or several when the accompaniment varies.
+    // One-shot playback plays the first pass, not every variation.
+    let end_sample = if looping {
+        buffer.loop_end_sample
+    } else {
+        buffer
+            .loop_start_sample
+            .saturating_add(buffer.loop_pass_samples)
+            .min(buffer.loop_end_sample)
+    };
     let mut finished = false;
 
     for frame in data.chunks_mut(channels.max(1)) {
-        if position >= buffer.loop_end_sample {
+        if position >= end_sample {
             if looping {
                 position = buffer.loop_start_sample;
             } else {
