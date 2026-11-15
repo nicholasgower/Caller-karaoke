@@ -66,6 +66,12 @@ static DO_SI_DO: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)\bdo[\s-]*si[\s-]*do\b").expect("the do-si-do pattern is valid")
 });
 
+/// Callers reduce "and a half" to "an a half". The neural voice then gets a
+/// connected tail instead of three separate words, and platform voices drop
+/// the hard /d/ that makes the phrase sound choppy.
+static HALF_PHRASE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)\band a half\b").expect("the half-phrase pattern is valid"));
+
 static RESPELLERS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
     PLATFORM_RESPELLINGS
         .iter()
@@ -82,12 +88,15 @@ static RESPELLERS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
 /// Normalize text before the Kokoro G2P.
 ///
 /// Curly apostrophes are folded to ASCII, `O'More` is expanded to `O More`,
-/// and `do-si-do` is respelled as "doe see doe". The G2P tokenizer otherwise
-/// splits `O'More` into letters, and its default `do-si-do` is "doo see doo".
+/// `do-si-do` is respelled as "doe see doe", and `and a half` becomes the
+/// connected "an a half". The G2P tokenizer otherwise splits `O'More` into
+/// letters, its default `do-si-do` is "doo see doo", and the count tail is read
+/// as three separate words.
 pub fn kokoro_text(text: &str) -> String {
     let text = text.replace(['\u{2018}', '\u{2019}', '\u{201B}'], "'");
     let text = O_MORE.replace_all(&text, "O More");
-    DO_SI_DO.replace_all(&text, "doe see doe").into_owned()
+    let text = DO_SI_DO.replace_all(&text, "doe see doe");
+    HALF_PHRASE.replace_all(&text, "an a half").into_owned()
 }
 
 /// Apply [`PLATFORM_RESPELLINGS`] to text for a platform TTS engine.
@@ -123,6 +132,14 @@ mod tests {
         assert_eq!(kokoro_text("do si do"), "doe see doe");
         assert_eq!(kokoro_text("dosido"), "doe see doe");
         assert_eq!(platform_text("do-si-do"), "doe see doe");
+    }
+
+    #[test]
+    fn smooths_and_a_half() {
+        assert_eq!(kokoro_text("once and a half"), "once an a half");
+        assert_eq!(kokoro_text("twice and a half"), "twice an a half");
+        assert_eq!(platform_text("once and a half"), "once an a half");
+        assert_eq!(kokoro_text("once an a half"), "once an a half");
     }
 
     #[test]

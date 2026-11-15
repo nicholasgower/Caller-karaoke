@@ -13,3 +13,5 @@
 | 2026-11-14 | Dated nightly tags + rolling nightly | Traceable builds without changing semantic version |
 | 2026-11-15 | Refresh documentation screenshots only at release prep | Per-worktree regeneration was slow and noisy; prose still tracks every change |
 | 2026-11-15 | Host the web build on the documentation site | Lets visitors try the app without downloading; the docs deploy already owns the Pages artifact and can rebuild it from `main` |
+| 2026-11-15 | Commanding caller tone by default, via a pitch shift and clear-speech phoneme/EQ pass | Kokoro has no emotion input and drops punctuation; holding stressed vowels and lifting presence makes diction carry without changing the syllable-based lead |
+| 2026-11-15 | Omit the word “once” and connect “and a half” in calls | Callers do not say a one-count; the connected tail removes the four-word pause without changing the card |

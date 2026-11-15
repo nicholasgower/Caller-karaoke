@@ -675,7 +675,7 @@ mod tests {
 
         let starting = timeline.starting_call(0.0).expect("first call");
         assert_eq!(starting.index, 0);
-        assert_eq!(starting.call.text, "neighbors do-si-do once");
+        assert_eq!(starting.call.text, "neighbors do-si-do");
         assert_eq!(starting.execute_beat, 0.0);
     }
 
@@ -858,10 +858,10 @@ mod tests {
         )
         .expect("timeline");
         let first = &timeline.calls[0];
-        assert_eq!(first.text, "neighbors do-si-do once");
-        assert_eq!(first.lead_beats(), 4.0);
+        assert_eq!(first.text, "neighbors do-si-do");
+        assert_eq!(first.lead_beats(), 3.5);
         let wrapped_start = timeline.music_loop_beats - first.lead_beats();
-        assert_eq!(wrapped_start, 60.0);
+        assert_eq!(wrapped_start, 60.5);
         assert!(wrapped_start > 0.0);
         assert!(wrapped_start < timeline.music_loop_beats);
 

@@ -43,7 +43,8 @@ impl ContraApp {
         });
 
         // One place applies a change to the subsystem it belongs to; see
-        // Preferences::changes_since.        self.prefs.validate();
+        // Preferences::changes_since.
+        self.prefs.validate();
         if self.prefs != before {
             let changes = self.prefs.changes_since(&before);
             if changes.timeline {
@@ -59,6 +60,9 @@ impl ContraApp {
             }
             if !self.prefs.tts_enabled {
                 self.speech.stop();
+            }
+            if changes.tone {
+                self.speech.set_tone(self.prefs.tts_tone);
             }
             self.audio.set_looping(self.prefs.loop_enabled);
             self.audio.set_volume(self.prefs.master_volume);
@@ -307,6 +311,21 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui) {
             app.speech.set_rate(app.prefs.tts_rate);
         }
     });
+    ui.horizontal(|ui| {
+        ui.label("Tone");
+        egui::ComboBox::from_id_salt("tts_tone")
+            .selected_text(app.prefs.tts_tone.label())
+            .show_ui(ui, |ui| {
+                for tone in contra_core::CallTone::ALL {
+                    ui.selectable_value(&mut app.prefs.tts_tone, tone, tone.label());
+                }
+            });
+    });
+    ui.label(
+        egui::RichText::new(app.prefs.tts_tone.detail())
+            .small()
+            .color(theme::muted(ui)),
+    );
     ui.checkbox(
         &mut app.prefs.shuffle_alternatives,
         "Shuffle alternative call aliases",

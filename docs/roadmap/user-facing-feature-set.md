@@ -85,7 +85,8 @@ Advanced settings:
 
 - Calling lead: automatic or manual, minimum/maximum beats, syllables per
   second, word gap, extra pause.
-- TTS voice (Kokoro Heart, Bella, Nicole, Michael, or Fenrir on desktop) and rate.
+- TTS voice (Kokoro Heart, Bella, Nicole, Michael, or Fenrir on desktop), rate,
+  and tone (Commanding caller or Natural).
 - Alternative call aliases (default off): randomly uses an alternative wording
   for moves that have one, such as “partner swing” instead of “swing your
   partner”. The chosen wording is shown and spoken, and its lead is computed
@@ -105,6 +106,11 @@ Advanced settings:
   backend remains the fallback (and the only backend on web/Android).
 - Preferences offers five Kokoro voices: Heart, Bella, and Nicole (US female),
   and Michael and Fenrir (US male).
+- Call tone defaults to **Commanding caller**: a slightly lower, more projected
+  register with a clear-speech pass (stressed vowels held longer and a
+  presence/compression stage for consonants); **Natural** restores the recorded
+  pitch and even emphasis. Calls are still timed from the syllable estimate and
+  the safety padding, so the lead and 64-beat grid are unchanged.
 - Dance terms that the neural G2P mispronounces are corrected by a reviewed
   lexicon and pinned by tests (`docs/pronunciation.md`).
 - The visual prompt still appears when TTS is enabled.
@@ -129,6 +135,9 @@ Advanced settings:
   skipped, and alternatives never repeat the active template.
 - The rendered alias replaces the card text during a session; an optional
   advanced setting can show the original figure as secondary text.
+- A count of one is omitted from the rendered alias; fractional counts such as
+  “once and a half” remain. The speech path connects “and a half” into the
+  natural “n' a half”.
 - Lead timing is computed from the rendered alias, so making a call longer
   automatically moves it earlier.
 
@@ -136,7 +145,7 @@ Default alias style examples:
 
 | Card figure | Default call |
 | --- | --- |
-| `neighbors do si do once` | `neighbors do-si-do once` |
+| `neighbors do si do once` | `neighbors do-si-do` |
 | `ladles allemande left 1½` | `larks allemande left once and a half` |
 | `partners balance & swing` | `partners balance and swing` |
 | `circle left 3 places` | `circle left three places` |

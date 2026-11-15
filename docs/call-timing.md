@@ -56,6 +56,14 @@ Preferences, and the safety padding is adjustable; it is always added. Calls are
 computed from the **rendered alias**, not the original card text, so a longer
 alias starts earlier.
 
+Clear enunciation can lengthen the acoustic delivery by a few percent. The
+safety padding is added after the clamp and covers that variation, so the visual
+lead does not change.
+
+A count of one is omitted from the rendered alias, so it adds no syllable and no
+lead. Fractional counts keep their words; “and a half” is spoken as the
+connected “n' a half”.
+
 When alternative-alias shuffling is enabled, the timeline first chooses one of
 the applicable templates for each call (the active template or one of its
 alternatives), then computes syllables and the lead from that wording. This

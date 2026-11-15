@@ -56,6 +56,9 @@ being device-tested.
 - **Tempo** — 120–320 BPM (default 240).
 - **Loop** — repeat the 64-beat music and dance loop.
 - **Count-in** — three accompaniment beats before the loop.
+- **Counts** — a count of one is left unsaid (`neighbors do-si-do once` is
+  called as `neighbors do-si-do`). Fractional counts stay, and “and a half” is
+  spoken as one connected phrase.
 - **Speak calls** — use the local neural voice (platform TTS on web/Android).
 - **Alternative call aliases** — off by default. When on, moves with more than
   one caller wording randomly use one of them (for example “partner swing”
@@ -98,6 +101,12 @@ reviewed lexicon (see `docs/pronunciation.md`). If the model cannot be
 downloaded or loaded, the app falls back to the platform TTS backend and shows
 the reason in Preferences.
 
+The default **Tone** is **Commanding caller**, a slightly lower, projected
+register with sharper diction: stressed vowels are held a little longer and a
+presence/compression stage brings consonants forward. **Natural** keeps the
+voice's recorded pitch. Clear speech adds a few percent to the spoken call, but
+the syllable-based lead and safety padding still cover it.
+
 The web and Android builds use the platform voice. Speech is pre-synthesized on
 a worker thread and mixed into the existing audio stream, so the UI and audio
 callback stay responsive.
@@ -125,7 +134,7 @@ Example:
 | --- | ---: | ---: |
 | `swing` | 2.0 beats | 1.0 s before the move |
 | `circle left three` | 3.0 beats | 1.5 s before the move |
-| `neighbors do-si-do once` | 4.0 beats | 2.0 s before the move |
+| `neighbors do-si-do` | 3.5 beats | 1.75 s before the move |
 | `larks allemande left once and a half` | 5.5 beats | 2.75 s before the move |
 
 ## Data sources

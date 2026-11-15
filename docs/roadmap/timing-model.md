@@ -63,7 +63,7 @@ Example at 240 BPM:
 | --- | ---: | ---: |
 | `swing` | 2.0 beats | 1.0 s before the move |
 | `circle left three` | 3.0 beats | 1.5 s before the move |
-| `neighbors do-si-do once` | 4.0 beats | 2.0 s before the move |
+| `neighbors do-si-do` | 3.5 beats | 1.75 s before the move |
 | `larks allemande left once and a half` | 5.5 beats | 2.75 s before the move |
 
 The first call of a dance may fall at a negative beat (inside the count-in).
