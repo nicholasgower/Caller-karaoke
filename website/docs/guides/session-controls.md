@@ -101,8 +101,11 @@ moves.
 
 <Shot id="transport-summary" />
 
-The progress bar shows the current beat out of the 64-beat loop. During the
-count-in it stays at zero.
+The progress bar shows the current beat out of the 64-beat loop, and its text
+names the transport state: `Ready`, `Count-in`, `Playing`, `Paused`, `Ending`,
+or `Finished`. The state is there because a paused session sounds the same as a
+muted one. During the count-in the bar stays at zero and the text counts the
+beats left.
 
 ## Looping, pausing, and finishing
 

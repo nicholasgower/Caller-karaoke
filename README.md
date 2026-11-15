@@ -231,8 +231,11 @@ cargo run -p contra-mcp
 `contra-mcp` speaks MCP over stdio. The repository's `.mcp.json` registers it
 for clients that read that file. Call `attach` in the client, then use
 `screenshot`, `widget_tree`, `click`, `type_text`, `press_key`, `wait_for`, and
-the other tools. See `docs/automation.md` for client configuration, the tool
-list, and safety notes.
+the other tools. The session tab also has purpose-built tools: `session_state`
+reads the transport state, beat, tempo, volume, and toggles; `session_action`
+presses Play/Pause/Restart/End/Cancel ending; `session_set` drags the sliders
+and clicks the toggles; and `session_wait` waits for a state or beat. See
+`docs/automation.md` for client configuration, the tool list, and safety notes.
 
 Documentation screenshots can also be rendered without a window or audio device,
 then annotated with PhotoCraft. Refresh them when preparing a release, not for

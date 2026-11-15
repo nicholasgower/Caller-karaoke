@@ -99,6 +99,10 @@ fn lists_app_driving_tools_over_stdio() {
         "click",
         "type_text",
         "press_key",
+        "session_state",
+        "session_action",
+        "session_set",
+        "session_wait",
     ] {
         assert!(
             names.contains(&expected),

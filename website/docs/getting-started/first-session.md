@@ -134,9 +134,9 @@ music playing after its last call. A card longer than 64 beats is not fully
 reached in 0.1.0: the playhead resets at the loop boundary. Prefer cards whose
 preview total is 64 beats.
 
-The current session header does not display a separate **Paused** label. When
-you pause, the music and speech stop and the Play control is available again;
-use the sound and the stopped progress bar as the confirmation.
+Pausing is visible without sound: the progress bar names the transport state, so
+after **Pause** it reads `Paused · beat 12 / 64` and stays there until **Play**
+resumes from the same beat.
 
 ## What the call prompt means
 
