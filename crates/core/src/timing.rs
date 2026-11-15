@@ -40,16 +40,18 @@ fn default_min_lead() -> f64 {
     1.0
 }
 fn default_max_lead() -> f64 {
-    2.0
+    5.0
 }
 fn default_syllables_per_second() -> f64 {
-    6.5
+    // Calibrated from a measured 2.25 s delivery of the nine-syllable call
+    // "larks allemande left once and a half".
+    4.0
 }
 fn default_word_gap() -> f64 {
-    0.04
+    0.0
 }
 fn default_extra_pause() -> f64 {
-    0.10
+    0.0
 }
 fn default_lead_scale() -> f64 {
     1.0
@@ -432,7 +434,7 @@ mod tests {
     }
 
     #[test]
-    fn lead_is_between_one_and_two_beats() {
+    fn lead_is_between_one_and_five_beats() {
         let timeline = PracticeTimeline::build(
             &another_last_dance(),
             &AliasTable::default(),
@@ -444,12 +446,25 @@ mod tests {
         .expect("timeline");
         for call in &timeline.calls {
             assert!(
-                (1.0..=2.0).contains(&call.lead_beats()),
+                (1.0..=5.0).contains(&call.lead_beats()),
                 "lead for {:?} was {}",
                 call.text,
                 call.lead_beats()
             );
         }
+    }
+
+    #[test]
+    fn measured_allemande_call_gets_two_and_a_quarter_seconds() {
+        let aliases = AliasTable::default();
+        let call = aliases.render("ladles allemande left 1½", &RoleTerms::default());
+        assert_eq!(call.text, "larks allemande left once and a half");
+        assert_eq!(call.syllables, 9);
+
+        let lead = LeadSettings::default().lead_beats(call.syllables, call.words, Tempo::default());
+        assert_eq!(lead, 4.5);
+        let seconds = lead * Tempo::default().seconds_per_dance_beat().0;
+        assert!((seconds - 2.25).abs() < 1e-9);
     }
 
     #[test]

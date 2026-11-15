@@ -11,7 +11,8 @@ Keep a Changelog and the project uses Conventional Commits.
 
 - Rust workspace with domain, music, source, and application crates.
 - Contra dance card model, role terms, call aliases, syllable estimation, and
-  syllable-based early call timing.
+  syllable-based early call timing, calibrated to a measured 2.25 s delivery of
+  “larks allemande left once and a half”.
 - ABC parsing (notes, chords, repeats, ties, keys, meters), chord inference,
   and a 64-beat arrangement.
 - Built-in fiddle/accordion/piano/guitar synthesizer and offline PCM rendering.

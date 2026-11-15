@@ -301,27 +301,30 @@ lead_beats       = clamp(
 call_start_beat  = execution_beat - lead_beats
 ```
 
-Defaults:
+Defaults are calibrated from measured delivery: saying
+“larks allemande left once and a half” (nine syllables) took **2.25 seconds**,
+which is 4.5 dance beats at 240 BPM.
 
 | Setting | Default |
 | --- | --- |
-| syllables per second | 6.5 |
-| word gap | 0.04 s |
-| extra pause | 0.10 s |
+| syllables per second | 4.0 |
+| word gap | 0.0 s |
+| extra pause | 0.0 s |
 | lead scale | 1.0 |
 | min lead | 1.0 beat |
-| max lead | 2.0 beats |
+| max lead | 5.0 beats |
 
-The max lead is user-adjustable up to 4 beats for learning sessions or slower
+The max lead is user-adjustable up to 6 beats for learning sessions or slower
 TTS voices.
 
 Example at 240 BPM:
 
 | Alias | Lead | Call starts |
 | --- | ---: | ---: |
-| `swing` | 1.0 beats | 0.5 s before the move |
-| `circle left three` | 1.6 beats | 0.8 s before the move |
-| `neighbors do-si-do once` | 2.0 beats | 1.0 s before the move |
+| `swing` | 1.0 beat | 0.5 s before the move |
+| `circle left three` | 2.0 beats | 1.0 s before the move |
+| `neighbors do-si-do once` | 3.0 beats | 1.5 s before the move |
+| `larks allemande left once and a half` | 4.5 beats | 2.25 s before the move |
 
 The first call of a dance may fall at a negative beat (inside the count-in).
 That is intentional and must be displayed/spoken.

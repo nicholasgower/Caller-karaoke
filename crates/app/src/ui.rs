@@ -990,7 +990,7 @@ impl ContraApp {
                 ui.horizontal(|ui| {
                     ui.label("Maximum");
                     ui.add(
-                        egui::Slider::new(&mut self.prefs.lead.max_beats, 1.0..=4.0)
+                        egui::Slider::new(&mut self.prefs.lead.max_beats, 1.0..=6.0)
                             .text("beats"),
                     );
                 });
@@ -1008,7 +1008,7 @@ impl ContraApp {
                 ui.horizontal(|ui| {
                     ui.label("Manual lead");
                     ui.add(
-                        egui::Slider::new(&mut self.prefs.lead.manual_beats, 0.5..=4.0)
+                        egui::Slider::new(&mut self.prefs.lead.manual_beats, 0.5..=6.0)
                             .text("beats"),
                     );
                 });

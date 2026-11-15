@@ -28,8 +28,11 @@ explicit instruction.
 ## 2. Non-negotiables
 
 1. **Calls precede moves.** The lead is computed from the rendered call text
-   (syllables, words, speech rate) and clamped to the configured 1–2 beat
-   default. Do not change this to a fixed one-beat delay or to "on the beat".
+   (syllables, words, speech rate). The defaults are calibrated from a measured
+   2.25 s delivery of “larks allemande left once and a half” (nine syllables),
+   which is 4.5 beats at 240 BPM. Keep the default minimum at 1 beat and the
+   default maximum at 5 beats (user-adjustable to 6). Do not change this to a
+   fixed one-beat delay or to "on the beat".
 2. **One dance beat is half a bar.** At BPM 240, one dance beat is 0.5 s, a
    standard 64-beat dance is 32 s, and a jig bar is 1.0 s. Keep reels and jigs
    equally danceable at the same BPM setting.
@@ -179,8 +182,16 @@ These must remain true:
 seconds_per_dance_beat = 120 / bpm
 count_in_beats          = 3
 music_loop_beats        = 64
-lead_beats             in [min_lead, max_lead]   // default 1..2
+lead_beats             in [min_lead, max_lead]   // default 1..5
 call_start_beat         = execute_beat - lead_beats
+```
+
+The calibrated regression case is:
+
+```
+"larks allemande left once and a half" -> 9 syllables
+9 / 4.0 syllables_per_second = 2.25 s
+2.25 s / 0.5 s_per_dance_beat = 4.5 beats
 ```
 
 - Lead is computed from the rendered alias, not the original figure.

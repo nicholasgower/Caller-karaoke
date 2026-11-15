@@ -373,6 +373,7 @@ impl ContraApp {
             .calls
             .iter()
             .enumerate()
+            .rev()
             .find(|(_, call)| beat >= call.call_start_beat && beat < call.execute_beat)
             .map(|(index, _)| index);
         if let Some(index) = active

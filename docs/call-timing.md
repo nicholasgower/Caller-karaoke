@@ -34,20 +34,21 @@ lead_beats = clamp(
 call_start_beat = execute_beat - lead_beats
 ```
 
-Defaults:
+Defaults are calibrated from a measured 2.25 s delivery of the nine-syllable
+call “larks allemande left once and a half”:
 
 | Setting | Value |
 | --- | --- |
-| syllables/second | 6.5 |
-| word gap | 0.04 s |
-| extra pause | 0.10 s |
+| syllables/second | 4.0 |
+| word gap | 0.0 s |
+| extra pause | 0.0 s |
 | lead scale | 1.0 |
 | minimum | 1.0 beat |
-| maximum | 2.0 beats |
+| maximum | 5.0 beats |
 
-The maximum can be raised to 4 beats in Preferences. Calls are computed from
-the **rendered alias**, not the original card text, so a longer alias starts
-earlier.
+At 240 BPM that phrase gets 4.5 beats, or exactly 2.25 seconds. The maximum can
+be raised to 6 beats in Preferences. Calls are computed from the **rendered
+alias**, not the original card text, so a longer alias starts earlier.
 
 The first call can be negative (inside the count-in). Do not clamp it to zero.
 
