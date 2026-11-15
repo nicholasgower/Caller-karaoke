@@ -52,6 +52,10 @@ See the `egui`/`epaint` source for the exact font files and notices.
 Contra Karaoke does not redistribute the source databases. Online content is
 fetched on demand and cached locally.
 
+The `samples/` directory contains a small curated set of downloaded dance and
+tune pages used for parser tests during development. It is not part of the
+application binary or of a normal release artifact.
+
 ## Build and release tools
 
 - Inno Setup (Windows installer) — <https://jrsoftware.org/isinfo.php>

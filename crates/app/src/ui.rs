@@ -608,6 +608,7 @@ impl ContraApp {
                             .small()
                             .color(theme::MUTED),
                         );
+                        ui.hyperlink_to("Open on ContraDB", &dance.source.url);
                         ui.separator();
                         for figure in &dance.figures {
                             ui.label(format!(
@@ -788,6 +789,7 @@ impl ContraApp {
                                 .small()
                                 .color(theme::MUTED),
                         );
+                        ui.hyperlink_to("Open on ABC Session Tunes", &tune.source.url);
                         ui.separator();
                         let mut abc_preview = tune.abc.clone();
                         ui.add(

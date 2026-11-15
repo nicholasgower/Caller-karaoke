@@ -398,10 +398,14 @@ impl ContraApp {
         }
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
-            let Some(arrangement) = &self.arrangement else {
-                self.error = Some("Render the music before exporting MIDI".into());
-                return;
+            let score = match parse_abc(&self.tune.abc) {
+                Ok(score) => score,
+                Err(error) => {
+                    self.error = Some(format!("Could not parse tune: {error}"));
+                    return;
+                }
             };
+            let arrangement = Arrangement::from_score(&score, 64.0);
             let default_name = format!("{}.mid", safe_filename(&self.tune.title));
             let Some(path) = rfd::FileDialog::new()
                 .set_file_name(default_name)
@@ -411,7 +415,7 @@ impl ContraApp {
                 return;
             };
             let bytes = export_midi(
-                arrangement,
+                &arrangement,
                 self.prefs.melody,
                 self.prefs.accompaniment,
                 self.prefs.tempo_bpm,
