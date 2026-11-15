@@ -99,6 +99,8 @@ pub struct Preferences {
     pub melody: MelodyInstrument,
     pub accompaniment: AccompanimentInstrument,
     pub theme: Theme,
+    /// Smooth transitions for tab changes, highlights, and screen entries.
+    pub animations_enabled: bool,
     pub lead: LeadSettings,
     pub tempo_bpm: f64,
     pub tts_enabled: bool,
@@ -119,12 +121,13 @@ pub struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            schema_version: 2,
+            schema_version: 3,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
             accompaniment: AccompanimentInstrument::default(),
             theme: Theme::default(),
+            animations_enabled: true,
             lead: LeadSettings::default(),
             tempo_bpm: Tempo::DEFAULT_BPM,
             tts_enabled: false,
@@ -152,7 +155,7 @@ impl Preferences {
     /// Clamp values that came from a preference file or a UI control.
     pub fn validate(&mut self) {
         if self.schema_version == 0 {
-            self.schema_version = 2;
+            self.schema_version = 3;
         }
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
@@ -200,6 +203,11 @@ impl Preferences {
             }
             self.schema_version = 2;
         }
+        if self.schema_version < 3 {
+            // Animations are a new v3 field; `serde` supplies the enabled
+            // default for older files, so only the version needs recording.
+            self.schema_version = 3;
+        }
     }
 }
 
@@ -215,6 +223,7 @@ mod tests {
         assert_eq!(prefs.melody, MelodyInstrument::Fiddle);
         assert_eq!(prefs.accompaniment, AccompanimentInstrument::Piano);
         assert_eq!(prefs.theme, Theme::Dark);
+        assert!(prefs.animations_enabled);
         assert_eq!(prefs.tempo_bpm, 240.0);
         assert!(prefs.loop_enabled);
         assert!(prefs.count_in_enabled);
@@ -269,11 +278,32 @@ mod tests {
         let json = old.to_json().expect("serialize");
         let migrated = Preferences::from_json(&json).expect("deserialize");
 
-        assert_eq!(migrated.schema_version, 2);
+        assert_eq!(migrated.schema_version, 3);
         assert_eq!(migrated.lead.syllables_per_second, 4.0);
         assert_eq!(migrated.lead.max_beats, 5.0);
         assert_eq!(migrated.lead.word_gap_seconds, 0.0);
         assert_eq!(migrated.lead.extra_pause_seconds, 0.0);
+    }
+
+    #[test]
+    fn v2_preferences_enable_animations_by_default() {
+        let json = r#"{"schema_version":2,"tempo_bpm":220.0}"#;
+        let migrated = Preferences::from_json(json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, 3);
+        assert!(migrated.animations_enabled);
+        assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn animations_can_be_disabled_and_round_trip() {
+        let prefs = Preferences {
+            animations_enabled: false,
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(!restored.animations_enabled);
     }
 
     #[test]

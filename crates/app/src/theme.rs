@@ -10,7 +10,7 @@ pub const MUTED: egui::Color32 = egui::Color32::from_rgb(154, 154, 154);
 /// neutral theme rather than an accent colour.
 pub const WARNING: egui::Color32 = egui::Color32::from_rgb(205, 180, 135);
 
-pub fn apply(ctx: &egui::Context, theme: Theme) {
+pub fn apply(ctx: &egui::Context, theme: Theme, animations: bool) {
     let dark = visuals_for(true);
     let light = visuals_for(false);
     ctx.set_theme(match theme {
@@ -19,8 +19,10 @@ pub fn apply(ctx: &egui::Context, theme: Theme) {
     });
     ctx.set_visuals_of(egui::Theme::Dark, dark);
     ctx.set_visuals_of(egui::Theme::Light, light);
+    let animation_time = if animations { 0.2 } else { 0.0 };
     for egui_theme in [egui::Theme::Dark, egui::Theme::Light] {
         ctx.style_mut_of(egui_theme, |style| {
+            style.animation_time = animation_time;
             style.spacing.item_spacing = egui::vec2(8.0, 8.0);
             style.spacing.button_padding = egui::vec2(12.0, 8.0);
             style.spacing.interact_size.y = 40.0;

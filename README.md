@@ -53,8 +53,8 @@ being device-tested.
 - **Speak calls** — use platform TTS instead of reading the prompt.
 - **Select dance** — search ContraDB, preview the card, load it.
 - **Select Tune** — search ABC Session Tunes, preview the ABC, load it.
-- **Preferences** — role terms, aliases, instruments, theme, lead settings,
-  TTS, soundfont, proxy, and cache tools.
+- **Preferences** — role terms, aliases, instruments, theme, animations, lead
+  settings, TTS, soundfont, proxy, and cache tools.
 
 ## How call timing works
 

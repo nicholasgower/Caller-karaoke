@@ -19,6 +19,7 @@ fn phase_at(call: &contra_core::ScheduledCall, beat: f64) -> CallPhase {
 
 impl ContraApp {
     fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
+        let animate = self.prefs.animations_enabled;
         let mut timeline_dirty = false;
         let mut music_dirty = false;
         let mut save = false;
@@ -332,6 +333,12 @@ impl ContraApp {
                 for (figure_index, figure) in self.dance.figures.iter().enumerate() {
                     let figure_end = cursor + figure.beats;
                     let active_figure = beat >= cursor && beat < figure_end;
+                    let active_t = animate_amount(
+                        ui.ctx(),
+                        ("figure-active", figure_index),
+                        active_figure,
+                        animate,
+                    );
                     let calls: Vec<(usize, contra_core::CallEvent)> = self
                         .timeline
                         .calls
@@ -340,11 +347,11 @@ impl ContraApp {
                         .filter(|(_, call)| call.figure_index == figure_index)
                         .map(|(index, call)| (index, call.clone()))
                         .collect();
-                    let fill = if active_figure {
-                        theme::CALL_ACTIVE_BG
-                    } else {
-                        theme::CALL_UPCOMING_BG
-                    };
+                    let fill = lerp_color(
+                        theme::CALL_UPCOMING_BG,
+                        theme::CALL_ACTIVE_BG,
+                        active_t,
+                    );
                     egui::Frame::group(ui.style())
                         .fill(fill)
                         .inner_margin(egui::Margin::same(8))
@@ -423,6 +430,7 @@ impl ContraApp {
     }
 
     fn dance_picker_ui(&mut self, ui: &mut egui::Ui) {
+        let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui.button("← Back to session").clicked() {
                 self.screen = Screen::Session;
@@ -573,12 +581,18 @@ impl ContraApp {
                             .dance_selected
                             .as_ref()
                             .is_some_and(|value| value.id == dance.id);
+                        let selected_t = animate_amount(
+                            ui.ctx(),
+                            ("dance-selected", &dance.id),
+                            selected,
+                            animate,
+                        );
                         egui::Frame::group(ui.style())
-                            .fill(if selected {
-                                theme::CALL_ACTIVE_BG
-                            } else {
-                                theme::CALL_UPCOMING_BG
-                            })
+                            .fill(lerp_color(
+                                theme::CALL_UPCOMING_BG,
+                                theme::CALL_ACTIVE_BG,
+                                selected_t,
+                            ))
                             .inner_margin(egui::Margin::same(8))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -658,6 +672,7 @@ impl ContraApp {
     }
 
     fn tune_picker_ui(&mut self, ui: &mut egui::Ui) {
+        let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui.button("← Back to session").clicked() {
                 self.screen = Screen::Session;
@@ -756,12 +771,18 @@ impl ContraApp {
                             .tune_selected
                             .as_ref()
                             .is_some_and(|value| value.id == tune.id);
+                        let selected_t = animate_amount(
+                            ui.ctx(),
+                            ("tune-selected", &tune.id),
+                            selected,
+                            animate,
+                        );
                         egui::Frame::group(ui.style())
-                            .fill(if selected {
-                                theme::CALL_ACTIVE_BG
-                            } else {
-                                theme::CALL_UPCOMING_BG
-                            })
+                            .fill(lerp_color(
+                                theme::CALL_UPCOMING_BG,
+                                theme::CALL_ACTIVE_BG,
+                                selected_t,
+                            ))
                             .inner_margin(egui::Margin::same(8))
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -998,6 +1019,15 @@ impl ContraApp {
                     ui.selectable_value(&mut self.prefs.theme, option, option.label());
                 }
             });
+            ui.heading("Interface");
+            ui.checkbox(&mut self.prefs.animations_enabled, "Smooth animations");
+            ui.label(
+                egui::RichText::new(
+                    "Fade and slide between screens and animate tabs and highlights. Turn off to reduce motion.",
+                )
+                .small()
+                .color(theme::MUTED),
+            );
             ui.separator();
 
             ui.heading("Calling lead");
