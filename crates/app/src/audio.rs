@@ -126,6 +126,20 @@ impl AudioEngine {
         buffer.beat_at_sample(self.position_samples())
     }
 
+    /// Move the transport to a musical beat without changing play state.
+    ///
+    /// Used when a re-render swaps the buffer: the caller keeps the beat from
+    /// the old buffer so playback continues instead of restarting.
+    pub fn seek_beat(&self, beat: f64) {
+        let Some(buffer) = self.shared.buffer.load_full() else {
+            return;
+        };
+        let last_sample = buffer.loop_end_sample.saturating_sub(1) as i64;
+        let sample = buffer.sample_at_beat(beat).clamp(0, last_sample) as u64;
+        self.shared.position.store(sample, Ordering::Relaxed);
+        self.shared.finished.store(false, Ordering::Relaxed);
+    }
+
     pub fn has_buffer(&self) -> bool {
         self.shared.buffer.load().is_some()
     }
@@ -234,3 +248,48 @@ where
 // Keep `cpal::Sample` in scope for the generic conversion above.
 #[allow(unused_imports)]
 use cpal::Sample as _;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_buffer() -> AudioBuffer {
+        AudioBuffer {
+            samples: vec![0.0; 3_000 * 2],
+            sample_rate: 1_000,
+            channels: 2,
+            count_in_samples: 1_000,
+            loop_start_sample: 1_000,
+            loop_end_sample: 3_000,
+            loop_pass_samples: 2_000,
+            samples_per_beat: 500.0,
+        }
+    }
+
+    #[test]
+    fn seek_beat_moves_the_transport_without_playing() {
+        let audio = AudioEngine::silent(1_000);
+        audio.set_buffer(test_buffer());
+
+        audio.seek_beat(2.0);
+
+        assert_eq!(audio.position_samples(), 2_000);
+        assert!(!audio.is_playing());
+        assert!((audio.position_beat() - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn seek_beat_handles_the_count_in_and_clamps() {
+        let audio = AudioEngine::silent(1_000);
+        audio.set_buffer(test_buffer());
+
+        audio.seek_beat(-1.0);
+        assert_eq!(audio.position_samples(), 500);
+
+        audio.seek_beat(-100.0);
+        assert_eq!(audio.position_samples(), 0);
+
+        audio.seek_beat(1_000.0);
+        assert_eq!(audio.position_samples(), 2_999);
+    }
+}
