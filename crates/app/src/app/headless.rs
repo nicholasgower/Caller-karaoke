@@ -18,11 +18,15 @@ const DESKTOP: Vec2 = Vec2::new(1280.0, 800.0);
 const MOBILE: Vec2 = Vec2::new(390.0, 844.0);
 
 /// Render all headless screenshots into `out`.
+///
+/// Pass `mobile` as the second argument to render the phone-width inspection
+/// set into `out/mobile` instead of the desktop documentation set.
 pub fn run() -> Result<(), Box<dyn Error>> {
     let out = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "website/static/img/screens".to_owned());
     let out = Path::new(&out);
+    let mobile = std::env::args().nth(2).as_deref() == Some("mobile");
     std::fs::create_dir_all(out)?;
 
     let mut harness = Harness::builder()
@@ -35,6 +39,13 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         .allow_missing_glyphs()
         .with_max_steps(10)
         .build_eframe(|cc| ContraApp::new_headless(cc));
+
+    if mobile {
+        let out = out.join("mobile");
+        std::fs::create_dir_all(&out)?;
+        mobile_shots(&mut harness, &out)?;
+        return Ok(());
+    }
 
     session_shots(&mut harness, out)?;
     dance_library_shots(&mut harness, out)?;
@@ -722,6 +733,178 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
         app.audio.seek_beat(4.0);
     }
     capture(harness, out, "session-mobile-controls")?;
+
+    Ok(())
+}
+
+fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), Box<dyn Error>> {
+    harness.set_size(MOBILE);
+    {
+        let app = harness.state_mut();
+        app.prefs.animations_enabled = false;
+        app.prefs.tts_enabled = true;
+        app.speech = crate::tts::Speech::stub();
+        app.error = None;
+        app.audio_error = None;
+        app.screen = Screen::Session;
+        app.started = false;
+        app.needs_render = true;
+        app.about_open = false;
+    }
+    capture(harness, out, "main-idle")?;
+
+    {
+        let app = harness.state_mut();
+        app.started = true;
+        app.needs_render = false;
+        app.audio.play();
+        app.audio.seek_beat(4.0);
+    }
+    capture(harness, out, "session-call-now")?;
+
+    {
+        let app = harness.state_mut();
+        app.audio.stop();
+        app.started = false;
+        app.dance_library = library_dances();
+        app.dance_library_query.clear();
+        app.dance_library_folder = FolderFilter::All;
+        app.picker.dance_preview = app
+            .dance_library
+            .get("contradb", "2409")
+            .map(|entry| entry.item.clone());
+        app.picker.dance_selected = None;
+        app.screen = Screen::DancePicker;
+    }
+    capture(harness, out, "dance-library")?;
+
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::DanceDownload;
+        app.picker.dance_results = Some(dance_results());
+        app.picker.dance_query.title = "last".into();
+        app.picker.dance_preview = None;
+        app.picker.dance_selected = None;
+    }
+    capture(harness, out, "dance-picker-search")?;
+    {
+        let app = harness.state_mut();
+        app.picker.dance_preview = Some(super::defaults::default_dance());
+        app.picker.dance_selected = None;
+    }
+    // A taller phone-width viewport shows the stacked preview below the
+    // results; the 390×844 shot is how a user starts the screen.
+    harness.set_size(Vec2::new(390.0, 1500.0));
+    capture(harness, out, "dance-picker-preview")?;
+    harness.set_size(MOBILE);
+
+    {
+        let app = harness.state_mut();
+        app.tune_library = library_tunes();
+        app.tune_library_query.clear();
+        app.tune_library_folder = FolderFilter::All;
+        app.picker.tune_preview = app
+            .tune_library
+            .get("abcsessiontunes", "75815")
+            .map(|entry| entry.item.clone());
+        app.picker.tune_selected = None;
+        app.tune_sheet = None;
+        app.screen = Screen::TunePicker;
+    }
+    capture(harness, out, "tune-library")?;
+
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::TuneDownload;
+        app.picker.tune_results = Some(tune_results());
+        app.picker.tune_query.search = "sandy".into();
+        app.picker.tune_preview = Some(super::defaults::default_tune());
+        app.picker.tune_selected = None;
+        app.tune_sheet = None;
+    }
+    harness.set_size(Vec2::new(390.0, 1700.0));
+    capture(harness, out, "tune-picker-preview")?;
+    harness.set_size(MOBILE);
+
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::Preferences;
+        app.prefs.role_terms = contra_core::RoleTerms::default();
+        app.prefs.theme = contra_core::Theme::Dark;
+    }
+    capture(harness, out, "preferences")?;
+    {
+        let app = harness.state_mut();
+        app.prefs.role_terms = contra_core::RoleTerms {
+            left_singular: "port".into(),
+            left_plural: "ports".into(),
+            right_singular: "starboard".into(),
+            right_plural: "starboards".into(),
+        };
+    }
+    capture(harness, out, "preferences-custom-roles")?;
+    harness.set_size(Vec2::new(390.0, 3600.0));
+    capture(harness, out, "preferences-all")?;
+    harness.set_size(MOBILE);
+
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::Aliases;
+        app.alias_filter.clear();
+    }
+    capture(harness, out, "aliases")?;
+    {
+        let app = harness.state_mut();
+        app.alias_filter = "zzzz-no-match".into();
+    }
+    capture(harness, out, "aliases-custom")?;
+
+    {
+        let app = harness.state_mut();
+        app.alias_filter.clear();
+        app.screen = Screen::Session;
+        app.started = false;
+        app.needs_render = false;
+        app.about_open = true;
+    }
+    capture(harness, out, "about-window")?;
+    {
+        let app = harness.state_mut();
+        app.about_open = false;
+        app.screen = Screen::DanceDownload;
+        app.error = Some("HTTP 500 Internal Server Error".into());
+    }
+    capture(harness, out, "error-network")?;
+
+    // The window's minimum width is 360 points; check the densest screens at
+    // that size as well, where a single extra label would clip a control.
+    harness.set_size(Vec2::new(360.0, 640.0));
+    {
+        let app = harness.state_mut();
+        app.error = None;
+        app.screen = Screen::DanceDownload;
+        app.picker.dance_results = Some(dance_results());
+        app.picker.dance_preview = None;
+    }
+    capture(harness, out, "dance-picker-360")?;
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::Preferences;
+        app.prefs.role_terms = contra_core::RoleTerms {
+            left_singular: "port".into(),
+            left_plural: "ports".into(),
+            right_singular: "starboard".into(),
+            right_plural: "starboards".into(),
+        };
+    }
+    capture(harness, out, "preferences-360")?;
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::Session;
+        app.started = false;
+        app.needs_render = false;
+    }
+    capture(harness, out, "main-360")?;
 
     Ok(())
 }

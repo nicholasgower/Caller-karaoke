@@ -1,3 +1,4 @@
+use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
 use crate::app::*;
 use eframe::egui;
 
@@ -5,7 +6,7 @@ use eframe::egui;
 ///
 /// A new setting belongs in the matching section function, so unrelated
 /// branches edit different functions instead of the same 200-line body.
-const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui)] = &[
+const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
     role_terms,
     instruments,
     appearance,
@@ -19,6 +20,8 @@ const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui)] = &[
 
 impl ContraApp {
     pub(in crate::app) fn preferences_ui(&mut self, ui: &mut egui::Ui) {
+        let compact = compact(ui);
+        apply_phone_spacing(ui, compact);
         let before = self.prefs.clone();
         ui.horizontal(|ui| {
             if ui
@@ -38,7 +41,7 @@ impl ContraApp {
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             for section in SECTIONS {
-                section(self, ui);
+                section(self, ui, compact);
             }
         });
 
@@ -67,10 +70,15 @@ impl ContraApp {
     }
 }
 
-fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Role terms");
     let mut preset = RolePreset::detect(&app.prefs.role_terms);
-    egui::ComboBox::from_label("Role terms")
+    let combo = if compact {
+        egui::ComboBox::from_id_salt("role-terms")
+    } else {
+        egui::ComboBox::from_label("Role terms")
+    };
+    responsive_combo(combo, ui, compact)
         .selected_text(preset.label())
         .show_ui(ui, |ui| {
             for option in RolePreset::ALL {
@@ -85,19 +93,23 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui) {
     }
     if preset == RolePreset::Custom {
         egui::Grid::new("custom-roles")
-            .num_columns(2)
+            .num_columns(if compact { 1 } else { 2 })
             .show(ui, |ui| {
-                ui.label("Left singular");
-                ui.text_edit_singleline(&mut app.prefs.role_terms.left_singular);
+                form_row(ui, compact, "Left singular", |ui| {
+                    ui.text_edit_singleline(&mut app.prefs.role_terms.left_singular);
+                });
                 ui.end_row();
-                ui.label("Left plural");
-                ui.text_edit_singleline(&mut app.prefs.role_terms.left_plural);
+                form_row(ui, compact, "Left plural", |ui| {
+                    ui.text_edit_singleline(&mut app.prefs.role_terms.left_plural);
+                });
                 ui.end_row();
-                ui.label("Right singular");
-                ui.text_edit_singleline(&mut app.prefs.role_terms.right_singular);
+                form_row(ui, compact, "Right singular", |ui| {
+                    ui.text_edit_singleline(&mut app.prefs.role_terms.right_singular);
+                });
                 ui.end_row();
-                ui.label("Right plural");
-                ui.text_edit_singleline(&mut app.prefs.role_terms.right_plural);
+                form_row(ui, compact, "Right plural", |ui| {
+                    ui.text_edit_singleline(&mut app.prefs.role_terms.right_plural);
+                });
                 ui.end_row();
             });
     }
@@ -116,63 +128,80 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui) {
     ui.separator();
 }
 
-fn instruments(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Instruments");
-    egui::Grid::new("instruments")
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.label("Melody");
-            egui::ComboBox::from_id_salt("melody")
-                .selected_text(app.prefs.melody.label())
-                .show_ui(ui, |ui| {
-                    for option in MelodyInstrument::ALL {
-                        ui.selectable_value(&mut app.prefs.melody, option, option.label());
-                    }
-                });
-            ui.end_row();
-            ui.label("Accompaniment");
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_id_salt("accompaniment")
-                    .selected_text(app.prefs.accompaniment.label())
-                    .show_ui(ui, |ui| {
-                        for option in AccompanimentInstrument::ALL {
-                            ui.selectable_value(
-                                &mut app.prefs.accompaniment,
-                                option,
-                                option.label(),
-                            );
-                        }
-                    });
-                ui.label("Rhythm");
-                egui::ComboBox::from_id_salt("accompaniment_rhythm")
-                    .selected_text(app.prefs.accompaniment_rhythm.label())
-                    .show_ui(ui, |ui| {
-                        for option in AccompanimentRhythm::ALL {
-                            ui.selectable_value(
-                                &mut app.prefs.accompaniment_rhythm,
-                                option,
-                                option.label(),
-                            );
-                        }
-                    });
-            });
-            ui.end_row();
+    if compact {
+        inline_field(ui, true, "Melody", |ui| {
+            melody_combo(ui, true, &mut app.prefs);
         });
-    ui.horizontal(|ui| {
-        ui.label("Melody volume");
-        ui.add(egui::Slider::new(&mut app.prefs.melody_volume, 0.0..=1.5));
+        inline_field(ui, true, "Accompaniment", |ui| {
+            accompaniment_combo(ui, true, &mut app.prefs);
+        });
+        inline_field(ui, true, "Rhythm", |ui| {
+            rhythm_combo(ui, true, &mut app.prefs);
+        });
+    } else {
+        egui::Grid::new("instruments")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Melody");
+                melody_combo(ui, false, &mut app.prefs);
+                ui.end_row();
+                ui.label("Accompaniment");
+                ui.horizontal(|ui| {
+                    accompaniment_combo(ui, false, &mut app.prefs);
+                    ui.label("Rhythm");
+                    rhythm_combo(ui, false, &mut app.prefs);
+                });
+                ui.end_row();
+            });
+    }
+    slider_row(ui, compact, "Melody volume", |ui| {
+        ui.add(egui::Slider::new(&mut app.prefs.melody_volume, 0.0..=1.5))
     });
-    ui.horizontal(|ui| {
-        ui.label("Accompaniment volume");
+    slider_row(ui, compact, "Accompaniment volume", |ui| {
         ui.add(egui::Slider::new(
             &mut app.prefs.accompaniment_volume,
             0.0..=1.5,
-        ));
+        ))
     });
     ui.separator();
 }
 
-fn appearance(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn melody_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+    let combo = egui::ComboBox::from_id_salt("melody");
+    responsive_combo(combo, ui, compact)
+        .selected_text(prefs.melody.label())
+        .show_ui(ui, |ui| {
+            for option in MelodyInstrument::ALL {
+                ui.selectable_value(&mut prefs.melody, option, option.label());
+            }
+        });
+}
+
+fn accompaniment_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+    let combo = egui::ComboBox::from_id_salt("accompaniment");
+    responsive_combo(combo, ui, compact)
+        .selected_text(prefs.accompaniment.label())
+        .show_ui(ui, |ui| {
+            for option in AccompanimentInstrument::ALL {
+                ui.selectable_value(&mut prefs.accompaniment, option, option.label());
+            }
+        });
+}
+
+fn rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+    let combo = egui::ComboBox::from_id_salt("accompaniment_rhythm");
+    responsive_combo(combo, ui, compact)
+        .selected_text(prefs.accompaniment_rhythm.label())
+        .show_ui(ui, |ui| {
+            for option in AccompanimentRhythm::ALL {
+                ui.selectable_value(&mut prefs.accompaniment_rhythm, option, option.label());
+            }
+        });
+}
+
+fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Theme");
     ui.horizontal(|ui| {
         for option in Theme::ALL {
@@ -198,41 +227,37 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui) {
     ui.separator();
 }
 
-fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Calling lead");
     ui.checkbox(&mut app.prefs.lead.auto, "Automatic syllable-based lead");
     if app.prefs.lead.auto {
-        ui.horizontal(|ui| {
-            ui.label("Minimum speech lead");
-            ui.add(egui::Slider::new(&mut app.prefs.lead.min_beats, 0.5..=4.0).text("beats"));
+        slider_row(ui, compact, "Minimum speech lead", |ui| {
+            ui.add(egui::Slider::new(&mut app.prefs.lead.min_beats, 0.5..=4.0).text("beats"))
         });
-        ui.horizontal(|ui| {
-            ui.label("Maximum speech lead");
-            ui.add(egui::Slider::new(&mut app.prefs.lead.max_beats, 1.0..=6.0).text("beats"));
+        slider_row(ui, compact, "Maximum speech lead", |ui| {
+            ui.add(egui::Slider::new(&mut app.prefs.lead.max_beats, 1.0..=6.0).text("beats"))
         });
-        ui.horizontal(|ui| {
-            ui.label("Speech rate");
+        slider_row(ui, compact, "Speech rate", |ui| {
             ui.add(
                 egui::Slider::new(&mut app.prefs.lead.syllables_per_second, 3.0..=10.0)
                     .text("syllables/s"),
-            );
+            )
         });
     } else {
-        ui.horizontal(|ui| {
-            ui.label("Manual speech lead");
-            ui.add(egui::Slider::new(&mut app.prefs.lead.manual_beats, 0.5..=6.0).text("beats"));
+        slider_row(ui, compact, "Manual speech lead", |ui| {
+            ui.add(egui::Slider::new(&mut app.prefs.lead.manual_beats, 0.5..=6.0).text("beats"))
         });
     }
-    ui.horizontal(|ui| {
-        ui.label("Safety padding");
-        let slider = egui::Slider::new(
-            &mut app.prefs.lead.padding_seconds,
-            contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+    slider_row(ui, compact, "Safety padding", |ui| {
+        ui.add(
+            egui::Slider::new(
+                &mut app.prefs.lead.padding_seconds,
+                contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+            )
+            .step_by(0.1)
+            .fixed_decimals(1)
+            .text("s"),
         )
-        .step_by(0.1)
-        .fixed_decimals(1)
-        .text("s");
-        ui.add(slider);
     });
     ui.label(
         egui::RichText::new(
@@ -249,7 +274,7 @@ fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui) {
     ui.separator();
 }
 
-fn speech(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Text to speech");
     if ui
         .checkbox(&mut app.prefs.tts_enabled, "Speak calls")
@@ -269,11 +294,11 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui) {
         .color(theme::muted(ui)),
     );
     let neural = cfg!(all(not(target_arch = "wasm32"), not(target_os = "android")));
-    ui.horizontal(|ui| {
-        ui.label("Voice");
+    inline_field(ui, compact, "Voice", |ui| {
         ui.add_enabled_ui(neural, |ui| {
             let selected = crate::tts::voice(&app.prefs.tts_voice);
-            egui::ComboBox::from_id_salt("tts_voice")
+            let combo = egui::ComboBox::from_id_salt("tts_voice");
+            responsive_combo(combo, ui, compact)
                 .selected_text(selected.label)
                 .show_ui(ui, |ui| {
                     for voice in crate::tts::VOICES {
@@ -298,14 +323,12 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui) {
         .small()
         .color(theme::muted(ui)),
     );
-    ui.horizontal(|ui| {
-        ui.label("Rate");
-        if ui
-            .add(egui::Slider::new(&mut app.prefs.tts_rate, 0.5..=2.0))
-            .changed()
-        {
+    slider_row(ui, compact, "Rate", |ui| {
+        let response = ui.add(egui::Slider::new(&mut app.prefs.tts_rate, 0.5..=2.0));
+        if response.changed() {
             app.speech.set_rate(app.prefs.tts_rate);
         }
+        response
     });
     ui.checkbox(
         &mut app.prefs.shuffle_alternatives,
@@ -354,7 +377,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui) {
     }
 }
 
-fn playback(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn playback(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.checkbox(&mut app.prefs.loop_enabled, "Loop the dance and music");
     ui.checkbox(&mut app.prefs.count_in_enabled, "Four-beat count-in");
     ui.checkbox(
@@ -370,7 +393,7 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui) {
     ui.separator();
 }
 
-fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Soundfont");
     let current = app
         .prefs
@@ -400,7 +423,7 @@ fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui) {
     ui.separator();
 }
 
-fn web_proxy(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn web_proxy(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Web data proxy");
     ui.label(
         egui::RichText::new(
@@ -412,18 +435,22 @@ fn web_proxy(app: &mut ContraApp, ui: &mut egui::Ui) {
     let mut proxy = app.prefs.web_proxy_url.clone().unwrap_or_default();
     let mut token = app.prefs.web_proxy_token.clone().unwrap_or_default();
     let mut proxy_changed = false;
-    egui::Grid::new("proxy").num_columns(2).show(ui, |ui| {
-        ui.label("Proxy URL");
-        if ui.text_edit_singleline(&mut proxy).changed() {
-            proxy_changed = true;
-        }
-        ui.end_row();
-        ui.label("Token");
-        if ui.text_edit_singleline(&mut token).changed() {
-            proxy_changed = true;
-        }
-        ui.end_row();
-    });
+    egui::Grid::new("proxy")
+        .num_columns(if compact { 1 } else { 2 })
+        .show(ui, |ui| {
+            form_row(ui, compact, "Proxy URL", |ui| {
+                if ui.text_edit_singleline(&mut proxy).changed() {
+                    proxy_changed = true;
+                }
+            });
+            ui.end_row();
+            form_row(ui, compact, "Token", |ui| {
+                if ui.text_edit_singleline(&mut token).changed() {
+                    proxy_changed = true;
+                }
+            });
+            ui.end_row();
+        });
     if proxy_changed {
         app.prefs.web_proxy_url = (!proxy.trim().is_empty()).then_some(proxy);
         app.prefs.web_proxy_token = (!token.trim().is_empty()).then_some(token);
@@ -436,7 +463,7 @@ fn web_proxy(app: &mut ContraApp, ui: &mut egui::Ui) {
     ui.separator();
 }
 
-fn maintenance(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn maintenance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Maintenance");
     ui.horizontal_wrapped(|ui| {
         if ui.button("Export MIDI…").clicked() {

@@ -30,6 +30,30 @@ A pure refactor does not need new prose, but stale text found along the way
 should still be fixed. Between releases a committed screenshot may lag the UI;
 the prose is the source of truth.
 
+## Inspecting the app at both sizes
+
+User-visible UI work is reviewed at both a desktop and a phone size. The rule
+is recorded in `AGENTS.md` §9; it applies to every screen, picker, modal, empty
+state, and error banner, not only to the two screens with phone screenshots.
+
+- Render the phone pass and look at every image:
+
+  ```sh
+  cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile
+  ```
+
+  The images land in `target/mobile-shots/mobile/` and are not committed.
+- Open the same states at 1280×800 (the desktop screenshot viewport) and at the
+  360-point minimum window width.
+- Check that no control is clipped, forms keep their labels, results and
+  previews stack instead of squeezing into columns, and touch targets stay at
+  least 44 points.
+- If the live app is available, the MCP `resize` tool can switch an inspectable
+  window between the two sizes without restarting it.
+
+Fix what the phone pass reveals. Do not add a limitation that says a picker is
+only usable in a wider window.
+
 ## Writing style
 
 - Second person, present tense.
@@ -119,6 +143,8 @@ Open pull requests against `dev`, not `main`. `dev` is the integration branch;
 `main` advances only when a release is ready.
 
 - [ ] The page renders at 390 px and 1280 px.
+- [ ] Any app screen this change touches was inspected at 1280×800 and
+      390×844, including its dialogs and error state.
 - [ ] Every step has a shot or is an explicit command step.
 - [ ] No broken links or anchors.
 - [ ] No third-party content or real credentials.

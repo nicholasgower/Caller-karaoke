@@ -157,8 +157,8 @@ wrapping row. Every control keeps a 44-pixel touch target.
 When the window is too short to show the controls, prompt, progress, and dance
 card together, the whole session page scrolls instead of squeezing the card.
 On a taller phone the prompt stays put and only the dance card scrolls. The
-pickers still use two columns; on a narrow screen this can be tight, so rotate
-the device or use a wider window when searching.
+saved-content and download screens use a single scrolling column at phone
+width, with full-width fields and the preview below the results.
 
 <Shot id="session-mobile-controls" />
 

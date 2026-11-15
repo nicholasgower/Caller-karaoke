@@ -4,27 +4,58 @@ use eframe::egui;
 
 impl ContraApp {
     pub(in crate::app) fn dance_library_ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            if ui
-                .button("< Back to session")
-                .on_hover_text("Back to session (Esc)")
-                .clicked()
-            {
-                self.screen = Screen::Session;
-            }
-            ui.heading("Select dance");
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        let compact = compact(ui);
+        apply_phone_spacing(ui, compact);
+        let mut open_download = false;
+        if compact {
+            ui.horizontal_wrapped(|ui| {
                 if ui
-                    .button("Download dance")
-                    .on_hover_text("Search ContraDB and add a card to your saved dances")
+                    .button("< Back to session")
+                    .on_hover_text("Back to session (Esc)")
                     .clicked()
                 {
-                    self.picker.dance_preview = None;
-                    self.picker.dance_selected = None;
-                    self.screen = Screen::DanceDownload;
+                    self.screen = Screen::Session;
                 }
+                ui.heading("Select dance");
             });
-        });
+            // At phone width the heading and the action do not fit on one row.
+            let width = ui.available_width();
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Download dance"),
+                )
+                .on_hover_text("Search ContraDB and add a card to your saved dances")
+                .clicked()
+            {
+                open_download = true;
+            }
+        } else {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("< Back to session")
+                    .on_hover_text("Back to session (Esc)")
+                    .clicked()
+                {
+                    self.screen = Screen::Session;
+                }
+                ui.heading("Select dance");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui
+                        .button("Download dance")
+                        .on_hover_text("Search ContraDB and add a card to your saved dances")
+                        .clicked()
+                    {
+                        open_download = true;
+                    }
+                });
+            });
+        }
+        if open_download {
+            self.picker.dance_preview = None;
+            self.picker.dance_selected = None;
+            self.screen = Screen::DanceDownload;
+        }
         ui.label(
             egui::RichText::new(
                 "Your saved dances, available offline. Search them here, or use Download dance \
@@ -34,30 +65,54 @@ impl ContraApp {
         );
         ui.add_space(4.0);
 
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Search saved");
+        let shown = self
+            .dance_library
+            .search(&self.dance_library_query, &self.dance_library_folder)
+            .len();
+        let count_label = format!(
+            "{shown} of {} shown · {}",
+            self.dance_library.len(),
+            self.dance_library_folder.label()
+        );
+        if compact {
+            ui.label(
+                egui::RichText::new("Search saved")
+                    .small()
+                    .color(theme::muted(ui)),
+            );
             ui.add(
                 egui::TextEdit::singleline(&mut self.dance_library_query)
                     .hint_text("title, choreographer, formation, or figure")
-                    .desired_width(340.0),
+                    .desired_width(f32::INFINITY),
             );
-            if !self.dance_library_query.is_empty() && ui.small_button("Clear").clicked() {
-                self.dance_library_query.clear();
-            }
-            let shown = self
-                .dance_library
-                .search(&self.dance_library_query, &self.dance_library_folder)
-                .len();
-            ui.label(
-                egui::RichText::new(format!(
-                    "{shown} of {} shown · {}",
-                    self.dance_library.len(),
-                    self.dance_library_folder.label()
-                ))
-                .small()
-                .color(theme::muted(ui)),
-            );
-        });
+            ui.horizontal_wrapped(|ui| {
+                if !self.dance_library_query.is_empty() && ui.button("Clear").clicked() {
+                    self.dance_library_query.clear();
+                }
+                ui.label(
+                    egui::RichText::new(count_label)
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            });
+        } else {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Search saved");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.dance_library_query)
+                        .hint_text("title, choreographer, formation, or figure")
+                        .desired_width(340.0),
+                );
+                if !self.dance_library_query.is_empty() && ui.small_button("Clear").clicked() {
+                    self.dance_library_query.clear();
+                }
+                ui.label(
+                    egui::RichText::new(count_label)
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            });
+        }
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
         }
@@ -106,21 +161,33 @@ impl ContraApp {
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("dance-library-narrow-scroll")
+                .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    command = folder_panel_ui(
-                        ui,
-                        FolderPanel {
-                            all_label: "All dances",
-                            folders: &folders,
-                            counts: &counts,
-                            all_count,
-                            unfiled_count,
-                            filter: &mut self.dance_library_folder,
-                            new_folder: &mut self.new_dance_folder,
-                            renaming: &mut self.renaming_dance_folder,
-                            rename_text: &mut self.folder_rename_text,
-                        },
-                    );
+                    // Folders are a filter, not the main content: keep them
+                    // collapsed on a phone so the saved cards start on screen.
+                    command = egui::CollapsingHeader::new(format!(
+                        "Folders · {}",
+                        self.dance_library_folder.label()
+                    ))
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        folder_panel_ui(
+                            ui,
+                            FolderPanel {
+                                all_label: "All dances",
+                                folders: &folders,
+                                counts: &counts,
+                                all_count,
+                                unfiled_count,
+                                filter: &mut self.dance_library_folder,
+                                new_folder: &mut self.new_dance_folder,
+                                renaming: &mut self.renaming_dance_folder,
+                                rename_text: &mut self.folder_rename_text,
+                            },
+                        )
+                    })
+                    .body_returned
+                    .flatten();
                     ui.separator();
                     self.dance_library_body(ui, true);
                 });
@@ -168,14 +235,14 @@ impl ContraApp {
             }
             for entry in &entries {
                 if let Some(next) =
-                    saved_dance_row(ui, entry, selected_id.as_deref(), &folders, animate)
+                    saved_dance_row(ui, entry, selected_id.as_deref(), &folders, animate, true)
                 {
                     action = Some(next);
                 }
             }
             ui.separator();
             if let Some(dance) = &preview {
-                if let Some(next) = saved_dance_preview(ui, dance) {
+                if let Some(next) = saved_dance_preview(ui, dance, compact) {
                     action = Some(next);
                 }
             } else {
@@ -200,6 +267,7 @@ impl ContraApp {
                                 selected_id.as_deref(),
                                 &folders,
                                 animate,
+                                false,
                             ) {
                                 action = Some(next);
                             }
@@ -210,7 +278,7 @@ impl ContraApp {
                     .max_height(480.0)
                     .show(&mut columns[1], |ui| {
                         if let Some(dance) = &preview {
-                            if let Some(next) = saved_dance_preview(ui, dance) {
+                            if let Some(next) = saved_dance_preview(ui, dance, compact) {
                                 action = Some(next);
                             }
                         } else {
@@ -222,24 +290,36 @@ impl ContraApp {
                     });
             });
         } else {
-            egui::ScrollArea::vertical()
-                .id_salt("saved-dance-list-narrow")
-                .max_height(300.0)
-                .show(ui, |ui| {
-                    if !empty_message.is_empty() {
-                        ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+            let mut draw_list = |ui: &mut egui::Ui| {
+                if !empty_message.is_empty() {
+                    ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+                }
+                for entry in &entries {
+                    if let Some(next) = saved_dance_row(
+                        ui,
+                        entry,
+                        selected_id.as_deref(),
+                        &folders,
+                        animate,
+                        compact,
+                    ) {
+                        action = Some(next);
                     }
-                    for entry in &entries {
-                        if let Some(next) =
-                            saved_dance_row(ui, entry, selected_id.as_deref(), &folders, animate)
-                        {
-                            action = Some(next);
-                        }
-                    }
-                });
+                }
+            };
+            if compact {
+                // The phone page already scrolls; a second scroll area here
+                // would trap the gesture and hide the preview.
+                draw_list(ui);
+            } else {
+                egui::ScrollArea::vertical()
+                    .id_salt("saved-dance-list-narrow")
+                    .max_height(300.0)
+                    .show(ui, &mut draw_list);
+            }
             ui.separator();
             if let Some(dance) = &preview {
-                if let Some(next) = saved_dance_preview(ui, dance) {
+                if let Some(next) = saved_dance_preview(ui, dance, compact) {
                     action = Some(next);
                 }
             } else {
@@ -256,28 +336,60 @@ impl ContraApp {
     }
 
     pub(in crate::app) fn tune_library_ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            if ui
-                .button("< Back to session")
-                .on_hover_text("Back to session (Esc)")
-                .clicked()
-            {
-                self.screen = Screen::Session;
-            }
-            ui.heading("Select tune");
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        let compact = compact(ui);
+        apply_phone_spacing(ui, compact);
+        let mut open_download = false;
+        if compact {
+            ui.horizontal_wrapped(|ui| {
                 if ui
-                    .button("Download tune")
-                    .on_hover_text("Search ABC Session Tunes and add a tune to your saved tunes")
+                    .button("< Back to session")
+                    .on_hover_text("Back to session (Esc)")
                     .clicked()
                 {
-                    self.picker.tune_preview = None;
-                    self.picker.tune_selected = None;
-                    self.tune_sheet = None;
-                    self.screen = Screen::TuneDownload;
+                    self.screen = Screen::Session;
                 }
+                ui.heading("Select tune");
             });
-        });
+            let width = ui.available_width();
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Download tune"),
+                )
+                .on_hover_text("Search ABC Session Tunes and add a tune to your saved tunes")
+                .clicked()
+            {
+                open_download = true;
+            }
+        } else {
+            ui.horizontal(|ui| {
+                if ui
+                    .button("< Back to session")
+                    .on_hover_text("Back to session (Esc)")
+                    .clicked()
+                {
+                    self.screen = Screen::Session;
+                }
+                ui.heading("Select tune");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui
+                        .button("Download tune")
+                        .on_hover_text(
+                            "Search ABC Session Tunes and add a tune to your saved tunes",
+                        )
+                        .clicked()
+                    {
+                        open_download = true;
+                    }
+                });
+            });
+        }
+        if open_download {
+            self.picker.tune_preview = None;
+            self.picker.tune_selected = None;
+            self.tune_sheet = None;
+            self.screen = Screen::TuneDownload;
+        }
         ui.label(
             egui::RichText::new(
                 "Your saved tunes, available offline. Search them here, or use Download tune \
@@ -287,30 +399,54 @@ impl ContraApp {
         );
         ui.add_space(4.0);
 
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Search saved");
+        let shown = self
+            .tune_library
+            .search(&self.tune_library_query, &self.tune_library_folder)
+            .len();
+        let count_label = format!(
+            "{shown} of {} shown · {}",
+            self.tune_library.len(),
+            self.tune_library_folder.label()
+        );
+        if compact {
+            ui.label(
+                egui::RichText::new("Search saved")
+                    .small()
+                    .color(theme::muted(ui)),
+            );
             ui.add(
                 egui::TextEdit::singleline(&mut self.tune_library_query)
                     .hint_text("title, composer, key, meter, or genre")
-                    .desired_width(340.0),
+                    .desired_width(f32::INFINITY),
             );
-            if !self.tune_library_query.is_empty() && ui.small_button("Clear").clicked() {
-                self.tune_library_query.clear();
-            }
-            let shown = self
-                .tune_library
-                .search(&self.tune_library_query, &self.tune_library_folder)
-                .len();
-            ui.label(
-                egui::RichText::new(format!(
-                    "{shown} of {} shown · {}",
-                    self.tune_library.len(),
-                    self.tune_library_folder.label()
-                ))
-                .small()
-                .color(theme::muted(ui)),
-            );
-        });
+            ui.horizontal_wrapped(|ui| {
+                if !self.tune_library_query.is_empty() && ui.button("Clear").clicked() {
+                    self.tune_library_query.clear();
+                }
+                ui.label(
+                    egui::RichText::new(count_label)
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            });
+        } else {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Search saved");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.tune_library_query)
+                        .hint_text("title, composer, key, meter, or genre")
+                        .desired_width(340.0),
+                );
+                if !self.tune_library_query.is_empty() && ui.small_button("Clear").clicked() {
+                    self.tune_library_query.clear();
+                }
+                ui.label(
+                    egui::RichText::new(count_label)
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            });
+        }
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
         }
@@ -359,21 +495,31 @@ impl ContraApp {
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("tune-library-narrow-scroll")
+                .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    command = folder_panel_ui(
-                        ui,
-                        FolderPanel {
-                            all_label: "All tunes",
-                            folders: &folders,
-                            counts: &counts,
-                            all_count,
-                            unfiled_count,
-                            filter: &mut self.tune_library_folder,
-                            new_folder: &mut self.new_tune_folder,
-                            renaming: &mut self.renaming_tune_folder,
-                            rename_text: &mut self.folder_rename_text,
-                        },
-                    );
+                    command = egui::CollapsingHeader::new(format!(
+                        "Folders · {}",
+                        self.tune_library_folder.label()
+                    ))
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        folder_panel_ui(
+                            ui,
+                            FolderPanel {
+                                all_label: "All tunes",
+                                folders: &folders,
+                                counts: &counts,
+                                all_count,
+                                unfiled_count,
+                                filter: &mut self.tune_library_folder,
+                                new_folder: &mut self.new_tune_folder,
+                                renaming: &mut self.renaming_tune_folder,
+                                rename_text: &mut self.folder_rename_text,
+                            },
+                        )
+                    })
+                    .body_returned
+                    .flatten();
                     ui.separator();
                     self.tune_library_body(ui, true);
                 });
@@ -421,14 +567,14 @@ impl ContraApp {
             }
             for entry in &entries {
                 if let Some(next) =
-                    saved_tune_row(ui, entry, selected_id.as_deref(), &folders, animate)
+                    saved_tune_row(ui, entry, selected_id.as_deref(), &folders, animate, true)
                 {
                     action = Some(next);
                 }
             }
             ui.separator();
             if let Some(tune) = &preview {
-                if let Some(next) = self.saved_tune_preview(ui, tune) {
+                if let Some(next) = self.saved_tune_preview(ui, tune, compact) {
                     action = Some(next);
                 }
             } else {
@@ -447,9 +593,14 @@ impl ContraApp {
                             ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
                         }
                         for entry in &entries {
-                            if let Some(next) =
-                                saved_tune_row(ui, entry, selected_id.as_deref(), &folders, animate)
-                            {
+                            if let Some(next) = saved_tune_row(
+                                ui,
+                                entry,
+                                selected_id.as_deref(),
+                                &folders,
+                                animate,
+                                false,
+                            ) {
                                 action = Some(next);
                             }
                         }
@@ -459,7 +610,7 @@ impl ContraApp {
                     .max_height(480.0)
                     .show(&mut columns[1], |ui| {
                         if let Some(tune) = &preview {
-                            if let Some(next) = self.saved_tune_preview(ui, tune) {
+                            if let Some(next) = self.saved_tune_preview(ui, tune, compact) {
                                 action = Some(next);
                             }
                         } else {
@@ -471,24 +622,35 @@ impl ContraApp {
                     });
             });
         } else {
-            egui::ScrollArea::vertical()
-                .id_salt("saved-tune-list-narrow")
-                .max_height(300.0)
-                .show(ui, |ui| {
-                    if !empty_message.is_empty() {
-                        ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+            let mut draw_list = |ui: &mut egui::Ui| {
+                if !empty_message.is_empty() {
+                    ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+                }
+                for entry in &entries {
+                    if let Some(next) = saved_tune_row(
+                        ui,
+                        entry,
+                        selected_id.as_deref(),
+                        &folders,
+                        animate,
+                        compact,
+                    ) {
+                        action = Some(next);
                     }
-                    for entry in &entries {
-                        if let Some(next) =
-                            saved_tune_row(ui, entry, selected_id.as_deref(), &folders, animate)
-                        {
-                            action = Some(next);
-                        }
-                    }
-                });
+                }
+            };
+            if compact {
+                // The phone page already scrolls; the preview follows inline.
+                draw_list(ui);
+            } else {
+                egui::ScrollArea::vertical()
+                    .id_salt("saved-tune-list-narrow")
+                    .max_height(300.0)
+                    .show(ui, &mut draw_list);
+            }
             ui.separator();
             if let Some(tune) = &preview {
-                if let Some(next) = self.saved_tune_preview(ui, tune) {
+                if let Some(next) = self.saved_tune_preview(ui, tune, compact) {
                     action = Some(next);
                 }
             } else {
@@ -506,7 +668,12 @@ impl ContraApp {
 
     /// Preview a tune that came from the local library, including its sheet
     /// music, and offer the library actions.
-    fn saved_tune_preview(&mut self, ui: &mut egui::Ui, tune: &Tune) -> Option<LibraryAction> {
+    fn saved_tune_preview(
+        &mut self,
+        ui: &mut egui::Ui,
+        tune: &Tune,
+        compact: bool,
+    ) -> Option<LibraryAction> {
         let mut action = None;
         ui.heading(&tune.title);
         ui.label(
@@ -534,7 +701,12 @@ impl ContraApp {
             if ui.button("Use this tune").clicked() {
                 action = Some(LibraryAction::UseTune(tune.clone()));
             }
-            if ui.small_button("Remove from saved tunes").clicked() {
+            let remove = if compact {
+                ui.button("Remove from saved tunes")
+            } else {
+                ui.small_button("Remove from saved tunes")
+            };
+            if remove.clicked() {
                 action = Some(LibraryAction::RemoveTune(tune.source.id.clone()));
             }
         });
@@ -797,6 +969,7 @@ fn saved_dance_row(
     selected_id: Option<&str>,
     folders: &[String],
     animate: bool,
+    compact: bool,
 ) -> Option<LibraryAction> {
     let selected = selected_id == Some(entry.item.source.id.as_str());
     let selected_t = animate_amount(
@@ -814,59 +987,93 @@ fn saved_dance_row(
         ))
         .inner_margin(egui::Margin::same(8))
         .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.vertical(|ui| {
-                    ui.label(egui::RichText::new(&entry.item.title).strong());
-                    ui.label(
-                        egui::RichText::new(format!(
-                            "{} · {}",
-                            empty_label(&entry.item.choreographer, "unknown"),
-                            empty_label(&entry.item.formation, "unknown")
-                        ))
-                        .small()
-                        .color(theme::muted(ui)),
-                    );
-                    let folder_label = entry
-                        .folder
-                        .clone()
-                        .unwrap_or_else(|| "Unfiled".to_string());
-                    ui.menu_button(format!("Folder: {folder_label}"), |ui| {
-                        if ui
-                            .selectable_label(entry.folder.is_none(), "Unfiled")
-                            .clicked()
-                        {
-                            action = Some(LibraryAction::MoveDance {
-                                id: entry.item.source.id.clone(),
-                                folder: None,
-                            });
-                            ui.close();
+            if compact {
+                ui.set_width(ui.available_width());
+                dance_row_text(ui, entry, folders, &mut action, true);
+            } else {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| dance_row_text(ui, entry, folders, &mut action, false));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                        if ui.small_button("Use").clicked() {
+                            action = Some(LibraryAction::UseDance(entry.item.clone()));
                         }
-                        for folder in folders {
-                            let current = entry.folder.as_deref() == Some(folder.as_str());
-                            if ui.selectable_label(current, folder).clicked() {
-                                action = Some(LibraryAction::MoveDance {
-                                    id: entry.item.source.id.clone(),
-                                    folder: Some(folder.clone()),
-                                });
-                                ui.close();
-                            }
+                        if ui.small_button("Preview").clicked() {
+                            action = Some(LibraryAction::PreviewDance(entry.item.clone()));
                         }
                     });
                 });
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.small_button("Use").clicked() {
-                        action = Some(LibraryAction::UseDance(entry.item.clone()));
-                    }
-                    if ui.small_button("Preview").clicked() {
-                        action = Some(LibraryAction::PreviewDance(entry.item.clone()));
-                    }
-                });
-            });
+            }
         });
     action
 }
 
-fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance) -> Option<LibraryAction> {
+fn dance_row_text(
+    ui: &mut egui::Ui,
+    entry: &contra_core::LibraryEntry<Dance>,
+    folders: &[String],
+    action: &mut Option<LibraryAction>,
+    compact: bool,
+) {
+    ui.label(egui::RichText::new(&entry.item.title).strong());
+    ui.label(
+        egui::RichText::new(format!(
+            "{} · {}",
+            empty_label(&entry.item.choreographer, "unknown"),
+            empty_label(&entry.item.formation, "unknown")
+        ))
+        .small()
+        .color(theme::muted(ui)),
+    );
+    if compact {
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("Use").clicked() {
+                *action = Some(LibraryAction::UseDance(entry.item.clone()));
+            }
+            if ui.button("Preview").clicked() {
+                *action = Some(LibraryAction::PreviewDance(entry.item.clone()));
+            }
+            folder_menu(ui, entry, folders, action);
+        });
+    } else {
+        folder_menu(ui, entry, folders, action);
+    }
+}
+
+fn folder_menu(
+    ui: &mut egui::Ui,
+    entry: &contra_core::LibraryEntry<Dance>,
+    folders: &[String],
+    action: &mut Option<LibraryAction>,
+) {
+    let folder_label = entry
+        .folder
+        .clone()
+        .unwrap_or_else(|| "Unfiled".to_string());
+    ui.menu_button(format!("Folder: {folder_label}"), |ui| {
+        if ui
+            .selectable_label(entry.folder.is_none(), "Unfiled")
+            .clicked()
+        {
+            *action = Some(LibraryAction::MoveDance {
+                id: entry.item.source.id.clone(),
+                folder: None,
+            });
+            ui.close();
+        }
+        for folder in folders {
+            let current = entry.folder.as_deref() == Some(folder.as_str());
+            if ui.selectable_label(current, folder).clicked() {
+                *action = Some(LibraryAction::MoveDance {
+                    id: entry.item.source.id.clone(),
+                    folder: Some(folder.clone()),
+                });
+                ui.close();
+            }
+        }
+    });
+}
+
+fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Option<LibraryAction> {
     let mut action = None;
     ui.heading(&dance.title);
     ui.label(
@@ -901,7 +1108,12 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance) -> Option<LibraryAction
         if ui.button("Use this dance").clicked() {
             action = Some(LibraryAction::UseDance(dance.clone()));
         }
-        if ui.small_button("Remove from saved dances").clicked() {
+        let remove = if compact {
+            ui.button("Remove from saved dances")
+        } else {
+            ui.small_button("Remove from saved dances")
+        };
+        if remove.clicked() {
             action = Some(LibraryAction::RemoveDance(dance.source.id.clone()));
         }
     });
@@ -914,6 +1126,7 @@ fn saved_tune_row(
     selected_id: Option<&str>,
     folders: &[String],
     animate: bool,
+    compact: bool,
 ) -> Option<LibraryAction> {
     let selected = selected_id == Some(entry.item.source.id.as_str());
     let selected_t = animate_amount(
@@ -931,55 +1144,89 @@ fn saved_tune_row(
         ))
         .inner_margin(egui::Margin::same(8))
         .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.vertical(|ui| {
-                    ui.label(egui::RichText::new(&entry.item.title).strong());
-                    ui.label(
-                        egui::RichText::new(format!(
-                            "{} · {} · {}",
-                            empty_label(&entry.item.composer, "unknown"),
-                            entry.item.display_key(),
-                            entry.item.display_rhythm()
-                        ))
-                        .small()
-                        .color(theme::muted(ui)),
-                    );
-                    let folder_label = entry
-                        .folder
-                        .clone()
-                        .unwrap_or_else(|| "Unfiled".to_string());
-                    ui.menu_button(format!("Folder: {folder_label}"), |ui| {
-                        if ui
-                            .selectable_label(entry.folder.is_none(), "Unfiled")
-                            .clicked()
-                        {
-                            action = Some(LibraryAction::MoveTune {
-                                id: entry.item.source.id.clone(),
-                                folder: None,
-                            });
-                            ui.close();
+            if compact {
+                ui.set_width(ui.available_width());
+                tune_row_text(ui, entry, folders, &mut action, true);
+            } else {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| tune_row_text(ui, entry, folders, &mut action, false));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                        if ui.small_button("Use").clicked() {
+                            action = Some(LibraryAction::UseTune(entry.item.clone()));
                         }
-                        for folder in folders {
-                            let current = entry.folder.as_deref() == Some(folder.as_str());
-                            if ui.selectable_label(current, folder).clicked() {
-                                action = Some(LibraryAction::MoveTune {
-                                    id: entry.item.source.id.clone(),
-                                    folder: Some(folder.clone()),
-                                });
-                                ui.close();
-                            }
+                        if ui.small_button("Preview").clicked() {
+                            action = Some(LibraryAction::PreviewTune(entry.item.clone()));
                         }
                     });
                 });
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.small_button("Use").clicked() {
-                        action = Some(LibraryAction::UseTune(entry.item.clone()));
-                    }
-                    if ui.small_button("Preview").clicked() {
-                        action = Some(LibraryAction::PreviewTune(entry.item.clone()));
-                    }
-                });
-            });
+            }
         });
     action
+}
+
+fn tune_row_text(
+    ui: &mut egui::Ui,
+    entry: &contra_core::LibraryEntry<Tune>,
+    folders: &[String],
+    action: &mut Option<LibraryAction>,
+    compact: bool,
+) {
+    ui.label(egui::RichText::new(&entry.item.title).strong());
+    ui.label(
+        egui::RichText::new(format!(
+            "{} · {} · {}",
+            empty_label(&entry.item.composer, "unknown"),
+            entry.item.display_key(),
+            entry.item.display_rhythm()
+        ))
+        .small()
+        .color(theme::muted(ui)),
+    );
+    if compact {
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("Use").clicked() {
+                *action = Some(LibraryAction::UseTune(entry.item.clone()));
+            }
+            if ui.button("Preview").clicked() {
+                *action = Some(LibraryAction::PreviewTune(entry.item.clone()));
+            }
+            tune_folder_menu(ui, entry, folders, action);
+        });
+    } else {
+        tune_folder_menu(ui, entry, folders, action);
+    }
+}
+
+fn tune_folder_menu(
+    ui: &mut egui::Ui,
+    entry: &contra_core::LibraryEntry<Tune>,
+    folders: &[String],
+    action: &mut Option<LibraryAction>,
+) {
+    let folder_label = entry
+        .folder
+        .clone()
+        .unwrap_or_else(|| "Unfiled".to_string());
+    ui.menu_button(format!("Folder: {folder_label}"), |ui| {
+        if ui
+            .selectable_label(entry.folder.is_none(), "Unfiled")
+            .clicked()
+        {
+            *action = Some(LibraryAction::MoveTune {
+                id: entry.item.source.id.clone(),
+                folder: None,
+            });
+            ui.close();
+        }
+        for folder in folders {
+            let current = entry.folder.as_deref() == Some(folder.as_str());
+            if ui.selectable_label(current, folder).clicked() {
+                *action = Some(LibraryAction::MoveTune {
+                    id: entry.item.source.id.clone(),
+                    folder: Some(folder.clone()),
+                });
+                ui.close();
+            }
+        }
+    });
 }

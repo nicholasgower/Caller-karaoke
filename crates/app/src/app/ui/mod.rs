@@ -21,6 +21,116 @@ use contra_core::{Dance, FolderFilter, Tune};
 use eframe::egui;
 
 use super::*;
+
+/// Whether this screen should use the phone layout.
+///
+/// Every screen shares the session tab's breakpoint so the tab row, the
+/// controls, and the forms never switch layouts at different widths. The app
+/// window's minimum width is 360 points, so each phone layout must also fit a
+/// 360-point-wide viewport.
+pub(super) fn compact(ui: &egui::Ui) -> bool {
+    compact_layout(ui.available_width())
+}
+
+/// Phone screens use 44-point touch rows and full-width text fields.
+pub(super) fn apply_phone_spacing(ui: &mut egui::Ui, compact: bool) {
+    if compact {
+        ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
+        ui.spacing_mut().button_padding.x = 10.0;
+        ui.spacing_mut().text_edit_width = ui.available_width();
+    }
+}
+
+/// One row of a label/value form.
+///
+/// In a desktop grid the label and control occupy two columns. On a phone the
+/// row becomes one column with a small label beside a full-width control, which
+/// keeps a long search form from pushing the results below the fold.
+pub(super) fn form_row<R>(
+    ui: &mut egui::Ui,
+    compact: bool,
+    label: &str,
+    add: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    if compact {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().text_edit_width = ui.available_width();
+            ui.label(egui::RichText::new(label).small().color(theme::muted(ui)));
+            add(ui)
+        })
+        .inner
+    } else {
+        ui.label(label);
+        add(ui)
+    }
+}
+
+/// A label beside a control on desktop and a small label beside a full-width
+/// control on a phone.
+pub(super) fn inline_field<R>(
+    ui: &mut egui::Ui,
+    compact: bool,
+    label: &str,
+    add: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    if compact {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().text_edit_width = ui.available_width();
+            ui.label(egui::RichText::new(label).small().color(theme::muted(ui)));
+            add(ui)
+        })
+        .inner
+    } else {
+        ui.horizontal(|ui| {
+            ui.label(label);
+            add(ui)
+        })
+        .inner
+    }
+}
+
+/// A slider with a label beside it on desktop and above it on a phone.
+///
+/// On a phone the rail takes the whole row; leaving room for the value box
+/// keeps the value readable while the thumb is still easy to hit.
+pub(super) fn slider_row(
+    ui: &mut egui::Ui,
+    compact: bool,
+    label: &str,
+    add: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> egui::Response {
+    if compact {
+        ui.vertical(|ui| {
+            ui.label(egui::RichText::new(label).small().color(theme::muted(ui)));
+            // Leave room for the value box and a suffix such as "syllables/s";
+            // without this the row is wider than a 360-point window and every
+            // label in the page stops wrapping at the viewport edge.
+            ui.spacing_mut().slider_width = (ui.available_width() - 160.0).max(96.0);
+            add(ui)
+        })
+        .inner
+    } else {
+        ui.horizontal(|ui| {
+            ui.label(label);
+            add(ui)
+        })
+        .inner
+    }
+}
+
+/// Size a combo box to the available width on a phone.
+pub(super) fn responsive_combo<'a>(
+    combo: egui::ComboBox<'a>,
+    ui: &egui::Ui,
+    compact: bool,
+) -> egui::ComboBox<'a> {
+    if compact {
+        combo.width((ui.available_width() - 12.0).max(96.0))
+    } else {
+        combo
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum CallPhase {
     Upcoming,

@@ -42,6 +42,13 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
   (under about 800 px of session height, including a landscape phone) the whole
   session page scrolls so the card stays reachable.
 - The pickers become full-screen sheets on mobile and dialogs on desktop.
+- Picker and Preferences forms stay dense on a phone: labels sit beside their
+  controls, and every field takes the remaining width. Search results and the
+  preview stack into one scrolling column instead of two narrow columns.
+- Saved-library folders collapse behind a single summary row on a phone so the
+  saved cards start on screen.
+- Every screen, picker, dialog, empty state, and error banner is checked at both
+  a desktop viewport (1280×800) and a phone viewport (390×844).
 - Respect safe-area insets on mobile.
 
 ### 8.3 Accessibility
