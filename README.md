@@ -52,7 +52,8 @@ being device-tested.
 - **Count-in** — three accompaniment beats before the loop.
 - **Speak calls** — use platform TTS instead of reading the prompt.
 - **Select dance** — search ContraDB, preview the card, load it.
-- **Select Tune** — search ABC Session Tunes, preview the ABC, load it.
+- **Select Tune** — search ABC Session Tunes, preview the sheet music (or the
+  ABC source), load it.
 - **Preferences** — role terms, aliases, instruments, theme, lead settings,
   TTS, soundfont, proxy, and cache tools.
 
