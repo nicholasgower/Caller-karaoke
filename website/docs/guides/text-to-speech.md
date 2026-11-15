@@ -73,7 +73,7 @@ wording when the alias table has alternatives. Its behaviour is described in
 
 <Steps>
   <Step shot="prefs-tts-rate">
-    Adjust **Rate**. The range is 0.5 to 2.0; the default is 1.0.
+    Adjust **Rate**. The range is 0.4 to 1.3; the default is 1.0.
   </Step>
 </Steps>
 

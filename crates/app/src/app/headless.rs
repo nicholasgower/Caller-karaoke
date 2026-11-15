@@ -606,7 +606,7 @@ fn preference_shots(
     capture(harness, out, "prefs-timing-rebuild")?;
     {
         let app = harness.state_mut();
-        app.prefs.tts_rate = 1.5;
+        app.prefs.tts_rate = contra_core::MAX_TTS_RATE;
     }
     capture(harness, out, "prefs-tts-rate")?;
     {
