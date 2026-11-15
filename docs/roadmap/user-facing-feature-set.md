@@ -5,7 +5,9 @@
 - Top tab row: **Select dance**, **Select tune**, **Preferences**.
 - Session controls directly below the tabs:
   - Tempo (default 240 BPM), with stepper and slider.
-  - Play/pause, restart, loop toggle.
+  - Play/pause, restart, loop toggle, and **End tune** (a slow, held final
+    cadence).
+  - **Cycle tunes**: play a set of saved tunes in turn, changing at a repeat.
   - TTS on/off.
   - Master volume and current tune/instrument summary.
 - The remaining space is the dance area:
@@ -15,7 +17,7 @@
   - Karaoke states: *upcoming*, *call now*, *executing*. Once a figure is
     executing, the prompt becomes an *upcoming move* box naming the move to
     call next.
-  - Beat/progress bar and a 3-2-1 count-in display.
+  - Beat/progress bar and a 4-3-2-1 count-in display.
 - On narrow screens the current call is pinned; the card scrolls below it.
 
 ### 3.2 Select dance
@@ -57,6 +59,10 @@ The saved-tune library, available offline:
     sheet is the default view; if it cannot be engraved the source remains
     available in the ABC view.
 - The default tune is downloaded on first run and remains usable offline.
+- **Tune set**: saved tunes can be added to an ordered set. With **Cycle tunes**
+  on, the session keeps each tune for a configurable number of 64-beat times
+  through (default 8, about four minutes at 240 BPM) and changes at the repeat.
+  The next tune is rendered ahead of the boundary.
 
 ### 3.4 Preferences
 
@@ -89,7 +95,8 @@ Advanced settings:
 
 - Calling lead: automatic or manual, minimum/maximum beats, syllables per
   second, word gap, extra pause.
-- TTS voice (Kokoro Heart, Bella, Nicole, Michael, or Fenrir on desktop) and rate.
+- TTS voice (Kokoro Heart, Bella, Nicole, Michael, or Fenrir on desktop), rate,
+  and tone (Commanding caller or Natural).
 - Alternative call aliases (default off): randomly uses an alternative wording
   for moves that have one, such as “partner swing” instead of “swing your
   partner”. The chosen wording is shown and spoken, and its lead is computed
@@ -109,6 +116,11 @@ Advanced settings:
   backend remains the fallback (and the only backend on web/Android).
 - Preferences offers five Kokoro voices: Heart, Bella, and Nicole (US female),
   and Michael and Fenrir (US male).
+- Call tone defaults to **Commanding caller**: a slightly lower, more projected
+  register with a clear-speech pass (stressed vowels held longer and a
+  presence/compression stage for consonants); **Natural** restores the recorded
+  pitch and even emphasis. Calls are still timed from the syllable estimate and
+  the safety padding, so the lead and 64-beat grid are unchanged.
 - Dance terms that the neural G2P mispronounces are corrected by a reviewed
   lexicon and pinned by tests (`docs/pronunciation.md`).
 - The visual prompt still appears when TTS is enabled.
@@ -133,6 +145,9 @@ Advanced settings:
   skipped, and alternatives never repeat the active template.
 - The rendered alias replaces the card text during a session; an optional
   advanced setting can show the original figure as secondary text.
+- A count of one is omitted from the rendered alias; fractional counts such as
+  “once and a half” remain. The speech path connects “and a half” into the
+  natural “n' a half”.
 - Lead timing is computed from the rendered alias, so making a call longer
   automatically moves it earlier.
 
@@ -140,7 +155,7 @@ Default alias style examples:
 
 | Card figure | Default call |
 | --- | --- |
-| `neighbors do si do once` | `neighbors do-si-do once` |
+| `neighbors do si do once` | `neighbors do-si-do` |
 | `ladles allemande left 1½` | `larks allemande left once and a half` |
 | `partners balance & swing` | `partners balance and swing` |
 | `circle left 3 places` | `circle left three places` |
@@ -149,3 +164,11 @@ Default alias style examples:
 
 These defaults are meant to be editable; the exact list will be reviewed with
 an experienced caller during Milestone 4.
+
+### 3.7 Planned calling and teaching features
+
+Call variants, collision-free scheduling, call support and thinning, walkthrough
+mode, loop endings, and practice feedback are post-0.1.0 work. They are
+described, prioritised, and sourced in §17 (Calling and teaching). The
+autonomous-caller goal is also recorded there; choreography-dependent features
+remain gated on a dance model.

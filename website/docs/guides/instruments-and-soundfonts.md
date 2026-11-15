@@ -55,7 +55,7 @@ does not change the dance timing, the calls, or the length of the loop.
 | Offbeat stabs | A held bass with short chord stabs between the beats. |
 | Arpeggio | The chord tones broken into a steady arpeggio. |
 | Shuffle | A swung long-short boom-chuck. |
-| Strum | Repeated full chord strums on every half beat. |
+| Strum | Alternating down and up strums on every half beat. |
 | Sustained | One chord held for each harmony change. |
 
 The accompaniment still follows the tune's quoted chords, or an inferred
@@ -151,8 +151,10 @@ screenshots. The screenshots show the resulting Preferences state.
 The melody follows the ABC note stream. The accompaniment follows quoted chord
 symbols when the ABC has them; otherwise a simple progression is inferred from
 the key and strong-beat melody notes. The selected rhythm decides which notes
-sound on which part of the beat. The second accompaniment is derived from the
-melody and that chord track, so it never needs symbols of its own. Short fades
-and peak normalization are applied to the rendered buffer.
+sound on which part of the beat. The strum rhythm alternates a full downstroke
+on the beat with a lighter upstroke off the beat, so the guitar sounds strummed
+up and down rather than in one direction. The second accompaniment is derived
+from the melody and that chord track, so it never needs symbols of its own.
+Short fades and peak normalization are applied to the rendered buffer.
 
 Next: [Timing and lead](/docs/guides/timing-and-lead).

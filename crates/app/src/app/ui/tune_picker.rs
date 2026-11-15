@@ -218,6 +218,7 @@ impl ContraApp {
                         let downloaded = self
                             .tune_library
                             .contains(&tune.source.provider, &tune.source.id);
+                        let in_rotation = self.tune_in_rotation(&tune);
                         ui.horizontal_wrapped(|ui| {
                             if ui
                                 .button(if downloaded {
@@ -232,6 +233,21 @@ impl ContraApp {
                             }
                             if ui.button("Use this tune").clicked() {
                                 self.use_tune(tune.clone());
+                            }
+                            if ui
+                                .button(if in_rotation {
+                                    "Remove from tune set"
+                                } else {
+                                    "Add to tune set"
+                                })
+                                .on_hover_text(if in_rotation {
+                                    "Remove this tune from the set"
+                                } else {
+                                    "Include this tune when Cycle tunes is on"
+                                })
+                                .clicked()
+                            {
+                                self.toggle_rotation_tune(&tune);
                             }
                             if ui.button("View saved tunes").clicked() {
                                 self.screen = Screen::TunePicker;

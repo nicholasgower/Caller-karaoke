@@ -39,7 +39,7 @@ The defaults are examples, not rules. A few from the current table:
 | Move type | Default template | Example call |
 | --- | --- | --- |
 | Swing | `swing your {actor_singular}` | `swing your neighbor` |
-| Do-si-do | `{actor} do-si-do {count}` | `neighbors do-si-do once` |
+| Do-si-do | `{actor} do-si-do {count}` | `neighbors do-si-do` |
 | Allemande | `{actor} allemande {direction} {count}` | `larks allemande left once and a half` |
 | Balance and swing | `{actor} balance and swing` | `partners balance and swing` |
 | Circle | `circle {direction} {count}` | `circle left three places` |
@@ -59,11 +59,15 @@ The editor supports seven placeholders:
 | `{actor_object}` | A singular possessive object form (`your neighbor`, `your partner`). |
 | `{actor_object_plural}` | A plural possessive object form (`your neighbors`, `your partners`). |
 | `{direction}` | The direction parsed from the card (`left`, `right`, `across`). |
-| `{count}` | The count parsed from the card (`once`, `twice`, `three places`, `1½`). |
+| `{count}` | The count parsed from the card (`once`, `twice`, `three places`, `1½`). A count of `once` is rendered as empty. |
 
 Unknown placeholders are left as literal text, so a typo is visible in the
 session rather than silently disappearing. Empty placeholders are removed and
 extra spaces are cleaned up.
+
+A count of **once** is omitted from the call: `neighbors do-si-do once` becomes
+`neighbors do-si-do`, and the shorter wording also gets a shorter lead.
+Fractional counts keep their words, for example `once and a half`.
 
 ## Alternative calls
 

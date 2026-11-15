@@ -12,7 +12,7 @@ The important difference from a metronome is **lead time**. Every call is placed
 before the beat where the dancers execute the figure. The amount of lead comes
 from the rendered words themselves, plus a safety padding (0.5 s by default): a
 short `swing` starts about two beats early, a longer phrase such as
-`neighbors do-si-do once` starts about four beats early.
+`neighbors do-si-do` starts about three and a half beats early.
 
 <Shot id="main-idle" />
 
@@ -21,7 +21,7 @@ short `swing` starts about two beats early, a longer phrase such as
 1. A dance card supplies the figure order and the beats for each figure.
 2. A tune supplies the melody and chords. The arranger turns it into a
    64-dance-beat loop — 32 bars at one dance beat per half bar.
-3. Three beats of accompaniment count in the tempo before the loop.
+3. Four beats of accompaniment count in the tempo before the loop.
 4. The timeline renders each figure into the caller's alias wording, estimates
    how long that wording takes to say, and places the call early.
 5. The transport plays the rendered audio while the UI follows the playback

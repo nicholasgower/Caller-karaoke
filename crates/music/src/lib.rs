@@ -12,7 +12,7 @@ pub mod soundfont;
 pub mod synth;
 
 pub use abc::{AbcError, parse_abc};
-pub use arrange::{Arrangement, LengthMismatch, VARIATION_PASSES};
+pub use arrange::{Arrangement, Ending, EndingNote, LengthMismatch, VARIATION_PASSES};
 pub use chord::{Chord, ChordQuality, resolve_chords};
 pub use midi::export_midi;
 pub use render::{AudioBuffer, RenderError, RenderRequest, render};

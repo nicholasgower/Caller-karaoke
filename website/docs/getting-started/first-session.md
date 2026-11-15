@@ -105,7 +105,7 @@ The default is **240 BPM**, which gives a 0.5-second dance beat and a 32-second
 
 <Steps>
   <Step shot="session-count-in">
-    Press **Play**. The music starts with a three-beat count-in built from the
+    Press **Play**. The music starts with a four-beat count-in built from the
     tune's first chord. If the first call has already started, the count-in
     panel shows **CALL NOW** and the call text.
   </Step>
@@ -143,7 +143,7 @@ use the sound and the stopped progress bar as the confirmation.
 | Label | Meaning |
 | --- | --- |
 | `READY` | Nothing has started yet. Press **Play**. |
-| `COUNT-IN` | The three accompaniment beats before beat 0. If a call is already due, the panel shows **CALL NOW** and its text. |
+| `COUNT-IN` | The four accompaniment beats before beat 0. If a call is already due, the panel shows **CALL NOW** and its text. |
 | `CALL NOW` | Say the displayed words now; the dancers execute shortly. |
 | `DANCING` | The figure is executing; the prompt is muted and the sub-line reads **figure in progress**. |
 | `Dance complete` | The music reached the end with looping off. |

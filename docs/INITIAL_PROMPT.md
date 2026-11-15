@@ -4,6 +4,10 @@ This file preserves the original project request. Markdown headings, lists,
 links, tables, and inline code have been added; the wording is unchanged apart
 from minor typographic spacing.
 
+> **Editorial note (2026-11-15):** the count-in was later corrected from three
+> to four dance beats ("four potatoes"). The original wording below is preserved
+> as history; the current rule is in §17 and `AGENTS.md`.
+
 > The plan is the following:
 
 Write a Rust-based contra dance caller training program. Like a karaoke machine displays lyrics to a singer to help them sing the song, this program displays contra dance move order timed to music to help a caller learn to call moves with the correct timing. The background music played with dances can vary, but it should be an ABC music source converted to MIDI.

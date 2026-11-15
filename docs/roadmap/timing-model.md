@@ -15,8 +15,10 @@ At 240 BPM a dance beat is 0.500 s, a 64-beat dance is 32 s, and a jig bar is
 1.0 s (120 dotted-quarter beats per minute). This keeps reels and jigs at the
 same dance duration for the same BPM value.
 
-- **Count-in:** exactly 3 dance beats of accompaniment, built from the tune's
-  first chord. The loop starts at dance beat 0 after the count-in.
+- **Count-in:** exactly 4 dance beats of accompaniment (“four potatoes”), built
+  from the tune's first chord. The loop starts at dance beat 0 after the
+  count-in. Four beats is the contra convention and gives the first call more
+  room than the earlier three-beat choice.
 
 ### 5.2 Call lead
 
@@ -63,7 +65,7 @@ Example at 240 BPM:
 | --- | ---: | ---: |
 | `swing` | 2.0 beats | 1.0 s before the move |
 | `circle left three` | 3.0 beats | 1.5 s before the move |
-| `neighbors do-si-do once` | 4.0 beats | 2.0 s before the move |
+| `neighbors do-si-do` | 3.5 beats | 1.75 s before the move |
 | `larks allemande left once and a half` | 5.5 beats | 2.75 s before the move |
 
 The first call of a dance may fall at a negative beat (inside the count-in).
@@ -104,7 +106,9 @@ Rules:
 - Sub-move beat allocation is proportional, with small heuristics
   (e.g. a trailing "balance" gets about 2 beats).
 - If an earlier call would overlap a later one, keep source order and enforce a
-  small minimum gap; never reorder calls.
+  small minimum gap; never reorder calls. *Current 0.1.0 sorts by start beat but
+  does not yet shorten calls or enforce the gap. Collision-free scheduling is
+  planned in §17 (C2).*
 - The timeline is rebuilt whenever the dance, aliases, role terms, or lead
   settings change.
 
@@ -115,9 +119,12 @@ for call placement, but keep a 64-beat music grid:
 
 - If the card totals 64, it matches the loop exactly.
 - If it totals less than 64, the music continues after the last call.
-- If it totals more than 64, loop the music and continue the card.
+- If it totals more than 64, loop the music and continue the card. *Current
+  0.1.0 restarts the music at beat 0; figures after beat 64 are not reached.
+  Continuing the card is planned in §17 (C6).*
 - If the card totals 32 or less, repeat the card within each 64-beat music
-  loop.
+  loop. *Current 0.1.0 does not repeat the card; the music simply continues.
+  Repetition is planned in §17 (C6).*
 - Show a warning in the picker when a card's total is not 64.
 
 ### 5.5 Karaoke states
@@ -130,3 +137,22 @@ For current time `t` (in dance beats):
 
 The current call is rendered large. The next call is shown smaller. The active
 figure row is highlighted in the card.
+
+### 5.6 Planned call-craft refinements
+
+The timing model above answers *when* a call starts. It does not yet answer
+*how much* to say. The research in §17 adds four rules to this chapter's target
+model:
+
+- a call is chosen from long, medium, and short wordings so it fits the
+  available beats, rather than stretching every wording to its natural speech
+  length;
+- two calls never overlap; when they would, the later call is shortened or the
+  earlier one is moved, never the figure order;
+- the first call fits inside the four-beat count-in when possible, and the app
+  says so when it cannot;
+- the amount of calling thins over successive loops, following the priority
+  rules in §17.
+
+These are roadmap items. The 0.1.0 implementation keeps the speech-derived lead
+and the fixed alias wording described in §5.2.

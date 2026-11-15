@@ -6,8 +6,8 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AliasTable, Dance, FolderFilter, Library,
-    MelodyInstrument, MoveKind, PracticeTimeline, Preferences, RolePreset, RoleTerms,
+    AccompanimentInstrument, AccompanimentRhythm, AliasTable, COUNT_IN_BEATS, Dance, FolderFilter,
+    Library, MelodyInstrument, MoveKind, PracticeTimeline, Preferences, RolePreset, RoleTerms,
     SecondAccompaniment, Theme, TimelineConfig, Tune,
 };
 use contra_music::{
@@ -250,6 +250,9 @@ pub struct ContraApp {
     /// Keeps the window's logical size when it moves to a monitor with a
     /// different display scale.
     scale_guard: crate::window::ScaleGuard,
+    /// Takes the focus when the window first appears, so the app opens in front
+    /// of the windows that launched it.
+    launch_focus: crate::window::LaunchFocus,
     /// The About window is open. It is a modal over every screen.
     about_open: bool,
     dance: Dance,
@@ -299,6 +302,10 @@ pub struct ContraApp {
     alternative_inputs: std::collections::BTreeMap<String, String>,
     /// Seed for the alternative-alias shuffle. Selecting a dance advances it.
     alias_seed: u64,
+    rotation: RotationState,
+    /// Bumped whenever a setting changes; prepared buffers from an older
+    /// generation are discarded.
+    render_generation: u64,
 }
 
 /// Transient state of the two download screens.
@@ -318,6 +325,87 @@ pub(in crate::app) struct PickerState {
     tune_selected: Option<TuneSummary>,
     search_loading: bool,
     preview_loading: bool,
+}
+
+/// One tune rendered ahead of a rotation boundary.
+struct PreparedTune {
+    /// Render generation that produced this buffer; a newer generation makes
+    /// it stale.
+    generation: u64,
+    tune: Tune,
+    buffer: AudioBuffer,
+    arrangement: Arrangement,
+}
+
+/// Bookkeeping for cycling through a set of tunes.
+#[derive(Default)]
+struct RotationState {
+    /// Completed 64-beat passes of the tune now playing.
+    passes: u32,
+    /// Beat seen on the previous frame, used to detect a pass boundary.
+    last_beat: f64,
+    /// The next tune, rendered and waiting for the boundary.
+    prepared: Option<PreparedTune>,
+    /// Render generation of the job in flight, or zero.
+    loading_generation: u64,
+    /// Native worker receiver. A dropped receiver cancels delivery, not the
+    /// render itself.
+    rx: Option<Receiver<Result<PreparedTune, String>>>,
+    /// A tune whose render failed; skip it until the set or settings change.
+    failed_source: Option<String>,
+}
+
+/// The values a render needs, captured so a worker can render without the app.
+#[derive(Clone)]
+struct RenderSettings {
+    bpm: f64,
+    melody: MelodyInstrument,
+    accompaniment: AccompanimentInstrument,
+    accompaniment_rhythm: AccompanimentRhythm,
+    second_accompaniment: SecondAccompaniment,
+    melody_volume: f32,
+    accompaniment_volume: f32,
+    count_in_beats: f64,
+    sample_rate: u32,
+    variation_passes: u32,
+}
+
+impl RenderSettings {
+    fn request(&self, arrangement: Arrangement) -> RenderRequest {
+        RenderRequest {
+            arrangement,
+            bpm: self.bpm,
+            melody: self.melody,
+            accompaniment: self.accompaniment,
+            accompaniment_rhythm: self.accompaniment_rhythm,
+            second_accompaniment: self.second_accompaniment,
+            melody_volume: self.melody_volume,
+            accompaniment_volume: self.accompaniment_volume,
+            count_in_beats: self.count_in_beats,
+            sample_rate: self.sample_rate,
+            variation_passes: self.variation_passes,
+            ending: true,
+        }
+    }
+}
+
+/// Parse, arrange, and render one tune with captured settings.
+fn prepare_tune(
+    tune: &Tune,
+    settings: &RenderSettings,
+    soundfont: Option<Arc<SoundFont>>,
+    generation: u64,
+) -> Result<PreparedTune, String> {
+    let score = parse_abc(&tune.abc).map_err(|error| format!("Could not parse tune: {error}"))?;
+    let arrangement = Arrangement::from_score(&score, 64.0);
+    let buffer = render(&settings.request(arrangement.clone()), soundfont.as_ref())
+        .map_err(|error| format!("Could not render music: {error}"))?;
+    Ok(PreparedTune {
+        generation,
+        tune: tune.clone(),
+        buffer,
+        arrangement,
+    })
 }
 
 impl ContraApp {
@@ -375,6 +463,7 @@ impl ContraApp {
         let mut speech = Speech::new(cache_dir.join("tts"), audio.0.sample_rate());
         speech.set_rate(prefs.tts_rate);
         speech.set_voice(&prefs.tts_voice);
+        speech.set_tone(prefs.tts_tone);
         if prefs.tts_enabled {
             speech.set_enabled(true);
         }
@@ -450,6 +539,7 @@ impl ContraApp {
             screen_anim_screen: Screen::Session,
             headless: false,
             scale_guard: crate::window::ScaleGuard::default(),
+            launch_focus: crate::window::LaunchFocus::default(),
             about_open: false,
             dance,
             tune,
@@ -502,6 +592,8 @@ impl ContraApp {
             custom_alias: String::new(),
             alternative_inputs: std::collections::BTreeMap::new(),
             alias_seed: 0,
+            rotation: RotationState::default(),
+            render_generation: 0,
         }
     }
 
@@ -640,6 +732,9 @@ impl ContraApp {
             "Removed \"{}\" from saved tunes.",
             entry.item.title
         ));
+        // A tune rendered ahead for rotation must not be installed after it was
+        // removed from the library.
+        self.rotation_settings_changed();
     }
 
     fn move_saved_dance(&mut self, id: &str, folder: Option<String>) {
@@ -715,6 +810,7 @@ impl ContraApp {
 
         let mut speech = Speech::stub();
         speech.set_rate(prefs.tts_rate);
+        speech.set_tone(prefs.tts_tone);
 
         let source = SourceClient::new(
             source_tx,
@@ -748,6 +844,7 @@ impl ContraApp {
             screen_anim_screen: Screen::Session,
             headless: true,
             scale_guard: crate::window::ScaleGuard::default(),
+            launch_focus: crate::window::LaunchFocus::default(),
             about_open: false,
             dance,
             tune,
@@ -800,6 +897,8 @@ impl ContraApp {
             custom_alias: String::new(),
             alternative_inputs: std::collections::BTreeMap::new(),
             alias_seed: 0,
+            rotation: RotationState::default(),
+            render_generation: 0,
         }
     }
 
@@ -855,6 +954,26 @@ impl ContraApp {
         self.bundled_soundfont.clone()
     }
 
+    /// The render values for the current preferences.
+    fn render_settings(&self, count_in_beats: f64) -> RenderSettings {
+        RenderSettings {
+            bpm: self.prefs.tempo_bpm,
+            melody: self.prefs.melody,
+            accompaniment: self.prefs.accompaniment,
+            accompaniment_rhythm: self.prefs.accompaniment_rhythm,
+            second_accompaniment: self.prefs.second_accompaniment,
+            melody_volume: self.prefs.melody_volume,
+            accompaniment_volume: self.prefs.accompaniment_volume,
+            count_in_beats,
+            sample_rate: self.audio.sample_rate(),
+            variation_passes: if self.prefs.accompaniment_variations {
+                contra_music::VARIATION_PASSES
+            } else {
+                1
+            },
+        }
+    }
+
     /// Parse and render the current tune with the current playback settings.
     fn render_music(&mut self) -> Option<(AudioBuffer, Arrangement)> {
         let score = match parse_abc(&self.tune.abc) {
@@ -871,29 +990,13 @@ impl ContraApp {
             .check_dance_length(dance_beats)
             .err()
             .map(format_length_mismatch);
-        let request = RenderRequest {
-            arrangement: arrangement.clone(),
-            bpm: self.prefs.tempo_bpm,
-            melody: self.prefs.melody,
-            accompaniment: self.prefs.accompaniment,
-            accompaniment_rhythm: self.prefs.accompaniment_rhythm,
-            second_accompaniment: self.prefs.second_accompaniment,
-            melody_volume: self.prefs.melody_volume,
-            accompaniment_volume: self.prefs.accompaniment_volume,
-            count_in_beats: if self.prefs.count_in_enabled {
-                3.0
-            } else {
-                0.0
-            },
-            sample_rate: self.audio.sample_rate(),
-            variation_passes: if self.prefs.accompaniment_variations {
-                contra_music::VARIATION_PASSES
-            } else {
-                1
-            },
-        };
+        let settings = self.render_settings(if self.prefs.count_in_enabled {
+            COUNT_IN_BEATS
+        } else {
+            0.0
+        });
         let soundfont = self.active_soundfont();
-        match render(&request, soundfont.as_ref()) {
+        match render(&settings.request(arrangement.clone()), soundfont.as_ref()) {
             Ok(buffer) => Some((buffer, arrangement)),
             Err(error) => {
                 self.error = Some(format!("Could not render music: {error}"));
@@ -906,17 +1009,24 @@ impl ContraApp {
     ///
     /// `resume_beat` is the position captured from the old buffer just before
     /// the swap, so a settings change keeps the dance where it was.
+    /// `keep_speech` leaves a call that straddles a tune change audible; a
+    /// settings change stops stale speech instead.
     fn install_music(
         &mut self,
         buffer: AudioBuffer,
         arrangement: Arrangement,
         resume_beat: Option<f64>,
+        keep_speech: bool,
     ) {
         // Briefly mute the callback around the swap so the audio thread cannot
         // play the new buffer from sample zero before the seek lands.
         let was_playing = self.audio.is_playing();
         if was_playing {
-            self.audio.pause();
+            if keep_speech {
+                self.audio.pause_music();
+            } else {
+                self.audio.pause();
+            }
         }
         self.audio.set_buffer(buffer);
         self.arrangement = Some(arrangement);
@@ -951,6 +1061,12 @@ impl ContraApp {
     fn apply_audio_settings(&mut self) {
         self.pending_audio = false;
         self.rebuild_timeline();
+        // Any pre-rendered next tune used the old settings.
+        self.render_generation = self.render_generation.wrapping_add(1);
+        self.rotation.prepared = None;
+        self.rotation.rx = None;
+        self.rotation.loading_generation = 0;
+        self.rotation.failed_source = None;
         let was_playing = self.audio.is_playing();
         let Some((buffer, arrangement)) = self.render_music() else {
             return;
@@ -958,7 +1074,7 @@ impl ContraApp {
         // The old buffer kept playing while we rendered, so sample it now to
         // avoid rewinding by the render time.
         let resume_beat = self.audio.has_buffer().then(|| self.audio.position_beat());
-        self.install_music(buffer, arrangement, resume_beat);
+        self.install_music(buffer, arrangement, resume_beat, false);
         if was_playing {
             self.audio.play();
             self.started = true;
@@ -974,12 +1090,300 @@ impl ContraApp {
         }
     }
 
+    /// The saved tunes in the rotation, in play order.
+    ///
+    /// Entries that are no longer in the saved-tune library are skipped, so a
+    /// deleted tune cannot stall the rotation.
+    fn rotation_tunes(&self) -> Vec<Tune> {
+        self.prefs
+            .tune_rotation
+            .tunes
+            .iter()
+            .filter_map(|source| {
+                self.tune_library
+                    .get(&source.provider, &source.id)
+                    .map(|entry| entry.item.clone())
+            })
+            .collect()
+    }
+
+    /// The tune after the one now playing, or `None` when cycling cannot run.
+    fn next_rotation_tune(&self) -> Option<Tune> {
+        let tunes = self.rotation_tunes();
+        if !contra_core::TuneRotation::can_rotate(tunes.len()) {
+            return None;
+        }
+        let current = tunes.iter().position(|tune| {
+            tune.source.provider == self.tune.source.provider
+                && tune.source.id == self.tune.source.id
+        });
+        let next = next_rotation_index(current, tunes.len())?;
+        Some(tunes[next].clone())
+    }
+
+    /// The index of the playing tune in the rotation, if it is a member.
+    fn rotation_position(&self) -> Option<usize> {
+        self.rotation_tunes().iter().position(|tune| {
+            tune.source.provider == self.tune.source.provider
+                && tune.source.id == self.tune.source.id
+        })
+    }
+
+    /// Start rendering the next rotation tune once the current tune reaches its
+    /// last pass, leaving a whole pass for the worker to finish.
+    fn maybe_prepare_next_tune(&mut self) {
+        if !self.prefs.tune_rotation.enabled || !self.prefs.loop_enabled || !self.started {
+            return;
+        }
+        if self.audio.ending_requested() || self.audio.in_ending() {
+            return;
+        }
+        let interval = self.prefs.tune_rotation.passes_per_tune.max(1);
+        if self.rotation.passes.saturating_add(1) < interval {
+            return;
+        }
+        if self.rotation.prepared.is_some() {
+            return;
+        }
+        let generation = self.render_generation;
+        if self.rotation.loading_generation == generation {
+            return;
+        }
+        let Some(next) = self.next_rotation_tune() else {
+            return;
+        };
+        if self.rotation.failed_source.as_deref() == Some(next.source.id.as_str()) {
+            return;
+        }
+        let settings = self.render_settings(0.0);
+        let soundfont = self.active_soundfont();
+        self.rotation.loading_generation = generation;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let (tx, rx) = channel();
+            let tune = next.clone();
+            std::thread::spawn(move || {
+                let _ = tx.send(prepare_tune(&tune, &settings, soundfont, generation));
+            });
+            self.rotation.rx = Some(rx);
+            self.status = format!("Preparing {}", next.title);
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // The web build has no render worker. Do the work at the boundary
+            // instead of blocking the UI in the middle of a pass.
+            let _ = (settings, soundfont);
+            self.status = format!("Will prepare {} at the tune change", next.title);
+        }
+    }
+
+    /// Collect a finished background render.
+    fn poll_prepared_tune(&mut self) {
+        let Some(rx) = self.rotation.rx.take() else {
+            return;
+        };
+        match rx.try_recv() {
+            Ok(result) => {
+                self.rotation.loading_generation = 0;
+                match result {
+                    Ok(prepared) if prepared.generation == self.render_generation => {
+                        self.rotation.failed_source = None;
+                        self.rotation.prepared = Some(prepared);
+                    }
+                    Ok(_) => {
+                        // Settings changed while the worker rendered.
+                    }
+                    Err(error) => {
+                        self.rotation.failed_source =
+                            self.next_rotation_tune().map(|tune| tune.source.id);
+                        self.error = Some(format!("Could not prepare the next tune: {error}"));
+                    }
+                }
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => self.rotation.rx = Some(rx),
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                self.rotation.loading_generation = 0;
+            }
+        }
+    }
+
+    /// Count passes and change tunes at the boundary.
+    fn tick_rotation(&mut self, beat: f64) {
+        if !self.prefs.tune_rotation.enabled || !self.started {
+            self.rotation.last_beat = beat;
+            return;
+        }
+        if self.audio.ending_requested() || self.audio.in_ending() {
+            self.rotation.last_beat = beat;
+            return;
+        }
+        let previous = self.rotation.last_beat;
+        self.rotation.last_beat = beat;
+        if pass_wrapped(previous, beat) {
+            self.rotation.passes = self.rotation.passes.saturating_add(1);
+            let interval = self.prefs.tune_rotation.passes_per_tune.max(1);
+            if self.rotation.passes >= interval {
+                self.change_tune_at_boundary();
+            }
+        }
+        self.maybe_prepare_next_tune();
+    }
+
+    fn change_tune_at_boundary(&mut self) {
+        if !self.prefs.loop_enabled {
+            // Without looping the session ends after one pass; cycling needs
+            // the repeated 64-beat grid.
+            self.rotation.passes = 0;
+            return;
+        }
+        if let Some(prepared) = self.rotation.prepared.take() {
+            if prepared.generation == self.render_generation {
+                self.switch_to_prepared_tune(prepared);
+            } else {
+                self.rotation.passes = 0;
+            }
+            return;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.switch_to_next_tune_now();
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if self.rotation.loading_generation == 0 {
+                // Start a render now; the next boundary is one pass away.
+                self.maybe_prepare_next_tune();
+            }
+            self.status = "Waiting for the next tune…".into();
+        }
+    }
+
+    /// Render and install the next tune immediately. The web build uses this at
+    /// the boundary because it has no render worker.
+    #[cfg(target_arch = "wasm32")]
+    fn switch_to_next_tune_now(&mut self) {
+        if let Some(next) = self.next_rotation_tune() {
+            self.rotation.loading_generation = 0;
+            let settings = self.render_settings(0.0);
+            let generation = self.render_generation;
+            let soundfont = self.active_soundfont();
+            self.status = format!("Preparing {}", next.title);
+            match prepare_tune(&next, &settings, soundfont, generation) {
+                Ok(prepared) => self.switch_to_prepared_tune(prepared),
+                Err(error) => {
+                    self.rotation.failed_source = Some(next.source.id);
+                    self.error = Some(format!("Could not prepare the next tune: {error}"));
+                    self.rotation.passes = 0;
+                }
+            }
+        } else {
+            self.rotation.passes = 0;
+        }
+    }
+
+    /// Install a pre-rendered tune without interrupting the call timeline.
+    fn switch_to_prepared_tune(&mut self, prepared: PreparedTune) {
+        let PreparedTune {
+            tune,
+            buffer,
+            arrangement,
+            ..
+        } = prepared;
+        self.length_warning = arrangement
+            .check_dance_length(self.dance.total_beats())
+            .err()
+            .map(format_length_mismatch);
+        self.tune = tune;
+        self.tune_sheet = None;
+        self.prefs.last_tune = Some(self.tune.source.clone());
+        self.rotation.passes = 0;
+        self.rotation.last_beat = 0.0;
+        self.install_music(buffer, arrangement, Some(0.0), true);
+        self.last_spoken = None;
+        self.last_beat = 0.0;
+        self.status = format!("Tune change: {}", self.tune.title);
+    }
+
+    /// The tune set or its interval changed: discard work rendered from the
+    /// old setup. The current tune keeps playing.
+    fn rotation_settings_changed(&mut self) {
+        self.render_generation = self.render_generation.wrapping_add(1);
+        self.rotation.prepared = None;
+        self.rotation.rx = None;
+        self.rotation.loading_generation = 0;
+        self.rotation.failed_source = None;
+        // A set that only just became long enough may carry a large pass
+        // count from the time it had nothing to change to. Start its first
+        // tune from zero rather than switching immediately.
+        if self.rotation.passes >= self.prefs.tune_rotation.passes_per_tune.max(1) {
+            self.rotation.passes = 0;
+        }
+    }
+
+    fn tune_in_rotation(&self, tune: &Tune) -> bool {
+        self.prefs.tune_rotation.contains(&tune.source)
+    }
+
+    /// Add or remove a tune from the rotation set.
+    fn toggle_rotation_tune(&mut self, tune: &Tune) {
+        if self.tune_in_rotation(tune) {
+            self.prefs
+                .tune_rotation
+                .remove(&tune.source.provider, &tune.source.id);
+            self.status = format!("\"{}\" removed from the tune set.", tune.title);
+        } else {
+            if !self
+                .tune_library
+                .contains(&tune.source.provider, &tune.source.id)
+            {
+                // A searched tune can join the set directly; save it first so
+                // the reference resolves on the next run.
+                self.download_tune(tune.clone());
+            }
+            self.prefs.tune_rotation.add(tune.source.clone());
+            self.status = format!("\"{}\" added to the tune set.", tune.title);
+        }
+        self.rotation_settings_changed();
+        self.save_prefs();
+    }
+
+    /// Ask the transport to take the slow ending, or cancel a pending one.
+    fn end_tune(&mut self) {
+        if self.audio.in_ending() || self.audio.is_finished() {
+            return;
+        }
+        if self.audio.ending_requested() {
+            self.audio.cancel_ending();
+            self.status = "Ending cancelled".into();
+        } else if self.audio.has_buffer() {
+            self.audio.request_ending();
+            self.status = if self.prefs.loop_enabled {
+                "Ending after this time through".into()
+            } else {
+                "Ending at the end of the tune".into()
+            };
+        }
+    }
+
     fn play(&mut self) {
+        let from_finished = self.audio.is_finished();
         self.ensure_ready();
         if self.audio.has_buffer() {
             self.audio.play();
             self.started = true;
             self.status = "Playing".into();
+            if from_finished {
+                // A finished run may have spoken the wrapped first call just
+                // before the ending; that call belongs to a pass that never
+                // played, so let the new run announce it again.
+                self.last_spoken = None;
+                self.rotation.passes = 0;
+                self.rotation.last_beat = 0.0;
+            }
             // A resume keeps the call the caller was already speaking; only a
             // run from the top of the dance may need to announce the first
             // call.
@@ -997,6 +1401,8 @@ impl ContraApp {
         self.ensure_ready();
         self.last_spoken = None;
         self.last_beat = 0.0;
+        self.rotation.passes = 0;
+        self.rotation.last_beat = 0.0;
         self.audio.restart();
         self.started = true;
         self.first_call_pending = true;
@@ -1017,6 +1423,8 @@ impl ContraApp {
         self.audio.stop();
         self.speech.stop();
         self.started = false;
+        self.rotation.passes = 0;
+        self.rotation.last_beat = 0.0;
         // Give a newly selected dance a fresh shuffle of alternative aliases.
         self.alias_seed = self.alias_seed.wrapping_add(1);
         self.rebuild_timeline();
@@ -1039,6 +1447,9 @@ impl ContraApp {
         self.audio.stop();
         self.speech.stop();
         self.started = false;
+        self.rotation.passes = 0;
+        self.rotation.last_beat = 0.0;
+        self.rotation_settings_changed();
         self.save_prefs();
         self.status = "Tune selected".into();
     }
@@ -1133,6 +1544,11 @@ impl ContraApp {
     fn current_beat(&self) -> f64 {
         if !self.audio.has_buffer() {
             return 0.0;
+        }
+        if self.audio.in_ending() {
+            // The ending leaves the beat grid. Report the loop end so the card
+            // stops prompting calls and the progress bar stays full.
+            return self.timeline.music_loop_beats;
         }
         let beat = self.audio.position_beat();
         if self.prefs.loop_enabled && beat >= self.timeline.music_loop_beats {
@@ -1232,6 +1648,9 @@ impl ContraApp {
 impl eframe::App for ContraApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if !self.headless {
+            self.launch_focus.update(&ctx);
+        }
         if !self.headless && self.scale_guard.update(&ctx) {
             // The sheet music texture is rasterized at the density it was
             // rendered for and would be blurry on the new monitor.
@@ -1246,6 +1665,8 @@ impl eframe::App for ContraApp {
 
         let beat = self.current_beat();
         self.update_speech(beat);
+        self.poll_prepared_tune();
+        self.tick_rotation(beat);
 
         let compact = ui.available_width() < COMPACT_WIDTH;
         egui::Panel::top("tabs")
@@ -1539,6 +1960,24 @@ fn format_length_mismatch(mismatch: LengthMismatch) -> String {
     format!("Length check: {mismatch}. Calls and music can drift out of sync.")
 }
 
+/// Index of the next tune in a rotation of `len` entries.
+///
+/// A tune outside the set leads to its first entry. Fewer than two tunes cannot
+/// rotate, so there is no next tune.
+fn next_rotation_index(position: Option<usize>, len: usize) -> Option<usize> {
+    (len >= 2).then(|| position.map_or(0, |index| (index + 1) % len))
+}
+
+/// Whether the transport crossed from the end of one 64-beat pass into the
+/// next between two UI frames.
+///
+/// The quarter-beat margin absorbs frame jitter and the rounded sample-to-beat
+/// conversion; a deliberate restart resets the stored beat instead of looking
+/// like a wrap.
+fn pass_wrapped(previous: f64, beat: f64) -> bool {
+    beat + 0.25 < previous && previous > 0.5
+}
+
 fn build_timeline(
     dance: &Dance,
     prefs: &Preferences,
@@ -1551,7 +1990,11 @@ fn build_timeline(
         &prefs.lead,
         prefs.tempo(),
         TimelineConfig {
-            count_in_beats: if prefs.count_in_enabled { 3.0 } else { 0.0 },
+            count_in_beats: if prefs.count_in_enabled {
+                COUNT_IN_BEATS
+            } else {
+                0.0
+            },
             music_loop_beats: 64.0,
             shuffle_alternatives: prefs.shuffle_alternatives,
             alias_seed,
@@ -1566,7 +2009,7 @@ fn empty_timeline() -> PracticeTimeline {
         phrases: Vec::new(),
         total_beats: 64.0,
         music_loop_beats: 64.0,
-        count_in_beats: 3.0,
+        count_in_beats: COUNT_IN_BEATS,
     }
 }
 
@@ -1863,6 +2306,32 @@ mod tests {
         );
         let middle = lerp_color(Color32::BLACK, Color32::WHITE, 0.5);
         assert!(middle.r() > 120 && middle.r() < 136);
+    }
+
+    #[test]
+    fn tune_rotation_advances_in_order_and_wraps() {
+        assert_eq!(next_rotation_index(None, 0), None);
+        assert_eq!(next_rotation_index(None, 1), None);
+        assert_eq!(next_rotation_index(Some(0), 1), None);
+        assert_eq!(next_rotation_index(None, 3), Some(0));
+        assert_eq!(next_rotation_index(Some(0), 3), Some(1));
+        assert_eq!(next_rotation_index(Some(1), 3), Some(2));
+        assert_eq!(next_rotation_index(Some(2), 3), Some(0));
+    }
+
+    #[test]
+    fn only_a_real_loop_wrap_starts_a_new_pass() {
+        // A normal wrap from the end of a pass into the count of the next.
+        assert!(pass_wrapped(63.99, 0.02));
+        // Ordinary forward motion inside a pass.
+        assert!(!pass_wrapped(10.0, 10.05));
+        // Starting a run at the count-in is not a wrap.
+        assert!(!pass_wrapped(0.0, -2.9));
+        // Pausing and resuming keeps the same beat.
+        assert!(!pass_wrapped(32.0, 32.0));
+        // A deliberate restart resets the stored beat, so it cannot look like
+        // a wrap either.
+        assert!(!pass_wrapped(0.0, 0.0));
     }
 }
 

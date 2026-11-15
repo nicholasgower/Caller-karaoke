@@ -70,11 +70,13 @@ call “larks allemande left once and a half”, which is 4.5 beats of speech pl
 | --- | ---: | ---: | ---: |
 | `swing` | 1.0 beat | 2.0 beats | 1.0 s before the move |
 | `circle left three` | 2.0 beats | 3.0 beats | 1.5 s before the move |
-| `neighbors do-si-do once` | 3.0 beats | 4.0 beats | 2.0 s before the move |
+| `neighbors do-si-do` | 2.5 beats | 3.5 beats | 1.75 s before the move |
 | `larks allemande left once and a half` | 4.5 beats | 5.5 beats | 2.75 s before the move |
 
 These values are illustrative and depend on the current alias text. The
-application computes the real values from the rendered words.
+application computes the real values from the rendered words. A count of one is
+omitted, so `neighbors do-si-do once` is called as `neighbors do-si-do` and gets
+the shorter lead shown.
 
 ## Syllable estimation
 
@@ -105,12 +107,13 @@ first padding      = 1 beat (default 0.5 s at 240 BPM)
 first call start   = -3 beats
 ```
 
-The count-in is not a clamp. The app shows and speaks the first call during the
+With the four-beat count-in, that call begins one beat into the count-in. The
+count-in is not a clamp. The app shows and speaks the first call during the
 count-in when necessary. Do not "fix" this by starting the call at beat 0; that
 would make the first figure late.
 
 The transport cannot always reach the start of that lead: a lead can be longer
-than the three-beat count-in, and the count-in can be turned off. When playback
+than the four-beat count-in, and the count-in can be turned off. When playback
 starts at or after the first call's execute beat, TTS still speaks the first call
 as soon as the run starts (during the count-in, or at beat 0 without one). It is
 announced once per run; resuming a paused dance does not repeat it.
@@ -130,8 +133,10 @@ fit, otherwise the parts are split evenly.
 ## Calls must stay ordered
 
 Calls are sorted by call start beat, then by execute beat. The application does
-not reorder figures to hide an overlap. If two calls crowd each other, the
-answer is a shorter alias, a lower maximum speech lead, or a slower tempo.
+not reorder figures to hide an overlap. It also does not yet shorten a call
+automatically when two calls crowd each other; for now the answer is a shorter
+alias, a lower maximum speech lead, or a slower tempo. Time-aware call variants
+and collision-free scheduling are planned for a future release.
 
 ## The 64-beat grid
 

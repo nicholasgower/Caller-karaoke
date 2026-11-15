@@ -1,6 +1,6 @@
 ---
 title: Choosing a tune
-description: Search your saved tunes, organise them into folders, and download another ABC Session Tunes melody.
+description: Search your saved tunes, organise them into folders, build a tune set for cycling, and download another ABC Session Tunes melody.
 sidebar_position: 2
 ---
 
@@ -8,7 +8,22 @@ sidebar_position: 2
 offline; they are not the same as the temporary source cache. The bundled
 default, *Sandy Boys*, is in the list from first launch.
 
-The current tune stays loaded until you press **Use** or **Use this tune**.
+Unless **Cycle tunes** is on, the current tune stays loaded until you press
+**Use** or **Use this tune**.
+
+## Build a tune set for a long session
+
+For a real dance the music usually changes every few minutes. Add tunes to the
+**tune set** with **Add to tune set** on a saved tune (or **Add to set** on its
+list row), then turn on **Cycle tunes** in the session controls. Each saved tune
+can be in the set once; **In set** marks the ones that are already included, and
+selecting the button again removes a tune.
+
+The session line shows the current position and the next tune, and **Change
+tune every** sets how many 64-beat times through each tune stays. The default is
+eight, about four minutes at 240 BPM. Cyclic playback needs **Loop** on.
+
+<Shot id="tune-library-tune-set" />
 
 ## Find a saved tune
 

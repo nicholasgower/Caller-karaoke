@@ -50,7 +50,7 @@ export default function Home(): React.ReactElement {
             <h2>Bring your own tune</h2>
             <p>
               Search ABC Session Tunes by title, composer, key, meter, or genre.
-              The arranged loop is always 32 bars, with a three-beat count-in.
+              The arranged loop is always 32 bars, with a four-beat count-in.
             </p>
             <Link to="/docs/guides/choosing-a-tune">Choosing a tune →</Link>
           </article>

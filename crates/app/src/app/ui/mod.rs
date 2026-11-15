@@ -98,6 +98,7 @@ pub(super) enum LibraryAction {
     UseTune(Tune),
     RemoveTune(String),
     MoveTune { id: String, folder: Option<String> },
+    ToggleRotation(Tune),
 }
 
 /// A folder operation requested by the folder panel.
@@ -170,6 +171,7 @@ pub(super) fn upcoming_move_card(
 pub(super) struct SessionControlChanges {
     timeline_dirty: bool,
     music_dirty: bool,
+    rotation_dirty: bool,
     save: bool,
     action: Option<&'static str>,
 }

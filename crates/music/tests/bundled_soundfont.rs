@@ -15,7 +15,8 @@
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, COUNT_IN_BEATS, MelodyInstrument,
+    SecondAccompaniment,
 };
 use contra_music::soundfont::{load_soundfont, render_soundfont};
 use contra_music::{Arrangement, RenderRequest, parse_abc};
@@ -39,9 +40,10 @@ fn request() -> RenderRequest {
         second_accompaniment: SecondAccompaniment::Accordion,
         melody_volume: 0.75,
         accompaniment_volume: 0.65,
-        count_in_beats: 3.0,
+        count_in_beats: COUNT_IN_BEATS,
         sample_rate: 24_000,
         variation_passes: 1,
+        ending: false,
     }
 }
 
@@ -97,7 +99,7 @@ fn bundled_font_renders_the_loop() {
     let request = request();
     let buffer = render_soundfont(&request, &font).expect("renders with the bundled font");
 
-    let expected_frames = 33.5 * request.sample_rate as f64;
+    let expected_frames = 34.0 * request.sample_rate as f64;
     assert!((buffer.frames() as f64 - expected_frames).abs() < 2.0);
     assert!(buffer.count_in_samples > 0);
     assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
@@ -109,6 +111,33 @@ fn bundled_font_renders_the_loop() {
         .iter()
         .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
     assert!(peak > 0.05, "bundled font rendered at peak {peak}");
+}
+
+#[test]
+fn bundled_font_renders_the_ending() {
+    let font = bundled();
+    let mut request = request();
+    request.ending = true;
+    let buffer =
+        render_soundfont(&request, &font).expect("renders the ending with the bundled font");
+
+    let ending_start = buffer.ending_start_sample.expect("ending region");
+    assert_eq!(ending_start, buffer.loop_end_sample);
+    assert!(buffer.frames() > buffer.loop_end_sample as usize);
+    assert!(buffer.in_ending(ending_start));
+    assert!(
+        buffer.samples[ending_start as usize * 2..]
+            .iter()
+            .any(|sample| sample.abs() > 0.001),
+        "the ending region must contain audio"
+    );
+    assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
+    assert!(
+        buffer.samples[buffer.samples.len() - 2..]
+            .iter()
+            .all(|sample| sample.abs() < 1e-6),
+        "the final frame must reach silence"
+    );
 }
 
 #[test]
