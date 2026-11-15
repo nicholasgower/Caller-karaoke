@@ -250,6 +250,9 @@ pub struct ContraApp {
     /// Keeps the window's logical size when it moves to a monitor with a
     /// different display scale.
     scale_guard: crate::window::ScaleGuard,
+    /// Takes the focus when the window first appears, so the app opens in front
+    /// of the windows that launched it.
+    launch_focus: crate::window::LaunchFocus,
     /// The About window is open. It is a modal over every screen.
     about_open: bool,
     dance: Dance,
@@ -534,6 +537,7 @@ impl ContraApp {
             screen_anim_screen: Screen::Session,
             headless: false,
             scale_guard: crate::window::ScaleGuard::default(),
+            launch_focus: crate::window::LaunchFocus::default(),
             about_open: false,
             dance,
             tune,
@@ -838,6 +842,7 @@ impl ContraApp {
             screen_anim_screen: Screen::Session,
             headless: true,
             scale_guard: crate::window::ScaleGuard::default(),
+            launch_focus: crate::window::LaunchFocus::default(),
             about_open: false,
             dance,
             tune,
@@ -1639,6 +1644,9 @@ impl ContraApp {
 impl eframe::App for ContraApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if !self.headless {
+            self.launch_focus.update(&ctx);
+        }
         if !self.headless && self.scale_guard.update(&ctx) {
             // The sheet music texture is rasterized at the density it was
             // rendered for and would be blurry on the new monitor.
