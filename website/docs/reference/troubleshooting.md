@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 description: Recover from audio, source, TTS, SoundFont, timing, and rendering problems.
-sidebar_position: 4
+sidebar_position: 6
 ---
 
 Most recoverable errors appear in a red panel at the bottom of the window.

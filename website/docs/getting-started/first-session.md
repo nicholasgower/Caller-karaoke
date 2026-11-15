@@ -1,7 +1,7 @@
 ---
 title: Your first session
 description: Choose a dance and a tune, set the tempo, and practise the calls in about five minutes.
-sidebar_position: 2
+sidebar_position: 6
 ---
 
 This is the shortest useful path through the app. It uses the bundled defaults
