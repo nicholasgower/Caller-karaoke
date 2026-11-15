@@ -170,6 +170,24 @@ more detail.
 - **`widget_tree` is hard to search** — use `content_contains`, then narrow with
   `role`, `id`, or `exclude`.
 
+## Headless documentation screenshots
+
+The docs site uses a separate headless renderer rather than the live MCP
+connection. It runs the same `ContraApp` with a silent transport, in-memory
+cache, stub speech, and no preference file:
+
+```sh
+cd website
+npm run screenshots
+```
+
+That writes raw PNGs to `website/screenshots/raw/`, drives `photocraft-cli` to
+draw the focus ring from `website/screenshots/emphasis.json`, and writes the
+final images to `website/static/img/screens/`. `npm run annotate` repeats only
+the PhotoCraft pass. The renderer opens no window, audio device, network client,
+or system TTS. It is the preferred path for repeatable CI screenshots; MCP is
+for interactive live-app inspection.
+
 ## Safety
 
 - Keep the inspection feature off in release builds. `cargo build --release -p

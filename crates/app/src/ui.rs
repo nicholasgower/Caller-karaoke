@@ -600,7 +600,7 @@ impl ContraApp {
         let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to session")
+                .button("< Back to session")
                 .on_hover_text("Back to session (Esc)")
                 .clicked()
             {
@@ -849,7 +849,7 @@ impl ContraApp {
         let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to session")
+                .button("< Back to session")
                 .on_hover_text("Back to session (Esc)")
                 .clicked()
             {
@@ -1128,7 +1128,7 @@ impl ContraApp {
         let before = self.prefs.clone();
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to session")
+                .button("< Back to session")
                 .on_hover_text("Back to session (Esc)")
                 .clicked()
             {
@@ -1543,7 +1543,7 @@ impl ContraApp {
     fn aliases_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to preferences")
+                .button("< Back to preferences")
                 .on_hover_text("Back to preferences (Esc)")
                 .clicked()
             {

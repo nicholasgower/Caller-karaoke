@@ -25,10 +25,12 @@ arc-swap = "1"
 cpal = "0.18"
 directories = "6"
 eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "accesskit", "links", "wayland", "x11", "android-native-activity"] }
+egui_kittest = { version = "0.37", default-features = false, features = ["eframe", "wgpu"] }
 egui_mcp = "0.3"
 ehttp = "0.7"
 env_logger = "0.11"
 epaint_default_fonts = "0.37"
+image = { version = "0.25", default-features = false, features = ["png"] }
 midly = "0.5"
 misaki-rs = { version = "0.3", default-features = false }
 ort = { version = "=2.0.0-rc.15", default-features = false }

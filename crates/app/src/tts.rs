@@ -197,6 +197,56 @@ impl Speech {
         }
     }
 
+    /// A silent speech coordinator for headless screenshots.
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    pub fn stub() -> Self {
+        Self {
+            platform: PlatformSpeech::stub(true, None),
+            kokoro: None,
+            status: SpeechStatus {
+                message: "Headless voice ready".into(),
+                progress: None,
+                ready: true,
+                error: None,
+            },
+            enabled: false,
+            rate: 1.0,
+            last_calls: Vec::new(),
+            voice_id: DEFAULT_VOICE_ID.to_string(),
+            pending_rate: None,
+            pending_kokoro_text: None,
+        }
+    }
+
+    /// A silent speech coordinator that reports no usable voice.
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    pub fn stub_unavailable() -> Self {
+        Self {
+            platform: PlatformSpeech::stub(false, Some("no system speech voice")),
+            kokoro: None,
+            status: SpeechStatus {
+                message: "Text-to-speech is not available on this system".into(),
+                progress: None,
+                ready: false,
+                error: Some("no system speech voice".into()),
+            },
+            enabled: false,
+            rate: 1.0,
+            last_calls: Vec::new(),
+            voice_id: DEFAULT_VOICE_ID.to_string(),
+            pending_rate: None,
+            pending_kokoro_text: None,
+        }
+    }
+
     pub fn available(&self) -> bool {
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
@@ -404,6 +454,8 @@ struct PlatformSpeech {
     tts: Option<tts::Tts>,
     error: Option<String>,
     rate: f32,
+    #[cfg(feature = "headless")]
+    available_override: Option<bool>,
 }
 
 impl PlatformSpeech {
@@ -412,6 +464,8 @@ impl PlatformSpeech {
             tts: None,
             error: None,
             rate: 1.0,
+            #[cfg(feature = "headless")]
+            available_override: None,
         };
         match tts::Tts::default() {
             Ok(tts) => {
@@ -423,7 +477,22 @@ impl PlatformSpeech {
         speech
     }
 
+    /// A no-op platform backend for headless screenshots.
+    #[cfg(feature = "headless")]
+    fn stub(available: bool, error: Option<&str>) -> Self {
+        Self {
+            tts: None,
+            error: error.map(str::to_string),
+            rate: 1.0,
+            available_override: Some(available),
+        }
+    }
+
     fn available(&self) -> bool {
+        #[cfg(feature = "headless")]
+        if let Some(available) = self.available_override {
+            return available;
+        }
         self.tts.is_some()
     }
 
