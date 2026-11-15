@@ -7,8 +7,9 @@ Contra Karaoke is a caller-training app for contra dancing. It behaves like a
 karaoke machine for callers: the dance card and a moving call prompt show the
 caller what to say, while ABC-sourced music plays in sync. Calls are timed to
 land **before** the dancers execute each figure, with lead time derived from how
-long the words take to say. The same Rust codebase targets Windows, Linux, the
-web (WASM), and Android.
+long the words take to say. The same engine is also intended to call a dance on
+its own after 0.1.0; §17 records both goals. The same Rust codebase targets
+Windows, Linux, the web (WASM), and Android.
 
 The chapters under [`docs/roadmap/`](docs/roadmap/goals.md) are the source of
 truth; this index only links them. Each chapter keeps its original section
@@ -32,3 +33,4 @@ number, so a reference such as "ROADMAP.md §7" still points at the same text.
 14. [Future work (post-0.1.0)](docs/roadmap/future-work.md)
 15. [Decision log](docs/roadmap/decision-log.md)
 16. [Open items](docs/roadmap/open-items.md)
+17. [Calling and teaching](docs/roadmap/calling-and-teaching.md)

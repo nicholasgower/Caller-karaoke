@@ -15,7 +15,7 @@
   - Karaoke states: *upcoming*, *call now*, *executing*. Once a figure is
     executing, the prompt becomes an *upcoming move* box naming the move to
     call next.
-  - Beat/progress bar and a 3-2-1 count-in display.
+  - Beat/progress bar and a 4-3-2-1 count-in display.
 - On narrow screens the current call is pinned; the card scrolls below it.
 
 ### 3.2 Select dance
@@ -145,3 +145,11 @@ Default alias style examples:
 
 These defaults are meant to be editable; the exact list will be reviewed with
 an experienced caller during Milestone 4.
+
+### 3.7 Planned calling and teaching features
+
+Call variants, collision-free scheduling, call support and thinning, walkthrough
+mode, loop endings, and practice feedback are post-0.1.0 work. They are
+described, prioritised, and sourced in §17 (Calling and teaching). The
+autonomous-caller goal is also recorded there; choreography-dependent features
+remain gated on a dance model.
