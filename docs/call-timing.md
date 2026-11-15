@@ -67,6 +67,15 @@ When the dance loops, the same call is scheduled again at
 `music_loop_beats - lead_beats`; the UI and TTS treat that as a wrapped call at
 the end of the loop so the first move of the next repetition is still called.
 
+The transport cannot always reach the start of that first lead. A lead can be
+longer than the three-beat count-in, and the count-in can be turned off, so
+playback may begin at or after the first call's execute beat. The TTS still
+speaks the first call as soon as a run starts (at the count-in, or at beat 0
+when there is no count-in); it is never dropped just because its lead window
+had already begun. `PracticeTimeline::starting_call` reports that call, and the
+app consumes it once per run from the top. Resuming a paused dance does not
+repeat it.
+
 ## Sub-calls and grid
 
 - A figure is split on ` - ` or `;`, but `&` is kept as "and". "balance & swing"

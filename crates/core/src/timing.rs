@@ -397,6 +397,24 @@ impl PracticeTimeline {
         Some(self.make_scheduled(index, wrapped))
     }
 
+    /// The first call to speak when a playback run starts at `beat`.
+    ///
+    /// The first call of a dance usually begins during the count-in. A lead can
+    /// be longer than the three-beat count-in, though, and the count-in can be
+    /// turned off entirely. In both cases the transport cannot reach the start
+    /// of the call's lead, so [`ScheduledCall::is_calling`] is already false
+    /// when playback begins and the first move would go uncalled. This returns
+    /// the first call for as long as its figure is current, so a new run can
+    /// speak it immediately instead of dropping it.
+    ///
+    /// Returns `None` before the call's lead opens (so a short lead is still
+    /// spoken at its proper time) and once the first figure has ended.
+    pub fn starting_call(&self, beat: f64) -> Option<ScheduledCall> {
+        let first = self.calls.first()?;
+        let in_window = beat >= first.call_start_beat && beat < first.end_beat;
+        in_window.then(|| self.make_scheduled(0, false))
+    }
+
     /// The next call to begin after `beat`, taking loop wrapping into account.
     pub fn next_scheduled_call(&self, beat: f64, looping: bool) -> Option<ScheduledCall> {
         let normal = self
@@ -606,6 +624,115 @@ mod tests {
             first.call_start_beat
         );
         assert_eq!(first.execute_beat, 0.0);
+    }
+
+    #[test]
+    fn starting_call_is_available_when_the_count_in_is_off() {
+        let timeline = PracticeTimeline::build(
+            &another_last_dance(),
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &LeadSettings::default(),
+            Tempo::default(),
+            TimelineConfig {
+                count_in_beats: 0.0,
+                ..TimelineConfig::default()
+            },
+        )
+        .expect("timeline");
+
+        // Without a count-in the transport starts on the execute beat, so the
+        // normal lead window has already closed. The first move must still be
+        // called.
+        let first = &timeline.calls[0];
+        assert!(first.call_start_beat < 0.0);
+        assert!(
+            !timeline
+                .scheduled_call_at(0.0, true)
+                .is_some_and(|call| call.is_calling(0.0)),
+            "the lead window is already over at beat 0"
+        );
+
+        let starting = timeline.starting_call(0.0).expect("first call");
+        assert_eq!(starting.index, 0);
+        assert_eq!(starting.call.text, "neighbors do-si-do once");
+        assert_eq!(starting.execute_beat, 0.0);
+    }
+
+    #[test]
+    fn starting_call_waits_for_a_lead_inside_the_count_in() {
+        let mut dance = another_last_dance();
+        dance.figures = vec![
+            Figure::new(Some("A1".into()), 8.0, "neighbors swing"),
+            Figure::new(None, 56.0, "neighbors swing"),
+        ];
+        let lead = LeadSettings {
+            auto: false,
+            manual_beats: 1.0,
+            ..LeadSettings::default()
+        };
+        let timeline = PracticeTimeline::build(
+            &dance,
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &lead,
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+        let first = &timeline.calls[0];
+        // A one-beat manual lead plus the 0.5 s padding starts at beat -2,
+        // after the count-in has already begun.
+        assert_eq!(first.call_start_beat, -2.0);
+
+        assert!(timeline.starting_call(-3.0).is_none());
+        let starting = timeline
+            .starting_call(first.call_start_beat)
+            .expect("first call at its lead");
+        assert_eq!(starting.index, 0);
+    }
+
+    #[test]
+    fn starting_call_ends_with_the_first_figure() {
+        let timeline = PracticeTimeline::build(
+            &another_last_dance(),
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &LeadSettings::default(),
+            Tempo::default(),
+            TimelineConfig::default(),
+        )
+        .expect("timeline");
+        let first = &timeline.calls[0];
+
+        assert!(timeline.starting_call(first.end_beat - 0.01).is_some());
+        assert!(timeline.starting_call(first.end_beat).is_none());
+        assert!(timeline.starting_call(30.0).is_none());
+    }
+
+    #[test]
+    fn starting_call_covers_a_32_beat_dance() {
+        let mut dance = another_last_dance();
+        dance.figures = vec![
+            Figure::new(Some("A1".into()), 8.0, "neighbors do si do once"),
+            Figure::new(None, 8.0, "ladles allemande left 1½"),
+            Figure::new(None, 8.0, "circle left 3 places"),
+            Figure::new(None, 8.0, "partners swing"),
+        ];
+        let timeline = PracticeTimeline::build(
+            &dance,
+            &AliasTable::default(),
+            &RoleTerms::default(),
+            &LeadSettings::default(),
+            Tempo::default(),
+            TimelineConfig {
+                count_in_beats: 0.0,
+                ..TimelineConfig::default()
+            },
+        )
+        .expect("timeline");
+        assert_eq!(timeline.total_beats, 32.0);
+        assert_eq!(timeline.starting_call(0.0).expect("first call").index, 0);
     }
 
     #[test]

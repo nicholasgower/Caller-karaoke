@@ -360,7 +360,10 @@ Example at 240 BPM:
 The first call of a dance may fall at a negative beat (inside the count-in).
 That is intentional and must be displayed/spoken. When the dance loops, the
 same call is also scheduled at `music_loop_beats - lead_beats` so the first move
-is called near the end of the previous loop.
+is called near the end of the previous loop. If the lead begins before the
+transport can reach it — a lead longer than the count-in, or the count-in turned
+off — the first call is spoken as soon as the run starts instead of being
+dropped. Resuming a paused dance does not repeat it.
 
 Syllable estimation:
 

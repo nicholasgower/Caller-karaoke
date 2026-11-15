@@ -145,6 +145,9 @@ pub struct ContraApp {
     length_warning: Option<String>,
     last_spoken: Option<f64>,
     last_beat: f64,
+    /// A playback run just started at the top of the dance, so the first call
+    /// may need to be announced even if its lead already began.
+    first_call_pending: bool,
     cache_clear_confirm: bool,
     alias_filter: String,
     custom_key: String,
@@ -272,6 +275,7 @@ impl ContraApp {
             length_warning,
             last_spoken: None,
             last_beat: 0.0,
+            first_call_pending: false,
             cache_clear_confirm: false,
             alias_filter: String::new(),
             custom_key: String::new(),
@@ -462,12 +466,18 @@ impl ContraApp {
         if let Some(beat) = resume_beat {
             self.audio.seek_beat(beat);
             self.last_beat = beat;
-            // Do not repeat a call that was already being spoken.
-            self.last_spoken = self
-                .timeline
-                .scheduled_call_at(beat, self.prefs.loop_enabled)
-                .filter(|call| call.is_calling(beat))
-                .map(|call| call.start_beat);
+            // A render that lands mid-call while the music is already playing
+            // must not repeat that call. When the transport was not running,
+            // nothing has been spoken for this position, so the call must stay
+            // eligible — otherwise the first call of a freshly selected dance
+            // is marked as spoken before it is ever heard.
+            if was_playing {
+                self.last_spoken = self
+                    .timeline
+                    .scheduled_call_at(beat, self.prefs.loop_enabled)
+                    .filter(|call| call.is_calling(beat))
+                    .map(|call| call.start_beat);
+            }
         }
         if was_playing {
             self.audio.play();
@@ -508,6 +518,10 @@ impl ContraApp {
             self.audio.play();
             self.started = true;
             self.status = "Playing".into();
+            // A resume keeps the call the caller was already speaking; only a
+            // run from the top of the dance may need to announce the first
+            // call.
+            self.first_call_pending = self.last_spoken.is_none() && self.current_beat() <= 0.0;
         }
     }
 
@@ -523,6 +537,7 @@ impl ContraApp {
         self.last_beat = 0.0;
         self.audio.restart();
         self.started = true;
+        self.first_call_pending = true;
         self.status = "Playing".into();
     }
 
@@ -620,7 +635,24 @@ impl ContraApp {
             self.last_spoken = None;
         }
         self.last_beat = beat;
+        // The first call's lead usually starts before the count-in and can
+        // start before the transport does when the count-in is off or shorter
+        // than the lead. Capture it before the speech gates so a run that
+        // starts with speech disabled never announces a finished first figure.
+        let starting = if self.first_call_pending {
+            self.timeline.starting_call(beat)
+        } else {
+            None
+        };
+        self.first_call_pending = false;
         if !self.prefs.tts_enabled || !self.speech.available() || !self.audio.is_playing() {
+            return;
+        }
+        if let Some(call) = starting
+            && self.last_spoken != Some(call.start_beat)
+        {
+            self.speech.speak(&call.call.text);
+            self.last_spoken = Some(call.start_beat);
             return;
         }
         if let Some(call) = self
