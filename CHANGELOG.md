@@ -14,7 +14,8 @@ Keep a Changelog and the project uses Conventional Commits.
   syllable-based early call timing, calibrated to a measured 2.25 s delivery of
   “larks allemande left once and a half”.
 - ABC parsing (notes, chords, repeats, ties, keys, meters), chord inference,
-  and a 64-beat arrangement.
+  and a 64-beat arrangement that plays a pickup only during the count-in and
+  never repeats it.
 - Built-in fiddle/accordion/piano/guitar synthesizer and offline PCM rendering.
 - Optional user-supplied SoundFont rendering through `rustysynth`.
 - Standard MIDI File export.

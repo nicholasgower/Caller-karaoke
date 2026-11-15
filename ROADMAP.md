@@ -424,7 +424,10 @@ and keep the previous tune loaded. Do not panic.
   boundaries. If it is longer, take the first 32 bars, preferring complete
   parts.
 - Align the loop to bar boundaries.
-- Preserve pickup notes: place them immediately before beat 0 if needed.
+- Preserve pickup notes separately: they play during the count-in only and are
+  **not** included when the music loop repeats. If the body is a fraction of a
+  bar short of the loop (as with Sandy Boys), hold the final note rather than
+  repeating the opening notes to fill the gap.
 - Apply a short fade at loop boundaries to avoid clicks.
 - Chords: use quoted symbols; when absent, infer a simple diatonic progression
   from the key and strong-beat melody notes, and tell the user.

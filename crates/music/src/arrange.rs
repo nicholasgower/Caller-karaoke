@@ -77,10 +77,29 @@ impl Arrangement {
             });
         }
 
-        let repeats = (loop_beats / body_len).ceil().max(1.0) as usize;
+        // A pickup is deliberately excluded from `body`: it is returned
+        // separately and played only in the count-in, so it is never repeated
+        // when the loop wraps. If the body is only a fraction of a bar short of
+        // the loop (a common pickup/ending consequence), hold the final note
+        // rather than repeating the opening notes at the end of the loop.
+        let mut loop_body_len = body_len;
+        if body_len < loop_beats && loop_beats - body_len <= 2.0 {
+            if let Some(last) = body
+                .iter_mut()
+                .max_by(|a, b| a.start_beat.total_cmp(&b.start_beat))
+            {
+                let end = last.end_beat().min(loop_beats);
+                if end > last.start_beat {
+                    last.duration_beats = (loop_beats - last.start_beat).max(0.0);
+                }
+            }
+            loop_body_len = loop_beats;
+        }
+
+        let repeats = (loop_beats / loop_body_len).ceil().max(1.0) as usize;
         let mut melody = Vec::new();
         for repeat in 0..repeats {
-            let offset = repeat as f64 * body_len;
+            let offset = repeat as f64 * loop_body_len;
             for note in &body {
                 let note_start = note.start_beat + offset;
                 let note_end = note.end_beat() + offset;
@@ -117,7 +136,7 @@ impl Arrangement {
 
         let mut chords = Vec::new();
         for repeat in 0..repeats {
-            let offset = repeat as f64 * body_len;
+            let offset = repeat as f64 * loop_body_len;
             for chord in &body_chords {
                 let chord_start = chord.start_beat + offset;
                 if chord_start >= loop_beats {
@@ -396,6 +415,7 @@ mod tests {
         let arrangement = Arrangement::from_score(&score, 64.0);
         assert_eq!(arrangement.loop_beats, 64.0);
         assert!(!arrangement.pickup.is_empty(), "Sandy Boys has a pickup");
+        assert!(arrangement.pickup.iter().all(|note| note.start_beat < 0.0));
         assert!(!arrangement.melody.is_empty());
         assert!(!arrangement.chords.is_empty());
         assert!(
@@ -404,6 +424,33 @@ mod tests {
                 .iter()
                 .all(|note| note.start_beat >= 0.0 && note.start_beat < 64.0)
         );
+        assert!(
+            arrangement
+                .melody
+                .iter()
+                .all(|note| note.end_beat() <= 64.0 + 1e-6)
+        );
+        let last_start = arrangement
+            .melody
+            .iter()
+            .map(|note| note.start_beat)
+            .fold(0.0_f64, f64::max);
+        assert!(
+            last_start < 63.5,
+            "the loop should not repeat the opening notes to fill the last beats"
+        );
         assert_eq!(arrangement.count_in_chord().symbol(), "A");
+    }
+
+    #[test]
+    fn pickup_is_only_returned_outside_the_loop() {
+        // The pickup is returned in `pickup` with negative beats; the loop
+        // body is built from `start` onward. The audio callback loops from the
+        // end of the count-in, so this negative material is played only once.
+        let abc = include_str!("../../../assets/defaults/sandy_boys.abc");
+        let score = crate::abc::parse_abc(abc).expect("parse bundled tune");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        assert!(!arrangement.pickup.is_empty());
+        assert!(arrangement.melody.iter().all(|note| note.start_beat >= 0.0));
     }
 }
