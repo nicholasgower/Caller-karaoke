@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# SoundFont sample data is binary; never normalize it.
+*.sf2 binary

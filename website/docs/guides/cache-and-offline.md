@@ -60,7 +60,8 @@ from the **Download dance** or **Download tune** screen.
 </Steps>
 
 Clearing the cache does not remove preferences, saved dances and tunes, the
-bundled defaults, a loaded SoundFont, or the cached neural voice files.
+bundled defaults and bundled soundfont, a SoundFont you loaded, or the cached
+neural voice files.
 
 There is no cache-size display or manual refresh button in the current UI. Use
 the normal search action to fetch fresh content after clearing. To refresh a

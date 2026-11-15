@@ -41,7 +41,7 @@ highlighted card row.
   ContraDB or ABC Session Tunes. The bundled defaults and anything already in
   your saved library work offline.
 - Optionally, a system text-to-speech voice and, on desktop, a user-supplied
-  `.sf2` SoundFont.
+  `.sf2` SoundFont. The bundled Fluid R3 GM subset needs no download.
 
 ## The defaults
 

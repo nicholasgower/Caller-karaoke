@@ -92,8 +92,8 @@ content. Online search will fail.
 ## Browser limits
 
 - Audio starts only after **Play**.
-- The web build cannot load a SoundFont from a file in 0.1.0; use the built-in
-  synth.
+- The web build cannot load a SoundFont from a file in 0.1.0; it plays the
+  bundled Fluid R3 GM subset.
 - MIDI export is not available in the web build yet; the app reports that when
   you select **Export MIDI…**.
 - TTS depends on the browser's installed voices. If none are available, the

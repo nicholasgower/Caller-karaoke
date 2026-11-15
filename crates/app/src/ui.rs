@@ -199,9 +199,12 @@ impl ContraApp {
             );
             ui.add_space(8.0);
             ui.label(
-                egui::RichText::new("MIT licensed. Bundled defaults are attributed in CREDITS.md.")
-                    .small()
-                    .color(theme::muted(ui)),
+                egui::RichText::new(
+                    "MIT licensed. Default instruments are a Fluid R3 GM subset by Frank Wen \
+                     (MIT). Bundled defaults are attributed in CREDITS.md.",
+                )
+                .small()
+                .color(theme::muted(ui)),
             );
             ui.add_space(8.0);
             if ui.button("Close").clicked() {
@@ -2477,8 +2480,15 @@ impl ContraApp {
                 .soundfont
                 .as_ref()
                 .map(|setting| setting.name.clone())
-                .unwrap_or_else(|| "None (built-in synth)".into());
+                .unwrap_or_else(|| "Bundled: Fluid R3 GM".into());
             ui.label(current);
+            ui.label(
+                egui::RichText::new(
+                    "Sampled instruments from Fluid R3 GM (MIT, Frank Wen). Load an .sf2 to use a different bank.",
+                )
+                .small()
+                .color(theme::muted(ui)),
+            );
             if let Some(error) = &self.soundfont_error {
                 ui.colored_label(theme::error(ui), error);
             }
@@ -2486,7 +2496,7 @@ impl ContraApp {
                 if ui.button("Load .sf2…").clicked() {
                     self.load_soundfont();
                 }
-                if self.prefs.soundfont.is_some() && ui.button("Remove").clicked() {
+                if self.prefs.soundfont.is_some() && ui.button("Use bundled").clicked() {
                     self.remove_soundfont();
                 }
             });

@@ -141,7 +141,11 @@ pub struct ContraApp {
     tune: Tune,
     timeline: PracticeTimeline,
     arrangement: Option<Arrangement>,
+    /// A font the user loaded; `None` means use the bundled one.
     soundfont: Option<Arc<SoundFont>>,
+    /// The bundled subset, loaded on the first render.
+    bundled_soundfont: Option<Arc<SoundFont>>,
+    bundled_soundfont_checked: bool,
     soundfont_error: Option<String>,
     needs_render: bool,
     /// Playback settings changed and need a render once the user stops
@@ -276,12 +280,33 @@ impl ContraApp {
         speech.prewarm(call_texts(&timeline));
         let length_warning = length_warning_for(&dance, &tune);
 
-        let soundfont = prefs
+        // A saved font that no longer loads must not be reported as active: the
+        // bundled instruments take its place, so say why.
+        let mut soundfont_error = None;
+        let soundfont = match prefs
             .soundfont
             .as_ref()
             .and_then(|setting| setting.path.as_ref())
-            .and_then(|path| std::fs::read(path).ok())
-            .and_then(|bytes| contra_music::soundfont::load_soundfont(&bytes).ok());
+        {
+            None => None,
+            Some(path) => match std::fs::read(path) {
+                Ok(bytes) => match contra_music::soundfont::load_soundfont(&bytes) {
+                    Ok(soundfont) => Some(soundfont),
+                    Err(error) => {
+                        soundfont_error = Some(format!(
+                            "Could not load the saved SoundFont; using the bundled instruments: {error}"
+                        ));
+                        None
+                    }
+                },
+                Err(error) => {
+                    soundfont_error = Some(format!(
+                        "Could not read the saved SoundFont; using the bundled instruments: {error}"
+                    ));
+                    None
+                }
+            },
+        };
 
         theme::apply(&cc.egui_ctx, prefs.theme, prefs.animations_enabled);
 
@@ -304,7 +329,9 @@ impl ContraApp {
             timeline,
             arrangement: None,
             soundfont,
-            soundfont_error: None,
+            bundled_soundfont: None,
+            bundled_soundfont_checked: false,
+            soundfont_error,
             needs_render: true,
             pending_audio: false,
             render_loading: false,
@@ -600,6 +627,8 @@ impl ContraApp {
             timeline,
             arrangement: None,
             soundfont: None,
+            bundled_soundfont: None,
+            bundled_soundfont_checked: false,
             soundfont_error: None,
             needs_render: true,
             pending_audio: false,
@@ -681,6 +710,27 @@ impl ContraApp {
         }
     }
 
+    /// The font to render with: the user's file, else the bundled subset.
+    ///
+    /// The bundled font is parsed on first use, because loading ~15 MB of
+    /// sample data is wasted work until the user actually presses Play. A font
+    /// that fails to load leaves `None`, so the built-in synth takes over.
+    fn active_soundfont(&mut self) -> Option<Arc<SoundFont>> {
+        if let Some(soundfont) = &self.soundfont {
+            return Some(Arc::clone(soundfont));
+        }
+        if !self.bundled_soundfont_checked {
+            self.bundled_soundfont = defaults::default_soundfont();
+            self.bundled_soundfont_checked = true;
+            if self.bundled_soundfont.is_none() {
+                self.soundfont_error = Some(
+                    "The bundled instruments could not be loaded; using the built-in synth.".into(),
+                );
+            }
+        }
+        self.bundled_soundfont.clone()
+    }
+
     /// Parse and render the current tune with the current playback settings.
     fn render_music(&mut self) -> Option<(AudioBuffer, Arrangement)> {
         let score = match parse_abc(&self.tune.abc) {
@@ -717,7 +767,8 @@ impl ContraApp {
                 1
             },
         };
-        match render(&request, self.soundfont.as_ref()) {
+        let soundfont = self.active_soundfont();
+        match render(&request, soundfont.as_ref()) {
             Ok(buffer) => Some((buffer, arrangement)),
             Err(error) => {
                 self.error = Some(format!("Could not render music: {error}"));

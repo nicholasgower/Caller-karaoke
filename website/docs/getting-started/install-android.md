@@ -63,8 +63,8 @@ whether a SoundFont was loaded in the issue report.
 ## Current Android limitations
 
 - Real-device audio and TTS testing is incomplete.
-- Loading a SoundFont from a file is not available in this build yet; use the
-  built-in synth.
+- Loading a SoundFont from a file is not available in this build yet; the
+  bundled Fluid R3 GM subset is used instead.
 - MIDI export is not available in this build yet.
 - There is no Play Store release. Use the nightly APK or build from source.
 - Preferences and the source cache use the app's private storage; clearing app

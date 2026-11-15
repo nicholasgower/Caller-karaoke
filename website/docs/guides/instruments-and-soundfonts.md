@@ -5,7 +5,9 @@ sidebar_position: 6
 ---
 
 Contra Karaoke imitates a small contra band: a melody instrument and a chordal
-accompaniment. The built-in synthesizer needs no downloaded assets.
+accompaniment. Playback uses sampled instruments from a bundled subset of the
+Fluid R3 GM soundfont, so the app sounds like a band on first launch without any
+downloads.
 
 ## Choose instruments
 
@@ -74,39 +76,49 @@ keeping the current beat. If the session is not playing, press **Play** to
 render and start.
 Session **Volume** changes apply immediately to the existing buffer.
 
-## Optional SoundFont
+## Soundfont
 
-The built-in synth is the default and always works. If you have a `.sf2` or
-`.sf3` file on Windows or Linux, you can use it for more realistic instruments.
-The browser and Android builds cannot load a SoundFont from a file in 0.1.0;
-the Soundfont section reports that limitation. The project does not bundle a
-SoundFont, and you are responsible for the file's license.
+**Bundled: Fluid R3 GM** is the default. It is a trimmed subset of Frank Wen's
+Fluid R3 General MIDI soundfont, which is MIT licensed; `CREDITS.md` records the
+full notice. The subset contains only the four programs in the table below
+(accordion serves both parts), which is why it is about 15 MB instead of the
+141 MB full bank. It needs no network access and is available on every platform,
+including the browser and Android builds.
+
+If you have a `.sf2` file on Windows or Linux, you can load it to replace the
+bundled instruments for the session. The browser and Android builds cannot load
+a SoundFont from a file in 0.1.0. A file you load is your responsibility,
+including its license.
 
 <Steps>
   <Step shot="prefs-sf2-loaded">
     On Windows or Linux, open **Preferences → Soundfont**, select **Load
-    .sf2…**, and choose a file. The section shows the loaded name and a
-    **Remove** button.
+    .sf2…**, and choose a file. The section shows the loaded name and a **Use
+    bundled** button.
   </Step>
   <Step shot="prefs-sf2-removed">
-    Select **Remove** to return to **None (built-in synth)**.
+    Select **Use bundled** to return to the packaged **Bundled: Fluid R3 GM**
+    instruments.
   </Step>
 </Steps>
 
-With a SoundFont active, the app maps the chosen instruments to General MIDI
-programs:
+The chosen instruments map to General MIDI programs in either font:
 
-| Instrument | GM program |
-| --- | --- |
-| Fiddle (melody) | 40 — Violin |
-| Accordion (melody) | 21 — Accordion |
-| Piano (accompaniment) | 0 — Acoustic Grand Piano |
-| Guitar (accompaniment) | 25 — Acoustic Guitar (steel) |
-| Accordion (accompaniment) | 21 — Accordion |
+| Instrument | GM program | In the bundled subset |
+| --- | --- | --- |
+| Fiddle (melody) | 40 — Violin | Yes |
+| Accordion (melody) | 21 — Accordion | Yes |
+| Piano (accompaniment) | 0 — Acoustic Grand Piano | Yes |
+| Guitar (accompaniment) | 25 — Acoustic Guitar (steel) | Yes |
+| Accordion (accompaniment) | 21 — Accordion | Yes |
 
-If the SoundFont does not contain a program, the result depends on the file and
-may be silent for that part. Remove the SoundFont to return to the built-in
-voices.
+If a font you load does not contain one of those programs, the result depends on
+the file and may be silent for that part. Choose **Use bundled** to go back to
+the packaged instruments.
+
+If neither font can be loaded, the app falls back to a small built-in
+synthesizer so playback still works. That fallback is not selectable from the
+interface.
 
 <Shot id="error-sf2" />
 
