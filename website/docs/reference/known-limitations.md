@@ -22,12 +22,12 @@ development release. These are the limitations to know before relying on it.
 
 ## Features
 
-- **SoundFont loading** is desktop-only; the browser and Android builds use the
-  built-in synth.
+- **SoundFont loading** is desktop-only; the browser and Android builds play the
+  bundled Fluid R3 GM subset.
 - **MIDI export** is desktop-only; the browser and Android builds report that it
   is unavailable.
-- A **SoundFont is not bundled**. You supply the file and are responsible for
-  its license.
+- A **SoundFont you load** is your responsibility, including its license. The
+  bundled subset is MIT licensed and credited in `CREDITS.md`.
 - **TTS** uses the local Kokoro neural voice on desktop. The model and selected
   voice are downloaded on first use and then cached; a first run without a
   network connection falls back to the platform voice. Web and Android always

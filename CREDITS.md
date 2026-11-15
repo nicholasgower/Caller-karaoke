@@ -103,6 +103,52 @@ See the `egui`/`epaint` source for the exact font files and notices.
 - **Pronunciation review** — see `docs/pronunciation.md` for the dance terms
   that needed an override and the tests that pin them.
 
+## Soundfont
+
+- **Fluid R3 GM** — <https://github.com/Jacalz/fluid-soundfont> (the file
+  distributed in the Debian `fluid-soundfont-gm` package). Copyright © 2000–2002,
+  2008 Frank Wen; © 2008 Toby Smithe. MIT licensed. Contra Karaoke bundles a
+  **subset** (`assets/defaults/fluid-r3-gm-subset.sf2`) containing only the GM
+  programs the instrument preferences use: Acoustic Grand Piano (0), Accordion
+  (21), Acoustic Guitar (steel, 25) and Violin (40). The subset is produced with
+  `scripts/soundfont-subset.py`; it keeps the selected presets' generators,
+  modulators and sample data unchanged, so it renders identically to the full
+  bank for those programs. The full 141 MB bank is not redistributed, and a user
+  can still load any other `.sf2`.
+
+  ```text
+  Fluid (R3) SoundFont
+
+  Copyright (c) 2000-2002, 2008 Frank Wen <getfrank@gmail.com>
+  Copyright (c) 2008 Toby Smithe
+
+  I hereby release Fluid under the MIT license, as described in COPYING.
+
+  Permission is hereby granted, free of charge, to any person
+  obtaining a copy of this software and associated documentation
+  files (the "Software"), to deal in the Software without
+  restriction, including without limitation the rights to use,
+  copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  OTHER DEALINGS IN THE SOFTWARE.
+  ```
+
+  A user-supplied SoundFont remains the user's responsibility, including its
+  license; the app only stores its display name and path.
+
 ## Data sources
 
 - **ContraDB** — <https://contradb.com>. Dance transcriptions are contributed

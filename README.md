@@ -16,14 +16,16 @@ Android. Version **0.1.0** is the current development version.
   [documentation site](https://storytold.github.io/Contra-karaoke/play/).
 - ContraDB dance search and HTML dance-card parsing.
 - ABC Session Tunes search and JSON tune parsing.
-- ABC → score → 64-beat arrangement → built-in synth playback.
+- ABC → score → 64-beat arrangement → sampled playback with the bundled
+  Fluid R3 GM subset (MIT), or a user-supplied `.sf2`.
 - Three-beat accompaniment count-in built from the tune's first chord.
 - On by default: small accompaniment variations each time the loop repeats —
   extra emphasis notes and, now and then, a bar left to the melody alone.
 - Call timeline with syllable-based early calls, aliases, and role terms.
 - Local Kokoro-82M neural voice on desktop, with a platform TTS fallback on
   web/Android and a reviewed dance-term pronunciation lexicon.
-- User-supplied `.sf2` soundfont support via `rustysynth`.
+- User-supplied `.sf2` soundfont support via `rustysynth`; the bundled Fluid R3
+  GM subset is the default voice.
 - MIDI export of the arranged loop.
 - Source cache with TTLs and offline fallback.
 - Bundled defaults: *Another Last Dance* and *Sandy Boys*.
@@ -151,10 +153,11 @@ with the bundled defaults and cached content.
 
 ## Soundfont
 
-The built-in synthesizer needs no assets. To use realistic samples, load an
-`.sf2` under **Preferences → Soundfont**. The file is copied/remembered locally
-and is never bundled or redistributed by Contra Karaoke. You are responsible
-for its license.
+Playback uses a bundled subset of the MIT-licensed Fluid R3 GM soundfont, so no
+download is needed for realistic samples. To use a different bank, load an
+`.sf2` under **Preferences → Soundfont**; choose **Use bundled** to go back. A
+file you load is remembered locally and is never redistributed by Contra
+Karaoke. You are responsible for its license.
 
 ## Building and testing
 

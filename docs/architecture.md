@@ -15,7 +15,7 @@ The data flow is:
 UI -> SourceClient -> provider request/parser -> Dance/Tune
    -> AliasTable + PracticeTimeline -> CallEvent list
    -> ABC parser -> Score -> Arrangement (64 beats)
-   -> built-in synth or user SoundFont -> PCM buffer -> cpal
+   -> bundled SoundFont, user SoundFont, or built-in synth -> PCM buffer -> cpal
    -> MIDI export
 ```
 

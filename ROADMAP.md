@@ -30,8 +30,8 @@ The same Rust codebase targets Windows, Linux, the web (WASM), and Android.
 - Recording or scoring the caller's voice.
 - iOS/macOS releases (the code should remain portable, but these are not
   release targets yet).
-- Bundling a general-purpose soundfont or redistributing a third-party tune or
-  dance database.
+- Bundling a full general-purpose soundfont bank, or redistributing a
+  third-party tune or dance database.
 
 ---
 
@@ -46,7 +46,7 @@ The same Rust codebase targets Windows, Linux, the web (WASM), and Android.
 | Audio I/O | `cpal` |
 | ABC parsing | `abc-parser` plus a project-owned sequencer |
 | Default instruments | Fiddle (melody) and piano (accompaniment) |
-| Soundfont support | Built-in synth by default; optional **user-supplied SF2** |
+| Soundfont support | Bundled Fluid R3 GM subset by default; optional user-supplied SF2 |
 | Web data access | Small Cloudflare Worker CORS proxy; bundled defaults as fallback |
 | Theme | Dark grey by default; light grey option |
 | Version until further notice | **0.1.0** |
@@ -137,7 +137,7 @@ Listed in this order:
    - Accompaniment rhythm: match instrument (default), block chords,
      boom-chuck, offbeat stabs, arpeggio, shuffle, strum, sustained.
    - Melody/accompaniment volume.
-   - Soundfont: None (built-in synth) or a user-loaded `.sf2`.
+   - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.
 5. **Interface animations** — smooth tab and screen transitions, on by
    default; can be turned off to reduce motion.
@@ -508,22 +508,29 @@ Generate a backing track from the chord track:
 
 ### 6.5 Synthesis
 
-Two backends behind one trait:
+Rendering uses `rustysynth` (MIT) with one of two voice sets:
 
-1. **Built-in synth (default, no assets):**
+1. **Bundled Fluid R3 GM subset (default):**
+   - `assets/defaults/fluid-r3-gm-subset.sf2` — FluidR3_GM by Frank Wen, MIT.
+   - Trimmed with `scripts/soundfont-subset.py` to the programs the
+     preferences offer: Violin (GM 40), Accordion (GM 21), Acoustic Grand
+     Piano (GM 0) and Acoustic Guitar steel (GM 25).
+   - ~15 MB. The subset keeps the selected presets' generators, modulators and
+     sample data unchanged, so it renders identically to the full 141 MB bank
+     for those programs (`crates/music/tests/bundled_soundfont.rs`).
+   - Attribution lives in `CREDITS.md` and the About window.
+2. **User-supplied SoundFont (`.sf2`):**
+   - Loaded from Preferences; overrides the bundled subset for the session.
+   - The user is responsible for the file and its license.
+3. **Built-in procedural synth (fallback):**
    - Fiddle: band-limited bowed saw, vibrato, body filter, bowed envelope.
    - Accordion: detuned reeds, tremolo, fast attack.
    - Piano: additive partials, inharmonicity, exponential decay, hammer noise.
    - Guitar: Karplus-Strong pluck and strum.
-   - Simple room reverb and a gentle limiter.
-2. **User-supplied SoundFont (`.sf2`):**
-   - Use `rustysynth` (MIT).
-   - Melody: Violin (GM 40) or Accordion (GM 21).
-   - Accompaniment: Acoustic Grand Piano (GM 0), Nylon/Steel Guitar (GM
-     24/25), or Accordion (GM 21).
-   - Fall back to the built-in voice if a program is missing.
-   - Never bundle an SF2 file; the user supplies it and is responsible for its
-     license.
+   - Used when neither font is available, so the app still plays.
+
+Do not add a full soundfont bank to the repository. A new bundled soundfont
+must be permissively licensed, trimmed to the programs used, and attributed.
 
 Soundfont file selection:
 
@@ -822,7 +829,8 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 - Parse error: show the source URL and a short reason; do not replace the
   current dance/tune.
 - Audio render: "Preparing music…" with a cancel action.
-- No soundfont: built-in synth remains active.
+- No soundfont at all (bundled and user fonts both unavailable): built-in synth
+  remains active.
 - No TTS: disable the toggle and explain why.
 
 ---
@@ -979,7 +987,8 @@ Licensing rules:
 - `abc-parser`, `eframe`/`egui`, `cpal`, `ehttp`, `scraper`, `midly`,
   `rustysynth`, and `tts` are all permissive; record their exact licenses in
   `CREDITS.md`.
-- Do not bundle a soundfont. Users supply their own.
+- Bundle only the trimmed Fluid R3 GM subset (MIT); do not commit a full
+  soundfont bank. Users may supply their own.
 - Do not redistribute dance or tune databases. Cache locally only.
 - The one default dance and one default tune are bundled with attribution and
   source URLs. Confirm permission/normal attribution practice before release.
@@ -1112,7 +1121,8 @@ Exit: all release-checklist items pass.
 ## 14. Future work (post-0.1.0)
 
 - Additional dance sources (e.g. other callers' databases) and ABC sources.
-- Optional downloadable soundfont packs with clear licensing.
+- Optional downloadable soundfont packs with clear licensing (the bundled
+  subset covers the built-in instrument choices).
 - Real-time tempo changes without re-rendering.
 - Caller recording and playback comparison.
 - Voice-activity detection to score call timing.
@@ -1133,6 +1143,7 @@ Exit: all release-checklist items pass.
 | 2026-11-14 | `cpal` for all audio | Supports WASAPI, ALSA, AAudio, and WebAudio |
 | 2026-11-14 | `abc-parser` + custom sequencer | MIT parser, but playback/repeat handling is project-specific |
 | 2026-11-14 | Built-in synth default, optional user SF2 | Small default download, clean licensing, upgrade path to realistic instruments |
+| 2026-11-15 | Bundle a trimmed Fluid R3 GM subset (MIT) as the default voice | Sampled instruments by default; 15 MB instead of the 141 MB bank; keeps the procedural synth as fallback |
 | 2026-11-14 | Cloudflare Worker proxy | Only practical way to give WASM online search without redistributing content |
 | 2026-11-14 | App name Contra Karaoke | Matches repository and product intent |
 | 2026-11-14 | Version stays 0.1.0 | Owner instruction until declared released |

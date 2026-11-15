@@ -44,7 +44,8 @@ that now exists on `main`.
   entry points, `crates/web` for the Trunk/WASM page, and `crates/mcp` plus an
   `inspection` feature for live agent automation.
 - `ContraApp::new` still reads real config/cache directories, opens the audio
-  device, initializes system TTS, and may read a soundfont at startup.
+  device, initializes system TTS, and may read a user soundfont at startup; the
+  bundled font loads on the first render.
   `ContraApp::new_headless` and `contra-headless` provide the deterministic
   render path used for documentation.
 - Playback is a concrete `AudioEngine`; the headless build adds a silent clock
@@ -144,10 +145,11 @@ remaining images are OS installer dialogs that are not part of the app. The old
   keyboard shortcuts, warning banners, or settings the UI does not have.
 - ~~Publishing the web/WASM build from the docs workflow.~~ Superseded: the docs
   workflow now stages the WASM build under `/app/` and the `/play` page embeds
-  it. That build contains only the two attributed defaults; the docs site still
-  does not host a dance or tune database or a soundfont.
-- Redistributing third-party dances, tunes, or soundfonts. Screenshots use the
-  two bundled defaults or synthetic fixtures only.
+  it. That build contains only the attributed defaults, including the trimmed
+  Fluid R3 GM subset; the docs site still does not host a dance or tune database
+  or a full soundfont.
+- Redistributing third-party dances, tunes, or full soundfonts. Screenshots use
+  the bundled defaults or synthetic fixtures only.
 - Replacing internal docs in `docs/`. Public docs live in `website/docs/`.
 
 ### 1.3 Success criteria
@@ -291,7 +293,7 @@ documentation and is not published verbatim.
 | `session-controls.md` | Session header/controls | Session tab, tempo, Play/Pause/Restart, Loop, Count-in, Speak calls, Volume, tune summary, dance card |
 | `role-terms.md` | **Preferences** → Role terms | Presets (Larks/Robins default), custom singular/plural terms, live example |
 | `aliases.md` | **Preferences** → **Dance move aliases** | Filter, per-move template, Reset to default, Reset all, placeholders, custom aliases |
-| `instruments-and-soundfonts.md` | Preferences → Instruments/Soundfont | Fiddle/Accordion melody, Piano/Guitar/Accordion accompaniment, volumes, Load/Remove `.sf2` |
+| `instruments-and-soundfonts.md` | Preferences → Instruments/Soundfont | Fiddle/Accordion melody, Piano/Guitar/Accordion accompaniment, volumes, bundled Fluid R3 GM, Load/Use bundled `.sf2` |
 | `timing-and-lead.md` | Preferences → Calling lead; Session | Auto/manual, min/max, speech rate, Rebuild call timing, count-in, call countdown |
 | `text-to-speech.md` | Preferences → Text to speech; Session | Speak calls, rate, unavailable message, stop on pause |
 | `cache-and-offline.md` | Preferences → Maintenance; error panel | Clear source cache (confirm), automatic stale fallback (no banner), error dismiss |
@@ -831,7 +833,7 @@ call-now.
 | `instruments` | Choose the accompaniment | `prefs-instrument-accompaniment` | desktop | P1 |
 | `instruments` | Set the instrument mix | `prefs-instrument-mix` | desktop | P2 |
 | `instruments` | Load a SoundFont | `prefs-sf2-loaded` | desktop | P1 |
-| `instruments` | Remove a SoundFont | `prefs-sf2-removed` | desktop | P2 |
+| `instruments` | Return to the bundled instruments | `prefs-sf2-removed` | desktop | P2 |
 | `instruments` | See a SoundFont load error | `error-sf2` | desktop | P2 |
 | `timing` | Choose automatic or manual lead | `prefs-timing-mode` | desktop | P1 |
 | `timing` | Adjust min/max lead | `prefs-timing-bounds` | desktop | P2 |
@@ -1297,8 +1299,8 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 - Attribute the defaults on the first-session page and “About screenshots”:
   - *Another Last Dance* — ContraDB dance 2409, Erik Hoffman.
   - *Sandy Boys* — ABC Session Tunes tune 75815, transcription credit.
-- Do not show a commercial soundfont filename. Use “None (built-in synth)” or
-  a synthetic `demo.sf2` that is never distributed.
+- Do not show a commercial soundfont filename. Show “Bundled: Fluid R3 GM” or a
+  synthetic `demo.sf2` that is never distributed.
 - App and docs code are MIT; the footer links `LICENSE`.
 - Screenshots are derivative UI works published under the same license.
 
