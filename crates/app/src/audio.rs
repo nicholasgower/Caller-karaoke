@@ -63,6 +63,42 @@ impl AudioEngine {
         }
     }
 
+    /// A silent transport with a 64-beat loop and three-beat count-in.
+    ///
+    /// The headless renderer uses this so the real UI can seek to any beat
+    /// without an audio device.
+    #[cfg(feature = "headless")]
+    pub fn headless_clock(sample_rate: u32, bpm: f64) -> Self {
+        let samples_per_beat = sample_rate as f64 * 120.0 / bpm.max(1.0);
+        let count_in_samples = (3.0 * samples_per_beat).round() as u64;
+        let loop_end_sample = count_in_samples + (64.0 * samples_per_beat).round() as u64;
+        let buffer = AudioBuffer {
+            samples: vec![0.0; loop_end_sample as usize * 2],
+            sample_rate,
+            channels: 2,
+            count_in_samples,
+            loop_start_sample: count_in_samples,
+            loop_end_sample,
+            loop_pass_samples: (64.0 * samples_per_beat).round() as u64,
+            samples_per_beat,
+        };
+        let audio = Self::silent(sample_rate);
+        audio.set_buffer(buffer);
+        audio
+    }
+
+    /// Force the transport into its finished state for headless screenshots.
+    #[cfg(feature = "headless")]
+    pub fn force_finished(&self) {
+        if let Some(buffer) = self.shared.buffer.load_full() {
+            self.shared
+                .position
+                .store(buffer.loop_end_sample, Ordering::Relaxed);
+        }
+        self.shared.playing.store(false, Ordering::Relaxed);
+        self.shared.finished.store(true, Ordering::Relaxed);
+    }
+
     pub fn sample_rate(&self) -> u32 {
         self.sample_rate
     }

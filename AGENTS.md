@@ -67,6 +67,7 @@ crates/sources   provider traits, ContraDB, ABC Session Tunes, HTTP, cache
 crates/app       egui UI, transport, TTS, platform glue
 crates/web       WASM entry point and Trunk page
 crates/mcp       development-only MCP server for agent-driven UI testing
+website          Docusaurus user guide and platform instructions
 xtask            packaging/changelog helpers
 scripts          Scripts to aid agents in development
 assets           bundled defaults and icons only
@@ -131,6 +132,14 @@ Development-only UI automation (see `docs/automation.md`):
 ```sh
 EGUI_INSPECTION=127.0.0.1:5719 cargo run -p contra-app --features inspection
 cargo run -p contra-mcp
+```
+
+Headless documentation screenshots (no window, audio device, or network; the
+`npm` script renders the raw PNGs and uses PhotoCraft to add the focus ring):
+
+```sh
+cd website
+npm run screenshots
 ```
 
 Web:

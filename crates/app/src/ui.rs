@@ -42,6 +42,31 @@ fn card_state(phase: Option<CallPhase>, has_next: bool) -> CardMode {
     }
 }
 
+/// Background cue for the prompt card.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CardTone {
+    /// Nothing to speak yet: ready, count-in, dancing the last figure, done.
+    Neutral,
+    /// The caller has to say the shown call now.
+    CallNow,
+    /// The dancers are executing, so prompt the move to call next.
+    UpcomingMove,
+}
+
+/// Green while the caller is speaking, red while the card looks ahead, grey
+/// otherwise. The hue is a glanceable cue on top of the text, never the only
+/// signal: the labels still say CALL NOW and UPCOMING MOVE.
+fn card_tone(started: bool, phase: Option<CallPhase>, mode: CardMode) -> CardTone {
+    if !started {
+        return CardTone::Neutral;
+    }
+    match (phase, mode) {
+        (Some(CallPhase::Calling), _) => CardTone::CallNow,
+        (_, CardMode::UpcomingMove) => CardTone::UpcomingMove,
+        _ => CardTone::Neutral,
+    }
+}
+
 /// Prompt the caller with the move they must call next while the current
 /// figure is being danced.
 fn upcoming_move_card(
@@ -259,13 +284,16 @@ impl ContraApp {
         } else {
             None
         };
-        let card_mode = card_state(
-            active.as_ref().map(|call| phase_at(call, beat)),
-            next.is_some(),
-        );
+        let phase = active.as_ref().map(|call| phase_at(call, beat));
+        let card_mode = card_state(phase, next.is_some());
+        let card_fill = match card_tone(self.started, phase, card_mode) {
+            CardTone::CallNow => theme::call_now_bg(ui),
+            CardTone::UpcomingMove => theme::upcoming_move_bg(ui),
+            CardTone::Neutral => theme::call_active_bg(ui),
+        };
 
         egui::Frame::group(ui.style())
-            .fill(theme::call_active_bg(ui))
+            .fill(card_fill)
             .inner_margin(egui::Margin::same(12))
             .show(ui, |ui| {
                 if !self.started {
@@ -572,7 +600,7 @@ impl ContraApp {
         let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to session")
+                .button("< Back to session")
                 .on_hover_text("Back to session (Esc)")
                 .clicked()
             {
@@ -821,7 +849,7 @@ impl ContraApp {
         let animate = self.prefs.animations_enabled;
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to session")
+                .button("< Back to session")
                 .on_hover_text("Back to session (Esc)")
                 .clicked()
             {
@@ -1100,7 +1128,7 @@ impl ContraApp {
         let before = self.prefs.clone();
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to session")
+                .button("< Back to session")
                 .on_hover_text("Back to session (Esc)")
                 .clicked()
             {
@@ -1515,7 +1543,7 @@ impl ContraApp {
     fn aliases_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             if ui
-                .button("← Back to preferences")
+                .button("< Back to preferences")
                 .on_hover_text("Back to preferences (Esc)")
                 .clicked()
             {

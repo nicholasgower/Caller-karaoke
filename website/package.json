@@ -1,0 +1,37 @@
+{
+  "name": "contra-karaoke-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "User documentation for Contra Karaoke",
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear",
+    "check:shots": "node scripts/check-screenshots.mjs",
+    "test": "node scripts/check-screenshots.mjs",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "annotate": "node scripts/annotate-screenshots.mjs",
+    "check": "npm run check:shots && docusaurus build"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "^0.55.3",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.1.0",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/tsconfig": "3.10.2",
+    "@docusaurus/types": "3.10.2",
+    "typescript": "~5.6.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

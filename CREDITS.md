@@ -36,6 +36,8 @@ and build tools used by the project.
 | `arc-swap` | MIT OR Apache-2.0 | Real-time-safe audio buffer swaps |
 | `env_logger` | MIT OR Apache-2.0 | Logging setup |
 | `thiserror` | MIT OR Apache-2.0 | Error types |
+| `egui_kittest` | MIT OR Apache-2.0 | Headless UI rendering for docs screenshots (development only) |
+| `image` | MIT OR Apache-2.0 | PNG output for docs screenshots (development only) |
 | `egui_inspection` | MIT OR Apache-2.0 | Development-only inspection plugin (eframe feature) |
 | `egui_mcp` | MIT OR Apache-2.0 | MCP server for agent-driven UI testing |
 | `rmcp` | Apache-2.0 | MCP protocol implementation (via `egui_mcp`) |
@@ -118,10 +120,27 @@ The `samples/` directory contains a small curated set of downloaded dance and
 tune pages used for parser tests during development. It is not part of the
 application binary or of a normal release artifact.
 
+## Documentation site
+
+The user guide under `website/` uses:
+
+| Package | License | Use |
+| --- | --- | --- |
+| Docusaurus | MIT | Static documentation site |
+| React | MIT | Docusaurus rendering |
+| `@easyops-cn/docusaurus-search-local` | MIT | Offline search index |
+| `@mdx-js/react` | MIT | MDX components |
+| `prism-react-renderer` | MIT | Code highlighting |
+| `clsx` | MIT | Class-name helper |
+| TypeScript | Apache-2.0 | Site configuration and components |
+
+The site has no analytics, third-party fonts, or remote search service.
+
 ## Build and release tools
 
-- Inno Setup (Windows installer) — <https://jrsoftware.org/isinfo.php>
-- Trunk (web build) — <https://trunkrs.dev>
+- Inno Setup (Windows installer) - <https://jrsoftware.org/isinfo.php>
+- PhotoCraft (documentation screenshot focus rings)
+- Trunk (web build) - <https://trunkrs.dev>
 - `cargo-apk`, `cargo-deb`, `linuxdeploy`, `appimagetool`, `flatpak-builder`
 - `git-cliff` (changelog), `cargo-deny`, `cargo-machete`
 - GitHub Actions

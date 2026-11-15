@@ -17,10 +17,17 @@ crate-type = ["cdylib", "lib"]
 name = "contra-karaoke"
 path = "src/main.rs"
 
+[[bin]]
+name = "contra-headless"
+path = "src/bin/contra-headless.rs"
+required-features = ["headless"]
+
 [features]
 # Development-only: lets `contra-mcp` attach to a running app and drive it.
 # Off by default so release artifacts do not carry the inspection listener.
 inspection = ["eframe/inspection"]
+# Development-only: renders the real app without a window or audio device.
+headless = ["dep:egui_kittest", "dep:image"]
 
 [dependencies]
 acorde.workspace = true
@@ -32,8 +39,10 @@ contra-sources = { version = "0.1.0", path = "../sources" }
 cpal.workspace = true
 directories.workspace = true
 eframe.workspace = true
+egui_kittest = { workspace = true, optional = true }
 ehttp.workspace = true
 epaint_default_fonts.workspace = true
+image = { workspace = true, optional = true }
 percent-encoding.workspace = true
 resvg.workspace = true
 rustysynth.workspace = true
