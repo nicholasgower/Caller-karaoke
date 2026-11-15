@@ -201,10 +201,10 @@ impl PracticeTimeline {
         let mut current_label: Option<String> = None;
 
         for (figure_index, figure) in dance.figures.iter().enumerate() {
-            if let Some(label) = &figure.phrase {
-                if !label.trim().is_empty() {
-                    current_label = Some(label.trim().to_string());
-                }
+            if let Some(label) = &figure.phrase
+                && !label.trim().is_empty()
+            {
+                current_label = Some(label.trim().to_string());
             }
 
             let figure_start = cursor;
@@ -492,9 +492,11 @@ mod tests {
 
     #[test]
     fn manual_lead_overrides_syllables() {
-        let mut lead = LeadSettings::default();
-        lead.auto = false;
-        lead.manual_beats = 1.25;
+        let lead = LeadSettings {
+            auto: false,
+            manual_beats: 1.25,
+            ..LeadSettings::default()
+        };
         assert_eq!(lead.lead_beats(100, 20, Tempo::default()), 1.25);
     }
 

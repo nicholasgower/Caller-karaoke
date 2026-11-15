@@ -360,7 +360,7 @@ fn render_guitar(
     let delay_len = ((sample_rate / freq).round() as usize).clamp(4, 4096);
     let mut delay = vec![0.0f32; delay_len];
     // Deterministic pluck excitation (xorshift).
-    let mut state = 0x1234_5678u32 ^ (freq.to_bits() as u32);
+    let mut state = 0x1234_5678u32 ^ freq.to_bits();
     for value in &mut delay {
         state ^= state << 13;
         state ^= state >> 17;
@@ -414,7 +414,7 @@ fn normalize(samples: &mut [f32]) {
     let peak = samples
         .iter()
         .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
-    if peak > 0.95 && peak > 0.0 {
+    if peak > 0.95 {
         let scale = 0.95 / peak;
         for sample in samples {
             *sample *= scale;

@@ -352,12 +352,12 @@ impl ContraApp {
             .enumerate()
             .find(|(_, call)| beat >= call.call_start_beat && beat < call.execute_beat)
             .map(|(index, _)| index);
-        if let Some(index) = active {
-            if self.last_spoken != Some(index) {
-                let text = &self.timeline.calls[index].text;
-                self.speech.speak(text);
-                self.last_spoken = Some(index);
-            }
+        if let Some(index) = active
+            && self.last_spoken != Some(index)
+        {
+            let text = &self.timeline.calls[index].text;
+            self.speech.speak(text);
+            self.last_spoken = Some(index);
         }
     }
 

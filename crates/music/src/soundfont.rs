@@ -224,7 +224,7 @@ fn normalize(samples: &mut [f32]) {
     let peak = samples
         .iter()
         .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
-    if peak > 0.95 && peak > 0.0 {
+    if peak > 0.95 {
         let scale = 0.95 / peak;
         for sample in samples {
             *sample *= scale;

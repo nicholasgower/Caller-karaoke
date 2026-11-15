@@ -199,9 +199,11 @@ mod tests {
 
     #[test]
     fn clamps_bad_values() {
-        let mut prefs = Preferences::default();
-        prefs.tempo_bpm = 10_000.0;
-        prefs.melody_volume = 99.0;
+        let mut prefs = Preferences {
+            tempo_bpm: 10_000.0,
+            melody_volume: 99.0,
+            ..Preferences::default()
+        };
         prefs.lead.syllables_per_second = 0.0;
         prefs.validate();
         assert_eq!(prefs.tempo_bpm, Tempo::MAX_BPM);
@@ -211,9 +213,11 @@ mod tests {
 
     #[test]
     fn json_round_trip() {
-        let mut prefs = Preferences::default();
-        prefs.tts_enabled = true;
-        prefs.tempo_bpm = 220.0;
+        let mut prefs = Preferences {
+            tts_enabled: true,
+            tempo_bpm: 220.0,
+            ..Preferences::default()
+        };
         prefs
             .aliases
             .set_override(crate::alias::MoveKind::Swing, "swing it");

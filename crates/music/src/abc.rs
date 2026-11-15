@@ -504,10 +504,10 @@ fn parse_length_text(text: &str) -> Option<f64> {
         return Some(0.5_f64.powi(text.len() as i32));
     }
     if let Some(rest) = text.strip_prefix('/') {
-        if let Ok(denominator) = rest.parse::<f64>() {
-            if denominator != 0.0 {
-                return Some(1.0 / denominator);
-            }
+        if let Ok(denominator) = rest.parse::<f64>()
+            && denominator != 0.0
+        {
+            return Some(1.0 / denominator);
         }
         return None;
     }
@@ -564,10 +564,10 @@ fn chord_symbol_from_annotation(annotation: &str) -> Option<String> {
         return None;
     }
     let mut rest = chars.as_str();
-    if let Some(accidental) = rest.chars().next() {
-        if accidental == '#' || accidental == 'b' {
-            rest = &rest[1..];
-        }
+    if let Some(accidental) = rest.chars().next()
+        && (accidental == '#' || accidental == 'b')
+    {
+        rest = &rest[1..];
     }
     // Chord suffixes and slash basses. Reject ordinary words such as "Fine".
     if rest.chars().all(|c| {

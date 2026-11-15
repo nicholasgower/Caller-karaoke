@@ -62,14 +62,14 @@ impl SourceClient {
         };
         let request = provider.search(&query);
         let key = format!("dance_search/contradb/{query:?}");
-        if let Some(bytes) = self.cache_get(&key, SEARCH_TTL) {
-            if let Ok(page) = provider.parse_search(&bytes, &query) {
-                let _ = self.tx.send(SourceEvent::DanceSearch {
-                    query,
-                    result: Ok(page),
-                });
-                return;
-            }
+        if let Some(bytes) = self.cache_get(&key, SEARCH_TTL)
+            && let Ok(page) = provider.parse_search(&bytes, &query)
+        {
+            let _ = self.tx.send(SourceEvent::DanceSearch {
+                query,
+                result: Ok(page),
+            });
+            return;
         }
         let provider: &'static dyn DanceProvider = provider;
         let parse_query = query.clone();
@@ -95,11 +95,11 @@ impl SourceClient {
         };
         let request = provider.detail(&id);
         let key = format!("dance/contradb/{id}");
-        if let Some(bytes) = self.cache_get(&key, DETAIL_TTL) {
-            if let Ok(dance) = provider.parse_dance(&bytes, &id) {
-                let _ = self.tx.send(SourceEvent::Dance { result: Ok(dance) });
-                return;
-            }
+        if let Some(bytes) = self.cache_get(&key, DETAIL_TTL)
+            && let Ok(dance) = provider.parse_dance(&bytes, &id)
+        {
+            let _ = self.tx.send(SourceEvent::Dance { result: Ok(dance) });
+            return;
         }
         let provider: &'static dyn DanceProvider = provider;
         let id_for_parse = id.clone();
@@ -126,14 +126,14 @@ impl SourceClient {
         };
         let request = provider.search(&query);
         let key = format!("tune_search/abcsessiontunes/{query:?}");
-        if let Some(bytes) = self.cache_get(&key, SEARCH_TTL) {
-            if let Ok(page) = provider.parse_search(&bytes, &query) {
-                let _ = self.tx.send(SourceEvent::TuneSearch {
-                    query,
-                    result: Ok(page),
-                });
-                return;
-            }
+        if let Some(bytes) = self.cache_get(&key, SEARCH_TTL)
+            && let Ok(page) = provider.parse_search(&bytes, &query)
+        {
+            let _ = self.tx.send(SourceEvent::TuneSearch {
+                query,
+                result: Ok(page),
+            });
+            return;
         }
         let provider: &'static dyn TuneProvider = provider;
         let parse_query = query.clone();
@@ -159,11 +159,11 @@ impl SourceClient {
         };
         let request = provider.detail(&id);
         let key = format!("tune/abcsessiontunes/{id}");
-        if let Some(bytes) = self.cache_get(&key, DETAIL_TTL) {
-            if let Ok(tune) = provider.parse_tune(&bytes, &id) {
-                let _ = self.tx.send(SourceEvent::Tune { result: Ok(tune) });
-                return;
-            }
+        if let Some(bytes) = self.cache_get(&key, DETAIL_TTL)
+            && let Ok(tune) = provider.parse_tune(&bytes, &id)
+        {
+            let _ = self.tx.send(SourceEvent::Tune { result: Ok(tune) });
+            return;
         }
         let provider: &'static dyn TuneProvider = provider;
         let id_for_parse = id.clone();

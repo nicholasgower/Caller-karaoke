@@ -256,8 +256,10 @@ mod tests {
 
     #[test]
     fn custom_terms_are_detected_as_custom() {
-        let mut terms = RoleTerms::default();
-        terms.left_plural = "jades".into();
+        let terms = RoleTerms {
+            left_plural: "jades".into(),
+            ..RoleTerms::default()
+        };
         assert_eq!(RolePreset::detect(&terms), RolePreset::Custom);
     }
 }

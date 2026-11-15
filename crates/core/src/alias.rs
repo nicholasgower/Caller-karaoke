@@ -358,7 +358,7 @@ pub struct RenderedCall {
 }
 
 /// Caller alias overrides, persisted with preferences.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AliasTable {
     /// Keyed by [`MoveKind::id`].
     #[serde(default)]
@@ -366,15 +366,6 @@ pub struct AliasTable {
     /// Keyed by the normalised lowercase card phrase.
     #[serde(default)]
     pub custom: BTreeMap<String, String>,
-}
-
-impl Default for AliasTable {
-    fn default() -> Self {
-        Self {
-            overrides: BTreeMap::new(),
-            custom: BTreeMap::new(),
-        }
-    }
 }
 
 impl AliasTable {

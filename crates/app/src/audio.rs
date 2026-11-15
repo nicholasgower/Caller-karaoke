@@ -155,7 +155,7 @@ where
     let channels = config.channels as usize;
     device
         .build_output_stream(
-            config.clone(),
+            *config,
             move |data: &mut [T], _| {
                 write_data(data, channels, &shared);
             },

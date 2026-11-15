@@ -77,7 +77,7 @@ impl Meter {
     }
 
     pub fn is_compound(self) -> bool {
-        self.denominator == 8 && self.numerator % 3 == 0 && self.numerator > 3
+        self.denominator == 8 && self.numerator.is_multiple_of(3) && self.numerator > 3
     }
 }
 
@@ -167,9 +167,9 @@ impl Key {
         let tonic = tonic.rem_euclid(12);
         let mut accidentals = [0i32; 7];
         let intervals = mode.intervals();
-        for degree in 0..7 {
-            let target = (tonic + intervals[degree]).rem_euclid(12);
-            let note_letter = (letter_index + degree as usize) % 7;
+        for (degree, interval) in intervals.iter().enumerate() {
+            let target = (tonic + interval).rem_euclid(12);
+            let note_letter = (letter_index + degree) % 7;
             let natural = match note_letter {
                 0 => 0,
                 1 => 2,

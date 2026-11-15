@@ -734,7 +734,7 @@ impl ContraApp {
                 results.map(|page| page.total).unwrap_or(0),
             )
         };
-        let pages = (total + page_size - 1) / page_size;
+        let pages = total.div_ceil(page_size);
         ui.horizontal(|ui| {
             if ui
                 .add_enabled(page > 1, egui::Button::new("Previous"))
@@ -935,14 +935,14 @@ impl ContraApp {
                     self.speech.set_rate(self.prefs.tts_rate);
                 }
             });
-            if !self.speech.available() {
-                if let Some(error) = self.speech.error() {
-                    ui.label(
-                        egui::RichText::new(format!("TTS unavailable: {error}"))
-                            .small()
-                            .color(theme::MUTED),
-                    );
-                }
+            if !self.speech.available()
+                && let Some(error) = self.speech.error()
+            {
+                ui.label(
+                    egui::RichText::new(format!("TTS unavailable: {error}"))
+                        .small()
+                        .color(theme::MUTED),
+                );
             }
             ui.checkbox(&mut self.prefs.loop_enabled, "Loop the dance and music");
             ui.checkbox(&mut self.prefs.count_in_enabled, "Three-beat count-in");
