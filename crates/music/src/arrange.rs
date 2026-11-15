@@ -15,10 +15,32 @@ pub struct Arrangement {
     pub pickup: Vec<NoteEvent>,
     pub chords: Vec<ChordEvent>,
     pub loop_beats: f64,
+    /// Natural length of the tune body in dance beats, excluding any pickup
+    /// and before padding or trimming to [`Self::loop_beats`].
+    pub body_beats: f64,
     pub meter: Meter,
     pub key: Key,
     pub warnings: Vec<String>,
 }
+
+/// The dance and tune disagree about how many beats the figure set lasts.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LengthMismatch {
+    pub dance_beats: f64,
+    pub tune_beats: f64,
+}
+
+impl std::fmt::Display for LengthMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "the dance is {:.1} beats but the tune is {:.1} beats",
+            self.dance_beats, self.tune_beats
+        )
+    }
+}
+
+impl std::error::Error for LengthMismatch {}
 
 impl Arrangement {
     pub fn from_score(score: &Score, loop_beats: f64) -> Self {
@@ -141,6 +163,7 @@ impl Arrangement {
             pickup,
             chords,
             loop_beats,
+            body_beats: body_len,
             meter: score.meter,
             key: score.key.clone(),
             warnings,
@@ -149,6 +172,24 @@ impl Arrangement {
 
     pub fn bars(&self) -> f64 {
         self.loop_beats / 2.0
+    }
+
+    /// Check that the dance and the tune body last the same number of beats.
+    ///
+    /// This is deliberately a check rather than a clamp: a dance card that is
+    /// not 64 beats is valid (and the caller may choose a shorter or longer
+    /// tune), but silently stretching or trimming the tune would hide a real
+    /// mismatch and let the calls drift.
+    pub fn check_dance_length(&self, dance_beats: f64) -> Result<(), LengthMismatch> {
+        const TOLERANCE: f64 = 1e-6;
+        if (dance_beats - self.body_beats).abs() > TOLERANCE {
+            Err(LengthMismatch {
+                dance_beats,
+                tune_beats: self.body_beats,
+            })
+        } else {
+            Ok(())
+        }
     }
 
     pub fn count_in_chord(&self) -> Chord {
@@ -394,7 +435,17 @@ mod tests {
         let abc = include_str!("../../../assets/defaults/sandy_boys.abc");
         let score = crate::abc::parse_abc(abc).expect("parse bundled tune");
         let arrangement = Arrangement::from_score(&score, 64.0);
+        assert_eq!(score.duration_beats, 64.5);
+        // `bar_lines` records the written pass (the B repeat is expanded into
+        // notes, not bar lines): the final written bar now ends at 48.5, so the
+        // B part is a full 16 beats and its repeat stays on the bar grid.
+        assert_eq!(score.bar_lines.last().copied(), Some(48.5));
         assert_eq!(arrangement.loop_beats, 64.0);
+        assert_eq!(
+            arrangement.body_beats, 64.0,
+            "the AABB body must fill the 64-beat dance, with the pickup outside it"
+        );
+        assert!(arrangement.check_dance_length(64.0).is_ok());
         assert!(!arrangement.pickup.is_empty(), "Sandy Boys has a pickup");
         assert!(!arrangement.melody.is_empty());
         assert!(!arrangement.chords.is_empty());
@@ -404,6 +455,35 @@ mod tests {
                 .iter()
                 .all(|note| note.start_beat >= 0.0 && note.start_beat < 64.0)
         );
+        assert!(
+            arrangement
+                .melody
+                .iter()
+                .all(|note| note.end_beat() <= 64.0 + 1e-6)
+        );
+        let last_start = arrangement
+            .melody
+            .iter()
+            .map(|note| note.start_beat)
+            .fold(0.0_f64, f64::max);
+        assert!(
+            (last_start - 63.0).abs() < 1e-6,
+            "the final 2-beat bar should begin at beat 63, not {last_start}"
+        );
         assert_eq!(arrangement.count_in_chord().symbol(), "A");
+    }
+
+    #[test]
+    fn detects_a_dance_and_tune_length_mismatch() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        assert!(arrangement.check_dance_length(64.0).is_ok());
+
+        let mismatch = arrangement
+            .check_dance_length(63.5)
+            .expect_err("63.5 beats should not match a 64-beat tune");
+        assert_eq!(mismatch.dance_beats, 63.5);
+        assert_eq!(mismatch.tune_beats, 64.0);
+        assert!(mismatch.to_string().contains("63.5"));
+        assert!(mismatch.to_string().contains("64.0"));
     }
 }

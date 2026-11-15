@@ -615,7 +615,7 @@ K:A mix
 eg |: "A"a2 g2 e2 g2 | ed c2 A2 a2- | a2 g2 e2 g2 | "G"a3 b a2 eg |
 "A"a2 g2 e2 g2 | ed c2 A2 AB | c2 cc "E7"d2 c2 | "A"A3 B A2 cd :|
 |: "A"e4 e3 e | d2 c2 A3 A | "A"[ce]2 [ce][ce] "D"[df]2 [df][df] |"A"[ce]2 [ce][ce] "D"[df]2 [df][df] |
-"A"e4 e3 e | d2 c2 A2 AB | [ce]2 cc "E7"d2 c2 | "A"A3 B A2 :|"#;
+"A"e4 e3 e | d2 c2 A2 AB | [ce]2 cc "E7"d2 c2 | "A"A3 B A4 :|"#;
 
     #[test]
     fn parses_sandy_boys() {
@@ -626,9 +626,10 @@ eg |: "A"a2 g2 e2 g2 | ed c2 A2 a2- | a2 g2 e2 g2 | "G"a3 b a2 eg |
         assert!(!score.notes.is_empty());
         assert!(!score.chords.is_empty());
         assert!(score.duration_beats > 0.0);
-        // 16 bars per pass, repeated twice = 64 dance beats.
+        // 0.5-beat pickup plus a 16-beat A part and a 16-beat B part, each
+        // repeated once: 0.5 + 32 + 32 = 64.5 beats including the pickup.
         assert!(
-            (score.duration_beats - 64.0).abs() < 2.0,
+            (score.duration_beats - 64.5).abs() < 1e-6,
             "duration was {}",
             score.duration_beats
         );
