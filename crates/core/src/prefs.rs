@@ -1,5 +1,7 @@
 //! Persisted application preferences.
 
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 
 use crate::alias::AliasTable;
@@ -177,6 +179,128 @@ pub struct Preferences {
     pub web_proxy_token: Option<String>,
     pub last_dance: Option<SourceRef>,
     pub last_tune: Option<SourceRef>,
+    /// Migration tags this file has already been through.
+    ///
+    /// Recorded by name rather than inferred from [`Self::schema_version`] so
+    /// two branches that add a migration in the same version range both run
+    /// after a merge. Missing in older files, which are seeded from the
+    /// version; see [`Preferences::migrate_with`].
+    #[serde(default)]
+    pub applied_migrations: BTreeSet<String>,
+}
+
+/// The version written by this build.
+///
+/// Bump it when the shape of the file changes; gating a migration on it is not
+/// required any more, because [`Preferences::migrate_with`] uses the tags in
+/// [`Preferences::applied_migrations`].
+pub const CURRENT_SCHEMA_VERSION: u32 = 6;
+
+/// One upgrade step for a preference file written by an older build.
+pub struct Migration {
+    /// Stable identifier, stored in the file. Never rename or reuse one.
+    pub tag: &'static str,
+    /// The schema version that introduced the change, used only to seed tags
+    /// for files written before tags existed.
+    pub version: u32,
+    /// Applies the change. It must leave values the user already changed
+    /// alone.
+    pub apply: fn(&mut Preferences),
+}
+
+/// Every migration this build knows, oldest first.
+pub const MIGRATIONS: &[Migration] = &[
+    Migration {
+        tag: "lead-calibration-v2",
+        version: 2,
+        apply: migrate_v1_lead_calibration,
+    },
+    Migration {
+        tag: "animations-v3",
+        version: 3,
+        apply: migrate_v2_animations,
+    },
+    Migration {
+        tag: "accompaniment-variations-v4",
+        version: 4,
+        apply: migrate_v3_accompaniment_variations,
+    },
+    Migration {
+        tag: "tts-voice-v5",
+        version: 5,
+        apply: migrate_v4_tts_voice,
+    },
+    Migration {
+        tag: "accompaniment-rhythm-v6",
+        version: 6,
+        apply: migrate_v5_accompaniment_rhythm,
+    },
+];
+
+fn migrate_v1_lead_calibration(prefs: &mut Preferences) {
+    // v1 calibrated at 6.5 syllables/s, a 2-beat maximum, and small word and
+    // pause allowances. The measured delivery is 4.0 syllables/s with no
+    // additional gaps, and a 5-beat maximum.
+    if (prefs.lead.syllables_per_second - 6.5).abs() < 1e-6 {
+        prefs.lead.syllables_per_second = 4.0;
+    }
+    if (prefs.lead.max_beats - 2.0).abs() < 1e-6 {
+        prefs.lead.max_beats = 5.0;
+    }
+    if (prefs.lead.word_gap_seconds - 0.04).abs() < 1e-6 {
+        prefs.lead.word_gap_seconds = 0.0;
+    }
+    if (prefs.lead.extra_pause_seconds - 0.10).abs() < 1e-6 {
+        prefs.lead.extra_pause_seconds = 0.0;
+    }
+}
+
+fn migrate_v2_animations(_prefs: &mut Preferences) {
+    // Animations are a new field; `serde` supplies the enabled default for
+    // older files, so there is nothing to change.
+}
+
+fn migrate_v3_accompaniment_variations(_prefs: &mut Preferences) {
+    // Idem for the accompaniment variations.
+}
+
+fn migrate_v4_tts_voice(prefs: &mut Preferences) {
+    // v5 adds the selectable TTS voice and alternative-alias shuffling.
+    // Existing files keep the previous default voice and start with shuffling
+    // disabled.
+    if prefs.tts_voice.trim().is_empty() {
+        prefs.tts_voice = default_tts_voice();
+    }
+}
+
+fn migrate_v5_accompaniment_rhythm(_prefs: &mut Preferences) {
+    // v6 adds the selectable accompaniment rhythm and the adjustable safety
+    // padding; `serde` supplies the defaults for older files.
+}
+
+/// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
+fn applied_tags() -> BTreeSet<String> {
+    MIGRATIONS
+        .iter()
+        .map(|migration| migration.tag.to_owned())
+        .collect()
+}
+
+/// What subsystems must react when preferences change.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ChangeSet {
+    /// Calls must be rebuilt: role terms, aliases, lead settings, tempo,
+    /// count-in, or alias shuffling changed.
+    pub timeline: bool,
+    /// Music must be re-rendered: arrangement, mix, or soundfont changed.
+    pub audio: bool,
+}
+
+impl ChangeSet {
+    /// Whether anything has to be redone.
+    pub fn any(self) -> bool {
+        self.timeline || self.audio
+    }
 }
 
 fn default_tts_voice() -> String {
@@ -186,7 +310,7 @@ fn default_tts_voice() -> String {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            schema_version: 6,
+            schema_version: CURRENT_SCHEMA_VERSION,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
@@ -212,6 +336,7 @@ impl Default for Preferences {
             web_proxy_token: None,
             last_dance: None,
             last_tune: None,
+            applied_migrations: applied_tags(),
         }
     }
 }
@@ -224,7 +349,7 @@ impl Preferences {
     /// Clamp values that came from a preference file or a UI control.
     pub fn validate(&mut self) {
         if self.schema_version == 0 {
-            self.schema_version = 6;
+            self.schema_version = CURRENT_SCHEMA_VERSION;
         }
         if self.tts_voice.trim().is_empty() {
             self.tts_voice = default_tts_voice();
@@ -257,48 +382,59 @@ impl Preferences {
     /// Upgrade stored preferences without overwriting values the user changed
     /// away from the previous defaults.
     fn migrate(&mut self) {
-        if self.schema_version < 2 {
-            // v1 calibrated at 6.5 syllables/s, a 2-beat maximum, and small
-            // word/pause allowances. The measured delivery is 4.0 syllables/s
-            // with no additional gaps, and a 5-beat maximum.
-            if (self.lead.syllables_per_second - 6.5).abs() < 1e-6 {
-                self.lead.syllables_per_second = 4.0;
-            }
-            if (self.lead.max_beats - 2.0).abs() < 1e-6 {
-                self.lead.max_beats = 5.0;
-            }
-            if (self.lead.word_gap_seconds - 0.04).abs() < 1e-6 {
-                self.lead.word_gap_seconds = 0.0;
-            }
-            if (self.lead.extra_pause_seconds - 0.10).abs() < 1e-6 {
-                self.lead.extra_pause_seconds = 0.0;
-            }
-            self.schema_version = 2;
+        self.migrate_with(MIGRATIONS);
+    }
+
+    /// Run every migration in `migrations` that this file has not recorded.
+    ///
+    /// Gating on tags rather than on a shared version number is what makes
+    /// this merge-safe: when two branches add a setting, each adds a migration
+    /// with its own tag, and after a merge both run. With the old
+    /// `schema_version < n` chain the first block advanced the version past
+    /// the second, so one migration silently never ran.
+    fn migrate_with(&mut self, migrations: &[Migration]) {
+        if self.applied_migrations.is_empty() {
+            // A file written before tags existed records only a version;
+            // treat everything at or below it as already applied.
+            self.applied_migrations = migrations
+                .iter()
+                .filter(|migration| migration.version <= self.schema_version)
+                .map(|migration| migration.tag.to_owned())
+                .collect();
         }
-        if self.schema_version < 3 {
-            // Animations are a new v3 field; `serde` supplies the enabled
-            // default for older files, so only the version needs recording.
-            self.schema_version = 3;
-        }
-        if self.schema_version < 4 {
-            // Accompaniment variations are a new v4 field. `serde` supplies
-            // the enabled default for older files.
-            self.schema_version = 4;
-        }
-        if self.schema_version < 5 {
-            // v5 adds the selectable TTS voice and alternative-alias
-            // shuffling. Existing files keep the previous default voice and
-            // start with shuffling disabled.
-            if self.tts_voice.trim().is_empty() {
-                self.tts_voice = default_tts_voice();
+        for migration in migrations {
+            if self.applied_migrations.contains(migration.tag) {
+                continue;
             }
-            self.schema_version = 5;
+            (migration.apply)(self);
+            self.applied_migrations.insert(migration.tag.to_owned());
         }
-        if self.schema_version < 6 {
-            // v6 adds the selectable accompaniment rhythm and the adjustable
-            // safety padding. `serde` supplies the defaults for older files,
-            // so only the version needs recording.
-            self.schema_version = 6;
+        self.schema_version = self.schema_version.max(CURRENT_SCHEMA_VERSION);
+    }
+
+    /// What must be rebuilt after moving from `old` to `self`.
+    ///
+    /// A setting is wired to its subsystem here, next to the field it affects,
+    /// so it cannot be saved without the right rebuild. The UI used to carry
+    /// this list inline, where a forgotten entry silently did nothing until
+    /// the next restart.
+    pub fn changes_since(&self, old: &Self) -> ChangeSet {
+        ChangeSet {
+            timeline: self.role_terms != old.role_terms
+                || self.aliases != old.aliases
+                || self.lead != old.lead
+                || self.tempo_bpm != old.tempo_bpm
+                || self.count_in_enabled != old.count_in_enabled
+                || self.shuffle_alternatives != old.shuffle_alternatives,
+            audio: self.tempo_bpm != old.tempo_bpm
+                || self.count_in_enabled != old.count_in_enabled
+                || self.accompaniment_variations != old.accompaniment_variations
+                || self.melody != old.melody
+                || self.accompaniment != old.accompaniment
+                || self.accompaniment_rhythm != old.accompaniment_rhythm
+                || self.melody_volume != old.melody_volume
+                || self.accompaniment_volume != old.accompaniment_volume
+                || self.soundfont != old.soundfont,
         }
     }
 }
@@ -385,6 +521,7 @@ mod tests {
     fn migrates_v1_lead_defaults_to_measured_calibration() {
         let mut old = Preferences {
             schema_version: 1,
+            applied_migrations: BTreeSet::new(),
             ..Preferences::default()
         };
         old.lead.syllables_per_second = 6.5;
@@ -490,6 +627,7 @@ mod tests {
     fn migration_preserves_custom_lead_values() {
         let mut old = Preferences {
             schema_version: 1,
+            applied_migrations: BTreeSet::new(),
             ..Preferences::default()
         };
         old.lead.min_beats = 2.0;
@@ -505,5 +643,110 @@ mod tests {
         assert_eq!(MelodyInstrument::Fiddle.gm_program(), 40);
         assert_eq!(AccompanimentInstrument::Piano.gm_program(), 0);
         assert_eq!(AccompanimentInstrument::Guitar.gm_program(), 25);
+    }
+
+    #[test]
+    fn a_file_records_every_migration_it_has_seen() {
+        let prefs = Preferences::from_json(r#"{"schema_version": 6}"#).expect("deserialize");
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
+        for migration in MIGRATIONS {
+            assert!(
+                prefs.applied_migrations.contains(migration.tag),
+                "{} should be recorded",
+                migration.tag
+            );
+        }
+    }
+
+    /// Two branches that add a setting in the same release used to collide on
+    /// `schema_version`: the first block advanced the version past the second,
+    /// so one migration silently never ran.
+    #[test]
+    fn migrations_sharing_a_version_all_run() {
+        let mut prefs = Preferences::default();
+        let migrations = [
+            Migration {
+                tag: "branch-a",
+                version: 7,
+                apply: |prefs| prefs.tts_rate = 1.5,
+            },
+            Migration {
+                tag: "branch-b",
+                version: 7,
+                apply: |prefs| prefs.master_volume = 0.25,
+            },
+        ];
+        prefs.migrate_with(&migrations);
+        assert_eq!(prefs.tts_rate, 1.5);
+        assert_eq!(prefs.master_volume, 0.25);
+        assert!(prefs.applied_migrations.contains("branch-a"));
+        assert!(prefs.applied_migrations.contains("branch-b"));
+    }
+
+    #[test]
+    fn a_recorded_migration_does_not_run_again() {
+        let mut prefs = Preferences::default();
+        prefs.applied_migrations.insert("branch-a".into());
+        let migrations = [Migration {
+            tag: "branch-a",
+            version: 7,
+            apply: |prefs| prefs.tts_rate = 0.5,
+        }];
+        prefs.migrate_with(&migrations);
+        assert_eq!(prefs.tts_rate, 1.0);
+    }
+
+    #[test]
+    fn a_file_without_tags_does_not_rerun_old_migrations() {
+        // A v6 file still holds the v1 lead default only because the user
+        // chose it; the version says the v2 migration is already done.
+        let json = r#"{"schema_version": 6, "lead": {"syllables_per_second": 6.5}}"#;
+        let prefs = Preferences::from_json(json).expect("deserialize");
+        assert_eq!(prefs.lead.syllables_per_second, 6.5);
+    }
+
+    #[test]
+    fn changes_since_routes_settings_to_their_subsystems() {
+        let base = Preferences::default();
+        assert_eq!(base.changes_since(&base), ChangeSet::default());
+
+        let mut tempo = base.clone();
+        tempo.tempo_bpm = 220.0;
+        assert_eq!(
+            tempo.changes_since(&base),
+            ChangeSet {
+                timeline: true,
+                audio: true
+            }
+        );
+
+        let mut aliases = base.clone();
+        aliases.aliases.set_custom("custom", "improper");
+        assert_eq!(
+            aliases.changes_since(&base),
+            ChangeSet {
+                timeline: true,
+                audio: false
+            }
+        );
+
+        let mut melody = base.clone();
+        melody.melody = MelodyInstrument::Accordion;
+        assert_eq!(
+            melody.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: true
+            }
+        );
+
+        // Volume and appearance changes are applied without a rebuild.
+        let mut volume = base.clone();
+        volume.master_volume = 0.1;
+        assert!(!volume.changes_since(&base).any());
+
+        let mut theme = base.clone();
+        theme.theme = Theme::Light;
+        assert!(!theme.changes_since(&base).any());
     }
 }

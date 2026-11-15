@@ -198,6 +198,13 @@ Do not commit if `fmt`, `clippy`, or tests fail. Do not disable a lint globally
 to silence one call site; fix the cause or use a narrowly scoped `allow` with a
 comment.
 
+The toolchain is pinned in `rust-toolchain.toml`. Do not run a repository-wide
+`cargo fmt` as part of an unrelated change: a formatting sweep rewrites files
+other branches are editing, so it belongs in its own commit, ideally in a quiet
+moment just after a merge into `dev`. When a dependency raises the toolchain,
+bump the pin in a commit of its own, then run `cargo fmt --all` and commit that
+separately.
+
 ---
 
 ## 5. Rust coding standards
@@ -309,15 +316,17 @@ The calibrated regression case is:
   upstream hosts and the specific API paths; never turn it into an open proxy.
 - Tests must use fixtures and must not make network calls.
 
-Current source endpoints are documented in `ROADMAP.md` §7. If a site changes,
-update the provider and its fixtures, not the session engine.
+Current source endpoints are documented in `docs/roadmap/data-sources.md`
+(§7). If a site changes, update the provider and its fixtures, not the session
+engine.
 
 ---
 
 ## 9. UI and theme rules
 
-- Default theme is dark grey. Use the tokens in `ROADMAP.md` §8.1; do not
-  hard-code colours in widgets.
+- Default theme is dark grey. Use the tokens in
+  `docs/roadmap/ui-and-visual-design.md` (§8.1); do not hard-code colours in
+  widgets.
 - No accent colours. Distinguish active calls with contrast, weight, and
   border.
 - Minimum 44 px touch targets; no hover-only controls.

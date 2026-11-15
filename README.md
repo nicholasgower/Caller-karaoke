@@ -116,7 +116,8 @@ from 0 to 2 s. The speech-lead range is 1-5 beats; the maximum is adjustable up
 to 6 beats for learning or slower TTS voices. When the dance loops, the first
 call is scheduled at the end of the loop so it still precedes the first move.
 See `docs/INITIAL_PROMPT.md`,
-`ROADMAP.md`, and `docs/call-timing.md` for the full design.
+`docs/roadmap/timing-model.md` (§5), and `docs/call-timing.md` for the full
+design.
 
 Example:
 
@@ -241,7 +242,8 @@ release is ready; official release builds come from `main`.
 
 ## Project documents
 
-- `ROADMAP.md` — full product and milestone plan.
+- `ROADMAP.md` and `docs/roadmap/` — full product and milestone plan, one
+  chapter per file.
 - `AGENTS.md` — architecture, code, testing, and release rules.
 - `docs/INITIAL_PROMPT.md` — original project request.
 - `docs/automation.md` — driving a development build from an MCP agent.

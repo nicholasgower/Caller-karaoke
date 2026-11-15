@@ -1,7 +1,7 @@
 ---
 title: Build and run
 description: Build Contra Karaoke from source on Windows or Linux and start the desktop app.
-sidebar_position: 1
+sidebar_position: 5
 ---
 
 Contra Karaoke is a Rust workspace with five crates: `core` (domain and

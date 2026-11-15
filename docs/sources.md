@@ -11,4 +11,5 @@ Adding a dance or tune website should not require changes to the session engine.
 6. Add attribution to `CREDITS.md`.
 7. Add a URL parser for direct links.
 
-Current endpoints and search behavior are documented in `ROADMAP.md` §7.
+Current endpoints and search behavior are documented in
+`docs/roadmap/data-sources.md` (§7).

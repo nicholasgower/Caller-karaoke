@@ -68,23 +68,141 @@ impl TuneView {
 impl Screen {
     /// Where Escape leads from this screen. The session itself ignores Escape.
     fn escape_target(self) -> Option<Self> {
-        match self {
-            Self::Session => None,
-            Self::Aliases => Some(Self::Preferences),
-            Self::DanceDownload => Some(Self::DancePicker),
-            Self::TuneDownload => Some(Self::TunePicker),
-            Self::DancePicker | Self::TunePicker | Self::Preferences => Some(Self::Session),
-        }
+        SCREENS
+            .iter()
+            .find(|def| def.screen == self)
+            .and_then(|def| def.escape)
     }
 }
 
-/// Keys that select the top-row tabs, in tab order.
-const TAB_KEYS: [egui::Key; 4] = [
-    egui::Key::Num1,
-    egui::Key::Num2,
-    egui::Key::Num3,
-    egui::Key::Num4,
+/// One top-row tab: the screens it covers, its labels, and its shortcut key.
+///
+/// A tab stays lit for every screen it covers, so a detail screen such as the
+/// download search does not light the session tab instead.
+struct TabDef {
+    screens: &'static [Screen],
+    label: &'static str,
+    /// Shorter label used at phone width.
+    short_label: &'static str,
+    hover: &'static str,
+    shortcut: &'static str,
+    key: egui::Key,
+}
+
+impl TabDef {
+    fn is_active(&self, screen: Screen) -> bool {
+        self.screens.contains(&screen)
+    }
+
+    /// The screen the tab opens; the first one in its list.
+    fn landing(&self) -> Screen {
+        self.screens[0]
+    }
+}
+
+const TABS: [TabDef; 4] = [
+    TabDef {
+        screens: &[Screen::Session],
+        label: "Session",
+        short_label: "Session",
+        hover: "Session",
+        shortcut: "1",
+        key: egui::Key::Num1,
+    },
+    TabDef {
+        screens: &[Screen::DancePicker, Screen::DanceDownload],
+        label: "Select dance",
+        short_label: "Dance",
+        hover: "Select dance",
+        shortcut: "2",
+        key: egui::Key::Num2,
+    },
+    TabDef {
+        screens: &[Screen::TunePicker, Screen::TuneDownload],
+        label: "Select Tune",
+        short_label: "Tune",
+        hover: "Select Tune",
+        shortcut: "3",
+        key: egui::Key::Num3,
+    },
+    TabDef {
+        screens: &[Screen::Preferences],
+        label: "Preferences",
+        short_label: "Prefs",
+        hover: "Preferences",
+        shortcut: "4",
+        key: egui::Key::Num4,
+    },
 ];
+
+/// One screen: how to draw it and where Escape leads from it.
+struct ScreenDef {
+    screen: Screen,
+    draw: fn(&mut ContraApp, &mut egui::Ui, f64),
+    escape: Option<Screen>,
+}
+
+const SCREENS: [ScreenDef; 7] = [
+    ScreenDef {
+        screen: Screen::Session,
+        draw: draw_session,
+        escape: None,
+    },
+    ScreenDef {
+        screen: Screen::DancePicker,
+        draw: draw_dance_library,
+        escape: Some(Screen::Session),
+    },
+    ScreenDef {
+        screen: Screen::DanceDownload,
+        draw: draw_dance_download,
+        escape: Some(Screen::DancePicker),
+    },
+    ScreenDef {
+        screen: Screen::TunePicker,
+        draw: draw_tune_library,
+        escape: Some(Screen::Session),
+    },
+    ScreenDef {
+        screen: Screen::TuneDownload,
+        draw: draw_tune_download,
+        escape: Some(Screen::TunePicker),
+    },
+    ScreenDef {
+        screen: Screen::Preferences,
+        draw: draw_preferences,
+        escape: Some(Screen::Session),
+    },
+    ScreenDef {
+        screen: Screen::Aliases,
+        draw: draw_aliases,
+        escape: Some(Screen::Preferences),
+    },
+];
+
+// The registry needs uniform draw functions; the screens themselves have
+// different signatures.
+fn draw_session(app: &mut ContraApp, ui: &mut egui::Ui, beat: f64) {
+    app.session_ui(ui, beat);
+}
+fn draw_dance_library(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.dance_library_ui(ui);
+}
+fn draw_dance_download(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.dance_download_ui(ui);
+}
+fn draw_tune_library(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.tune_library_ui(ui);
+}
+fn draw_tune_download(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.tune_download_ui(ui);
+}
+fn draw_preferences(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.preferences_ui(ui);
+}
+fn draw_aliases(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.aliases_ui(ui);
+}
 
 /// Project links shown in the About window.
 ///
@@ -95,25 +213,19 @@ const DOCUMENTATION_URL: &str = "https://storytold.github.io/Contra-karaoke/";
 
 /// Map the number-key tab shortcuts to screens.
 fn screen_for_tab_key(key: egui::Key) -> Option<Screen> {
-    match key {
-        egui::Key::Num1 => Some(Screen::Session),
-        egui::Key::Num2 => Some(Screen::DancePicker),
-        egui::Key::Num3 => Some(Screen::TunePicker),
-        egui::Key::Num4 => Some(Screen::Preferences),
-        _ => None,
-    }
+    TABS.iter()
+        .find(|tab| tab.key == key)
+        .map(|tab| tab.landing())
 }
 
 /// The screen selected by a tab shortcut pressed this frame, if any.
 ///
-/// The key must actually have been pressed: resolving the first key in
-/// [`TAB_KEYS`] regardless of input would pin the app to the session screen
-/// every frame and undo any click on another tab.
+/// The key must actually have been pressed: resolving the first tab's
+/// shortcut regardless of input would pin the app to the session screen every
+/// frame and undo any click on another tab.
 fn tab_shortcut(input: &egui::InputState) -> Option<Screen> {
-    TAB_KEYS
-        .into_iter()
-        .find(|key| input.key_pressed(*key))
-        .and_then(screen_for_tab_key)
+    let pressed = TABS.iter().find(|tab| input.key_pressed(tab.key))?;
+    screen_for_tab_key(pressed.key)
 }
 
 pub struct ContraApp {
@@ -153,8 +265,8 @@ pub struct ContraApp {
     pending_audio: bool,
     render_loading: bool,
     started: bool,
-    dance_query: DanceQuery,
-    tune_query: TuneQuery,
+    /// Transient state of the dance and tune download screens.
+    picker: PickerState,
     dance_library: Library<Dance>,
     tune_library: Library<Tune>,
     dance_library_query: String,
@@ -167,16 +279,8 @@ pub struct ContraApp {
     renaming_tune_folder: Option<String>,
     folder_rename_text: String,
     library_status: Option<String>,
-    dance_results: Option<DanceSearchPage>,
-    tune_results: Option<TuneSearchPage>,
-    dance_preview: Option<Dance>,
-    tune_preview: Option<Tune>,
     tune_view: TuneView,
     tune_sheet: Option<Result<SheetPreview, String>>,
-    dance_selected: Option<DanceSummary>,
-    tune_selected: Option<TuneSummary>,
-    search_loading: bool,
-    preview_loading: bool,
     status: String,
     error: Option<String>,
     length_warning: Option<String>,
@@ -192,6 +296,25 @@ pub struct ContraApp {
     alternative_inputs: std::collections::BTreeMap<String, String>,
     /// Seed for the alternative-alias shuffle. Selecting a dance advances it.
     alias_seed: u64,
+}
+
+/// Transient state of the two download screens.
+///
+/// The dance and tune pickers have the same shape, so they share one struct: a
+/// new search or preview field belongs here instead of being threaded through
+/// the app struct and both constructors.
+#[derive(Default)]
+pub(in crate::app) struct PickerState {
+    dance_query: DanceQuery,
+    tune_query: TuneQuery,
+    dance_results: Option<DanceSearchPage>,
+    tune_results: Option<TuneSearchPage>,
+    dance_preview: Option<Dance>,
+    tune_preview: Option<Tune>,
+    dance_selected: Option<DanceSummary>,
+    tune_selected: Option<TuneSummary>,
+    search_loading: bool,
+    preview_loading: bool,
 }
 
 impl ContraApp {
@@ -336,13 +459,16 @@ impl ContraApp {
             pending_audio: false,
             render_loading: false,
             started: false,
-            dance_query: DanceQuery {
-                page_size: 10,
-                ..DanceQuery::default()
-            },
-            tune_query: TuneQuery {
-                page_size: 10,
-                ..TuneQuery::default()
+            picker: PickerState {
+                dance_query: DanceQuery {
+                    page_size: 10,
+                    ..DanceQuery::default()
+                },
+                tune_query: TuneQuery {
+                    page_size: 10,
+                    ..TuneQuery::default()
+                },
+                ..PickerState::default()
             },
             dance_library,
             tune_library,
@@ -356,16 +482,10 @@ impl ContraApp {
             renaming_tune_folder: None,
             folder_rename_text: String::new(),
             library_status: None,
-            dance_results: None,
-            tune_results: None,
-            dance_preview: None,
-            tune_preview: None,
+
             tune_view: TuneView::default(),
             tune_sheet: None,
-            dance_selected: None,
-            tune_selected: None,
-            search_loading: false,
-            preview_loading: false,
+
             status: "Ready".into(),
             error: None,
             length_warning,
@@ -420,20 +540,20 @@ impl ContraApp {
 
     /// Start a dance search from the current filters.
     fn search_dances(&mut self) {
-        if self.search_loading {
+        if self.picker.search_loading {
             return;
         }
-        self.search_loading = true;
-        self.source.search_dances(self.dance_query.clone());
+        self.picker.search_loading = true;
+        self.source.search_dances(self.picker.dance_query.clone());
     }
 
     /// Start a tune search from the current filters.
     fn search_tunes(&mut self) {
-        if self.search_loading {
+        if self.picker.search_loading {
             return;
         }
-        self.search_loading = true;
-        self.source.search_tunes(self.tune_query.clone());
+        self.picker.search_loading = true;
+        self.source.search_tunes(self.picker.tune_query.clone());
     }
 
     fn save_dance_library(&self) {
@@ -485,11 +605,12 @@ impl ContraApp {
         };
         self.save_dance_library();
         if self
+            .picker
             .dance_preview
             .as_ref()
             .is_some_and(|dance| dance.source.id == id)
         {
-            self.dance_preview = None;
+            self.picker.dance_preview = None;
         }
         self.library_status = Some(format!(
             "Removed \"{}\" from saved dances.",
@@ -503,11 +624,12 @@ impl ContraApp {
         };
         self.save_tune_library();
         if self
+            .picker
             .tune_preview
             .as_ref()
             .is_some_and(|tune| tune.source.id == id)
         {
-            self.tune_preview = None;
+            self.picker.tune_preview = None;
             self.tune_sheet = None;
         }
         self.library_status = Some(format!(
@@ -634,13 +756,16 @@ impl ContraApp {
             pending_audio: false,
             render_loading: false,
             started: false,
-            dance_query: DanceQuery {
-                page_size: 10,
-                ..DanceQuery::default()
-            },
-            tune_query: TuneQuery {
-                page_size: 10,
-                ..TuneQuery::default()
+            picker: PickerState {
+                dance_query: DanceQuery {
+                    page_size: 10,
+                    ..DanceQuery::default()
+                },
+                tune_query: TuneQuery {
+                    page_size: 10,
+                    ..TuneQuery::default()
+                },
+                ..PickerState::default()
             },
             dance_library,
             tune_library,
@@ -654,16 +779,10 @@ impl ContraApp {
             renaming_tune_folder: None,
             folder_rename_text: String::new(),
             library_status: None,
-            dance_results: None,
-            tune_results: None,
-            dance_preview: None,
-            tune_preview: None,
+
             tune_view: TuneView::default(),
             tune_sheet: None,
-            dance_selected: None,
-            tune_selected: None,
-            search_loading: false,
-            preview_loading: false,
+
             status: "Ready".into(),
             error: None,
             length_warning,
@@ -884,8 +1003,8 @@ impl ContraApp {
         self.dance = dance;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_dance = Some(self.dance.source.clone());
-        self.dance_preview = None;
-        self.dance_selected = None;
+        self.picker.dance_preview = None;
+        self.picker.dance_selected = None;
         self.screen = Screen::Session;
         self.needs_render = true;
         self.arrangement = None;
@@ -905,9 +1024,9 @@ impl ContraApp {
         self.tune = tune;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
         self.prefs.last_tune = Some(self.tune.source.clone());
-        self.tune_preview = None;
+        self.picker.tune_preview = None;
         self.tune_sheet = None;
-        self.tune_selected = None;
+        self.picker.tune_selected = None;
         self.screen = Screen::Session;
         self.needs_render = true;
         self.arrangement = None;
@@ -922,42 +1041,42 @@ impl ContraApp {
         while let Ok(event) = self.source_rx.try_recv() {
             match event {
                 SourceEvent::DanceSearch { query, result } => {
-                    self.search_loading = false;
-                    self.dance_query = query;
+                    self.picker.search_loading = false;
+                    self.picker.dance_query = query;
                     match result {
                         Ok(page) => {
-                            self.dance_results = Some(page);
+                            self.picker.dance_results = Some(page);
                             self.error = None;
                         }
                         Err(error) => self.error = Some(error),
                     }
                 }
                 SourceEvent::Dance { result } => {
-                    self.preview_loading = false;
+                    self.picker.preview_loading = false;
                     match result {
                         Ok(dance) => {
-                            self.dance_preview = Some(dance);
+                            self.picker.dance_preview = Some(dance);
                             self.error = None;
                         }
                         Err(error) => self.error = Some(error),
                     }
                 }
                 SourceEvent::TuneSearch { query, result } => {
-                    self.search_loading = false;
-                    self.tune_query = query;
+                    self.picker.search_loading = false;
+                    self.picker.tune_query = query;
                     match result {
                         Ok(page) => {
-                            self.tune_results = Some(page);
+                            self.picker.tune_results = Some(page);
                             self.error = None;
                         }
                         Err(error) => self.error = Some(error),
                     }
                 }
                 SourceEvent::Tune { result } => {
-                    self.preview_loading = false;
+                    self.picker.preview_loading = false;
                     match result {
                         Ok(tune) => {
-                            self.tune_preview = Some(tune);
+                            self.picker.tune_preview = Some(tune);
                             self.tune_sheet = None;
                             self.error = None;
                         }
@@ -1143,59 +1262,27 @@ impl eframe::App for ContraApp {
                             // the useful part of the header. Dropping the heading
                             // and the long tab labels keeps the navigation to one
                             // row and leaves that height for the prompt and card.
-                            let labels = if compact {
-                                ["Session", "Dance", "Tune", "Prefs"]
-                            } else {
-                                ["Session", "Select dance", "Select Tune", "Preferences"]
-                            };
-                            let hovers = ["Session", "Select dance", "Select Tune", "Preferences"];
                             if !compact {
                                 ui.heading("Contra Karaoke");
                                 ui.add_space(12.0);
                             }
-                            if tab(
-                                ui,
-                                self.screen == Screen::Session,
-                                labels[0],
-                                hovers[0],
-                                "1",
-                                animate,
-                                compact,
-                            ) {
-                                self.screen = Screen::Session;
-                            }
-                            if tab(
-                                ui,
-                                matches!(self.screen, Screen::DancePicker | Screen::DanceDownload),
-                                labels[1],
-                                hovers[1],
-                                "2",
-                                animate,
-                                compact,
-                            ) {
-                                self.screen = Screen::DancePicker;
-                            }
-                            if tab(
-                                ui,
-                                matches!(self.screen, Screen::TunePicker | Screen::TuneDownload),
-                                labels[2],
-                                hovers[2],
-                                "3",
-                                animate,
-                                compact,
-                            ) {
-                                self.screen = Screen::TunePicker;
-                            }
-                            if tab(
-                                ui,
-                                self.screen == Screen::Preferences,
-                                labels[3],
-                                hovers[3],
-                                "4",
-                                animate,
-                                compact,
-                            ) {
-                                self.screen = Screen::Preferences;
+                            for tab_def in &TABS {
+                                let label = if compact {
+                                    tab_def.short_label
+                                } else {
+                                    tab_def.label
+                                };
+                                if tab(
+                                    ui,
+                                    tab_def.is_active(self.screen),
+                                    label,
+                                    tab_def.hover,
+                                    tab_def.shortcut,
+                                    animate,
+                                    compact,
+                                ) {
+                                    self.screen = tab_def.landing();
+                                }
                             }
                         });
                     });
@@ -1224,14 +1311,8 @@ impl eframe::App for ContraApp {
                 ui.add_space((1.0 - screen_progress) * 12.0);
                 ui.set_opacity(0.15 + 0.85 * screen_progress);
             }
-            match self.screen {
-                Screen::Session => self.session_ui(ui, beat),
-                Screen::DancePicker => self.dance_library_ui(ui),
-                Screen::DanceDownload => self.dance_download_ui(ui),
-                Screen::TunePicker => self.tune_library_ui(ui),
-                Screen::TuneDownload => self.tune_download_ui(ui),
-                Screen::Preferences => self.preferences_ui(ui),
-                Screen::Aliases => self.aliases_ui(ui),
+            if let Some(def) = SCREENS.iter().find(|def| def.screen == self.screen) {
+                (def.draw)(self, ui, beat);
             }
         });
 
@@ -1505,6 +1586,7 @@ fn safe_filename(title: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::ui::{CallPhase, CardMode, CardTone, card_state, card_tone};
 
     #[test]
     fn bundled_defaults_pass_the_length_check() {
@@ -1521,6 +1603,32 @@ mod tests {
         let warning = length_warning_for(&dance, &tune).expect("length mismatch");
         assert!(warning.contains("63.5"), "{warning}");
         assert!(warning.contains("64.0"), "{warning}");
+    }
+
+    /// Every screen must be registered exactly once, or it becomes unreachable
+    /// from the tab row or the dispatcher.
+    #[test]
+    fn every_screen_is_registered_once() {
+        const ALL: [Screen; 7] = [
+            Screen::Session,
+            Screen::DancePicker,
+            Screen::DanceDownload,
+            Screen::TunePicker,
+            Screen::TuneDownload,
+            Screen::Preferences,
+            Screen::Aliases,
+        ];
+        assert_eq!(SCREENS.len(), ALL.len());
+        for screen in ALL {
+            let registered = SCREENS.iter().filter(|def| def.screen == screen).count();
+            assert_eq!(registered, 1, "{screen:?} must be registered exactly once");
+        }
+        for tab in &TABS {
+            for screen in tab.screens {
+                assert!(ALL.contains(screen), "{screen:?} is not a screen");
+            }
+            assert_eq!(screen_for_tab_key(tab.key), Some(tab.landing()));
+        }
     }
 
     #[test]
@@ -1746,8 +1854,8 @@ mod tests {
     }
 }
 
-// The rest of the UI is implemented in `ui.rs` to keep this file navigable.
-include!("ui.rs");
+// Each screen lives in its own file under `app/ui/`.
+mod ui;
 
 #[cfg(feature = "headless")]
 pub mod headless;

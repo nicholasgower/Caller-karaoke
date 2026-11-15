@@ -36,6 +36,18 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         .with_max_steps(10)
         .build_eframe(|cc| ContraApp::new_headless(cc));
 
+    session_shots(&mut harness, out)?;
+    dance_library_shots(&mut harness, out)?;
+    dance_picker_shots(&mut harness, out)?;
+    tune_library_shots(&mut harness, out)?;
+    tune_picker_shots(&mut harness, out)?;
+    preference_shots(&mut harness, out)?;
+    remaining_shots(&mut harness, out)?;
+
+    Ok(())
+}
+/// Launch state, the transport, and the live session states.
+fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), Box<dyn Error>> {
     // Launch state: READY, defaults, music not rendered yet.
     {
         let app = harness.state_mut();
@@ -44,14 +56,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.started = false;
         app.error = None;
     }
-    capture(&mut harness, out, "main-idle")?;
+    capture(harness, out, "main-idle")?;
 
     // About window over the session.
     {
         let app = harness.state_mut();
         app.about_open = true;
     }
-    capture(&mut harness, out, "about-window")?;
+    capture(harness, out, "about-window")?;
     {
         let app = harness.state_mut();
         app.about_open = false;
@@ -61,28 +73,28 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         let app = harness.state_mut();
         app.needs_render = false;
     }
-    capture(&mut harness, out, "main-dance-loaded")?;
+    capture(harness, out, "main-dance-loaded")?;
 
     // Session controls and summary are present in different states.
     {
         let app = harness.state_mut();
         app.prefs.tempo_bpm = 220.0;
     }
-    capture(&mut harness, out, "transport-tempo")?;
+    capture(harness, out, "transport-tempo")?;
     {
         let app = harness.state_mut();
         app.prefs.tempo_bpm = 240.0;
         app.prefs.melody = contra_core::MelodyInstrument::Accordion;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
     }
-    capture(&mut harness, out, "transport-summary")?;
+    capture(harness, out, "transport-summary")?;
     {
         let app = harness.state_mut();
         app.prefs.melody = contra_core::MelodyInstrument::Fiddle;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Piano;
         app.prefs.master_volume = 0.5;
     }
-    capture(&mut harness, out, "transport-volume")?;
+    capture(harness, out, "transport-volume")?;
     {
         let app = harness.state_mut();
         app.prefs.master_volume = 0.8;
@@ -96,34 +108,34 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.audio.play();
         app.audio.seek_beat(-2.0);
     }
-    capture(&mut harness, out, "session-count-in")?;
+    capture(harness, out, "session-count-in")?;
     {
         let app = harness.state_mut();
         app.audio.seek_beat(-1.0);
     }
-    capture(&mut harness, out, "session-first-call")?;
+    capture(harness, out, "session-first-call")?;
 
     {
         let app = harness.state_mut();
         app.audio.seek_beat(4.0);
     }
-    capture(&mut harness, out, "session-call-now")?;
+    capture(harness, out, "session-call-now")?;
     {
         let app = harness.state_mut();
         app.audio.seek_beat(4.5);
     }
-    capture(&mut harness, out, "session-lead-countdown")?;
+    capture(harness, out, "session-lead-countdown")?;
 
     {
         let app = harness.state_mut();
         app.audio.seek_beat(9.0);
     }
-    capture(&mut harness, out, "session-upcoming-move")?;
+    capture(harness, out, "session-upcoming-move")?;
     {
         let app = harness.state_mut();
         app.audio.pause();
     }
-    capture(&mut harness, out, "session-paused")?;
+    capture(harness, out, "session-paused")?;
 
     {
         let app = harness.state_mut();
@@ -133,7 +145,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.timeline.calls.clear();
         app.started = true;
     }
-    capture(&mut harness, out, "session-finished")?;
+    capture(harness, out, "session-finished")?;
 
     // Pending rebuild state.
     {
@@ -143,7 +155,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.audio.play();
         app.audio.seek_beat(4.0);
     }
-    capture(&mut harness, out, "session-changes-pending")?;
+    capture(harness, out, "session-changes-pending")?;
 
     // Role and alias effects in an active session.
     {
@@ -160,12 +172,12 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.audio.play();
         app.audio.seek_beat(4.0);
     }
-    capture(&mut harness, out, "session-roles-applied")?;
+    capture(harness, out, "session-roles-applied")?;
     {
         let app = harness.state_mut();
         app.audio.seek_beat(12.0);
     }
-    capture(&mut harness, out, "session-alias-call")?;
+    capture(harness, out, "session-alias-call")?;
 
     {
         let app = harness.state_mut();
@@ -175,14 +187,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.prefs.tts_enabled = false;
         app.audio.set_looping(false);
     }
-    capture(&mut harness, out, "transport-loop-off")?;
+    capture(harness, out, "transport-loop-off")?;
     {
         let app = harness.state_mut();
         app.prefs.loop_enabled = true;
         app.prefs.tts_enabled = true;
         app.audio.set_looping(true);
     }
-    capture(&mut harness, out, "transport-tts-on")?;
+    capture(harness, out, "transport-tts-on")?;
     {
         let app = harness.state_mut();
         app.prefs.tts_enabled = false;
@@ -191,6 +203,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.started = false;
     }
 
+    Ok(())
+}
+
+/// The saved-dance library and its folder search.
+fn dance_library_shots(
+    harness: &mut Harness<'_, ContraApp>,
+    out: &Path,
+) -> Result<(), Box<dyn Error>> {
     // Saved-dance library: all saved cards with a preview, then a search
     // narrowed to one folder.
     {
@@ -198,74 +218,82 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.dance_library = library_dances();
         app.dance_library_query.clear();
         app.dance_library_folder = FolderFilter::All;
-        app.dance_preview = app
+        app.picker.dance_preview = app
             .dance_library
             .get("contradb", "2409")
             .map(|entry| entry.item.clone());
-        app.dance_selected = None;
+        app.picker.dance_selected = None;
         app.screen = Screen::DancePicker;
         app.error = None;
     }
-    capture(&mut harness, out, "dance-library")?;
+    capture(harness, out, "dance-library")?;
     {
         let app = harness.state_mut();
         app.dance_library_query = "belle".into();
         app.dance_library_folder = FolderFilter::Folder("Warmups".into());
-        app.dance_preview = app
+        app.picker.dance_preview = app
             .dance_library
             .get("contradb", "2154")
             .map(|entry| entry.item.clone());
     }
-    capture(&mut harness, out, "dance-library-search")?;
+    capture(harness, out, "dance-library-search")?;
 
+    Ok(())
+}
+
+/// Downloading a dance: search, sort, filters, and preview.
+fn dance_picker_shots(
+    harness: &mut Harness<'_, ContraApp>,
+    out: &Path,
+) -> Result<(), Box<dyn Error>> {
     // Download dance keeps the existing ContraDB search and preview UI.
     {
         let app = harness.state_mut();
         app.screen = Screen::DanceDownload;
         app.dance_library_query.clear();
         app.dance_library_folder = FolderFilter::All;
-        app.dance_results = None;
-        app.dance_preview = None;
-        app.dance_query.title.clear();
-        app.dance_query.user.clear();
-        app.dance_query.hook.clear();
-        app.dance_query.figure_move = None;
+        app.picker.dance_results = None;
+        app.picker.dance_preview = None;
+        app.picker.dance_query.title.clear();
+        app.picker.dance_query.user.clear();
+        app.picker.dance_query.hook.clear();
+        app.picker.dance_query.figure_move = None;
     }
-    capture(&mut harness, out, "dance-picker-open")?;
+    capture(harness, out, "dance-picker-open")?;
 
     {
         let app = harness.state_mut();
-        app.dance_results = Some(dance_results());
-        app.dance_query.title = "last".into();
-        app.dance_preview = None;
-        app.dance_selected = None;
+        app.picker.dance_results = Some(dance_results());
+        app.picker.dance_query.title = "last".into();
+        app.picker.dance_preview = None;
+        app.picker.dance_selected = None;
     }
-    capture(&mut harness, out, "dance-picker-search")?;
+    capture(harness, out, "dance-picker-search")?;
     {
         let app = harness.state_mut();
-        app.dance_query.sort = contra_sources::DanceSort::TitleAsc;
+        app.picker.dance_query.sort = contra_sources::DanceSort::TitleAsc;
     }
-    capture(&mut harness, out, "dance-sort")?;
+    capture(harness, out, "dance-sort")?;
     {
         let app = harness.state_mut();
-        app.dance_query.sort = contra_sources::DanceSort::Relevancy;
-        app.dance_query.page = 2;
-        app.dance_results = Some(dance_results_page_two());
+        app.picker.dance_query.sort = contra_sources::DanceSort::Relevancy;
+        app.picker.dance_query.page = 2;
+        app.picker.dance_results = Some(dance_results_page_two());
     }
     // The pagination row sits below the fold at 800 px.
     harness.set_size(Vec2::new(1280.0, 1050.0));
-    capture(&mut harness, out, "dance-pagination")?;
+    capture(harness, out, "dance-pagination")?;
     harness.set_size(DESKTOP);
     {
         let app = harness.state_mut();
-        app.dance_query.page = 1;
-        app.dance_results = Some(dance_results());
+        app.picker.dance_query.page = 1;
+        app.picker.dance_results = Some(dance_results());
     }
 
     {
         let app = harness.state_mut();
         let dance = super::defaults::default_dance();
-        app.dance_selected = Some(DanceSummary {
+        app.picker.dance_selected = Some(DanceSummary {
             id: dance.source.id.clone(),
             title: dance.title.clone(),
             choreographer: dance.choreographer.clone(),
@@ -273,27 +301,27 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             hook: String::new(),
             user: "Koren A Wake".into(),
         });
-        app.dance_preview = Some(dance);
+        app.picker.dance_preview = Some(dance);
     }
-    capture(&mut harness, out, "dance-picker-preview")?;
+    capture(harness, out, "dance-picker-preview")?;
 
     {
         let app = harness.state_mut();
-        app.dance_query.user = "Koren".into();
+        app.picker.dance_query.user = "Koren".into();
     }
-    capture(&mut harness, out, "dance-filter-user")?;
+    capture(harness, out, "dance-filter-user")?;
     {
         let app = harness.state_mut();
-        app.dance_query.user.clear();
-        app.dance_query.hook = "star".into();
+        app.picker.dance_query.user.clear();
+        app.picker.dance_query.hook = "star".into();
     }
-    capture(&mut harness, out, "dance-filter-hook")?;
+    capture(harness, out, "dance-filter-hook")?;
     {
         let app = harness.state_mut();
-        app.dance_query.hook.clear();
-        app.dance_query.figure_move = Some("swing".into());
+        app.picker.dance_query.hook.clear();
+        app.picker.dance_query.figure_move = Some("swing".into());
     }
-    capture(&mut harness, out, "dance-filter-figure-type")?;
+    capture(harness, out, "dance-filter-figure-type")?;
 
     // A short dance preview shows the length warning.
     {
@@ -302,18 +330,26 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         dance.figures[0].beats -= 0.5;
         app.length_warning = super::length_warning_for(&dance, &app.tune);
         app.dance = dance.clone();
-        app.dance_preview = Some(dance);
+        app.picker.dance_preview = Some(dance);
         app.rebuild_timeline();
     }
-    capture(&mut harness, out, "dance-preview-beats")?;
+    capture(harness, out, "dance-preview-beats")?;
     {
         let app = harness.state_mut();
         app.screen = Screen::Session;
         app.started = false;
         app.needs_render = false;
     }
-    capture(&mut harness, out, "session-length-warning")?;
+    capture(harness, out, "session-length-warning")?;
 
+    Ok(())
+}
+
+/// The saved-tune library and its folder search.
+fn tune_library_shots(
+    harness: &mut Harness<'_, ContraApp>,
+    out: &Path,
+) -> Result<(), Box<dyn Error>> {
     // Saved-tune library: all saved tunes with a sheet-music preview, then a
     // search narrowed to one folder.
     {
@@ -321,27 +357,35 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.tune_library = library_tunes();
         app.tune_library_query.clear();
         app.tune_library_folder = FolderFilter::All;
-        app.tune_preview = app
+        app.picker.tune_preview = app
             .tune_library
             .get("abcsessiontunes", "75815")
             .map(|entry| entry.item.clone());
         app.tune_sheet = None;
-        app.tune_selected = None;
+        app.picker.tune_selected = None;
         app.screen = Screen::TunePicker;
     }
-    capture(&mut harness, out, "tune-library")?;
+    capture(harness, out, "tune-library")?;
     {
         let app = harness.state_mut();
         app.tune_library_query = "saint".into();
         app.tune_library_folder = FolderFilter::Folder("Reels".into());
-        app.tune_preview = app
+        app.picker.tune_preview = app
             .tune_library
             .get("abcsessiontunes", "75412")
             .map(|entry| entry.item.clone());
         app.tune_sheet = None;
     }
-    capture(&mut harness, out, "tune-library-search")?;
+    capture(harness, out, "tune-library-search")?;
 
+    Ok(())
+}
+
+/// Downloading a tune: search, filters, and sheet preview.
+fn tune_picker_shots(
+    harness: &mut Harness<'_, ContraApp>,
+    out: &Path,
+) -> Result<(), Box<dyn Error>> {
     // Download tune keeps the existing search and sheet-music preview UI.
     {
         let app = harness.state_mut();
@@ -351,18 +395,18 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.dance = super::defaults::default_dance();
         app.rebuild_timeline();
         app.length_warning = super::length_warning_for(&app.dance, &app.tune);
-        app.tune_results = None;
-        app.tune_preview = None;
-        app.tune_selected = None;
+        app.picker.tune_results = None;
+        app.picker.tune_preview = None;
+        app.picker.tune_selected = None;
         app.tune_sheet = None;
     }
-    capture(&mut harness, out, "tune-picker-open")?;
+    capture(harness, out, "tune-picker-open")?;
     {
         let app = harness.state_mut();
-        app.tune_results = Some(tune_results());
-        app.tune_query.search = "sandy".into();
-        app.tune_preview = Some(super::defaults::default_tune());
-        app.tune_selected = Some(TuneSummary {
+        app.picker.tune_results = Some(tune_results());
+        app.picker.tune_query.search = "sandy".into();
+        app.picker.tune_preview = Some(super::defaults::default_tune());
+        app.picker.tune_selected = Some(TuneSummary {
             id: "75815".into(),
             title: "Sandy Boys".into(),
             composer: String::new(),
@@ -371,49 +415,57 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             rhythm: "reel".into(),
         });
     }
-    capture(&mut harness, out, "tune-picker-preview")?;
+    capture(harness, out, "tune-picker-preview")?;
     {
         let app = harness.state_mut();
-        app.tune_preview = None;
-        app.tune_selected = None;
-        app.tune_query.search = "sandy".into();
+        app.picker.tune_preview = None;
+        app.picker.tune_selected = None;
+        app.picker.tune_query.search = "sandy".into();
     }
-    capture(&mut harness, out, "tune-search")?;
+    capture(harness, out, "tune-search")?;
 
     {
         let app = harness.state_mut();
-        app.tune_query.search.clear();
-        app.tune_query.key = Some("Amix".into());
+        app.picker.tune_query.search.clear();
+        app.picker.tune_query.key = Some("Amix".into());
     }
-    capture(&mut harness, out, "tune-filter-key")?;
+    capture(harness, out, "tune-filter-key")?;
     {
         let app = harness.state_mut();
-        app.tune_query.key = None;
-        app.tune_query.meter = Some("4/4".into());
+        app.picker.tune_query.key = None;
+        app.picker.tune_query.meter = Some("4/4".into());
     }
-    capture(&mut harness, out, "tune-filter-meter")?;
+    capture(harness, out, "tune-filter-meter")?;
     {
         let app = harness.state_mut();
-        app.tune_query.meter = None;
-        app.tune_query.rhythm = Some("reel".into());
+        app.picker.tune_query.meter = None;
+        app.picker.tune_query.rhythm = Some("reel".into());
     }
-    capture(&mut harness, out, "tune-filter-genre")?;
+    capture(harness, out, "tune-filter-genre")?;
 
+    Ok(())
+}
+
+/// Preferences, the alias editor, and maintenance.
+fn preference_shots(
+    harness: &mut Harness<'_, ContraApp>,
+    out: &Path,
+) -> Result<(), Box<dyn Error>> {
     // Preferences and alias editor.
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
-        app.tune_query.rhythm = None;
+        app.picker.tune_query.rhythm = None;
         app.prefs.theme = contra_core::Theme::Dark;
         app.error = None;
     }
-    capture(&mut harness, out, "prefs-open")?;
+    capture(harness, out, "prefs-open")?;
     {
         let app = harness.state_mut();
         app.prefs.role_terms =
             contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
     }
-    capture(&mut harness, out, "prefs-roles-presets")?;
+    capture(harness, out, "prefs-roles-presets")?;
     {
         let app = harness.state_mut();
         // `RoleTerms::preset(Custom)` is identical to Larks/Robins, so use
@@ -425,14 +477,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             right_plural: "starboards".into(),
         };
     }
-    capture(&mut harness, out, "prefs-roles-custom")?;
+    capture(harness, out, "prefs-roles-custom")?;
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
         app.prefs.animations_enabled = true;
     }
     harness.set_size(Vec2::new(1280.0, 1000.0));
-    capture(&mut harness, out, "prefs-interface")?;
+    capture(harness, out, "prefs-interface")?;
     harness.set_size(DESKTOP);
     {
         let app = harness.state_mut();
@@ -443,27 +495,27 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.screen = Screen::Aliases;
         app.alias_filter.clear();
     }
-    capture(&mut harness, out, "prefs-alias-list")?;
+    capture(harness, out, "prefs-alias-list")?;
     {
         let app = harness.state_mut();
         app.alias_filter = "balance".into();
     }
-    capture(&mut harness, out, "prefs-alias-placeholders")?;
+    capture(harness, out, "prefs-alias-placeholders")?;
     {
         let app = harness.state_mut();
         app.alias_filter = "swing".into();
     }
-    capture(&mut harness, out, "prefs-alias-editor")?;
+    capture(harness, out, "prefs-alias-editor")?;
     {
         let app = harness.state_mut();
         app.alias_filter = "allemande".into();
     }
-    capture(&mut harness, out, "prefs-alias-reset")?;
+    capture(harness, out, "prefs-alias-reset")?;
     {
         let app = harness.state_mut();
         app.alias_filter = "star".into();
     }
-    capture(&mut harness, out, "prefs-alias-reset-all")?;
+    capture(harness, out, "prefs-alias-reset-all")?;
 
     // Preferences sections that sit below the fold at 1280x800.
     harness.set_size(Vec2::new(1280.0, 2250.0));
@@ -481,53 +533,53 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.prefs.web_proxy_url = None;
         app.prefs.web_proxy_token = None;
     }
-    capture(&mut harness, out, "prefs-instrument-melody")?;
+    capture(harness, out, "prefs-instrument-melody")?;
     {
         let app = harness.state_mut();
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
         app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::BoomChuck;
     }
-    capture(&mut harness, out, "prefs-instrument-accompaniment")?;
+    capture(harness, out, "prefs-instrument-accompaniment")?;
     {
         let app = harness.state_mut();
         app.prefs.melody_volume = 0.5;
         app.prefs.accompaniment_volume = 0.5;
     }
-    capture(&mut harness, out, "prefs-instrument-mix")?;
+    capture(harness, out, "prefs-instrument-mix")?;
     {
         let app = harness.state_mut();
         app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::Auto;
         app.prefs.accompaniment_variations = true;
     }
-    capture(&mut harness, out, "prefs-accompaniment-variations")?;
+    capture(harness, out, "prefs-accompaniment-variations")?;
     {
         let app = harness.state_mut();
         app.prefs.accompaniment_variations = false;
         app.prefs.lead.auto = false;
     }
-    capture(&mut harness, out, "prefs-timing-mode")?;
+    capture(harness, out, "prefs-timing-mode")?;
     {
         let app = harness.state_mut();
         app.prefs.lead.auto = true;
         app.prefs.lead.min_beats = 1.5;
         app.prefs.lead.max_beats = 4.0;
     }
-    capture(&mut harness, out, "prefs-timing-bounds")?;
+    capture(harness, out, "prefs-timing-bounds")?;
     {
         let app = harness.state_mut();
         app.prefs.lead.syllables_per_second = 5.0;
     }
-    capture(&mut harness, out, "prefs-timing-speech-rate")?;
+    capture(harness, out, "prefs-timing-speech-rate")?;
     {
         let app = harness.state_mut();
         app.prefs.lead.max_beats = 5.5;
     }
-    capture(&mut harness, out, "prefs-timing-rebuild")?;
+    capture(harness, out, "prefs-timing-rebuild")?;
     {
         let app = harness.state_mut();
         app.prefs.tts_rate = 1.5;
     }
-    capture(&mut harness, out, "prefs-tts-rate")?;
+    capture(harness, out, "prefs-tts-rate")?;
     {
         let app = harness.state_mut();
         app.prefs.tts_rate = 1.0;
@@ -536,13 +588,13 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             path: None,
         });
     }
-    capture(&mut harness, out, "prefs-sf2-loaded")?;
+    capture(harness, out, "prefs-sf2-loaded")?;
     {
         let app = harness.state_mut();
         app.prefs.soundfont = None;
         app.prefs.tts_rate = 0.8;
     }
-    capture(&mut harness, out, "prefs-sf2-removed")?;
+    capture(harness, out, "prefs-sf2-removed")?;
     {
         let app = harness.state_mut();
         app.prefs.soundfont = Some(contra_core::SoundFontSetting {
@@ -551,36 +603,41 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         });
         app.soundfont_error = Some("unsupported SoundFont: bad RIFF header".into());
     }
-    capture(&mut harness, out, "error-sf2")?;
+    capture(harness, out, "error-sf2")?;
     {
         let app = harness.state_mut();
         app.soundfont_error = None;
         app.cache_clear_confirm = true;
     }
-    capture(&mut harness, out, "prefs-cache-confirm")?;
+    capture(harness, out, "prefs-cache-confirm")?;
     {
         let app = harness.state_mut();
         app.cache_clear_confirm = false;
         app.status = "Cache cleared".into();
     }
-    capture(&mut harness, out, "prefs-cache-cleared")?;
+    capture(harness, out, "prefs-cache-cleared")?;
     {
         let app = harness.state_mut();
         app.prefs.web_proxy_url = Some("https://proxy.example.workers.dev".into());
         app.prefs.web_proxy_token = Some("test-token".into());
     }
-    capture(&mut harness, out, "prefs-proxy")?;
+    capture(harness, out, "prefs-proxy")?;
     {
         let app = harness.state_mut();
         app.status = "Music ready".into();
     }
-    capture(&mut harness, out, "prefs-maintenance")?;
+    capture(harness, out, "prefs-maintenance")?;
     {
         let app = harness.state_mut();
         app.speech = crate::tts::Speech::stub_unavailable();
     }
-    capture(&mut harness, out, "prefs-tts-unavailable")?;
+    capture(harness, out, "prefs-tts-unavailable")?;
 
+    Ok(())
+}
+
+/// The light theme, error banners, and the phone layout.
+fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), Box<dyn Error>> {
     // Alias custom section with the list filtered away.
     harness.set_size(DESKTOP);
     {
@@ -588,7 +645,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.screen = Screen::Aliases;
         app.alias_filter = "zzzz-no-match".into();
     }
-    capture(&mut harness, out, "prefs-alias-custom")?;
+    capture(harness, out, "prefs-alias-custom")?;
 
     // Light theme session.
     {
@@ -600,14 +657,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.needs_render = false;
         app.audio.stop();
     }
-    capture(&mut harness, out, "main-light")?;
+    capture(harness, out, "main-light")?;
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
     }
     // A taller viewport shows the Theme buttons below the Calling lead heading.
     harness.set_size(Vec2::new(1280.0, 1000.0));
-    capture(&mut harness, out, "prefs-theme-light")?;
+    capture(harness, out, "prefs-theme-light")?;
     harness.set_size(DESKTOP);
 
     // Errors are visible on the screen that produced them.
@@ -619,32 +676,32 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.prefs.tts_enabled = true;
         app.error = Some("HTTP 500 Internal Server Error".into());
     }
-    capture(&mut harness, out, "error-network")?;
+    capture(harness, out, "error-network")?;
     {
         let app = harness.state_mut();
         app.error = None;
         app.screen = Screen::Session;
         app.audio_error = Some("no audio output device found".into());
     }
-    capture(&mut harness, out, "error-audio")?;
+    capture(harness, out, "error-audio")?;
     {
         let app = harness.state_mut();
         app.audio_error = None;
         app.screen = Screen::TuneDownload;
         app.error = Some("could not parse source response: unexpected token".into());
     }
-    capture(&mut harness, out, "error-parse")?;
+    capture(harness, out, "error-parse")?;
     {
         let app = harness.state_mut();
         app.screen = Screen::DanceDownload;
         app.error = Some("HTTP 503 Service Unavailable".into());
     }
-    capture(&mut harness, out, "error-dance-load")?;
+    capture(harness, out, "error-dance-load")?;
     {
         let app = harness.state_mut();
         app.screen = Screen::TuneDownload;
     }
-    capture(&mut harness, out, "error-tune-load")?;
+    capture(harness, out, "error-tune-load")?;
 
     // Mobile viewport.
     {
@@ -657,14 +714,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         app.prefs.tts_enabled = true;
     }
     harness.set_size(MOBILE);
-    capture(&mut harness, out, "main-mobile")?;
+    capture(harness, out, "main-mobile")?;
     {
         let app = harness.state_mut();
         app.started = true;
         app.audio.play();
         app.audio.seek_beat(4.0);
     }
-    capture(&mut harness, out, "session-mobile-controls")?;
+    capture(harness, out, "session-mobile-controls")?;
 
     Ok(())
 }

@@ -130,5 +130,6 @@ Open pull requests against `dev`, not `main`. `dev` is the integration branch;
 ## Source material
 
 The public docs are derived from the application code and the product
-decisions in `ROADMAP.md`. When code and prose disagree, the running app wins;
-update the prose, or fix the app if the behavior is wrong.
+decisions in `docs/roadmap/locked-product-decisions.md`. When code and prose
+disagree, the running app wins; update the prose, or fix the app if the behavior
+is wrong.

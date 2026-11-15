@@ -1,7 +1,7 @@
 ---
 title: Data sources
 description: Where dances and tunes come from, how the app fetches and caches them, and the attribution rules.
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 Contra Karaoke separates source parsing from the session engine. The parsers
