@@ -34,6 +34,8 @@ and build tools used by the project.
 | `tar` | MIT OR Apache-2.0 | ONNX Runtime archive extraction (Linux) |
 | `zip` | MIT | Build-time extraction of the ONNX Runtime DLL |
 | `arc-swap` | MIT OR Apache-2.0 | Real-time-safe audio buffer swaps |
+| `souvlaki` | MIT | OS media keys and media session (Windows, Linux) |
+| `raw-window-handle` | MIT OR Apache-2.0 | Native window handle for the Windows media session |
 | `env_logger` | MIT OR Apache-2.0 | Logging setup |
 | `thiserror` | MIT OR Apache-2.0 | Error types |
 | `egui_kittest` | MIT OR Apache-2.0 | Headless UI rendering for docs screenshots (development only) |

@@ -69,7 +69,8 @@ screen. Every button keeps the 44-pixel touch target, including **Preview**,
 - **1–4** switch tabs.
 - **Enter** submits a search or adds a custom alias.
 
-Shortcuts are ignored while a text field has focus. See
+Shortcuts are ignored while a text field has focus. The keyboard's play/pause
+media key works even when another window is in front. See
 [Keyboard shortcuts](/docs/reference/keyboard-shortcuts) for details.
 
 ## Screen readers and labels

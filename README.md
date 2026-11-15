@@ -85,6 +85,9 @@ being device-tested.
   Preferences.
 - **Enter** — start a dance or tune search from any search field, create a
   folder, add a custom alias, or add an alternative call alias.
+- **Play/Pause media key** — on desktop, start or pause the session even when
+  another window is in front. The system media overlay shows the loaded dance
+  and tune.
 
 Shortcuts are ignored while typing in a text field, so Space and R stay ordinary
 characters in search boxes. Hovering a tab, Play/Pause, Restart, Search, or Add
