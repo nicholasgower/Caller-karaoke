@@ -8,6 +8,7 @@
 mod about;
 mod aliases;
 mod dance_picker;
+mod gesture;
 mod library;
 // The shell tests read the section list to assert where About is drawn.
 pub(in crate::app) mod preferences;
@@ -16,8 +17,9 @@ mod tune_picker;
 mod widgets;
 
 pub(in crate::app) use widgets::{
-    action_width, block_button, block_selectable, combo_option, empty_label, row_button,
-    row_menu_button, submit_text_edit, submitted,
+    RowPress, action_width, block_button, block_selectable, clamp_pane_width, combo_option,
+    empty_label, group_chip, long_press_row, pane_splitter, row_activated, row_menu_button,
+    submit_text_edit, submitted,
 };
 
 use crate::theme;
@@ -421,6 +423,8 @@ pub(super) enum LibraryAction {
         folder: Option<String>,
     },
     ToggleRotation(Tune),
+    /// Switch the tune set from a folder back to the explicit chosen list.
+    UseChosenTuneSet,
 }
 
 /// The site name to show for a provider, for "Open on …" links and messages.
@@ -433,8 +437,20 @@ pub(super) fn source_label(provider: &str) -> &'static str {
 /// A folder operation requested by the folder panel.
 pub(super) enum FolderCommand {
     Create(String),
-    Rename { old: String, new: String },
+    Rename {
+        old: String,
+        new: String,
+    },
     Delete(String),
+    /// Move the folder at `from` to the final index `to`.
+    Reorder {
+        from: usize,
+        to: usize,
+    },
+    /// Use a folder (or the explicit list) as the tune set.
+    UseTuneSet(contra_core::TuneSetSource),
+    /// Restore every split pane to its default width.
+    ResetPanes,
 }
 
 /// The app-side result of a successful folder operation.
@@ -442,6 +458,7 @@ pub(super) enum FolderOutcome {
     Created(String),
     Renamed(String),
     Deleted(String),
+    Reordered(usize),
 }
 
 /// Mutable view of the fields the shared folder panel renders.
@@ -455,6 +472,18 @@ pub(super) struct FolderPanel<'a> {
     new_folder: &'a mut String,
     renaming: &'a mut Option<String>,
     rename_text: &'a mut String,
+    /// Prefix for the drag state stored in egui's temporary data. The dance
+    /// and tune panels use different keys so one screen's drag cannot leak
+    /// into the other.
+    drag_id: &'a str,
+    /// Extra controls for the tune library: the current set source and count.
+    tune_set: Option<TuneSetPanel<'a>>,
+}
+
+/// The tune-set controls the folder panel offers below the selected folder.
+pub(super) struct TuneSetPanel<'a> {
+    pub source: &'a contra_core::TuneSetSource,
+    pub count: usize,
 }
 
 /// Prompt the caller with the move they must call next while the current

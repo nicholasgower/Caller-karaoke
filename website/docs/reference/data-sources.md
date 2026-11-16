@@ -22,7 +22,7 @@ The glossary is a reading aid; the app never fetches or bundles it.
 
 ## Dance sources
 
-The dance source is chosen in **Preferences → Data sources**. Saved dances keep
+The dance source is chosen at the top of **Download dance**. Saved dances keep
 the source they came from, so switching the menu changes where the next download
 comes from without rewriting the library. The preview's **Open on …** link
 always opens the card's own source.

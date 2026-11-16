@@ -615,6 +615,58 @@ mod tests {
     }
 
     #[test]
+    fn moving_a_folder_reorders_and_clamps_the_target() {
+        let mut library: Library<Dance> = Library::default();
+        for name in ["Ball", "Chains", "Warmups"] {
+            library.create_folder(name).expect("create");
+        }
+
+        // Down: remove then insert at the requested index.
+        assert!(library.move_folder(0, 2));
+        assert_eq!(library.folders, ["Chains", "Warmups", "Ball"]);
+
+        // Up.
+        assert!(library.move_folder(2, 0));
+        assert_eq!(library.folders, ["Ball", "Chains", "Warmups"]);
+
+        // Dropping past the end clamps to the last slot.
+        assert!(library.move_folder(0, 99));
+        assert_eq!(library.folders, ["Chains", "Warmups", "Ball"]);
+
+        // Dropping onto itself changes nothing.
+        assert!(!library.move_folder(1, 1));
+
+        // An index outside the list is rejected and leaves the order alone.
+        assert!(!library.move_folder(3, 0));
+        assert!(!library.move_folder(usize::MAX, 0));
+        assert_eq!(library.folders, ["Chains", "Warmups", "Ball"]);
+
+        // Reordering never moves entries between folders.
+        library.insert(dance("1", "First", "A", "swing"), Some("Ball".into()), 1);
+        assert!(library.move_folder(2, 0));
+        assert_eq!(
+            library
+                .get("contradb", "1")
+                .expect("stored")
+                .folder
+                .as_deref(),
+            Some("Ball")
+        );
+    }
+
+    #[test]
+    fn moving_a_folder_in_a_one_folder_library_is_a_no_op() {
+        let mut library: Library<Dance> = Library::default();
+        library.create_folder("Only").expect("create");
+        assert!(!library.move_folder(0, 0));
+        assert!(!library.move_folder(0, 3));
+        assert_eq!(library.folders, ["Only"]);
+
+        let mut empty: Library<Dance> = Library::default();
+        assert!(!empty.move_folder(0, 0));
+    }
+
+    #[test]
     fn json_round_trip_preserves_folders_and_entries() {
         let mut library = Library::default();
         library.create_folder("Warmups").expect("create");

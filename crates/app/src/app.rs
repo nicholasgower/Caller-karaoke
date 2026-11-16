@@ -10,7 +10,7 @@ use contra_core::{
     COUNT_IN_BEATS, Countermelody, DEFAULT_DANCE_SOURCE, Dance, DancerSoundEvent, EndingOptions,
     FolderFilter, HumanizeOptions, InstrumentCopies, Library, MelodyInstrument, MoveKind,
     OutputMode, Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset,
-    ScheduledCall, Theme, TimelineConfig, Tune, VariationOptions,
+    ScheduledCall, Theme, TimelineConfig, Tune, TuneSetSource, VariationOptions,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
@@ -32,6 +32,7 @@ use crate::sheet::SheetPreview;
 use crate::source::{SourceClient, SourceEvent};
 use crate::theme;
 use crate::tts::Speech;
+use crate::tune_set::{ResolvedTuneSet, resolve_tune_set};
 use history::{History, HistoryAction, MergeKey, Snapshot};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -363,6 +364,9 @@ pub struct ContraApp {
     renaming_tune_folder: Option<String>,
     folder_rename_text: String,
     library_status: Option<String>,
+    /// Desktop split-pane widths. Session-only: they are a view preference, not
+    /// saved content, so they reset with the window rather than the library.
+    panes: PaneWidths,
     tune_view: TuneView,
     tune_sheet: Option<Result<SheetPreview, String>>,
     status: String,
@@ -429,6 +433,34 @@ impl Default for PickerState {
             dance_provider: DEFAULT_DANCE_SOURCE.to_string(),
             search_loading: false,
             preview_loading: false,
+        }
+    }
+}
+
+/// Widths, in points, of the desktop split panes.
+///
+/// A width is the size of the left/top pane; the other pane takes the rest.
+/// Widths are clamped at draw time, so a value left over from a wide window is
+/// harmless after the window shrinks.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PaneWidths {
+    /// Folder sidebar in **Select dance** and **Select tune**.
+    sidebar: f32,
+    /// Saved-item list beside the preview in either library.
+    library_list: f32,
+    /// Search results beside the preview on **Download dance**.
+    dance_picker_list: f32,
+    /// Search results beside the preview on **Download tune**.
+    tune_picker_list: f32,
+}
+
+impl Default for PaneWidths {
+    fn default() -> Self {
+        Self {
+            sidebar: 230.0,
+            library_list: 380.0,
+            dance_picker_list: 400.0,
+            tune_picker_list: 400.0,
         }
     }
 }
@@ -730,6 +762,7 @@ impl ContraApp {
             renaming_tune_folder: None,
             folder_rename_text: String::new(),
             library_status: None,
+            panes: PaneWidths::default(),
 
             tune_view: TuneView::default(),
             tune_sheet: None,
@@ -983,7 +1016,7 @@ impl ContraApp {
             self.picker.dance_preview = None;
         }
         self.library_status = Some(format!(
-            "Removed \"{}\" from saved dances.",
+            "Deleted \"{}\" from your saved dances.",
             entry.item.title
         ));
     }
@@ -1003,7 +1036,7 @@ impl ContraApp {
             self.tune_sheet = None;
         }
         self.library_status = Some(format!(
-            "Removed \"{}\" from saved tunes.",
+            "Deleted \"{}\" from your saved tunes.",
             entry.item.title
         ));
         // A tune rendered ahead for rotation must not be installed after it was
@@ -1028,6 +1061,15 @@ impl ContraApp {
             Ok(()) => {
                 self.save_tune_library();
                 self.library_status = Some(format!("Moved the tune to {label}."));
+                // A folder-set rotation follows its folder live, so a tune
+                // moved in or out must discard a tune already rendered from
+                // the old membership.
+                if matches!(
+                    self.prefs.tune_rotation.source,
+                    contra_core::TuneSetSource::Folder(_)
+                ) {
+                    self.rotation_settings_changed();
+                }
             }
             Err(error) => self.library_status = Some(error.to_string()),
         }
@@ -1158,6 +1200,7 @@ impl ContraApp {
             renaming_tune_folder: None,
             folder_rename_text: String::new(),
             library_status: None,
+            panes: PaneWidths::default(),
 
             tune_view: TuneView::default(),
             tune_sheet: None,
@@ -1592,21 +1635,46 @@ impl ContraApp {
         }
     }
 
-    /// The saved tunes in the rotation, in play order.
+    /// The saved tunes the rotation currently plays, in play order.
     ///
-    /// Entries that are no longer in the saved-tune library are skipped, so a
-    /// deleted tune cannot stall the rotation.
+    /// The set is resolved from the library on every read: a folder set picks
+    /// up a tune as soon as it is saved into that folder, and a deleted folder
+    /// falls back to the explicit list instead of stalling the rotation.
+    fn resolved_tune_set(&self) -> ResolvedTuneSet {
+        resolve_tune_set(&self.tune_library, &self.prefs.tune_rotation)
+    }
+
+    /// The saved tunes in the rotation, in play order.
     fn rotation_tunes(&self) -> Vec<Tune> {
-        self.prefs
-            .tune_rotation
-            .tunes
-            .iter()
-            .filter_map(|source| {
-                self.tune_library
-                    .get(&source.provider, &source.id)
-                    .map(|entry| entry.item.clone())
-            })
-            .collect()
+        self.resolved_tune_set().tunes
+    }
+
+    /// A non-blocking notice when the rotation's folder has disappeared.
+    fn tune_set_notice(&self) -> Option<String> {
+        self.resolved_tune_set().missing_folder.map(|name| {
+            format!(
+                "The folder \"{name}\" for the tune set no longer exists; using the chosen tunes."
+            )
+        })
+    }
+
+    /// Point the rotation at a folder or back at the explicit list.
+    ///
+    /// Cycle tunes itself is unchanged: this only chooses which saved tunes it
+    /// plays through.
+    fn set_tune_set_source(&mut self, source: TuneSetSource) {
+        if self.prefs.tune_rotation.source == source {
+            return;
+        }
+        self.library_status = Some(match &source {
+            TuneSetSource::List => "Tune set: the chosen tunes.".to_string(),
+            TuneSetSource::Folder(name) => {
+                format!("Tune set: every tune in the folder \"{name}\".")
+            }
+        });
+        self.prefs.tune_rotation.source = source;
+        self.rotation_settings_changed();
+        self.save_prefs();
     }
 
     /// The tune after the one now playing, or `None` when cycling cannot run.
@@ -1827,11 +1895,26 @@ impl ContraApp {
     }
 
     fn tune_in_rotation(&self, tune: &Tune) -> bool {
-        self.prefs.tune_rotation.contains(&tune.source)
+        match &self.prefs.tune_rotation.source {
+            TuneSetSource::Folder(_) => self.resolved_tune_set().tunes.iter().any(|saved| {
+                saved.source.provider == tune.source.provider && saved.source.id == tune.source.id
+            }),
+            TuneSetSource::List => self.prefs.tune_rotation.contains(&tune.source),
+        }
     }
 
     /// Add or remove a tune from the rotation set.
     fn toggle_rotation_tune(&mut self, tune: &Tune) {
+        if matches!(self.prefs.tune_rotation.source, TuneSetSource::Folder(_)) {
+            // The set follows a folder, so editing one tune into the explicit
+            // list would have no audible effect. Point at the folder controls
+            // instead of silently doing nothing.
+            self.library_status = Some(
+                "The tune set follows a folder. Choose the chosen tunes to add single tunes."
+                    .to_string(),
+            );
+            return;
+        }
         if self.tune_in_rotation(tune) {
             self.prefs
                 .tune_rotation

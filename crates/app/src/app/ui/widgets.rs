@@ -1,12 +1,20 @@
 use crate::theme;
 use eframe::egui;
 
+use super::gesture::{LongPress, PressEnd, PressPhase};
+
 /// The narrowest a desktop action button may get before the row stacks.
 ///
 /// Below this a two- or three-button row would squeeze labels such as
-/// "Remove from saved dances" into an unreadable column, so the callers give
-/// every button the full row width instead.
+/// "Delete dance" or "Use this folder as the tune set" into an unreadable
+/// column, so the callers give every button the full row width instead.
 const MIN_ACTION_WIDTH: f32 = 132.0;
+
+/// Width of a draggable splitter between two panes.
+pub(in crate::app) const SPLITTER_WIDTH: f32 = 10.0;
+
+/// The narrowest a resizable pane may become, in points.
+pub(in crate::app) const MIN_PANE_WIDTH: f32 = 120.0;
 
 /// Width for one button of a full-width action row.
 ///
@@ -54,19 +62,8 @@ pub(in crate::app) fn block_selectable(
     )
 }
 
-/// A row action button that fills `width` and is always touch sized.
-///
-/// Every button that shares a row in a saved-item list must go through this
-/// helper (or [`row_menu_button`]), otherwise egui mixes sizes and the row has
-/// two different heights.
-pub(in crate::app) fn row_button(ui: &mut egui::Ui, width: f32, label: &str) -> egui::Response {
-    ui.add_sized(
-        [width, theme::TOUCH_TARGET],
-        egui::Button::new(label).wrap_mode(egui::TextWrapMode::Truncate),
-    )
-}
-
-/// A menu button that matches [`row_button`] so the actions in one row line up.
+/// A menu button with a touch-sized slot, so it lines up with the other
+/// preview actions.
 pub(in crate::app) fn row_menu_button(
     ui: &mut egui::Ui,
     width: f32,
@@ -89,6 +86,153 @@ pub(in crate::app) fn row_menu_button(
         },
     )
     .inner
+}
+
+/// A small rounded label such as "All dances · 12".
+///
+/// The list header uses it for the current grouping instead of repeating the
+/// folder name in the count line. It is painted with the theme's neutral
+/// surfaces, never an accent colour, and it is not a button.
+pub(in crate::app) fn group_chip(ui: &mut egui::Ui, text: &str) -> egui::Response {
+    egui::Frame::new()
+        .fill(ui.visuals().widgets.noninteractive.bg_fill)
+        .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+        .corner_radius(egui::CornerRadius::same(9))
+        .inner_margin(egui::Margin::symmetric(8, 3))
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(text).small().color(theme::muted(ui)))
+        })
+        .response
+}
+
+/// Clamp a resizable pane to a usable width inside `available`.
+///
+/// Both panes keep at least [`MIN_PANE_WIDTH`] and the splitter keeps its own
+/// width. A tiny or non-finite viewport still returns a finite minimum so the
+/// first frame cannot place a pane at NaN.
+pub(in crate::app) fn clamp_pane_width(width: f32, available: f32) -> f32 {
+    if !width.is_finite() || !available.is_finite() || available <= 0.0 {
+        return MIN_PANE_WIDTH;
+    }
+    let max = (available - MIN_PANE_WIDTH - SPLITTER_WIDTH).max(MIN_PANE_WIDTH);
+    width.clamp(MIN_PANE_WIDTH, max)
+}
+
+/// A vertical drag handle between two panes.
+///
+/// The returned response is `dragged()` while the user moves it; callers add
+/// `drag_delta().x` to their stored width. The handle is wider than its visible
+/// line so it is easy to hit with a mouse, and it is a splitter in the
+/// accessibility tree.
+pub(in crate::app) fn pane_splitter(
+    ui: &mut egui::Ui,
+    id_salt: impl std::hash::Hash + std::fmt::Debug,
+    height: f32,
+    label: &str,
+) -> egui::Response {
+    ui.push_id(id_salt, |ui| {
+        let height = if height.is_finite() {
+            height.max(theme::TOUCH_TARGET)
+        } else {
+            theme::TOUCH_TARGET
+        };
+        let (rect, _) =
+            ui.allocate_exact_size(egui::vec2(SPLITTER_WIDTH, height), egui::Sense::hover());
+        let response = ui
+            .interact(rect, ui.scope_id().with("splitter"), egui::Sense::drag())
+            .on_hover_cursor(egui::CursorIcon::ResizeHorizontal)
+            .on_hover_text("Drag to resize the panes");
+        let active = response.dragged() || response.hovered();
+        let stroke = if active {
+            egui::Stroke::new(2.0, ui.visuals().widgets.hovered.fg_stroke.color)
+        } else {
+            ui.visuals().widgets.noninteractive.bg_stroke
+        };
+        ui.painter().vline(rect.center().x, rect.y_range(), stroke);
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Splitter, true, label));
+        response
+    })
+    .inner
+}
+
+/// Whether a custom row was activated.
+///
+/// Custom rows are `Ui::interact` regions rather than `Button`s, so egui does
+/// not turn Enter into a click for them. This restores keyboard activation
+/// while keeping the pointer, accesskit action, and Enter paths identical.
+pub(in crate::app) fn row_activated(ui: &egui::Ui, response: &egui::Response) -> bool {
+    response.clicked()
+        || (response.has_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)))
+}
+
+/// What a press on one row means this frame.
+#[derive(Clone, Copy, Debug, Default)]
+pub(in crate::app) struct RowPress {
+    /// A long press completed on this frame.
+    pub fired: bool,
+    /// A long press completed earlier and the finger is still down.
+    pub held: bool,
+    /// The release belongs to a long press, so it must not preview the item.
+    pub suppress_click: bool,
+    /// How far the hold has progressed, 0 to 1, for the progress line.
+    pub progress: f32,
+}
+
+/// Track a press on one row and report when it becomes a long press.
+///
+/// A mouse press never becomes a long press: on a desktop the context menu
+/// opens from a secondary click, and dragging starts immediately. A touch is
+/// gated until it has stayed within [`super::gesture::LONG_PRESS_SLOP`] for
+/// [`super::gesture::LONG_PRESS_SECONDS`]. The state lives in egui's temporary
+/// data store, keyed by the row's response id, so it survives across frames
+/// and disappears when the row is not drawn.
+pub(in crate::app) fn long_press_row(ui: &egui::Ui, response: &egui::Response) -> RowPress {
+    let id = response.id.with("row-long-press");
+    let now = ui.input(|input| input.time);
+    let pointer = ui.input(|input| input.pointer.interact_pos());
+    let down = response.is_pointer_button_down_on();
+    let touch = ui.input(|input| input.any_touches());
+    let mut press = ui.data(|data| data.get_temp::<LongPress>(id));
+    let mut result = RowPress::default();
+
+    if down && (touch || press.is_some()) {
+        let mut press = press.take().unwrap_or_default();
+        if press.phase() == PressPhase::Idle {
+            if let Some(pos) = pointer {
+                press.begin(now, pos.x, pos.y);
+            }
+        } else if let Some(pos) = pointer {
+            let before = press.phase();
+            let after = press.update(now, pos.x, pos.y);
+            if before != PressPhase::Fired && after == PressPhase::Fired {
+                result.fired = true;
+            }
+        }
+        result.held = press.phase() == PressPhase::Fired;
+        result.progress = press.progress(now);
+        if press.phase() == PressPhase::Holding {
+            // Keep the progress line animating while the finger is still.
+            ui.ctx().request_repaint();
+        }
+        ui.data_mut(|data| data.insert_temp(id, press));
+    } else if let Some(mut press) = press {
+        // Keep the state while the finger is still down but has moved off the
+        // row: a drag must not end the press. The release decides whether this
+        // was a long press on the row or a drag away from it.
+        if ui.input(|input| input.pointer.any_down()) {
+            result.held = press.phase() == PressPhase::Fired;
+            ui.data_mut(|data| data.insert_temp(id, press));
+        } else {
+            let end = press.end();
+            let released_on_row =
+                pointer.is_some_and(|pos| response.rect.expand(12.0).contains(pos));
+            result.suppress_click = end == PressEnd::LongPress && released_on_row;
+            result.held = result.suppress_click;
+            ui.data_mut(|data| data.remove::<LongPress>(id));
+        }
+    }
+
+    result
 }
 
 /// Whether a text field lost focus because Enter was pressed.
@@ -175,5 +319,22 @@ mod tests {
         assert_eq!(action_width(f32::INFINITY, 8.0, 3, false), 0.0);
         assert_eq!(action_width(-24.0, 8.0, 3, false), 0.0);
         assert_eq!(action_width(600.0, 8.0, 0, false), 600.0);
+    }
+
+    #[test]
+    fn a_resizable_pane_keeps_a_120_point_floor() {
+        assert_eq!(clamp_pane_width(40.0, 900.0), MIN_PANE_WIDTH);
+        assert_eq!(clamp_pane_width(300.0, 900.0), 300.0);
+        // The other pane keeps its floor plus the splitter.
+        assert_eq!(
+            clamp_pane_width(900.0, 600.0),
+            600.0 - MIN_PANE_WIDTH - SPLITTER_WIDTH
+        );
+        // A viewport that cannot fit two panes still returns the floor, never
+        // a negative or NaN width.
+        assert_eq!(clamp_pane_width(600.0, 200.0), MIN_PANE_WIDTH);
+        assert_eq!(clamp_pane_width(f32::NAN, 900.0), MIN_PANE_WIDTH);
+        assert_eq!(clamp_pane_width(300.0, f32::NAN), MIN_PANE_WIDTH);
+        assert_eq!(clamp_pane_width(300.0, 0.0), MIN_PANE_WIDTH);
     }
 }
