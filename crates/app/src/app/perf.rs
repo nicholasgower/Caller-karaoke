@@ -23,7 +23,11 @@
 use std::error::Error;
 use std::time::Instant;
 
-use contra_core::{Dance, FolderFilter, Library, SourceRef, Tune};
+use contra_core::{
+    Dance, FolderFilter, Library, MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP,
+    SourceRef, Tune,
+};
+use contra_music::humanize::{Humanizer, Voice};
 use contra_music::{Arrangement, export_midi_with_band, parse_abc, render};
 use eframe::egui::{self, Vec2};
 use egui_kittest::Harness;
@@ -592,6 +596,39 @@ fn profile_screen_frames(
     );
 }
 
+/// The tap-to-unlock slider guard added in the touch-slider change.
+///
+/// A finger event marks every slider locked; the frame draws the padlocked
+/// rail until the user taps it. This uses its own harness so the touch device
+/// does not leak into the mouse-frame measurements.
+fn profile_touch_slider_guard(report: &mut Report, samples: usize) {
+    let mut harness = harness();
+    harness.set_size(DESKTOP);
+    {
+        let app = harness.state_mut();
+        idle(app);
+        app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Playback);
+    }
+    harness.input_mut().events.push(egui::Event::Touch {
+        device_id: egui::TouchDeviceId(1),
+        id: egui::TouchId(2),
+        phase: egui::TouchPhase::Start,
+        pos: egui::pos2(120.0, 160.0),
+        force: None,
+    });
+    harness.run_steps(1);
+    let times = frame_times(&mut harness, samples);
+    report.record(
+        "frame · touch",
+        "Preferences · Playback (slider guard)",
+        "ContraApp::ui → preference sliders → scroll_safe_slider → draw_locked_slider",
+        FRAME_BUDGET_MS,
+        times,
+        "every slider is in the new padlocked, tap-to-unlock state",
+    );
+}
+
 /// Phone screens are a separate layout with scrolling and stacked panes.
 fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Report, samples: usize) {
     harness.set_size(PHONE);
@@ -627,6 +664,11 @@ fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Repor
             Screen::Preferences,
         ),
         (
+            "Preferences · Playback",
+            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui (compact) → playback",
+            Screen::Preferences,
+        ),
+        (
             "Aliases",
             "ContraApp::ui → draw_aliases → ContraApp::aliases_ui (compact)",
             Screen::Aliases,
@@ -642,7 +684,11 @@ fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Repor
             let app = harness.state_mut();
             idle(app);
             app.screen = *screen;
-            app.prefs_page = PreferencesPage::Categories;
+            app.prefs_page = if *action == "Preferences · Playback" {
+                PreferencesPage::Category(PreferencesCategory::Playback)
+            } else {
+                PreferencesPage::Categories
+            };
             app.tune_sheet = None;
             app.abc_editor = None;
             if *screen == Screen::Glossary {
@@ -1188,6 +1234,20 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
     {
         let app = harness.state_mut();
         let before = app.prefs.clone();
+        app.prefs.humanize_options.pid_kp = MAX_PID_KP;
+        let times = timed(|| app.reconcile_preferences(before.clone()), samples);
+        report.record(
+            "preferences",
+            "Tempo controller gain change",
+            "ContraApp::reconcile_preferences → refresh_render_flags",
+            ACTION_BUDGET_MS,
+            times,
+            "the new Kp/Ki/Kd sliders; the PID table is rebuilt with the next music render",
+        );
+    }
+    {
+        let app = harness.state_mut();
+        let before = app.prefs.clone();
         app.prefs.theme = if app.prefs.theme == contra_core::Theme::Dark {
             contra_core::Theme::Light
         } else {
@@ -1399,6 +1459,33 @@ fn profile_pure_functions(
             ACTION_BUDGET_MS,
             times,
             "deferred until the first Play",
+        );
+    }
+    {
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let mut request = app
+            .render_settings(app.timeline.count_in_beats)
+            .request(arrangement);
+        request.humanize_options.amount = MAX_HUMANIZE_AMOUNT;
+        request.humanize_options.pid_kp = MAX_PID_KP;
+        request.humanize_options.pid_ki = MAX_PID_KI;
+        request.humanize_options.pid_kd = MAX_PID_KD;
+        let times = timed(
+            || {
+                let humanizer = Humanizer::new(&request);
+                let _ = humanizer.voice(Voice::Melody, 0);
+                let _ = humanizer.voice(Voice::Accompaniment, 0);
+                let _ = humanizer.voice(Voice::Countermelody, 0);
+            },
+            samples,
+        );
+        report.record(
+            "music",
+            "Build human timing table",
+            "Humanizer::new + Humanizer::voice (maximum amount and PID gains)",
+            ACTION_BUDGET_MS,
+            times,
+            "the new tempo-controller gains and amount range; all three voices",
         );
     }
     {
@@ -1668,6 +1755,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     harness.run_steps(3);
 
     profile_screen_frames(&mut harness, &mut report, samples);
+    profile_touch_slider_guard(&mut report, samples);
     profile_phone_frames(&mut harness, &mut report, samples);
     profile_actions(&mut harness, &mut report, samples);
     profile_pure_functions(&mut harness, &mut report, samples);
