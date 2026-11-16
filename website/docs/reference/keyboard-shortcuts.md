@@ -13,7 +13,7 @@ transport from any window; see [Media keys](#media-keys).
 | --- | --- | --- |
 | **Space** | Play or pause | If the music is playing, Space pauses; otherwise it starts or resumes. |
 | **R** | Restart | Returns to the count-in and resets the call state. |
-| **Esc** | Close About, go back, or return to **Session** | Closes the **About** window. Otherwise returns **Download dance** and **Download tune** to their saved-content lists, and **Select dance**, **Select tune**, **Preferences**, and the alias editor to **Session**. |
+| **Esc** | Close About, go back, or return to **Session** | Closes the **About** window. Otherwise returns **Download dance** and **Download tune** to their saved-content lists, the alias editor to **Preferences**, and **Select dance**, **Select tune**, and **Preferences** to **Session**. |
 | **1–4** | Switch tabs | 1 Session, 2 Select dance, 3 Select tune, 4 Preferences. |
 | **Enter** | Submit | Starts a search from a search field, creates a folder from the folder-name field, or adds the custom alias when the alias fields are filled. |
 

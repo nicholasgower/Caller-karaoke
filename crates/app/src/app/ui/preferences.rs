@@ -25,16 +25,7 @@ impl ContraApp {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
         let before = self.prefs.clone();
-        ui.horizontal(|ui| {
-            if ui
-                .button("< Back to session")
-                .on_hover_text("Back to session (Esc)")
-                .clicked()
-            {
-                self.screen = Screen::Session;
-            }
-            ui.heading("Preferences");
-        });
+        ui.heading("Preferences");
         ui.label(
             egui::RichText::new("Changes are saved automatically. Playback settings are applied without restarting the music; role and alias changes rebuild the call timeline.")
                 .color(theme::muted(ui)),

@@ -9,7 +9,7 @@ available offline; they are not the same as the temporary source cache. The
 bundled default, *Another Last Dance*, is in the list from first launch.
 
 The current dance is not replaced until you press **Use** or **Use this dance**.
-Closing the screen with **Back to session** leaves the session untouched.
+Press **Esc** to return to the session without changing the loaded dance.
 
 ## Find a saved dance
 
