@@ -274,6 +274,21 @@ fn count_in_beats_left(beat: f64) -> u32 {
     ((-beat).ceil().max(1.0) as u32).min(COUNT_IN_BEATS as u32)
 }
 
+/// Width for the music progress bar: exactly the space the panel offers.
+///
+/// `egui::ProgressBar` rounds the outer rect it paints. An infinite desired
+/// width puts that rect's right edge (and its rounded cap) at infinity: only
+/// the left cap is drawn, and the oversized rect widens the scroll content so
+/// the rows below it also run past the panel edge. A measured, finite width
+/// keeps both caps on screen and the bar inside the panel.
+fn progress_bar_width(available_width: f32) -> f32 {
+    if available_width.is_finite() {
+        available_width.max(0.0)
+    } else {
+        0.0
+    }
+}
+
 /// The progress bar text: the explicit transport state plus the position.
 fn progress_text(state: TransportState, beat: f64, loop_beats: f64) -> String {
     match state {
@@ -529,10 +544,11 @@ impl ContraApp {
             beat,
         );
         let progress_text = progress_text(transport, beat, self.timeline.music_loop_beats);
+        let progress_width = progress_bar_width(ui.available_width());
         ui.add(
             egui::ProgressBar::new(progress as f32)
                 .text(progress_text)
-                .desired_width(f32::INFINITY),
+                .desired_width(progress_width),
         );
 
         ui.add_space(8.0);
@@ -944,6 +960,21 @@ mod tests {
             transport_state(true, false, true, true, 64.0),
             TransportState::Finished
         );
+    }
+
+    #[test]
+    fn progress_bar_width_fills_the_panel_and_is_always_finite() {
+        // The bar must end exactly at the content edge, so both rounded caps
+        // are drawn inside the panel at any width.
+        assert_eq!(progress_bar_width(366.0), 366.0);
+        assert_eq!(progress_bar_width(336.0), 336.0);
+        // An infinite or NaN available width must not reach
+        // `ProgressBar::desired_width`: that is what put the right cap
+        // off-screen and widened the scroll content.
+        assert_eq!(progress_bar_width(f32::INFINITY), 0.0);
+        assert_eq!(progress_bar_width(f32::NEG_INFINITY), 0.0);
+        assert_eq!(progress_bar_width(f32::NAN), 0.0);
+        assert_eq!(progress_bar_width(-24.0), 0.0);
     }
 
     #[test]
