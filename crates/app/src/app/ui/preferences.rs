@@ -18,6 +18,7 @@ pub(in crate::app) const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = 
     playback,
     soundfont,
     effects,
+    data_sources,
     web_proxy,
     maintenance,
     about,
@@ -775,6 +776,62 @@ fn effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             .small()
             .color(theme::muted(ui)),
     );
+    ui.separator();
+}
+
+/// Choose the site **Download dance** searches.
+///
+/// Saved dances keep their own source, so switching this menu never rewrites
+/// the library; it only changes where the next download comes from.
+fn data_sources(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    ui.heading("Data sources");
+    ui.label(
+        egui::RichText::new(
+            "The Download dance screen searches the selected source. Saved dances keep the \
+             source they came from, and their Open on… link returns there.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    let current = app.dance_source();
+    // Replace an id from an older or newer build with the provider this build
+    // actually resolved, so the file and the menu agree.
+    if app.prefs.dance_source != current.id() {
+        app.prefs.dance_source = current.id().to_string();
+    }
+    let mut chosen = None;
+    inline_field(ui, compact, "Dance source", |ui| {
+        let combo = egui::ComboBox::from_id_salt("dance_source");
+        responsive_combo(combo, ui, compact)
+            .selected_text(current.display_name())
+            .show_ui(ui, |ui| {
+                for provider in contra_sources::dance_providers() {
+                    if ui
+                        .selectable_label(provider.id() == current.id(), provider.display_name())
+                        .clicked()
+                    {
+                        chosen = Some(provider.id());
+                    }
+                }
+            });
+    });
+    if let Some(id) = chosen {
+        app.set_dance_source(id);
+    }
+    let selected = app.dance_source();
+    let mut description = format!("{} — {}", selected.display_name(), selected.base_url());
+    match selected.result_limit() {
+        Some(limit) => description.push_str(&format!(
+            ". Returns up to {limit} matches per search; narrow the search for a large result."
+        )),
+        None => description.push('.'),
+    }
+    ui.label(
+        egui::RichText::new(description)
+            .small()
+            .color(theme::muted(ui)),
+    );
+    ui.hyperlink_to("Open the source site", selected.base_url());
     ui.separator();
 }
 

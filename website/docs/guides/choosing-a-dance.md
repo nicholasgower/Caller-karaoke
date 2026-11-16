@@ -1,6 +1,6 @@
 ---
 title: Choosing a dance
-description: Search your saved dances, organise them into folders, and download another ContraDB card when you need it.
+description: Search your saved dances, organise them into folders, and download another card from ContraDB or The Caller's Box.
 sidebar_position: 1
 ---
 
@@ -64,8 +64,13 @@ already in the session.
 
 ## Download another dance
 
-Select **Download dance** at the top of **Select dance** to open the ContraDB
-search screen. Downloading is explicit: previewing a card does not save it.
+Select **Download dance** at the top of **Select dance** to open the search
+screen. Downloading is explicit: previewing a card does not save it.
+
+The screen searches the dance source chosen in **Preferences → Data sources**:
+ContraDB (the default) or The Caller's Box. Saved dances keep their own source,
+and the preview's **Open on …** link always returns to that source. The form
+shows only the filters the selected source understands.
 
 The search form stays at the top, the **Previous** and **Next** row stays at the
 bottom, and the result list and preview share the height in between. On a phone
@@ -76,18 +81,22 @@ the form, results, and preview stack into one scrolling page.
 | Field | What it does |
 | --- | --- |
 | **Title** | Matches words in the dance title. |
-| **Choreographer** | Matches the choreographer name. |
+| **Choreographer** | Matches the choreographer name on ContraDB. The Caller's Box labels this field **Author** and matches the dance author. |
 | **User** | Matches the ContraDB user who contributed the card. |
 | **Hook** | Matches the card's short hook/tag line. |
-| **Formation** | Improper, Becket, Proper, Everything else, or Any formation. |
+| **Formation** | A formation menu. ContraDB offers Improper, Becket, Proper, Everything else, or Any formation; The Caller's Box offers that site's own formation list, matched exactly. |
 | **Figure type** | A move-type selector: Swing, Allemande, Do-si-do, Balance, Chain, Circle, Star, Hey, Gyre, Promenade, Long lines, Right and left through, Pass through, Petronella, Mad robin, Box the gnat, Swat the flea, Roll away, or Slide. |
 | **Figure contains** | Searches the card text for a move phrase, for example `chain` or `balance`. |
 | **Verified only** | Restricts results to ContraDB's verified tag. |
 | **Sort** | Relevance, Title A–Z, Title Z–A, Choreographer A–Z, or Newest. |
 
-**Figure type** takes precedence over **Figure contains** when both are set: the
-provider sends a move-type filter and ignores the free-text figure clause. Use
-one or the other when you want a predictable search.
+**User**, **Hook**, **Figure type**, **Verified only**, and **Sort** are
+ContraDB-only; they disappear while The Caller's Box is selected.
+
+**Figure type** takes precedence over **Figure contains** when both are set on
+ContraDB: the provider sends a move-type filter and ignores the free-text
+figure clause. Use one or the other when you want a predictable search. The
+Caller's Box has only the free-text figure search.
 
 **Figure contains** is a text match against the card, not a move-type
 classifier. Use a short distinctive phrase; the alias classifier runs only after
@@ -110,7 +119,9 @@ a dance is loaded.
   </Step>
   <Step shot="dance-pagination">
     Use **Previous** and **Next** under the results. The current page and total
-    are shown between them; results are ten per page.
+    are shown between them; results are ten per page. The Caller's Box has no
+    pages: it returns at most 50 matches and the screen says how many the query
+    matched, so narrow the search to see the remainder.
   </Step>
 </Steps>
 
@@ -120,9 +131,9 @@ a dance is loaded.
   <Step shot="dance-picker-preview">
     Select **Preview** on a result. The right column shows the title,
     choreographer, formation, figure count, beat total, each figure with its
-    phrase label and beats, and an **Open on ContraDB** link. Select
-    **Download dance** to add the card to your saved dances, or **Use this
-    dance** to download and load it at the same time.
+    phrase label and beats, and an **Open on …** link to the card's own source.
+    Select **Download dance** to add the card to your saved dances, or
+    **Use this dance** to download and load it at the same time.
   </Step>
 </Steps>
 
@@ -172,9 +183,14 @@ detail responses. See [Cache and offline](/docs/guides/cache-and-offline).
 
 ## Attribution
 
-Dances come from [ContraDB](https://contradb.com) and remain the work of their
-choreographers and transcribers. The preview includes an **Open on ContraDB**
+Dances come from [ContraDB](https://contradb.com) or [The Caller's
+Box](https://www.ibiblio.org/contradance/thecallersbox/) and remain the work of
+their choreographers and transcribers. The preview includes an **Open on …**
 link for the loaded card; use it to check the original source and credit. The
 bundled default is *Another Last Dance* by Erik Hoffman (ContraDB 2409).
+
+The Caller's Box additionally publishes a [contra move
+glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm) that
+explains the shorthand used in its cards.
 
 Next: [Choosing a tune](/docs/guides/choosing-a-tune).

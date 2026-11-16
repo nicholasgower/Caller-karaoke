@@ -577,6 +577,13 @@ pub struct Preferences {
     pub effects: AudioEffects,
     pub master_volume: f32,
     pub soundfont: Option<SoundFontSetting>,
+    /// Provider id used by the **Download dance** screen.
+    ///
+    /// Stored as the provider's stable id rather than an enum, so adding a
+    /// source does not need a change in `core`. An unknown id is resolved to
+    /// [`DEFAULT_DANCE_SOURCE`] by the app.
+    #[serde(default = "default_dance_source")]
+    pub dance_source: String,
     pub web_proxy_url: Option<String>,
     pub web_proxy_token: Option<String>,
     pub last_dance: Option<SourceRef>,
@@ -599,6 +606,12 @@ pub struct Preferences {
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
 pub const CURRENT_SCHEMA_VERSION: u32 = 11;
+
+/// The dance source a new or older preference file downloads from.
+///
+/// ContraDB is the historical behaviour, so adding [`Preferences::dance_source`]
+/// needs no migration: an absent field gets this value.
+pub const DEFAULT_DANCE_SOURCE: &str = "contradb";
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -806,6 +819,10 @@ fn default_tts_voice() -> String {
     "af_heart".to_string()
 }
 
+fn default_dance_source() -> String {
+    DEFAULT_DANCE_SOURCE.to_string()
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
@@ -839,6 +856,7 @@ impl Default for Preferences {
             effects: AudioEffects::default(),
             master_volume: 0.8,
             soundfont: None,
+            dance_source: default_dance_source(),
             web_proxy_url: None,
             web_proxy_token: None,
             last_dance: None,
@@ -879,6 +897,9 @@ impl Preferences {
         }
         if self.tts_voice.trim().is_empty() {
             self.tts_voice = default_tts_voice();
+        }
+        if self.dance_source.trim().is_empty() {
+            self.dance_source = default_dance_source();
         }
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
@@ -1048,6 +1069,37 @@ mod tests {
         prefs.tts_rate = 0.0;
         prefs.validate();
         assert_eq!(prefs.tts_rate, MIN_TTS_RATE);
+    }
+
+    #[test]
+    fn the_dance_source_defaults_to_contradb_and_round_trips() {
+        let prefs = Preferences::default();
+        assert_eq!(prefs.dance_source, DEFAULT_DANCE_SOURCE);
+        assert_eq!(prefs.dance_source, "contradb");
+
+        let prefs = Preferences {
+            dance_source: "callersbox".into(),
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.dance_source, "callersbox");
+    }
+
+    #[test]
+    fn older_files_download_from_contradb() {
+        let prefs = Preferences::from_json(r#"{"schema_version":11}"#).expect("deserialize");
+        assert_eq!(prefs.dance_source, DEFAULT_DANCE_SOURCE);
+    }
+
+    #[test]
+    fn a_blank_dance_source_falls_back_to_contradb() {
+        let mut prefs = Preferences {
+            dance_source: "   ".into(),
+            ..Preferences::default()
+        };
+        prefs.validate();
+        assert_eq!(prefs.dance_source, DEFAULT_DANCE_SOURCE);
     }
 
     #[test]

@@ -110,16 +110,6 @@ pub(in crate::app) fn empty_label<'a>(value: &'a str, fallback: &'a str) -> &'a 
     }
 }
 
-pub(in crate::app) fn formation_label(value: Option<&str>) -> &'static str {
-    match value.unwrap_or("") {
-        "improper" => "Improper",
-        "becket" => "Becket",
-        "proper" => "Proper",
-        "everything else" => "Everything else",
-        _ => "Any formation",
-    }
-}
-
 pub(in crate::app) fn combo_option(
     ui: &mut egui::Ui,
     id: &str,

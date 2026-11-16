@@ -59,10 +59,12 @@ host it under a subpath, keep `index.html` and the generated assets together.
 
 ## Configure the data proxy
 
-The browser build cannot call ContraDB or ABC Session Tunes directly:
+The browser build cannot call ContraDB, ABC Session Tunes, or The Caller's Box
+directly:
 
 - `contradb.com` sends no CORS headers;
-- `backend.abcsessiontunes.com` allows only its own origin.
+- `backend.abcsessiontunes.com` allows only its own origin;
+- `www.ibiblio.org` sends no CORS headers for The Caller's Box.
 
 The repository includes a Cloudflare Worker in `proxy/`. Deploy it with
 Wrangler, then set its URL in the app.

@@ -2,14 +2,19 @@
 //
 // Deploy with `wrangler deploy` from this directory. Prefer setting a
 // PROXY_TOKEN secret and entering the same token in the app's Preferences.
-// This worker is allowlisted to the two upstream hosts used by the app.
+// This worker is allowlisted to the upstream hosts used by the app.
 
 const ALLOWED_HOSTS = new Set([
   "contradb.com",
   "www.contradb.com",
   "backend.abcsessiontunes.com",
   "abcsessiontunes.com",
+  "www.ibiblio.org",
 ]);
+
+// www.ibiblio.org hosts many projects, so only The Caller's Box tree is
+// forwarded even though the hostname is allowlisted.
+const IBIBLIO_PREFIX = "/contradance/thecallersbox/";
 
 function corsHeaders(extra = {}) {
   return {
@@ -48,6 +53,16 @@ export default {
 
     if (target.protocol !== "https:" || !ALLOWED_HOSTS.has(target.hostname)) {
       return new Response("Upstream host is not allowed", {
+        status: 403,
+        headers: corsHeaders(),
+      });
+    }
+
+    if (
+      target.hostname === "www.ibiblio.org" &&
+      !target.pathname.startsWith(IBIBLIO_PREFIX)
+    ) {
+      return new Response("Upstream path is not allowed", {
         status: 403,
         headers: corsHeaders(),
       });

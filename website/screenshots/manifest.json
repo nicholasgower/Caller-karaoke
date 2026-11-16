@@ -55,7 +55,7 @@
     {
       "id": "dance-picker-open",
       "alt": "The Download dance screen with Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields above an empty results area.",
-      "caption": "Download dance searches ContraDB and previews a card before saving it locally.",
+      "caption": "Download dance searches the dance source selected in Preferences and previews a card before saving it locally.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -605,7 +605,7 @@
     {
       "id": "dance-filter-user",
       "alt": "The Download dance screen with a User filter entered and matching results.",
-      "caption": "The User filter matches the ContraDB contributor name.",
+      "caption": "With ContraDB selected, the User filter matches the contributor name.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -613,7 +613,7 @@
     {
       "id": "dance-filter-hook",
       "alt": "The Download dance screen with a Hook filter entered and matching results.",
-      "caption": "The Hook filter matches the short hook line on ContraDB cards.",
+      "caption": "With ContraDB selected, the Hook filter matches the short hook line on its cards.",
       "status": "ready",
       "width": 1280,
       "height": 800

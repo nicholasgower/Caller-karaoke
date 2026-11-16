@@ -14,7 +14,8 @@ Android. Version **0.1.0** is the current development version.
 - Browser build (WASM) with cpal WebAudio playback, localStorage prefs/cache,
   and the same UI. A hosted copy runs on the
   [documentation site](https://storytold.github.io/Contra-karaoke/play/).
-- ContraDB dance search and HTML dance-card parsing.
+- ContraDB dance search and HTML dance-card parsing, plus The Caller's Box
+  search and JSON dance records.
 - ABC Session Tunes search and JSON tune parsing.
 - ABC → score → 64-beat arrangement → sampled playback with the bundled
   Fluid R3 GM subset (MIT), or a user-supplied `.sf2`.
@@ -70,12 +71,14 @@ being device-tested.
   instead of “swing your partner”). The card and TTS use the chosen wording.
   Add your own alternatives per move type in Preferences → Aliases.
 - **Select dance** — search saved dances, organise them into folders, and load
-  one. **Download dance** searches ContraDB, previews the card, and saves it.
+  one. **Download dance** searches the source selected in Preferences → Data
+  sources (ContraDB by default), previews the card, and saves it.
 - **Select tune** — search saved tunes, organise them into folders, load one,
   and add tunes to the **tune set** for **Cycle tunes**. **Download tune**
   searches ABC Session Tunes and previews the sheet music (or the ABC source).
 - **Preferences** — role terms, aliases, instruments, theme, animations, lead
-  settings, TTS, soundfont, proxy, cache tools, and music variations.
+  settings, TTS, soundfont, data sources, proxy, cache tools, and music
+  variations.
 
 ### Keyboard shortcuts
 
@@ -154,19 +157,26 @@ Example:
 - Detail: `GET https://contradb.com/dances/{id}`
 - Default dance: <https://contradb.com/dances/2409> (*Another Last Dance*)
 
+### The Caller's Box
+
+- Search: `GET https://www.ibiblio.org/contradance/thecallersbox/`
+- Detail: `GET https://www.ibiblio.org/contradance/thecallersbox/dance.php?id={id}&format=JSON`
+- Figures are shown only when the record's permission allows it; one search
+  returns at most 50 matches.
+
 ### ABC Session Tunes
 
 - Search/detail: `https://backend.abcsessiontunes.com/api/tunes`
 - Default tune: <https://abcsessiontunes.com/tunes/75815> (*Sandy Boys*)
 
-Both sites are fetched by provider modules in `crates/sources`; adding another
+The sites are fetched by provider modules in `crates/sources`; adding another
 site means implementing the same traits. Responses are cached locally.
 
 ### Web proxy
 
-ContraDB sends no CORS headers, and ABC Session Tunes only allows its own
-origin. Native and Android builds fetch directly. The web build needs the
-included Cloudflare Worker proxy in `proxy/`; set its URL under
+ContraDB and The Caller's Box send no CORS headers, and ABC Session Tunes only
+allows its own origin. Native and Android builds fetch directly. The web build
+needs the included Cloudflare Worker proxy in `proxy/`; set its URL under
 **Preferences → Web data proxy**. Without a proxy, the web build still works
 with the bundled defaults and cached content.
 

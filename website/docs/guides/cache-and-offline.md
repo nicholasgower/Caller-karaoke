@@ -4,12 +4,13 @@ description: How Contra Karaoke caches dances, tunes, and searches, how stale co
 sidebar_position: 9
 ---
 
-Contra Karaoke fetches dances from ContraDB and tunes from ABC Session Tunes.
-Content you **download** in **Select dance → Download dance** or **Select tune
-→ Download tune** is saved to your local library and works offline. Separately,
-the app caches the raw search and detail responses: files on the desktop and
-Android, and `localStorage` in the browser. The two bundled defaults are in the
-library from first launch.
+Contra Karaoke fetches dances from the selected dance source (ContraDB by
+default, or The Caller's Box) and tunes from ABC Session Tunes. Content you
+**download** in **Select dance → Download dance** or **Select tune → Download
+tune** is saved to your local library and works offline. Separately, the app
+caches the raw search and detail responses: files on the desktop and Android,
+and `localStorage` in the browser. The two bundled defaults are in the library
+from first launch.
 
 On desktop, the Kokoro neural voice is cached separately: the model and the
 selected voice style file are downloaded once and reused offline. The platform
@@ -31,7 +32,8 @@ and may replace the entry.
 
 **Select dance** and **Select tune** search your downloaded library, so those
 lists keep working with no network. Downloading a new card or tune, or running a
-new ContraDB or ABC Session Tunes search, needs a connection.
+new search against the selected dance source or ABC Session Tunes, needs a
+connection.
 
 If a search request fails, the app looks for a stale cache entry. If one exists,
 it parses and uses that content. **There is no offline banner in 0.1.0**; the

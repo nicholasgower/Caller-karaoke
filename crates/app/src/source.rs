@@ -15,10 +15,14 @@ const DETAIL_TTL: u64 = 30 * 24 * 60 * 60;
 
 pub enum SourceEvent {
     DanceSearch {
+        /// Provider that answered, so a response for a source the user has
+        /// since switched away from can be ignored.
+        provider: String,
         query: DanceQuery,
         result: Result<DanceSearchPage, String>,
     },
     Dance {
+        provider: String,
         result: Result<Dance, String>,
     },
     TuneSearch {
@@ -52,20 +56,23 @@ impl SourceClient {
         }
     }
 
-    pub fn search_dances(&self, query: DanceQuery) {
-        let Some(provider) = dance_provider("contradb") else {
+    pub fn search_dances(&self, provider_id: &str, query: DanceQuery) {
+        let Some(provider) = dance_provider(provider_id) else {
             let _ = self.tx.send(SourceEvent::DanceSearch {
+                provider: provider_id.to_string(),
                 query,
-                result: Err("ContraDB provider is unavailable".into()),
+                result: Err(format!("{provider_id} is not an available dance source")),
             });
             return;
         };
+        let provider_id = provider.id();
         let request = provider.search(&query);
-        let key = format!("dance_search/contradb/{query:?}");
+        let key = format!("dance_search/{provider_id}/{query:?}");
         if let Some(bytes) = self.cache_get(&key, SEARCH_TTL)
             && let Ok(page) = provider.parse_search(&bytes, &query)
         {
             let _ = self.tx.send(SourceEvent::DanceSearch {
+                provider: provider_id.to_string(),
                 query,
                 result: Ok(page),
             });
@@ -73,6 +80,7 @@ impl SourceClient {
         }
         let provider: &'static dyn DanceProvider = provider;
         let parse_query = query.clone();
+        let event_provider = provider_id.to_string();
         self.fetch(
             key,
             request,
@@ -82,27 +90,37 @@ impl SourceClient {
                     .parse_search(body, &parse_query)
                     .map_err(|error| error.to_string())
             },
-            move |result| SourceEvent::DanceSearch { query, result },
+            move |result| SourceEvent::DanceSearch {
+                provider: event_provider,
+                query,
+                result,
+            },
         );
     }
 
-    pub fn load_dance(&self, id: String) {
-        let Some(provider) = dance_provider("contradb") else {
+    pub fn load_dance(&self, provider_id: &str, id: String) {
+        let Some(provider) = dance_provider(provider_id) else {
             let _ = self.tx.send(SourceEvent::Dance {
-                result: Err("ContraDB provider is unavailable".into()),
+                provider: provider_id.to_string(),
+                result: Err(format!("{provider_id} is not an available dance source")),
             });
             return;
         };
+        let provider_id = provider.id();
         let request = provider.detail(&id);
-        let key = format!("dance/contradb/{id}");
+        let key = format!("dance/{provider_id}/{id}");
         if let Some(bytes) = self.cache_get(&key, DETAIL_TTL)
             && let Ok(dance) = provider.parse_dance(&bytes, &id)
         {
-            let _ = self.tx.send(SourceEvent::Dance { result: Ok(dance) });
+            let _ = self.tx.send(SourceEvent::Dance {
+                provider: provider_id.to_string(),
+                result: Ok(dance),
+            });
             return;
         }
         let provider: &'static dyn DanceProvider = provider;
         let id_for_parse = id.clone();
+        let event_provider = provider_id.to_string();
         self.fetch(
             key,
             request,
@@ -112,7 +130,10 @@ impl SourceClient {
                     .parse_dance(body, &id_for_parse)
                     .map_err(|error| error.to_string())
             },
-            move |result| SourceEvent::Dance { result },
+            move |result| SourceEvent::Dance {
+                provider: event_provider,
+                result,
+            },
         );
     }
 
@@ -207,10 +228,15 @@ impl SourceClient {
         ehttp::fetch(request, move |response| {
             let result = match response {
                 Ok(response) if response.ok => {
-                    if let Ok(mut cache) = cache.lock() {
+                    // Parse before caching: an HTTP 200 error page must not
+                    // become a cached "valid" response.
+                    let parsed = parse(&response.bytes);
+                    if parsed.is_ok()
+                        && let Ok(mut cache) = cache.lock()
+                    {
                         let _ = cache.put(&key, &response.bytes);
                     }
-                    parse(&response.bytes)
+                    parsed
                 }
                 Ok(response) => {
                     let stale = cache.lock().ok().and_then(|cache| cache.get_stale(&key));

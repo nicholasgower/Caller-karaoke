@@ -16,7 +16,7 @@ and build tools used by the project.
 | `epaint_default_fonts` | MIT OR Apache-2.0 AND OFL-1.1 AND Ubuntu-font-1.0 | Shared egui font for sheet-music text |
 | `midly` | Unlicense | Standard MIDI File writing |
 | `rustysynth` | MIT | Optional SoundFont synthesis |
-| `scraper` | ISC | ContraDB HTML parsing |
+| `scraper` | ISC | ContraDB and Caller's Box HTML parsing |
 | `ehttp` | MIT OR Apache-2.0 | HTTP on native and WASM |
 | `serde` / `serde_json` | MIT OR Apache-2.0 | Serialization |
 | `regex` | MIT OR Apache-2.0 | Role-term and alias matching |
@@ -162,6 +162,14 @@ See the `egui`/`epaint` source for the exact font files and notices.
 - **ContraDB** — <https://contradb.com>. Dance transcriptions are contributed
   by ContraDB users. The bundled default *Another Last Dance* (dance 2409) is by
   Erik Hoffman, transcribed on ContraDB by Koren A Wake.
+- **The Caller's Box** — <https://www.ibiblio.org/contradance/thecallersbox/>.
+  A contra dance database produced by Chris Page and Michael Dyck. Dance
+  records and their figures belong to the site's editors and the dance authors;
+  figures are shown only for records whose permission level allows it. The app
+  fetches and caches the site's search pages and JSON records on demand and
+  does not redistribute the database or its dance cards. The site's
+  [glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm) is
+  linked from the user guide as a reading aid and is not bundled.
 - **ABC Session Tunes** — <https://abcsessiontunes.com>. Tune transcriptions
   remain the property of their transcribers. The bundled *Sandy Boys* ABC is
   credited to Josh Larios; the ABC notes chords from Sarah Comer.

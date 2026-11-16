@@ -6,6 +6,10 @@ impl ContraApp {
     pub(in crate::app) fn dance_library_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
+        let download_hint = format!(
+            "Search {} and add a card to your saved dances",
+            self.dance_source().display_name()
+        );
         let mut open_download = false;
         if compact {
             ui.heading("Select dance");
@@ -16,7 +20,7 @@ impl ContraApp {
                     [width, theme::TOUCH_TARGET],
                     egui::Button::new("Download dance"),
                 )
-                .on_hover_text("Search ContraDB and add a card to your saved dances")
+                .on_hover_text(&download_hint)
                 .clicked()
             {
                 open_download = true;
@@ -27,7 +31,7 @@ impl ContraApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .button("Download dance")
-                        .on_hover_text("Search ContraDB and add a card to your saved dances")
+                        .on_hover_text(&download_hint)
                         .clicked()
                     {
                         open_download = true;
@@ -41,10 +45,11 @@ impl ContraApp {
             self.screen = Screen::DanceDownload;
         }
         ui.label(
-            egui::RichText::new(
+            egui::RichText::new(format!(
                 "Your saved dances, available offline. Search them here, or use Download dance \
-                 to fetch another card from ContraDB.",
-            )
+                 to fetch another card from {}.",
+                self.dance_source().display_name()
+            ))
             .color(theme::muted(ui)),
         );
         ui.add_space(4.0);
@@ -199,34 +204,45 @@ impl ContraApp {
             .collect();
         entries.sort_by_key(|entry| entry.item.title.to_lowercase());
         let folders = self.dance_library.folders.clone();
-        let selected_id = self
+        let selected = self
             .picker
             .dance_preview
             .as_ref()
-            .map(|dance| dance.source.id.clone())
-            .filter(|id| self.dance_library.contains("contradb", id));
-        let preview = selected_id.as_deref().and_then(|id| {
+            .filter(|dance| {
+                self.dance_library
+                    .contains(&dance.source.provider, &dance.source.id)
+            })
+            .map(|dance| (dance.source.provider.clone(), dance.source.id.clone()));
+        let preview = selected.as_ref().and_then(|(provider, id)| {
             entries
                 .iter()
-                .find(|entry| entry.item.source.id == id)
+                .find(|entry| {
+                    entry.item.source.provider == *provider && entry.item.source.id == *id
+                })
                 .map(|entry| entry.item.clone())
         });
+        let selected_ref = selected
+            .as_ref()
+            .map(|(provider, id)| (provider.as_str(), id.as_str()));
         let empty_message = if self.dance_library.is_empty() {
-            "No saved dances yet. Use Download dance to fetch one from ContraDB."
+            format!(
+                "No saved dances yet. Use Download dance to fetch one from {}.",
+                self.dance_source().display_name()
+            )
         } else if entries.is_empty() {
-            "No saved dances match this search and folder."
+            "No saved dances match this search and folder.".to_string()
         } else {
-            ""
+            String::new()
         };
         let mut action = None;
 
         if compact {
             if !empty_message.is_empty() {
-                ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+                ui.label(egui::RichText::new(&empty_message).color(theme::muted(ui)));
             }
             for entry in &entries {
                 if let Some(next) =
-                    saved_dance_row(ui, entry, selected_id.as_deref(), &folders, animate, true)
+                    saved_dance_row(ui, entry, selected_ref, &folders, animate, true)
                 {
                     action = Some(next);
                 }
@@ -255,14 +271,14 @@ impl ContraApp {
                         .show(&mut columns[0], |ui| {
                             if !empty_message.is_empty() {
                                 ui.label(
-                                    egui::RichText::new(empty_message).color(theme::muted(ui)),
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
                                 );
                             }
                             for entry in &entries {
                                 if let Some(next) = saved_dance_row(
                                     ui,
                                     entry,
-                                    selected_id.as_deref(),
+                                    selected_ref,
                                     &folders,
                                     animate,
                                     false,
@@ -302,14 +318,14 @@ impl ContraApp {
                         .show(ui, |ui| {
                             if !empty_message.is_empty() {
                                 ui.label(
-                                    egui::RichText::new(empty_message).color(theme::muted(ui)),
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
                                 );
                             }
                             for entry in &entries {
                                 if let Some(next) = saved_dance_row(
                                     ui,
                                     entry,
-                                    selected_id.as_deref(),
+                                    selected_ref,
                                     &folders,
                                     animate,
                                     false,
@@ -557,17 +573,17 @@ impl ContraApp {
                 .map(|entry| entry.item.clone())
         });
         let empty_message = if self.tune_library.is_empty() {
-            "No saved tunes yet. Use Download tune to fetch one from ABC Session Tunes."
+            "No saved tunes yet. Use Download tune to fetch one from ABC Session Tunes.".to_string()
         } else if entries.is_empty() {
-            "No saved tunes match this search and folder."
+            "No saved tunes match this search and folder.".to_string()
         } else {
-            ""
+            String::new()
         };
         let mut action = None;
 
         if compact {
             if !empty_message.is_empty() {
-                ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+                ui.label(egui::RichText::new(&empty_message).color(theme::muted(ui)));
             }
             for entry in &entries {
                 if let Some(next) = saved_tune_row(
@@ -606,7 +622,7 @@ impl ContraApp {
                         .show(&mut columns[0], |ui| {
                             if !empty_message.is_empty() {
                                 ui.label(
-                                    egui::RichText::new(empty_message).color(theme::muted(ui)),
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
                                 );
                             }
                             for entry in &entries {
@@ -656,7 +672,7 @@ impl ContraApp {
                         .show(ui, |ui| {
                             if !empty_message.is_empty() {
                                 ui.label(
-                                    egui::RichText::new(empty_message).color(theme::muted(ui)),
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
                                 );
                             }
                             for entry in &entries {
@@ -813,8 +829,12 @@ impl ContraApp {
                 self.picker.dance_selected = None;
             }
             LibraryAction::UseDance(dance) => self.use_dance(dance),
-            LibraryAction::RemoveDance(id) => self.remove_saved_dance(&id),
-            LibraryAction::MoveDance { id, folder } => self.move_saved_dance(&id, folder),
+            LibraryAction::RemoveDance { provider, id } => self.remove_saved_dance(&provider, &id),
+            LibraryAction::MoveDance {
+                provider,
+                id,
+                folder,
+            } => self.move_saved_dance(&provider, &id, folder),
             LibraryAction::PreviewTune(tune) => {
                 if self
                     .picker
@@ -1025,12 +1045,16 @@ fn apply_folder_command<T: contra_core::LibraryItem>(
 fn saved_dance_row(
     ui: &mut egui::Ui,
     entry: &contra_core::LibraryEntry<Dance>,
-    selected_id: Option<&str>,
+    selected: Option<(&str, &str)>,
     folders: &[String],
     animate: bool,
     compact: bool,
 ) -> Option<LibraryAction> {
-    let selected = selected_id == Some(entry.item.source.id.as_str());
+    let selected = selected
+        == Some((
+            entry.item.source.provider.as_str(),
+            entry.item.source.id.as_str(),
+        ));
     let selected_t = animate_amount(
         ui.ctx(),
         ("saved-dance-selected", &entry.item.source.id),
@@ -1137,6 +1161,7 @@ fn folder_menu(
             .clicked()
         {
             *action = Some(LibraryAction::MoveDance {
+                provider: entry.item.source.provider.clone(),
                 id: entry.item.source.id.clone(),
                 folder: None,
             });
@@ -1146,6 +1171,7 @@ fn folder_menu(
             let current = entry.folder.as_deref() == Some(folder.as_str());
             if ui.selectable_label(current, folder).clicked() {
                 *action = Some(LibraryAction::MoveDance {
+                    provider: entry.item.source.provider.clone(),
                     id: entry.item.source.id.clone(),
                     folder: Some(folder.clone()),
                 });
@@ -1175,7 +1201,10 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Optio
         .small()
         .color(theme::muted(ui)),
     );
-    ui.hyperlink_to("Open on ContraDB", &dance.source.url);
+    ui.hyperlink_to(
+        format!("Open on {}", source_label(&dance.source.provider)),
+        &dance.source.url,
+    );
     ui.separator();
     for figure in &dance.figures {
         ui.label(format!(
@@ -1209,7 +1238,10 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Optio
             )
             .clicked()
         {
-            action = Some(LibraryAction::RemoveDance(dance.source.id.clone()));
+            action = Some(LibraryAction::RemoveDance {
+                provider: dance.source.provider.clone(),
+                id: dance.source.id.clone(),
+            });
         }
     });
     action

@@ -7,9 +7,9 @@ use std::time::Duration;
 
 use contra_core::{
     AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, COUNT_IN_BEATS,
-    Countermelody, Dance, FolderFilter, InstrumentCopies, Library, MelodyInstrument, MoveKind,
-    Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset, ScheduledCall, Theme,
-    TimelineConfig, Tune,
+    Countermelody, DEFAULT_DANCE_SOURCE, Dance, FolderFilter, InstrumentCopies, Library,
+    MelodyInstrument, MoveKind, Percussion, PercussionRhythm, PracticeTimeline, Preferences,
+    RolePreset, ScheduledCall, Theme, TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
@@ -18,8 +18,8 @@ use contra_music::{
 #[cfg(not(target_arch = "wasm32"))]
 use contra_sources::FileCache;
 use contra_sources::{
-    Cache, DanceQuery, DanceSearchPage, DanceSort, DanceSummary, TuneQuery, TuneSearchPage,
-    TuneSummary,
+    Cache, DanceProvider, DanceQuery, DanceSearchPage, DanceSort, DanceSummary, FilterKind,
+    TuneQuery, TuneSearchPage, TuneSummary, dance_provider,
 };
 use eframe::egui;
 use rustysynth::SoundFont;
@@ -365,7 +365,6 @@ pub struct ContraApp {
 /// The dance and tune pickers have the same shape, so they share one struct: a
 /// new search or preview field belongs here instead of being threaded through
 /// the app struct and both constructors.
-#[derive(Default)]
 pub(in crate::app) struct PickerState {
     dance_query: DanceQuery,
     tune_query: TuneQuery,
@@ -375,8 +374,29 @@ pub(in crate::app) struct PickerState {
     tune_preview: Option<Tune>,
     dance_selected: Option<DanceSummary>,
     tune_selected: Option<TuneSummary>,
+    /// Provider that produced [`Self::dance_results`]. Previews load from this
+    /// provider, not from whatever is selected now.
+    dance_provider: String,
     search_loading: bool,
     preview_loading: bool,
+}
+
+impl Default for PickerState {
+    fn default() -> Self {
+        Self {
+            dance_query: DanceQuery::default(),
+            tune_query: TuneQuery::default(),
+            dance_results: None,
+            tune_results: None,
+            dance_preview: None,
+            tune_preview: None,
+            dance_selected: None,
+            tune_selected: None,
+            dance_provider: DEFAULT_DANCE_SOURCE.to_string(),
+            search_loading: false,
+            preview_loading: false,
+        }
+    }
 }
 
 /// One tune rendered ahead of a rotation boundary.
@@ -785,13 +805,52 @@ impl ContraApp {
         }
     }
 
+    /// The dance provider selected in preferences.
+    ///
+    /// An id this build does not know (a hand-edited file or a preference from
+    /// a newer build) falls back to ContraDB instead of breaking the screen.
+    fn dance_source(&self) -> &'static dyn DanceProvider {
+        dance_provider(&self.prefs.dance_source).unwrap_or(&contra_sources::CONTRADB)
+    }
+
+    /// Switch the **Download dance** source and drop results from the old one.
+    fn set_dance_source(&mut self, id: &str) {
+        if self.prefs.dance_source == id {
+            return;
+        }
+        self.prefs.dance_source = id.to_string();
+        self.picker.dance_provider = self.dance_source().id().to_string();
+        self.picker.dance_results = None;
+        self.picker.dance_preview = None;
+        self.picker.dance_selected = None;
+        // A reply still in flight belongs to the old source and will be
+        // dropped, so it must not leave the new screen spinning.
+        self.picker.search_loading = false;
+        self.picker.preview_loading = false;
+        self.picker.dance_query.page = 1;
+        // Formation values and the other source-specific filters are not
+        // shared between sites; a stale value would silently match nothing.
+        self.picker.dance_query.formation = None;
+        self.picker.dance_query.figure_move = None;
+        self.picker.dance_query.verified = false;
+        self.save_prefs();
+    }
+
     /// Start a dance search from the current filters.
     fn search_dances(&mut self) {
         if self.picker.search_loading {
             return;
         }
+        let provider = self.dance_source();
+        self.picker.dance_provider = provider.id().to_string();
+        if !provider.supports_pagination() {
+            // A single-page source cannot honour a page left over from another
+            // source.
+            self.picker.dance_query.page = 1;
+        }
         self.picker.search_loading = true;
-        self.source.search_dances(self.picker.dance_query.clone());
+        self.source
+            .search_dances(provider.id(), self.picker.dance_query.clone());
     }
 
     /// Start a tune search from the current filters.
@@ -846,8 +905,8 @@ impl ContraApp {
         });
     }
 
-    fn remove_saved_dance(&mut self, id: &str) {
-        let Some(entry) = self.dance_library.remove("contradb", id) else {
+    fn remove_saved_dance(&mut self, provider: &str, id: &str) {
+        let Some(entry) = self.dance_library.remove(provider, id) else {
             return;
         };
         self.save_dance_library();
@@ -855,7 +914,7 @@ impl ContraApp {
             .picker
             .dance_preview
             .as_ref()
-            .is_some_and(|dance| dance.source.id == id)
+            .is_some_and(|dance| dance.source.provider == provider && dance.source.id == id)
         {
             self.picker.dance_preview = None;
         }
@@ -888,9 +947,9 @@ impl ContraApp {
         self.rotation_settings_changed();
     }
 
-    fn move_saved_dance(&mut self, id: &str, folder: Option<String>) {
+    fn move_saved_dance(&mut self, provider: &str, id: &str, folder: Option<String>) {
         let label = folder.clone().unwrap_or_else(|| "Unfiled".into());
-        match self.dance_library.set_folder("contradb", id, folder) {
+        match self.dance_library.set_folder(provider, id, folder) {
             Ok(()) => {
                 self.save_dance_library();
                 self.library_status = Some(format!("Moved the dance to {label}."));
@@ -1633,7 +1692,17 @@ impl ContraApp {
     fn handle_source_events(&mut self) {
         while let Ok(event) = self.source_rx.try_recv() {
             match event {
-                SourceEvent::DanceSearch { query, result } => {
+                SourceEvent::DanceSearch {
+                    provider,
+                    query,
+                    result,
+                } => {
+                    // A reply for a source the user has switched away from
+                    // must not repopulate the screen with another site's
+                    // results.
+                    if provider != self.picker.dance_provider {
+                        continue;
+                    }
                     self.picker.search_loading = false;
                     self.picker.dance_query = query;
                     match result {
@@ -1644,7 +1713,10 @@ impl ContraApp {
                         Err(error) => self.error = Some(error),
                     }
                 }
-                SourceEvent::Dance { result } => {
+                SourceEvent::Dance { provider, result } => {
+                    if provider != self.picker.dance_provider {
+                        continue;
+                    }
                     self.picker.preview_loading = false;
                     match result {
                         Ok(dance) => {
