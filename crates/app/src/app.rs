@@ -1721,14 +1721,17 @@ impl eframe::App for ContraApp {
             .show(ui, |ui| {
                 let animate = self.prefs.animations_enabled;
                 // The About button is pinned to the top-right corner; the
-                // heading and tabs share the remaining width.
+                // heading and tabs share the remaining width. Center the row:
+                // an egui button inherits the surrounding layout's alignment
+                // for its label, so a top-aligned row lifts "About" a few
+                // points above the tab labels.
                 if compact {
                     // Keep the phone header at the 44 pt touch minimum and
                     // narrow the About button so four short tabs fit beside it.
                     ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
                     ui.spacing_mut().button_padding.x = 8.0;
                 }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .button("About")
                         .on_hover_text("About Contra Karaoke")
