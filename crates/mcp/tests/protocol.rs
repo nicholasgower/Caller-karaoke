@@ -103,6 +103,7 @@ fn lists_app_driving_tools_over_stdio() {
         "session_action",
         "session_set",
         "session_wait",
+        "swipe",
     ] {
         assert!(
             names.contains(&expected),

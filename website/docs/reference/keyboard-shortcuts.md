@@ -65,7 +65,9 @@ shortcut does not respond, check that a text field does not have focus.
 
 On Android and other touch devices, **swipe left or right** across empty screen
 content to move to the next or previous tab. The gesture needs about 60 points
-of mostly horizontal travel and changes the tab once per swipe. A press that
+of mostly horizontal travel and changes the tab once per swipe. Only a finger
+starts a tab swipe: a mouse or trackpad drag over the same content selects text
+or moves the thing under the pointer, and the tab stays put. A press that
 starts on any control — a button, slider, folder row, resizable splitter, text
 field, or open menu — belongs to that control and never changes tabs. A mostly
 vertical swipe scrolls instead. The

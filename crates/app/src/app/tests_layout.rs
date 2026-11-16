@@ -489,8 +489,57 @@ fn hovering_a_dance_card_term_shows_its_glossary_definition() {
     );
 }
 
+/// Drag one finger from `from` to `to`, the way a touch screen reports it.
+///
+/// `egui-winit` and the web backend both send the touch event plus the pointer
+/// events any backend synthesizes from it, in the same frame. A test that sends
+/// pointer events alone is a mouse gesture, which the app deliberately ignores
+/// for tab changes.
+fn touch_drag(harness: &mut Harness<'_, ContraApp>, from: egui::Pos2, to: egui::Pos2) {
+    const STEPS: u32 = 4;
+    let touch = |phase, pos| egui::Event::Touch {
+        device_id: egui::TouchDeviceId(1),
+        id: egui::TouchId(1),
+        phase,
+        pos,
+        force: None,
+    };
+    let button = |pos, pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+
+    harness.input_mut().events.extend([
+        touch(egui::TouchPhase::Start, from),
+        egui::Event::PointerMoved(from),
+        button(from, true),
+    ]);
+    harness.run_steps(1);
+
+    for step in 1..=STEPS {
+        let t = step as f32 / STEPS as f32;
+        let pos = egui::pos2(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+        harness.input_mut().events.extend([
+            touch(egui::TouchPhase::Move, pos),
+            egui::Event::PointerMoved(pos),
+        ]);
+        harness.run_steps(1);
+    }
+
+    harness.input_mut().events.extend([
+        touch(egui::TouchPhase::End, to),
+        button(to, false),
+        egui::Event::PointerGone,
+    ]);
+    harness.run_steps(2);
+}
+
+/// A swipe that starts on a control belongs to that control, and a mouse drag
+/// is never a tab swipe.
 #[test]
-fn a_swipe_that_starts_on_a_control_does_not_change_tabs() {
+fn only_a_finger_swipe_on_empty_content_changes_tabs() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(800.0, 844.0))
         .with_theme(egui::Theme::Dark)
@@ -505,30 +554,12 @@ fn a_swipe_that_starts_on_a_control_does_not_change_tabs() {
         });
     harness.run_steps(3);
 
-    let play = harness
-        .query_all_by_label("Play")
-        .next()
-        .expect("the session has a Play button")
-        .rect()
-        .center();
-    harness.hover_at(play);
-    harness.run_steps(1);
-    harness.drag_at(play);
-    harness.run_steps(1);
-    let moved = play - egui::vec2(140.0, 0.0);
-    harness.hover_at(moved);
-    harness.run_steps(1);
-    harness.drop_at(moved);
-    harness.run_steps(2);
-    assert_eq!(
-        harness.state().screen,
-        Screen::Session,
-        "a drag that starts on a control belongs to that control"
-    );
-
     // The gap between the two session boxes is not a widget, so a horizontal
-    // drag there still changes tabs.
+    // drag there is a tab swipe when it comes from a finger.
     let blank = egui::pos2(400.0, 700.0);
+
+    // A mouse drag over the same empty content is not a swipe: it selects text
+    // and grabs content, so the tab must not change under the user.
     harness.hover_at(blank);
     harness.run_steps(1);
     harness.drag_at(blank);
@@ -537,6 +568,27 @@ fn a_swipe_that_starts_on_a_control_does_not_change_tabs() {
     harness.run_steps(1);
     harness.drop_at(blank - egui::vec2(140.0, 0.0));
     harness.run_steps(2);
+    assert_eq!(
+        harness.state().screen,
+        Screen::Session,
+        "a mouse drag must not change tabs"
+    );
+
+    let play = harness
+        .query_all_by_label("Play")
+        .next()
+        .expect("the session has a Play button")
+        .rect()
+        .center();
+    touch_drag(&mut harness, play, play - egui::vec2(140.0, 0.0));
+    assert_eq!(
+        harness.state().screen,
+        Screen::Session,
+        "a swipe that starts on a control belongs to that control"
+    );
+
+    // An empty gap is not a control, so a finger swipe there changes tabs.
+    touch_drag(&mut harness, blank, blank - egui::vec2(140.0, 0.0));
     assert_eq!(harness.state().screen, Screen::DancePicker);
 }
 

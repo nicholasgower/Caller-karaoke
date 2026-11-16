@@ -324,6 +324,39 @@ fn swipe_owns_press(sense: egui::Sense, width: f32) -> bool {
     sense.senses_click() || (sense.senses_drag() && width <= 24.0)
 }
 
+/// Where the pointer press in progress began, recorded once per press.
+///
+/// Both facts are read while the press is fresh and reused for every frame of
+/// the drag, because neither can be reconstructed later: the widget under the
+/// pointer changes as the finger travels, and the touch event belongs to the
+/// frame that started the press.
+#[derive(Clone, Copy, Debug, Default)]
+struct PressOrigin {
+    /// The press landed on an interactive control, which owns the gesture.
+    on_control: bool,
+    /// The press came from a finger rather than a mouse.
+    from_touch: bool,
+}
+
+/// Whether this frame's input puts a finger on the glass.
+///
+/// egui's pointer is a mouse and a touch at once: `egui-winit` and the web
+/// backend both translate a touch into a primary pointer press, so the press
+/// itself cannot say which device sent it. The touch event is the only record
+/// of the device, and it arrives in the same frame as the press derived from
+/// it, which is why a tab swipe needs both.
+fn touch_started(events: &[egui::Event]) -> bool {
+    events.iter().any(|event| {
+        matches!(
+            event,
+            egui::Event::Touch {
+                phase: egui::TouchPhase::Start,
+                ..
+            }
+        )
+    })
+}
+
 /// The screen a horizontal swipe selects, or `None` when it is not a swipe.
 ///
 /// A swipe left (negative x) moves to the next tab and a swipe right moves to
@@ -1040,25 +1073,30 @@ impl ContraApp {
         }
     }
 
-    /// Switch tabs on a horizontal swipe in the screen content.
+    /// Switch tabs on a horizontal swipe of a finger in the screen content.
     ///
     /// The gesture is read from the raw pointer rather than from a widget, so
-    /// it works over plain labels and frames. It must never compete with a
-    /// control the user is actually using: a press that starts on any
-    /// interactive widget (a button, slider, folder row, text field, scroll
-    /// area, or popup) belongs to that widget, so the tab does not change even
-    /// if the finger then travels sideways. A press on empty content can still
-    /// swipe. One press can change tabs once; releasing the pointer arms the
-    /// next swipe.
+    /// it works over plain labels and frames. It is a **touch gesture only**:
+    /// a mouse drag must not change tabs, because text selection, list
+    /// reordering and slider drags all begin with the same press, and a mouse
+    /// has the tab row, the arrow keys and the number keys as its own way to
+    /// switch screens.
+    ///
+    /// A swipe must also never compete with a control the user is actually
+    /// using: a press that starts on any interactive widget (a button, slider,
+    /// folder row, text field, scroll area, or popup) belongs to that widget,
+    /// so the tab does not change even if the finger then travels sideways. A
+    /// press on empty content can still swipe. One press can change tabs once;
+    /// releasing the pointer arms the next swipe.
     fn tab_swipe(&mut self, ui: &egui::Ui, content: egui::Rect) {
         let fired_id = egui::Id::unique("tab-swipe-fired");
-        let press_on_widget_id = egui::Id::unique("tab-swipe-press-on-widget");
+        let origin_id = egui::Id::unique("tab-swipe-press-origin");
 
-        // Record whether this press began on an interactive control. A scroll
-        // area's drag surface is deliberately not a control: a horizontal drag
-        // there does not scroll a vertical list, so it may still change tabs.
-        // A clickable widget, or a narrow drag handle such as a pane splitter,
-        // owns the press and must not be pre-empted.
+        // Record where this press began. A scroll area's drag surface is
+        // deliberately not a control: a horizontal drag there does not scroll a
+        // vertical list, so it may still change tabs. A clickable widget, or a
+        // narrow drag handle such as a pane splitter, owns the press and must
+        // not be pre-empted.
         if ui.input(|input| input.pointer.primary_pressed()) {
             let hovered: Vec<egui::Id> = ui
                 .ctx()
@@ -1069,32 +1107,43 @@ impl ContraApp {
                         && swipe_owns_press(response.sense, response.interact_rect.width())
                 })
             });
-            ui.data_mut(|data| data.insert_temp(press_on_widget_id, on_control));
+            let from_touch = ui.input(|input| touch_started(&input.events));
+            ui.data_mut(|data| {
+                data.insert_temp(
+                    origin_id,
+                    PressOrigin {
+                        on_control,
+                        from_touch,
+                    },
+                );
+            });
         }
         if !ui.input(|input| input.pointer.primary_down()) {
-            ui.data_mut(|data| data.remove::<bool>(press_on_widget_id));
+            ui.data_mut(|data| data.remove::<PressOrigin>(origin_id));
         }
-        let started_on_widget =
-            ui.data(|data| data.get_temp::<bool>(press_on_widget_id).unwrap_or(false));
+        let origin = ui
+            .data(|data| data.get_temp::<PressOrigin>(origin_id))
+            .unwrap_or_default();
 
         let gesture = ui.input(|input| {
-            let origin = input.pointer.press_origin()?;
+            let start = input.pointer.press_origin()?;
             let pointer = input.pointer.interact_pos()?;
             input
                 .pointer
                 .primary_down()
-                .then_some((origin, pointer - origin))
+                .then_some((start, pointer - start))
         });
-        let Some((origin, delta)) = gesture else {
+        let Some((start, delta)) = gesture else {
             ui.data_mut(|data| data.insert_temp(fired_id, false));
             return;
         };
         if self.headless
-            || started_on_widget
+            || !origin.from_touch
+            || origin.on_control
             || ui.ctx().any_popup_open()
             || ui.ctx().text_edit_focused()
-            || !content.contains(origin)
-            || ui::press_started_on_slider(ui, origin)
+            || !content.contains(start)
+            || ui::press_started_on_slider(ui, start)
             || ui.data(|data| data.get_temp::<bool>(fired_id).unwrap_or(false))
         {
             return;
@@ -3753,9 +3802,14 @@ fn tab(
     );
     let desired = tab_desired_size(ui, label, compact);
     let (rect, response) = ui.allocate_exact_size(desired, egui::Sense::click());
-    let response = response.on_hover_text(format!(
-        "{hover} ({shortcut}) · swipe or use ← → to change tabs"
-    ));
+    // A tooltip needs a hovering mouse, and a mouse cannot swipe a tab: only
+    // offer the gesture once the app has seen a touch screen.
+    let hint = if ui.input(|input| input.has_touch_screen()) {
+        "swipe or use ← → to change tabs"
+    } else {
+        "use ← → to change tabs"
+    };
+    let response = response.on_hover_text(format!("{hover} ({shortcut}) · {hint}"));
 
     let active_t = if animate {
         ctx.animate_bool_with_time(id, active, TAB_ANIM_SECONDS)
@@ -4332,6 +4386,41 @@ mod tests {
             "a wide scroll area still allows a horizontal tab swipe"
         );
         assert!(!swipe_owns_press(egui::Sense::hover(), 400.0));
+    }
+
+    #[test]
+    fn only_a_finger_starts_a_tab_swipe() {
+        let touch = |phase, pos| egui::Event::Touch {
+            device_id: egui::TouchDeviceId(1),
+            id: egui::TouchId(2),
+            phase,
+            pos,
+            force: None,
+        };
+        // A touch screen reports the finger itself next to the pointer press it
+        // derives, so the start event is what identifies a swipe.
+        assert!(touch_started(&[
+            touch(egui::TouchPhase::Start, egui::pos2(100.0, 100.0)),
+            egui::Event::PointerButton {
+                pos: egui::pos2(100.0, 100.0),
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ]));
+        // A mouse press has no touch event, and the moves of a gesture that is
+        // already underway are not new presses.
+        assert!(!touch_started(&[egui::Event::PointerButton {
+            pos: egui::pos2(100.0, 100.0),
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: egui::Modifiers::NONE,
+        }]));
+        assert!(!touch_started(&[touch(
+            egui::TouchPhase::Move,
+            egui::pos2(200.0, 100.0)
+        )]));
+        assert!(!touch_started(&[]));
     }
 
     #[test]
