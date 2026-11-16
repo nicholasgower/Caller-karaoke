@@ -473,12 +473,18 @@ impl ContraApp {
                 // session's dance card and the saved-dance preview.
                 ui.spacing_mut().item_spacing.y = self.prefs.card_padding.gap();
                 for figure in &dance.figures {
-                    ui.label(format!(
-                        "{}  {:.0}b  {}",
-                        figure.phrase.as_deref().unwrap_or(""),
-                        figure.beats,
-                        figure.text
-                    ));
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(format!(
+                            "{}  {:.0}b  ",
+                            figure.phrase.as_deref().unwrap_or(""),
+                            figure.beats
+                        ));
+                        if let Some(entry) =
+                            glossary_text(ui, &figure.text, |text| egui::RichText::new(text))
+                        {
+                            self.open_glossary(Some(entry.term), Screen::DanceDownload);
+                        }
+                    });
                 }
             });
         } else if !self.picker.preview_loading {

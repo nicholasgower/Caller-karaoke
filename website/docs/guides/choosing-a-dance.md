@@ -234,6 +234,8 @@ bundled default is *Another Last Dance* by Erik Hoffman (ContraDB 2409).
 
 The Caller's Box additionally publishes a [contra move
 glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm) that
-explains the shorthand used in its cards.
+explains the shorthand used in its cards. Contra Karaoke's own [Dance
+glossary](/docs/reference/glossary) turns many of those terms into links in the
+call prompt and dance card.
 
 Next: [Choosing a tune](/docs/guides/choosing-a-tune).

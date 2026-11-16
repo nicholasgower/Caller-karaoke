@@ -164,6 +164,11 @@ card scrolls inside its box, so a long card never pushes the prompt or the
 controls off screen. Phone and tablet widths keep the stacked layout, with the
 card below the meter.
 
+The **Glossary** button beside the **Dance card** heading opens the in-app
+[Dance glossary](/docs/reference/glossary). Many terms in the prompt and on the
+card are underlined as well; selecting one opens its entry directly. The
+glossary is a reading aid and does not change the loaded dance or its timing.
+
 <Shot id="transport-summary" />
 
 The progress bar shows the current beat out of the 64-beat loop, and its text

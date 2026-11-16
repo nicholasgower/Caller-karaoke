@@ -826,6 +826,13 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     }
     capture(harness, out, "about-window")?;
 
+    // The glossary is a reference page opened from a term or from About.
+    {
+        let app = harness.state_mut();
+        app.open_glossary(None, Screen::Preferences);
+    }
+    capture(harness, out, "glossary")?;
+
     Ok(())
 }
 
@@ -954,6 +961,13 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         app.alias_filter = "zzzz-no-match".into();
     }
     capture(harness, out, "aliases-custom")?;
+
+    {
+        let app = harness.state_mut();
+        app.alias_filter.clear();
+        app.open_glossary(None, Screen::Aliases);
+    }
+    capture(harness, out, "glossary")?;
 
     {
         let app = harness.state_mut();

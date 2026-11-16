@@ -53,6 +53,12 @@
       "status": "pending"
     },
     {
+      "id": "glossary",
+      "alt": "The Dance glossary reference page with a filter field, a source link, and a scrolling list of contra dance terms with short definitions.",
+      "caption": "The in-app glossary opens from a linked term or the Dance card header and works offline.",
+      "status": "pending"
+    },
+    {
       "id": "dance-picker-open",
       "alt": "The Download dance screen with a Dance source menu above Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields, above an empty results area.",
       "caption": "Download dance selects its source and searches it, then previews a card before saving it locally.",

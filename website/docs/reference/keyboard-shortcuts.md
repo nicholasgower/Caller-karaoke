@@ -14,7 +14,7 @@ system's media controls drive the transport from outside the app; see
 | --- | --- | --- |
 | **Space** | Play or pause | If the music is playing, Space pauses; otherwise it starts or resumes. |
 | **R** | Restart | Returns to the count-in and resets the call state. |
-| **Esc** | Go back or return to **Session** | Returns **Download dance** and **Download tune** to their saved-content lists, the alias editor to **Preferences**, and **Select dance**, **Select tune**, and **Preferences** to **Session**. On a phone, a Preferences category steps back to the category list first. Android's system back button does the same. |
+| **Esc** | Go back or return to **Session** | Returns **Download dance** and **Download tune** to their saved-content lists, the alias editor to **Preferences**, the **Dance glossary** to the screen that opened it, and **Select dance**, **Select tune**, and **Preferences** to **Session**. On a phone, a Preferences category steps back to the category list first. Android's system back button does the same. |
 | **1-3** | Switch tabs | 1 Session, 2 Select dance, 3 Select tune. |
 | **4** | Open **Preferences** | Preferences is the gear button at the top right rather than a tab, but its number key still works from any screen. On a wide header the button also shows the word **Preferences**. |
 | **← / →** | Previous or next tab | The tab row wraps. Ignored while a control has keyboard focus. |
@@ -31,8 +31,9 @@ system's media controls drive the transport from outside the app; see
 - **Esc** does not replace **Use this dance** or **Use this tune**. Leaving a
   picker does not change the loaded dance or tune. From a **Download** screen,
   Esc returns to the corresponding saved-content list, and from **Preferences**
-  it returns to **Session**. On a phone it first leaves a Preferences category
-  for the category list. The About text is the **About** category of
+  it returns to **Session**. The **Dance glossary** returns to the session or
+  Preferences page that opened it. On a phone it first leaves a Preferences
+  category for the category list. The About text is the **About** category of
   **Preferences**, so nothing on that screen is modal and the transport
   shortcuts keep working.
 - **1-3** are ignored while a text field has focus, so typing a number does not

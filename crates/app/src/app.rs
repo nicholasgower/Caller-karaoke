@@ -47,6 +47,8 @@ enum Screen {
     AbcEditor,
     Preferences,
     Aliases,
+    /// The in-app dance glossary, opened from a term or the About section.
+    Glossary,
 }
 
 /// How the tune picker shows the selected tune.
@@ -108,6 +110,23 @@ fn back_action(
         return Some(BackAction::PreferencesPage(page));
     }
     screen.escape_target().map(BackAction::Screen)
+}
+
+/// Resolve Back with the glossary's dynamic destination included.
+///
+/// The glossary is opened from several places, so its target is the screen that
+/// opened it rather than the static `escape` field in `SCREENS`. Every other
+/// screen keeps the table's destination.
+fn back_target(
+    screen: Screen,
+    page: ui::preferences::PreferencesPage,
+    compact: bool,
+    glossary_return: Screen,
+) -> Option<BackAction> {
+    if screen == Screen::Glossary {
+        return Some(BackAction::Screen(glossary_return));
+    }
+    back_action(screen, page, compact)
 }
 
 /// One top-row tab: the screens it covers, its labels, and its shortcut key.
@@ -175,7 +194,7 @@ struct ScreenDef {
     escape: Option<Screen>,
 }
 
-const SCREENS: [ScreenDef; 8] = [
+const SCREENS: [ScreenDef; 9] = [
     ScreenDef {
         screen: Screen::Session,
         draw: draw_session,
@@ -216,6 +235,13 @@ const SCREENS: [ScreenDef; 8] = [
         draw: draw_aliases,
         escape: Some(Screen::Preferences),
     },
+    ScreenDef {
+        screen: Screen::Glossary,
+        draw: draw_glossary,
+        // Back returns to the screen that opened the glossary; `back_target`
+        // reads `ContraApp::glossary_return` instead of this static fallback.
+        escape: None,
+    },
 ];
 
 // The registry needs uniform draw functions; the screens themselves have
@@ -243,6 +269,9 @@ fn draw_preferences(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
 }
 fn draw_aliases(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
     app.aliases_ui(ui);
+}
+fn draw_glossary(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.glossary_ui(ui);
 }
 
 /// Project links shown in the About section of Preferences.
@@ -384,6 +413,14 @@ pub struct ContraApp {
     /// next frame. Set by the headless renderer so a documentation shot can
     /// show the section without rendering the whole scrolling page.
     about_reveal: bool,
+    /// The glossary filter text, the entry a term link asked to reveal, and the
+    /// screen Back returns to from the glossary.
+    glossary_query: String,
+    glossary_focus: Option<String>,
+    glossary_return: Screen,
+    /// Bumped when the glossary opens so its scroll area starts at the top
+    /// instead of where the previous visit left it.
+    glossary_epoch: u64,
     dance: Dance,
     tune: Tune,
     timeline: PracticeTimeline,
@@ -838,6 +875,10 @@ impl ContraApp {
             launch_focus: crate::window::LaunchFocus::default(),
             media_keys: crate::media_keys::MediaKeys::new(cc),
             about_reveal: false,
+            glossary_query: String::new(),
+            glossary_focus: None,
+            glossary_return: Screen::Session,
+            glossary_epoch: 0,
             dance,
             tune,
             timeline,
@@ -990,7 +1031,7 @@ impl ContraApp {
         }
         if escape {
             let compact = compact_layout(ui.available_width());
-            match back_action(self.screen, self.prefs_page, compact) {
+            match back_target(self.screen, self.prefs_page, compact, self.glossary_return) {
                 Some(BackAction::PreferencesPage(page)) => self.prefs_page = page,
                 Some(BackAction::Screen(screen)) => self.screen = screen,
                 None => {}
@@ -1488,6 +1529,10 @@ impl ContraApp {
             launch_focus: crate::window::LaunchFocus::default(),
             media_keys: None,
             about_reveal: false,
+            glossary_query: String::new(),
+            glossary_focus: None,
+            glossary_return: Screen::Session,
+            glossary_epoch: 0,
             dance,
             tune,
             timeline,
@@ -4172,7 +4217,7 @@ mod tests {
     /// from the tab row, the gear button, or the dispatcher.
     #[test]
     fn every_screen_is_registered_once() {
-        const ALL: [Screen; 8] = [
+        const ALL: [Screen; 9] = [
             Screen::Session,
             Screen::DancePicker,
             Screen::DanceDownload,
@@ -4181,6 +4226,7 @@ mod tests {
             Screen::AbcEditor,
             Screen::Preferences,
             Screen::Aliases,
+            Screen::Glossary,
         ];
         assert_eq!(SCREENS.len(), ALL.len());
         for screen in ALL {
@@ -4765,6 +4811,15 @@ mod tests {
             Some(BackAction::Screen(Screen::Preferences))
         );
         assert_eq!(back_action(Screen::Session, categories, true), None);
+        // The glossary remembers which screen opened it.
+        assert_eq!(
+            back_target(Screen::Glossary, categories, true, Screen::Session),
+            Some(BackAction::Screen(Screen::Session))
+        );
+        assert_eq!(
+            back_target(Screen::Glossary, categories, false, Screen::Preferences),
+            Some(BackAction::Screen(Screen::Preferences))
+        );
     }
 
     #[test]
