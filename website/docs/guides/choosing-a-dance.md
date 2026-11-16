@@ -67,6 +67,31 @@ already in the session.
 Select **Download dance** at the top of **Select dance** to open the search
 screen. Downloading is explicit: previewing a card does not save it.
 
+## Import and export dance JSON
+
+**Import dance JSON** at the top of **Select dance** adds a card from a local
+JSON file. The importer accepts:
+
+- a file exported by **Export as JSON**, including its `format` and `version`
+  fields;
+- a plain dance object with `title`, `choreographer`, `formation`, `preamble`,
+  `notes`, and `figures`;
+- a ContraDB-shaped object using `choreographer_name` and `hook`, with figures as
+  objects or plain strings.
+
+A figure is `{"phrase": "A1", "beats": 8, "text": "neighbors do si do"}`, and a
+plain string figure gets a phrase of none and eight beats. The card must have a
+title and at least one figure with a positive beat count; otherwise the red
+error panel explains the problem and nothing is added. A successful import is
+saved to your dances and opened in the preview, but the loaded dance is not
+replaced until you select **Use**.
+
+Select a saved dance, then **Export as JSON** to write the versioned exchange
+document. It contains `format: "contra-karaoke-dance"`, `version: 1`, the dance
+fields, and every figure, so the file can be read back by this app or inspected
+by another tool. The desktop build uses a save dialog, the browser downloads the
+file, and Android saves it in the app's export folder and offers **Share**.
+
 The screen searches the dance source chosen in **Preferences → Data sources**:
 ContraDB (the default) or The Caller's Box. Saved dances keep their own source,
 and the preview's **Open on …** link always returns to that source. The form

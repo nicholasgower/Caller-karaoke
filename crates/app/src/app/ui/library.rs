@@ -11,9 +11,10 @@ impl ContraApp {
             self.dance_source().display_name()
         );
         let mut open_download = false;
+        let mut import = false;
         if compact {
             ui.heading("Select dance");
-            // At phone width the heading and the action do not fit on one row.
+            // At phone width the heading and the actions do not fit on one row.
             let width = ui.available_width();
             if ui
                 .add_sized(
@@ -24,6 +25,16 @@ impl ContraApp {
                 .clicked()
             {
                 open_download = true;
+            }
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Import dance JSON"),
+                )
+                .on_hover_text("Add a saved dance from a Contra Karaoke JSON file")
+                .clicked()
+            {
+                import = true;
             }
         } else {
             ui.horizontal(|ui| {
@@ -36,6 +47,13 @@ impl ContraApp {
                     {
                         open_download = true;
                     }
+                    if ui
+                        .button("Import dance JSON")
+                        .on_hover_text("Add a saved dance from a Contra Karaoke JSON file")
+                        .clicked()
+                    {
+                        import = true;
+                    }
                 });
             });
         }
@@ -43,6 +61,9 @@ impl ContraApp {
             self.picker.dance_preview = None;
             self.picker.dance_selected = None;
             self.screen = Screen::DanceDownload;
+        }
+        if import {
+            self.choose_import(crate::files::ImportKind::DanceJson);
         }
         ui.label(
             egui::RichText::new(format!(
@@ -105,6 +126,7 @@ impl ContraApp {
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
         }
+        share_prompt(self, ui);
         ui.add_space(4.0);
 
         let folders = self.dance_library.folders.clone();
@@ -358,6 +380,7 @@ impl ContraApp {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
         let mut open_download = false;
+        let mut import = false;
         if compact {
             ui.heading("Select tune");
             let width = ui.available_width();
@@ -370,6 +393,16 @@ impl ContraApp {
                 .clicked()
             {
                 open_download = true;
+            }
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Import ABC tune"),
+                )
+                .on_hover_text("Add one or more saved tunes from local .abc files")
+                .clicked()
+            {
+                import = true;
             }
         } else {
             ui.horizontal(|ui| {
@@ -384,6 +417,13 @@ impl ContraApp {
                     {
                         open_download = true;
                     }
+                    if ui
+                        .button("Import ABC tune")
+                        .on_hover_text("Add one or more saved tunes from local .abc files")
+                        .clicked()
+                    {
+                        import = true;
+                    }
                 });
             });
         }
@@ -392,6 +432,9 @@ impl ContraApp {
             self.picker.tune_selected = None;
             self.tune_sheet = None;
             self.screen = Screen::TuneDownload;
+        }
+        if import {
+            self.choose_import(crate::files::ImportKind::Abc);
         }
         ui.label(
             egui::RichText::new(
@@ -463,6 +506,7 @@ impl ContraApp {
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
         }
+        share_prompt(self, ui);
         ui.add_space(4.0);
 
         let folders = self.tune_library.folders.clone();
@@ -560,18 +604,21 @@ impl ContraApp {
             .collect();
         entries.sort_by_key(|entry| entry.item.title.to_lowercase());
         let folders = self.tune_library.folders.clone();
-        let selected_id = self
+        let selected = self
             .picker
             .tune_preview
             .as_ref()
-            .map(|tune| tune.source.id.clone())
-            .filter(|id| self.tune_library.contains("abcsessiontunes", id));
-        let preview = selected_id.as_deref().and_then(|id| {
+            .map(|tune| (tune.source.provider.clone(), tune.source.id.clone()))
+            .filter(|(provider, id)| self.tune_library.contains(provider, id));
+        let preview = selected.as_ref().and_then(|(provider, id)| {
             entries
                 .iter()
-                .find(|entry| entry.item.source.id == id)
+                .find(|entry| {
+                    entry.item.source.provider == *provider && entry.item.source.id == *id
+                })
                 .map(|entry| entry.item.clone())
         });
+        let selected_id = preview.as_ref().map(|tune| tune.source.id.clone());
         let empty_message = if self.tune_library.is_empty() {
             "No saved tunes yet. Use Download tune to fetch one from ABC Session Tunes.".to_string()
         } else if entries.is_empty() {
@@ -736,7 +783,9 @@ impl ContraApp {
                 .color(theme::muted(ui)),
         );
         ui.horizontal_wrapped(|ui| {
-            ui.hyperlink_to("Open on ABC Session Tunes", &tune.source.url);
+            if !tune.source.url.trim().is_empty() {
+                ui.hyperlink_to("Open on ABC Session Tunes", &tune.source.url);
+            }
             if ui.button(self.tune_view.toggle_label()).clicked() {
                 self.tune_view = self.tune_view.toggled();
             }
@@ -746,7 +795,7 @@ impl ContraApp {
         let width = action_width(
             ui.available_width(),
             ui.spacing().item_spacing.x,
-            3,
+            5,
             compact,
         );
         ui.horizontal_wrapped(|ui| {
@@ -781,11 +830,34 @@ impl ContraApp {
             if ui
                 .add_sized(
                     [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Edit ABC").wrap(),
+                )
+                .on_hover_text("Open this saved tune in the ABC editor")
+                .clicked()
+            {
+                action = Some(LibraryAction::EditTuneAbc(tune.clone()));
+            }
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Export as ABC").wrap(),
+                )
+                .on_hover_text("Save this tune's ABC text to a file")
+                .clicked()
+            {
+                action = Some(LibraryAction::ExportTune(tune.clone()));
+            }
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
                     egui::Button::new("Remove from saved tunes").wrap(),
                 )
                 .clicked()
             {
-                action = Some(LibraryAction::RemoveTune(tune.source.id.clone()));
+                action = Some(LibraryAction::RemoveTune {
+                    provider: tune.source.provider.clone(),
+                    id: tune.source.id.clone(),
+                });
             }
         });
         ui.separator();
@@ -848,9 +920,16 @@ impl ContraApp {
                 self.picker.tune_selected = None;
             }
             LibraryAction::UseTune(tune) => self.use_tune(tune),
-            LibraryAction::RemoveTune(id) => self.remove_saved_tune(&id),
+            LibraryAction::RemoveTune { provider, id } => self.remove_saved_tune(&provider, &id),
             LibraryAction::ToggleRotation(tune) => self.toggle_rotation_tune(&tune),
-            LibraryAction::MoveTune { id, folder } => self.move_saved_tune(&id, folder),
+            LibraryAction::MoveTune {
+                provider,
+                id,
+                folder,
+            } => self.move_saved_tune(&provider, &id, folder),
+            LibraryAction::ExportTune(tune) => self.export_tune_abc(&tune),
+            LibraryAction::ExportDance(dance) => self.export_dance_json(&dance),
+            LibraryAction::EditTuneAbc(tune) => self.edit_tune_abc(&tune),
         }
     }
 
@@ -1201,10 +1280,12 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Optio
         .small()
         .color(theme::muted(ui)),
     );
-    ui.hyperlink_to(
-        format!("Open on {}", source_label(&dance.source.provider)),
-        &dance.source.url,
-    );
+    if !dance.source.url.trim().is_empty() {
+        ui.hyperlink_to(
+            format!("Open on {}", source_label(&dance.source.provider)),
+            &dance.source.url,
+        );
+    }
     ui.separator();
     for figure in &dance.figures {
         ui.label(format!(
@@ -1218,7 +1299,7 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Optio
     let width = action_width(
         ui.available_width(),
         ui.spacing().item_spacing.x,
-        2,
+        3,
         compact,
     );
     ui.horizontal_wrapped(|ui| {
@@ -1230,6 +1311,16 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Optio
             .clicked()
         {
             action = Some(LibraryAction::UseDance(dance.clone()));
+        }
+        if ui
+            .add_sized(
+                [width, theme::TOUCH_TARGET],
+                egui::Button::new("Export as JSON").wrap(),
+            )
+            .on_hover_text("Save this dance as a versioned JSON file")
+            .clicked()
+        {
+            action = Some(LibraryAction::ExportDance(dance.clone()));
         }
         if ui
             .add_sized(
@@ -1375,6 +1466,7 @@ fn tune_folder_menu(
             .clicked()
         {
             *action = Some(LibraryAction::MoveTune {
+                provider: entry.item.source.provider.clone(),
                 id: entry.item.source.id.clone(),
                 folder: None,
             });
@@ -1384,6 +1476,7 @@ fn tune_folder_menu(
             let current = entry.folder.as_deref() == Some(folder.as_str());
             if ui.selectable_label(current, folder).clicked() {
                 *action = Some(LibraryAction::MoveTune {
+                    provider: entry.item.source.provider.clone(),
                     id: entry.item.source.id.clone(),
                     folder: Some(folder.clone()),
                 });

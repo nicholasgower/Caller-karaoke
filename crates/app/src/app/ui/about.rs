@@ -42,6 +42,16 @@ pub(in crate::app) fn about(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bo
         .small()
         .color(theme::muted(ui)),
     );
+    ui.add_space(8.0);
+    ui.label(
+        egui::RichText::new(
+            "The saved-tune ABC editor was inspired by Michael Eskin's abctools \
+             (github.com/seisiuneer/abctools). This is an independent, minimal \
+             implementation, not a port of that project.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     // Breathing room below the last line so the credits do not sit on the
     // bottom edge of the scrolling page.
     ui.add_space(8.0);

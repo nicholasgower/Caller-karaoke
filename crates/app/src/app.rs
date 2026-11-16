@@ -27,6 +27,7 @@ use rustysynth::SoundFont;
 
 use crate::audio::AudioEngine;
 use crate::defaults;
+use crate::files;
 use crate::library;
 use crate::sheet::SheetPreview;
 use crate::source::{SourceClient, SourceEvent};
@@ -41,6 +42,8 @@ enum Screen {
     DanceDownload,
     TunePicker,
     TuneDownload,
+    /// The plain-text ABC editor for a saved tune.
+    AbcEditor,
     Preferences,
     Aliases,
 }
@@ -122,7 +125,7 @@ const TABS: [TabDef; 3] = [
         key: egui::Key::Num2,
     },
     TabDef {
-        screens: &[Screen::TunePicker, Screen::TuneDownload],
+        screens: &[Screen::TunePicker, Screen::TuneDownload, Screen::AbcEditor],
         label: "Select Tune",
         short_label: "Tune",
         hover: "Select Tune",
@@ -144,7 +147,7 @@ struct ScreenDef {
     escape: Option<Screen>,
 }
 
-const SCREENS: [ScreenDef; 7] = [
+const SCREENS: [ScreenDef; 8] = [
     ScreenDef {
         screen: Screen::Session,
         draw: draw_session,
@@ -168,6 +171,11 @@ const SCREENS: [ScreenDef; 7] = [
     ScreenDef {
         screen: Screen::TuneDownload,
         draw: draw_tune_download,
+        escape: Some(Screen::TunePicker),
+    },
+    ScreenDef {
+        screen: Screen::AbcEditor,
+        draw: draw_abc_editor,
         escape: Some(Screen::TunePicker),
     },
     ScreenDef {
@@ -198,6 +206,9 @@ fn draw_tune_library(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
 }
 fn draw_tune_download(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
     app.tune_download_ui(ui);
+}
+fn draw_abc_editor(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+    app.abc_editor_ui(ui);
 }
 fn draw_preferences(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
     app.preferences_ui(ui);
@@ -365,6 +376,10 @@ pub struct ContraApp {
     library_status: Option<String>,
     tune_view: TuneView,
     tune_sheet: Option<Result<SheetPreview, String>>,
+    /// The draft and preview of the ABC editor, when it is open.
+    abc_editor: Option<ui::AbcEditorState>,
+    /// An Android export waiting to be shared, if any.
+    share_request: Option<files::ShareRequest>,
     status: String,
     error: Option<String>,
     length_warning: Option<String>,
@@ -733,6 +748,8 @@ impl ContraApp {
 
             tune_view: TuneView::default(),
             tune_sheet: None,
+            abc_editor: None,
+            share_request: None,
 
             status: "Ready".into(),
             error: None,
@@ -969,6 +986,143 @@ impl ContraApp {
         });
     }
 
+    /// Take every file the platform's import dialog produced.
+    ///
+    /// The browser and Android pickers are asynchronous, so this runs every
+    /// frame; the native dialogs queue their files and return at once.
+    fn poll_imported_files(&mut self) {
+        for (kind, file) in files::take_imports() {
+            match kind {
+                files::ImportKind::Abc => self.import_abc_file(file),
+                files::ImportKind::DanceJson => self.import_dance_file(file),
+            }
+        }
+    }
+
+    /// Open the picker for ABC tunes or dance JSON files.
+    fn choose_import(&mut self, kind: files::ImportKind) {
+        if let Err(error) = files::choose_files(kind) {
+            self.error = Some(error);
+        }
+        self.poll_imported_files();
+    }
+
+    fn import_abc_file(&mut self, file: files::ImportedFile) {
+        let import = match files::tune_from_abc(&file.name, &file.text) {
+            Ok(import) => import,
+            Err(error) => {
+                self.error = Some(format!("Could not import {}: {error}", file.name));
+                return;
+            }
+        };
+        let tune = import.tune;
+        let refreshed = self
+            .tune_library
+            .contains(&tune.source.provider, &tune.source.id);
+        let title = tune.title.clone();
+        self.tune_library
+            .insert(tune.clone(), None, library::now_seconds());
+        self.save_tune_library();
+        let extra = match import.additional_tunes {
+            0 => String::new(),
+            1 => " The file holds one more tune; only the first was imported.".to_string(),
+            count => format!(" The file holds {count} more tunes; only the first was imported."),
+        };
+        self.library_status = Some(format!(
+            "{} \"{title}\" from {}.{extra}",
+            if refreshed { "Updated" } else { "Imported" },
+            file.name
+        ));
+        self.picker.tune_preview = Some(tune);
+        self.picker.tune_selected = None;
+        self.tune_sheet = None;
+        self.tune_library_folder = FolderFilter::All;
+        self.tune_library_query.clear();
+        self.screen = Screen::TunePicker;
+    }
+
+    fn import_dance_file(&mut self, file: files::ImportedFile) {
+        let dance = match files::dance_from_json(&file.text) {
+            Ok(dance) => dance,
+            Err(error) => {
+                self.error = Some(format!("Could not import {}: {error}", file.name));
+                return;
+            }
+        };
+        let refreshed = self
+            .dance_library
+            .contains(&dance.source.provider, &dance.source.id);
+        let title = dance.title.clone();
+        self.dance_library
+            .insert(dance.clone(), None, library::now_seconds());
+        self.save_dance_library();
+        self.library_status = Some(format!(
+            "{} \"{title}\" from {}.",
+            if refreshed { "Updated" } else { "Imported" },
+            file.name
+        ));
+        self.picker.dance_preview = Some(dance);
+        self.picker.dance_selected = None;
+        self.dance_library_folder = FolderFilter::All;
+        self.dance_library_query.clear();
+        self.screen = Screen::DancePicker;
+    }
+
+    /// Export a tune's ABC text with the platform's save mechanism.
+    fn export_tune_abc(&mut self, tune: &Tune) {
+        let (name, text) = files::tune_export(tune);
+        self.export_text(files::ExportKind::Abc, &name, &text, &tune.title);
+    }
+
+    /// Export a dance as the versioned JSON exchange document.
+    fn export_dance_json(&mut self, dance: &Dance) {
+        let text = match files::dance_json(dance) {
+            Ok(text) => text,
+            Err(error) => {
+                self.error = Some(error);
+                return;
+            }
+        };
+        let name = format!("{}.json", files::safe_filename(&dance.title));
+        self.export_text(files::ExportKind::DanceJson, &name, &text, &dance.title);
+    }
+
+    fn export_text(&mut self, kind: files::ExportKind, name: &str, text: &str, label: &str) {
+        // Android writes into the app's config directory; the desktop dialog and
+        // the browser download choose their own destination.
+        let export_dir = self
+            .library_dir
+            .as_deref()
+            .and_then(std::path::Path::parent);
+        match files::export_text(kind, name, text, export_dir) {
+            Ok(files::ExportOutcome::Cancelled) => {}
+            Ok(files::ExportOutcome::Saved(path)) => {
+                let noun = match kind {
+                    files::ExportKind::Abc => "ABC",
+                    files::ExportKind::DanceJson => "JSON",
+                };
+                self.library_status = Some(format!("Exported \"{label}\" as {noun} to {path}."));
+                #[cfg(target_os = "android")]
+                {
+                    self.share_request = Some(files::ShareRequest {
+                        name: name.to_string(),
+                        text: text.to_string(),
+                        kind,
+                    });
+                }
+            }
+            Err(error) => self.error = Some(error),
+        }
+    }
+
+    /// Open a saved tune in the ABC editor.
+    fn edit_tune_abc(&mut self, tune: &Tune) {
+        self.abc_editor = Some(ui::AbcEditorState::new(tune));
+        self.share_request = None;
+        self.library_status = None;
+        self.screen = Screen::AbcEditor;
+    }
+
     fn remove_saved_dance(&mut self, provider: &str, id: &str) {
         let Some(entry) = self.dance_library.remove(provider, id) else {
             return;
@@ -988,8 +1142,8 @@ impl ContraApp {
         ));
     }
 
-    fn remove_saved_tune(&mut self, id: &str) {
-        let Some(entry) = self.tune_library.remove("abcsessiontunes", id) else {
+    fn remove_saved_tune(&mut self, provider: &str, id: &str) {
+        let Some(entry) = self.tune_library.remove(provider, id) else {
             return;
         };
         self.save_tune_library();
@@ -1022,9 +1176,9 @@ impl ContraApp {
         }
     }
 
-    fn move_saved_tune(&mut self, id: &str, folder: Option<String>) {
+    fn move_saved_tune(&mut self, provider: &str, id: &str, folder: Option<String>) {
         let label = folder.clone().unwrap_or_else(|| "Unfiled".into());
-        match self.tune_library.set_folder("abcsessiontunes", id, folder) {
+        match self.tune_library.set_folder(provider, id, folder) {
             Ok(()) => {
                 self.save_tune_library();
                 self.library_status = Some(format!("Moved the tune to {label}."));
@@ -1051,9 +1205,15 @@ impl ContraApp {
     /// Advance the screen-entry animation and return its eased progress.
     fn screen_transition(&mut self, ctx: &egui::Context) -> f32 {
         if self.screen_anim_screen != self.screen {
+            // The editor reports its save or cancel result on the library it
+            // returns to, so that one transition keeps the status line.
+            let keep_status =
+                self.screen_anim_screen == Screen::AbcEditor && self.screen == Screen::TunePicker;
             self.screen_anim_screen = self.screen;
             self.screen_anim = 0.0;
-            self.library_status = None;
+            if !keep_status {
+                self.library_status = None;
+            }
         }
         if !self.prefs.animations_enabled {
             self.screen_anim = 1.0;
@@ -1161,6 +1321,8 @@ impl ContraApp {
 
             tune_view: TuneView::default(),
             tune_sheet: None,
+            abc_editor: None,
+            share_request: None,
 
             status: "Ready".into(),
             error: None,
@@ -2085,7 +2247,7 @@ impl ContraApp {
                 }
             };
             let arrangement = Arrangement::from_score(&score, 64.0);
-            let default_name = format!("{}.mid", safe_filename(&self.tune.title));
+            let default_name = format!("{}.mid", files::safe_filename(&self.tune.title));
             let Some(path) = rfd::FileDialog::new()
                 .set_file_name(default_name)
                 .add_filter("MIDI", &["mid"])
@@ -2179,6 +2341,7 @@ impl ContraApp {
     /// visible frame would speak the same call twice.
     fn tick(&mut self, ctx: &egui::Context) {
         self.handle_source_events();
+        self.poll_imported_files();
         self.handle_media_keys();
 
         // The audio position is the only clock: speech is triggered from the
@@ -2275,6 +2438,12 @@ impl ContraApp {
         // Swipe navigation is read after the screen draws so the slider list
         // for this frame is complete.
         self.tab_swipe(ui, content_rect);
+
+        // Leaving the editor by any route discards the draft. Save and Restore
+        // write the library themselves before changing the screen.
+        if self.screen != Screen::AbcEditor {
+            self.abc_editor = None;
+        }
 
         // Playback settings are applied by `tick`, which runs before this ui on
         // every visible frame and also while the window is hidden.
@@ -2892,22 +3061,6 @@ fn call_texts(timeline: &PracticeTimeline) -> Vec<String> {
         .collect()
 }
 
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
-fn safe_filename(title: &str) -> String {
-    title
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == ' ' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect::<String>()
-        .trim()
-        .to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2990,12 +3143,13 @@ mod tests {
     /// from the tab row, the gear button, or the dispatcher.
     #[test]
     fn every_screen_is_registered_once() {
-        const ALL: [Screen; 7] = [
+        const ALL: [Screen; 8] = [
             Screen::Session,
             Screen::DancePicker,
             Screen::DanceDownload,
             Screen::TunePicker,
             Screen::TuneDownload,
+            Screen::AbcEditor,
             Screen::Preferences,
             Screen::Aliases,
         ];
@@ -3059,6 +3213,9 @@ mod tests {
         // A detail screen steps from the tab that contains it.
         assert_eq!(tab_step(Screen::DanceDownload, 1), Screen::TunePicker);
         assert_eq!(tab_step(Screen::DanceDownload, -1), Screen::Session);
+        // The ABC editor belongs to the Select tune tab as well.
+        assert_eq!(tab_step(Screen::AbcEditor, 1), Screen::Session);
+        assert_eq!(tab_step(Screen::AbcEditor, -1), Screen::DancePicker);
         // The alias editor is reached from the Preferences gear, not a tab;
         // stepping from it starts at the first tab.
         assert_eq!(tab_step(Screen::Aliases, 1), Screen::DancePicker);
@@ -3268,6 +3425,7 @@ mod tests {
             Screen::TuneDownload.escape_target(),
             Some(Screen::TunePicker)
         );
+        assert_eq!(Screen::AbcEditor.escape_target(), Some(Screen::TunePicker));
         assert_eq!(Screen::Preferences.escape_target(), Some(Screen::Session));
         assert_eq!(Screen::Aliases.escape_target(), Some(Screen::Preferences));
     }

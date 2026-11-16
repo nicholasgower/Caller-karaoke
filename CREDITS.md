@@ -25,6 +25,7 @@ and build tools used by the project.
 | `percent-encoding` | MIT OR Apache-2.0 | Proxy URL encoding |
 | `directories` | MIT OR Apache-2.0 | Platform data/cache directories |
 | `web-time` | MIT OR Apache-2.0 | Wall clock and instants on WASM (where `std::time` panics) |
+| `js-sys` | MIT OR Apache-2.0 | JavaScript bindings for the browser file picker and download |
 | `rfd` | MIT | Native file dialogs |
 | `tts` | MIT | Platform text-to-speech fallback (desktop, web, Android) |
 | `misaki-rs` | MIT | Kokoro grapheme-to-phoneme (desktop neural voice) |
@@ -168,8 +169,7 @@ See the `egui`/`epaint` source for the exact font files and notices.
 
 - **ContraDB** — <https://contradb.com>. Dance transcriptions are contributed
   by ContraDB users. The bundled default *Another Last Dance* (dance 2409) is by
-  Erik Hoffman, transcribed on ContraDB by Koren A Wake.
-- **The Caller's Box** — <https://www.ibiblio.org/contradance/thecallersbox/>.
+  Erik Hoffman, transcribed on ContraDB by Koren A Wake.- **The Caller's Box** — <https://www.ibiblio.org/contradance/thecallersbox/>.
   A contra dance database produced by Chris Page and Michael Dyck. Dance
   records and their figures belong to the site's editors and the dance authors;
   figures are shown only for records whose permission level allows it. The app
@@ -181,6 +181,13 @@ See the `egui`/`epaint` source for the exact font files and notices.
   remain the property of their transcribers. The bundled *Sandy Boys* ABC is
   credited to Josh Larios; the ABC notes chords from Sarah Comer.
 - **ABC notation standard** — <https://abcnotation.com>.
+
+## Design inspiration
+
+- **abctools** by Michael Eskin — <https://github.com/seisiuneer/abctools>. The
+  idea of editing ABC text next to a rendered score inspired Contra Karaoke's
+  saved-tune ABC editor. No code from abctools is copied or linked; the editor
+  in this repository is an independent, minimal implementation.
 
 Contra Karaoke does not redistribute the source databases. Online content is
 fetched on demand and cached locally.

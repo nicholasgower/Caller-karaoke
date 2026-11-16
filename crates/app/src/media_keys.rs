@@ -334,6 +334,13 @@ mod platform {
         COMMANDS.get_or_init(|| Mutex::new(Vec::new()))
     }
 
+    /// Ask for a frame after a Java callback queued some work.
+    pub(crate) fn request_repaint() {
+        if let Some(ctx) = CONTEXT.get() {
+            ctx.request_repaint();
+        }
+    }
+
     /// Queue a transport command for the next frame.
     pub(super) fn push_command(command: MediaCommand) {
         android_bridge::enqueue(commands(), command);
@@ -365,10 +372,10 @@ mod platform {
 
     /// Run `call` against the activity class, ignoring any failure.
     ///
-    /// The media session is optional: a missing VM or a Java exception must not
-    /// stop the in-app transport. Returns `false` while the activity has not
-    /// published its class yet, so the caller can retry on the next frame.
-    fn with_activity(
+    /// The media session and the file pickers are optional: a missing VM or a
+    /// Java exception must not stop the in-app transport. Returns `false` while
+    /// the activity has not published its class yet, so the caller can retry.
+    pub(crate) fn with_activity(
         call: impl FnOnce(&mut JNIEnv<'_>, &JClass<'_>) -> jni::errors::Result<()>,
     ) -> bool {
         let raw = ACTIVITY_CLASS.load(Ordering::Relaxed);
@@ -421,7 +428,6 @@ mod platform {
                 track: None,
             })
         }
-
         /// Take the commands received since the previous frame.
         pub fn poll(&mut self) -> Vec<MediaCommand> {
             android_bridge::drain(commands())
@@ -516,13 +522,19 @@ pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeMediaComman
 
 #[cfg(target_arch = "wasm32")]
 mod platform {
+    use std::sync::OnceLock;
+
     use super::MediaCommand;
+
+    /// The UI context, so an asynchronous file import still produces a frame.
+    static CONTEXT: OnceLock<eframe::egui::Context> = OnceLock::new();
 
     /// No-op media session for the browser build.
     pub struct MediaKeys;
 
     impl MediaKeys {
-        pub fn new(_cc: &eframe::CreationContext<'_>) -> Option<Self> {
+        pub fn new(cc: &eframe::CreationContext<'_>) -> Option<Self> {
+            let _ = CONTEXT.set(cc.egui_ctx.clone());
             None
         }
 
@@ -534,7 +546,23 @@ mod platform {
 
         pub fn set_track(&mut self, _dance: &str, _tune: &str) {}
     }
+
+    pub(crate) fn request_repaint() {
+        if let Some(ctx) = CONTEXT.get() {
+            ctx.request_repaint();
+        }
+    }
 }
+
+#[cfg(target_os = "android")]
+pub(crate) use platform::{request_repaint, with_activity};
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) use platform::request_repaint;
+
+/// Native desktop imports are synchronous, so there is nothing to wake.
+#[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
+pub(crate) fn request_repaint() {}
 
 pub use platform::MediaKeys;
 

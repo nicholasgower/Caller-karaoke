@@ -34,3 +34,5 @@ number, so a reference such as "ROADMAP.md §7" still points at the same text.
 15. [Decision log](docs/roadmap/decision-log.md)
 16. [Open items](docs/roadmap/open-items.md)
 17. [Calling and teaching](docs/roadmap/calling-and-teaching.md)
+
+Related design note: [ABC editor roadmap](docs/roadmap/abc-editor.md).

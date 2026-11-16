@@ -77,6 +77,33 @@ is independent of it, so headset, Bluetooth, lock-screen, and system controls
 still work. Nothing here is a foreground service; Android may still stop the app
 in the background, and playback stops with it.
 
+## File import and export
+
+The saved-tune and saved-dance screens import and export local files. Rust calls
+the static `openDocument(int, String, boolean)` and `shareText(String, String,
+String)` methods on `MainActivity` through `crates/app/src/files.rs`; the
+activity posts both to its UI thread.
+
+- **Import** starts `ACTION_OPEN_DOCUMENT` for `text/vnd.abc` or
+  `application/json`, accepts multiple ABC files, reads the chosen documents as
+  UTF-8 with a 4 MB cap, and returns each one through
+  `nativeImportedFile(int, String, String)`. The `int` is the import kind: 1 for
+  ABC, 2 for dance JSON.
+- **Export** writes the file into the app's private `files/config/exports`
+  directory first, so saving never depends on the system picker. The UI then
+  offers **Share**.
+- **Share** copies the text into Downloads with `MediaStore` and sends an
+  `ACTION_SEND` intent with the resulting `content://` URI and
+  `FLAG_GRANT_READ_URI_PERMISSION`. A `FileProvider` would need a `<provider>`
+  element in the manifest, which cargo-apk does not generate; `MediaStore`
+  avoids both that manifest change and a `file://` URI. Android 8 and 9 have no
+  Downloads collection, so those releases share `EXTRA_TEXT` only.
+
+No manifest change is needed for this path: `ACTION_OPEN_DOCUMENT` and the
+chooser are started with `startActivityForResult`/`startActivity`, and the
+receiving app gets a read grant for the MediaStore URI.
+
+
 ## Signing
 
 The script uses `CARGO_APK_RELEASE_KEYSTORE` and
