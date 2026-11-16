@@ -634,9 +634,11 @@
     },
     {
       "id": "install-windows-wizard",
-      "alt": "The Inno Setup installer wizard for Contra Karaoke.",
+      "alt": "The Inno Setup installer wizard for Contra Karaoke showing the Select Destination Location page, the C:\\Program Files\\Contra Karaoke folder, and the Next button.",
       "caption": "Follow the wizard, choose whether to create a desktop shortcut, and finish.",
-      "status": "pending"
+      "status": "ready",
+      "width": 998,
+      "height": 767
     },
     {
       "id": "install-windows-smartscreen",
@@ -646,9 +648,11 @@
     },
     {
       "id": "install-windows-portable",
-      "alt": "A file-manager view of the extracted portable ZIP with contra-karaoke.exe.",
+      "alt": "A file-manager view of the extracted portable ZIP folder with contra-karaoke.exe listed beside the license, readme, credits, and changelog files.",
       "caption": "The portable build runs from its folder and does not write to the registry.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1452,
+      "height": 471
     },
     {
       "id": "install-linux-deb",

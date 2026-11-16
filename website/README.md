@@ -7,11 +7,12 @@ User documentation for Contra Karaoke, built with Docusaurus 3.10.
 The guide is written against the 0.1.0 development build (desktop + web MVP;
 Android configured but device-testing pending). In-app screenshots are rendered
 by the headless `contra-headless` binary and annotated with PhotoCraft. The
-remaining placeholders are the manual Windows/Android installer dialogs.
+remaining placeholders are the manual Windows, Linux, web, and Android
+installation captures.
 
-The current manifest has 87 planned shots; 69 are ready. Nine pending in-app
-shots are refreshed during release prep. The other nine are manual
-Windows/Android/Linux installer captures rather than app frames.
+The current manifest has 88 planned shots; 71 are ready. Ten pending in-app
+shots are refreshed during release prep. The other seven are manual
+Windows/Android/Linux/web installer captures rather than app frames.
 
 ## Commands
 

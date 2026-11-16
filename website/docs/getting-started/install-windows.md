@@ -32,7 +32,8 @@ They are not code-signed.
 
 <Steps>
   <Step shot="install-windows-wizard">
-    Run the setup program and follow the Inno Setup wizard. Choose whether to
+    Run the setup program. The wizard opens on **Select Destination Location**,
+    which defaults to `C:\Program Files\Contra Karaoke`; choose whether to
     create a desktop shortcut, then finish the install.
   </Step>
   <Step shot="install-windows-smartscreen">

@@ -977,6 +977,20 @@
           22
         ]
       ]
+    },
+    "install-windows-wizard": {
+      "size": [
+        998,
+        767
+      ],
+      "regions": []
+    },
+    "install-windows-portable": {
+      "size": [
+        1452,
+        471
+      ],
+      "regions": []
     }
   }
 }
