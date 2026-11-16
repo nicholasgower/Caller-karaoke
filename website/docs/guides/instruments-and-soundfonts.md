@@ -242,9 +242,15 @@ sounds the same each time it is rendered.
 
 Two switches below the master control choose which effects apply: **Tempo drift
 per player** and **Spread chord notes**. **Human timing amount** scales both
-from 0 to 1; 1 is the calibrated amount, and 0 sounds exactly like turning
-humanize timing off. Neither switch moves the count-in, the 64-beat grid, the
-calls, or the loop length.
+from 0 to 5; 1 is the calibrated amount, 0 sounds exactly like turning humanize
+timing off, and the onset bounds scale with the amount, so higher settings keep
+growing evenly instead of saturating. The settings below it tune the **tempo
+controller** itself: **Kp**, **Ki**, and **Kd** are the proportional, integral,
+and derivative gains that pull a player's accumulated timing error back to the
+beat. Their defaults — 0.5, 0.05, and 0.02 — are the calibrated response; raise
+a gain to correct sooner, or lower it to let a player wander for longer. None of
+these controls moves the count-in, the 64-beat grid, the calls, or the loop
+length.
 
 ## Apply the change
 

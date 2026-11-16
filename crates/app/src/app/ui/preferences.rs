@@ -2,7 +2,10 @@ use super::about::about;
 use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
 use crate::app::history::HistoryAction;
 use crate::app::*;
-use contra_core::{CardPadding, ChorusPreset, EchoPreset, ReverbPreset};
+use contra_core::{
+    CardPadding, ChorusPreset, EchoPreset, MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP,
+    ReverbPreset,
+};
 use eframe::egui;
 
 /// The top-level groups of Preferences.
@@ -1092,7 +1095,60 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 compact,
                 "Human timing amount",
                 &mut options.amount,
-                |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.0).fixed_decimals(2)),
+                |ui, value| {
+                    ui.add(egui::Slider::new(value, 0.0..=MAX_HUMANIZE_AMOUNT).fixed_decimals(2))
+                        .accessible_name("Human timing amount")
+                },
+            );
+            ui.label(
+                egui::RichText::new(
+                    "One is the calibrated amount; higher values scale the drift and the chord \
+                     spread together. The onset bounds scale with it, so the setting stays even \
+                     rather than saturating.",
+                )
+                .small()
+                .color(theme::muted(ui)),
+            );
+            ui.add_space(4.0);
+            ui.label("Tempo controller");
+            ui.label(
+                egui::RichText::new(
+                    "The controller pulls each player's accumulated timing error back to the \
+                     beat. The defaults are 0.5, 0.05, and 0.02. Raise a gain to correct sooner, \
+                     or lower it to let a player wander for longer.",
+                )
+                .small()
+                .color(theme::muted(ui)),
+            );
+            slider_row(
+                ui,
+                compact,
+                "Proportional gain (Kp)",
+                &mut options.pid_kp,
+                |ui, value| {
+                    ui.add(egui::Slider::new(value, 0.0..=MAX_PID_KP).fixed_decimals(2))
+                        .accessible_name("Proportional gain (Kp)")
+                },
+            );
+            slider_row(
+                ui,
+                compact,
+                "Integral gain (Ki)",
+                &mut options.pid_ki,
+                |ui, value| {
+                    ui.add(egui::Slider::new(value, 0.0..=MAX_PID_KI).fixed_decimals(3))
+                        .accessible_name("Integral gain (Ki)")
+                },
+            );
+            slider_row(
+                ui,
+                compact,
+                "Derivative gain (Kd)",
+                &mut options.pid_kd,
+                |ui, value| {
+                    ui.add(egui::Slider::new(value, 0.0..=MAX_PID_KD).fixed_decimals(3))
+                        .accessible_name("Derivative gain (Kd)")
+                },
             );
         });
     });

@@ -22,8 +22,8 @@ pub use abc::{AbcError, parse_abc};
 pub use arrange::{Arrangement, Ending, EndingNote, LengthMismatch, VARIATION_PASSES};
 pub use chord::{Chord, ChordQuality, resolve_chords};
 pub use humanize::{
-    CHORD_ASYNCHRONY_LIMIT_SECONDS, Humanizer, ONSET_OFFSET_LIMIT_SECONDS, TEMPO_DEVIATION_LIMIT,
-    VoiceTiming,
+    CHORD_ASYNCHRONY_LIMIT_SECONDS, Humanizer, ONSET_OFFSET_LIMIT_SECONDS, PidGains,
+    TEMPO_DEVIATION_LIMIT, VoiceTiming,
 };
 pub use midi::{
     apply_effects, export_midi, export_midi_with_band, export_midi_with_options,
