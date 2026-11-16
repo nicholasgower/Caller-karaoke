@@ -661,6 +661,13 @@ impl SessionClient {
     ) -> Result<(), String> {
         let wanted = wanted.clamp(min, max);
         let (mut current, mut rect) = self.slider_reading(name).await?;
+        // A touch build guards every slider until it is tapped. Tap the handle
+        // rather than empty rail, so the arming tap does not also jump the
+        // level, then drag from there as before.
+        if (current - wanted).abs() > tolerance {
+            self.tap(value_at(rect, fraction(current, (min, max))))
+                .await?;
+        }
         let start = current;
         let mut correction = 0.0f32;
 
@@ -762,6 +769,19 @@ impl SessionClient {
                 pointer_button(pos, true),
                 pointer_button(pos, false),
             ])
+            .await
+    }
+
+    /// Put the pointer down and lift it in separate frames.
+    ///
+    /// A guarded slider arms on the release of a tap, so the press and the
+    /// release each need a frame of their own before the drag starts.
+    async fn tap(&self, pos: Pos2) -> Result<(), String> {
+        self.bridge
+            .apply_events(vec![Event::PointerMoved(pos), pointer_button(pos, true)])
+            .await?;
+        self.bridge
+            .apply_events(vec![pointer_button(pos, false)])
             .await
     }
 

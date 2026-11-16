@@ -104,8 +104,8 @@ pub(super) fn inline_field<R>(
 ///
 /// On a phone the rail takes the whole row; leaving room for the value box
 /// keeps the value readable while the thumb is still easy to hit. The slider
-/// itself goes through [`scroll_safe_slider`] so a swipe that starts on it
-/// scrolls the page instead of changing the value.
+/// itself goes through [`scroll_safe_slider`], which guards it on a touch
+/// screen: a tap arms it, and only then does a drag change the value.
 pub(super) fn slider_row<T>(
     ui: &mut egui::Ui,
     compact: bool,
@@ -155,14 +155,111 @@ pub(super) fn is_vertical_scroll_gesture(dx: f32, dy: f32) -> bool {
     dy.abs() > SCROLL_GESTURE_MIN && dy.abs() > dx.abs() * SCROLL_GESTURE_RATIO
 }
 
+/// Which pointer device the user reached for most recently.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum PointerDevice {
+    /// A mouse, trackpad, pen, or any pointer that is not a finger.
+    #[default]
+    Mouse,
+    /// A finger on a touch screen.
+    Touch,
+}
+
+/// The id under which the last pointer device is stored.
+fn pointer_device_id() -> egui::Id {
+    egui::Id::unique("last-pointer-device")
+}
+
+/// The device that produced the most recent pointer event.
+fn last_pointer_device(ui: &egui::Ui) -> PointerDevice {
+    ui.data(|data| data.get_temp::<PointerDevice>(pointer_device_id()))
+        .unwrap_or_default()
+}
+
+/// Record the device that produced this frame's pointer events.
+///
+/// A touch backend also synthesizes pointer events from the finger, so a frame
+/// carrying any touch event is a touch frame even when it also carries
+/// `PointerMoved` or `PointerButton`. A mouse move or click without a touch
+/// event switches back, so a desktop touchscreen unguards its sliders as soon
+/// as the mouse is used again. Changing device also restores every guard.
+fn note_pointer_device(ui: &egui::Ui) {
+    let device = ui.input(|input| {
+        if input
+            .events
+            .iter()
+            .any(|event| matches!(event, egui::Event::Touch { .. }))
+        {
+            Some(PointerDevice::Touch)
+        } else if input.events.iter().any(|event| {
+            matches!(
+                event,
+                egui::Event::PointerMoved(_) | egui::Event::PointerButton { .. }
+            )
+        }) {
+            Some(PointerDevice::Mouse)
+        } else {
+            None
+        }
+    });
+    let Some(device) = device else {
+        return;
+    };
+    if last_pointer_device(ui) == device {
+        return;
+    }
+    ui.data_mut(|data| data.insert_temp(pointer_device_id(), device));
+    disarm_sliders(ui);
+}
+
+/// Whether a slider must be tapped before a drag may change it.
+///
+/// A finger that starts scrolling on a rail looks exactly like a slider drag,
+/// so a touch-first build guards every slider. Android and iOS are known to be
+/// touch-first before the first event arrives. Everywhere else the guard
+/// follows the last pointer used: touching the screen arms the guard and
+/// moving or clicking with the mouse releases it, so a desktop touchscreen is
+/// not left guarded while the user is on the mouse.
+fn slider_guard_active(ui: &egui::Ui) -> bool {
+    matches!(crate::platform(), "android" | "ios")
+        || last_pointer_device(ui) == PointerDevice::Touch
+}
+
+/// The id under which the one armed slider is stored.
+fn armed_slider_id() -> egui::Id {
+    egui::Id::unique("armed-slider")
+}
+
+/// The slider that has been tapped and may now be dragged, if any.
+fn armed_slider(ui: &egui::Ui) -> Option<egui::Id> {
+    ui.data(|data| data.get_temp::<egui::Id>(armed_slider_id()))
+}
+
+/// Let one slider take drags, replacing any other armed slider.
+fn arm_slider(ui: &egui::Ui, id: egui::Id) {
+    ui.data_mut(|data| data.insert_temp(armed_slider_id(), id));
+}
+
+/// Put the guard back on every slider.
+pub(super) fn disarm_sliders(ui: &egui::Ui) {
+    ui.data_mut(|data| data.remove::<egui::Id>(armed_slider_id()));
+}
+
 /// The value a slider had before the pointer gesture that is in progress.
 ///
 /// Kept in egui's temporary data store for the duration of one press so a drag
-/// that becomes a scroll can put the value back exactly.
+/// that becomes a scroll can put the value back exactly. `locked` is captured
+/// when the press starts: a slider that was tapped stays locked for the rest of
+/// that gesture, so the arming tap cannot also commit its position. `adjusting`
+/// marks a drag on an armed slider, which never becomes a page scroll.
 #[derive(Clone, Copy)]
 struct SliderGesture<T> {
     base: T,
     suppressed: bool,
+    origin: egui::Pos2,
+    moved: bool,
+    locked: bool,
+    adjusting: bool,
 }
 
 /// The id under which [`begin_slider_frame`] stores this frame's slider rects.
@@ -175,6 +272,7 @@ fn slider_rects_id() -> egui::Id {
 /// The tab-swipe handler uses the list to tell a swipe on empty content from a
 /// drag that started on a slider. Call this once, before drawing a screen.
 pub(super) fn begin_slider_frame(ui: &mut egui::Ui) {
+    note_pointer_device(ui);
     ui.data_mut(|data| {
         data.insert_temp(slider_rects_id(), Vec::<egui::Rect>::new());
     });
@@ -195,6 +293,28 @@ fn record_slider_rect(ui: &egui::Ui, rect: egui::Rect) {
     });
 }
 
+/// Restore the slider guard after a press anywhere else.
+///
+/// Call this once, after the screen has drawn, when every slider rect for the
+/// frame is known. A press on empty content, another control, or the start of a
+/// swipe disarms the slider that was tapped; a press that starts on a slider
+/// belongs to that slider and arms itself.
+pub(super) fn finish_slider_frame(ui: &egui::Ui) {
+    if armed_slider(ui).is_none() {
+        return;
+    }
+    let press_origin = ui.input(|input| {
+        input
+            .pointer
+            .primary_pressed()
+            .then(|| input.pointer.press_origin())
+            .flatten()
+    });
+    if press_origin.is_some_and(|pos| !press_started_on_slider(ui, pos)) {
+        disarm_sliders(ui);
+    }
+}
+
 /// Whether this widget sits inside a scroll area that can take the gesture.
 ///
 /// `Ui::scroll_with_delta` targets whichever scroll area consumes the delta
@@ -207,16 +327,20 @@ fn has_scroll_ancestor(ui: &egui::Ui) -> bool {
         .any(|stack| stack.kind() == Some(egui::UiKind::ScrollArea))
 }
 
-/// Add a slider that ignores a vertical swipe.
+/// Add a slider that is safe to meet while scrolling and while swiping.
 ///
 /// Sliders live inside scrolling pages on a phone, and a thumb swipe down the
 /// page often starts on a slider rail or its value box. egui's slider sets its
 /// value from the pointer as soon as it is pressed, so by the time the gesture
 /// is recognisable as a scroll the value has already moved. This helper gives
 /// the slider a draft value, watches the drag, and writes the draft back only
-/// when the gesture is not a vertical scroll. A scroll restores the pre-press
-/// value, suppresses the change, and hands the vertical movement to the
-/// enclosing scroll area.
+/// when the gesture is not a vertical scroll.
+///
+/// On a touch screen the slider is also *guarded*: a tap arms it (and never
+/// changes the value), the drag that follows adjusts it, and a tap or swipe
+/// elsewhere puts the guard back. While an armed slider is being dragged the
+/// enclosing page does not scroll. A swipe that starts on a locked slider still
+/// scrolls the page as it did before.
 ///
 /// Keyboard and screen-reader changes never press the pointer, so they pass
 /// straight through and arrow keys keep adjusting a focused slider.
@@ -233,63 +357,195 @@ where
     let mut response = add(ui, &mut draft);
     record_slider_rect(ui, response.rect);
 
+    let guarded = slider_guard_active(ui);
+    let armed = !guarded || armed_slider(ui) == Some(response.id);
+    let locked = !armed;
     let gesture_id = response.id.with("scroll-safe-slider");
+
+    let existing = ui.data(|data| data.get_temp::<SliderGesture<T>>(gesture_id));
     let holding =
         response.is_pointer_button_down_on() || response.dragged() || response.drag_stopped();
-    if !holding {
-        // A click, a keyboard step, or a screen-reader request: accept it.
-        *value = draft;
-        ui.data_mut(|data| data.remove::<SliderGesture<T>>(gesture_id));
-        return response;
-    }
+    let pointer_down = ui.input(|input| input.pointer.primary_down());
+    // A stored gesture whose finger is no longer down is on its release frame,
+    // even when egui reports neither a button down nor a drag stop there.
+    let ending = existing.is_some() && !pointer_down;
 
-    let mut gesture = ui
-        .data(|data| data.get_temp::<SliderGesture<T>>(gesture_id))
-        .unwrap_or(SliderGesture {
-            base,
-            suppressed: false,
+    if !holding && !ending {
+        let clicked_on_slider = ui.input(|input| {
+            input.pointer.primary_clicked()
+                && input
+                    .pointer
+                    .interact_pos()
+                    .is_some_and(|pos| response.rect.contains(pos))
         });
-    let total = ui.input(|input| {
-        input
-            .pointer
-            .press_origin()
-            .zip(input.pointer.interact_pos())
-            .map(|(origin, pointer)| pointer - origin)
-            .unwrap_or(egui::Vec2::ZERO)
-    });
-    if !gesture.suppressed && total.length() > SLIDER_GESTURE_SLOP {
-        gesture.suppressed = is_vertical_scroll_gesture(total.x, total.y);
-    }
-
-    if gesture.suppressed {
-        // Put the value back, scroll instead, and hide the transient change so
-        // the caller does not rebuild the timeline or re-render the music.
-        *value = gesture.base;
-        let delta_y = ui.input(|input| input.pointer.delta().y);
-        if delta_y != 0.0 && has_scroll_ancestor(ui) {
-            ui.scroll_with_delta_animation(
-                egui::vec2(0.0, delta_y),
-                egui::style::ScrollAnimation::none(),
-            );
+        if guarded && locked && clicked_on_slider {
+            // A click that starts and ends in one frame is still a tap: it
+            // arms the slider and leaves the level where it was.
+            *value = base;
+            arm_slider(ui, response.id);
+        } else {
+            // A keyboard step or a screen-reader request: accept it.
+            *value = draft;
         }
-        // egui has no public "clear changed" call; clearing the bit is the
-        // only way to keep a scroll from looking like a value change.
-        response.flags.remove(egui::response::Flags::CHANGED);
-    } else if total.length() <= SLIDER_GESTURE_SLOP && !response.drag_stopped() {
-        // Direction is not known yet: hold the old value so a press that turns
-        // into a scroll cannot commit the press position.
-        *value = gesture.base;
-        response.flags.remove(egui::response::Flags::CHANGED);
-    } else {
-        *value = draft;
-    }
-
-    if response.drag_stopped() {
         ui.data_mut(|data| data.remove::<SliderGesture<T>>(gesture_id));
     } else {
-        ui.data_mut(|data| data.insert_temp(gesture_id, gesture));
+        let pointer = ui.input(|input| input.pointer.interact_pos());
+        let new_press = ui.input(|input| input.pointer.primary_pressed())
+            && response.is_pointer_button_down_on();
+        let mut gesture =
+            if new_press { None } else { existing }.unwrap_or_else(|| SliderGesture {
+                base,
+                suppressed: false,
+                origin: pointer.unwrap_or(response.rect.center()),
+                moved: false,
+                locked,
+                // An armed slider on a touch screen is being adjusted:
+                // scrolling is disabled for the whole drag.
+                adjusting: guarded && !locked,
+            });
+        if let Some(pos) = pointer {
+            let total = pos - gesture.origin;
+            if total.length() > SLIDER_GESTURE_SLOP {
+                gesture.moved = true;
+            }
+            if !gesture.suppressed
+                && !gesture.adjusting
+                && gesture.moved
+                && is_vertical_scroll_gesture(total.x, total.y)
+            {
+                gesture.suppressed = true;
+            }
+        }
+
+        if gesture.suppressed {
+            // Put the value back, scroll instead, and restore the guard: a
+            // swipe is not an adjustment, whether the slider was locked or
+            // had already been tapped.
+            *value = gesture.base;
+            disarm_sliders(ui);
+            let delta_y = ui.input(|input| input.pointer.delta().y);
+            if !ending && delta_y != 0.0 && has_scroll_ancestor(ui) {
+                ui.scroll_with_delta_animation(
+                    egui::vec2(0.0, delta_y),
+                    egui::style::ScrollAnimation::none(),
+                );
+            }
+            // egui has no public "clear changed" call; clearing the bit is the
+            // only way to keep a scroll from looking like a value change.
+            response.flags.remove(egui::response::Flags::CHANGED);
+        } else if gesture.locked {
+            // A locked slider holds its value for the whole gesture. Only a
+            // tap — a press and release that did not travel — arms it.
+            *value = gesture.base;
+            if ending && !gesture.moved {
+                arm_slider(ui, response.id);
+            }
+            response.flags.remove(egui::response::Flags::CHANGED);
+        } else if !ending {
+            if gesture.moved || response.drag_stopped() {
+                // An armed slider takes the drag, so the enclosing page does
+                // not scroll while the level is being adjusted.
+                *value = draft;
+            } else {
+                // Direction is not known yet: hold the old value so a press
+                // that turns into a scroll cannot commit the press position.
+                *value = gesture.base;
+                response.flags.remove(egui::response::Flags::CHANGED);
+            }
+        } else {
+            // A tap on an unlocked slider still jumps to the pressed position.
+            *value = draft;
+        }
+
+        if ending {
+            ui.data_mut(|data| data.remove::<SliderGesture<T>>(gesture_id));
+        } else {
+            ui.data_mut(|data| data.insert_temp(gesture_id, gesture));
+        }
+    }
+
+    if guarded && armed_slider(ui) != Some(response.id) {
+        draw_locked_slider(ui, &response);
+        response = response.on_hover_text("Tap the slider to adjust it");
     }
     response
+}
+
+/// Draw the dimmed rail and padlock that say a slider must be tapped first.
+///
+/// The value box to the right of the rail stays crisp, so the current level is
+/// still readable; only the rail the user cannot yet drag is muted.
+fn draw_locked_slider(ui: &egui::Ui, response: &egui::Response) {
+    let rect = response.rect;
+    let rail_width = ui.spacing().slider_width.clamp(0.0, rect.width());
+    // The rail area only: the value box and any unit label sit outside it, and
+    // the guard frame must not make them look locked too.
+    let rail = egui::Rect::from_min_size(rect.min, egui::vec2(rail_width, rect.height()));
+    // The rail is the thin bar centred in the row; the rest of the widget's
+    // height belongs to the touch target.
+    let bar_height = (rail.height() * 0.8).max(6.0).min(rail.height());
+    let bar = egui::Rect::from_center_size(rail.center(), egui::vec2(rail.width(), bar_height));
+    let fill = ui.visuals().panel_fill;
+    let painter = ui.painter();
+    painter.rect_filled(
+        bar,
+        bar_height * 0.5,
+        egui::Color32::from_rgba_unmultiplied(fill.r(), fill.g(), fill.b(), 150),
+    );
+    paint_padlock(
+        painter,
+        bar.center(),
+        ui.visuals().widgets.noninteractive.fg_stroke.color,
+        fill,
+    );
+    // A rounded frame around the rail makes the locked state visible even
+    // where the dimmed rail meets a card of the same colour.
+    let outline = ui
+        .visuals()
+        .widgets
+        .noninteractive
+        .fg_stroke
+        .color
+        .gamma_multiply(0.6);
+    painter.rect_stroke(
+        rail.expand(1.0),
+        8,
+        egui::Stroke::new(1.0, outline),
+        egui::StrokeKind::Inside,
+    );
+}
+
+/// Paint a small padlock centred at `center`.
+fn paint_padlock(
+    painter: &egui::Painter,
+    center: egui::Pos2,
+    color: egui::Color32,
+    hole: egui::Color32,
+) {
+    let body = egui::Rect::from_center_size(center + egui::vec2(0.0, 2.0), egui::vec2(11.0, 8.0));
+    painter.rect_filled(body, 1.5, color);
+    // The shackle is a half circle sitting on the top edge of the body.
+    let radius = 3.8;
+    let base_y = body.top();
+    let points = (0..=8)
+        .map(|step| {
+            let angle = std::f32::consts::PI * step as f32 / 8.0;
+            egui::pos2(
+                center.x - radius * angle.cos(),
+                base_y - radius * angle.sin(),
+            )
+        })
+        .collect::<Vec<_>>();
+    painter.add(egui::Shape::line(points, egui::Stroke::new(1.4, color)));
+    // Keyhole, in the colour of the scrim behind the lock.
+    painter.circle_filled(body.center() + egui::vec2(0.0, -0.5), 1.4, hole);
+    painter.line_segment(
+        [
+            body.center() + egui::vec2(0.0, -0.2),
+            body.center() + egui::vec2(0.0, 1.8),
+        ],
+        egui::Stroke::new(1.0, hole),
+    );
 }
 
 /// Size a combo box to the available width on a phone.
@@ -670,16 +926,63 @@ mod tests {
         }
     }
 
+    /// One finger event, which is how egui learns the screen is a touch
+    /// screen and which device produced a frame's pointer events.
+    fn touch_event(phase: egui::TouchPhase, pos: egui::Pos2) -> egui::Event {
+        egui::Event::Touch {
+            device_id: egui::TouchDeviceId(1),
+            id: egui::TouchId(1),
+            phase,
+            pos,
+            force: None,
+        }
+    }
+
+    /// Add the finger events a touch backend sends beside each pointer event.
+    fn with_touch(events: Vec<egui::Event>) -> Vec<egui::Event> {
+        let mut out = Vec::with_capacity(events.len() * 2);
+        for event in events {
+            match event {
+                egui::Event::PointerButton { pos, pressed, .. } => {
+                    let phase = if pressed {
+                        egui::TouchPhase::Start
+                    } else {
+                        egui::TouchPhase::End
+                    };
+                    out.push(touch_event(phase, pos));
+                    out.push(event);
+                }
+                egui::Event::PointerMoved(pos) => {
+                    out.push(touch_event(egui::TouchPhase::Move, pos));
+                    out.push(event);
+                }
+                other => out.push(other),
+            }
+        }
+        out
+    }
+
     /// Run one frame of the helper and return the slider response.
     fn frame(ctx: &egui::Context, events: Vec<egui::Event>, value: &mut f64) -> egui::Response {
         let mut captured = None;
         let mut output = ctx.run_ui(raw_input(events), |ui| {
+            begin_slider_frame(ui);
             captured = Some(scroll_safe_slider(ui, value, |ui, value| {
                 ui.add(egui::Slider::new(value, 0.0..=100.0))
             }));
+            finish_slider_frame(ui);
         });
         output.textures_delta.clear();
         captured.expect("the slider is added")
+    }
+
+    /// One frame whose pointer events come from a finger on a touch screen.
+    fn touch_frame(
+        ctx: &egui::Context,
+        events: Vec<egui::Event>,
+        value: &mut f64,
+    ) -> egui::Response {
+        frame(ctx, with_touch(events), value)
     }
 
     #[test]
@@ -767,6 +1070,296 @@ mod tests {
         frame(&ctx, vec![pointer_button(start, false)], &mut value);
 
         assert!(value < 35.0, "the tap did not set the value: {value}");
+    }
+
+    #[test]
+    fn a_guarded_slider_needs_a_tap_before_a_drag_changes_it() {
+        let ctx = egui::Context::default();
+        let mut value = 50.0_f64;
+        let rect = touch_frame(&ctx, Vec::new(), &mut value).rect;
+        let start = egui::pos2(rect.left() + rect.width() * 0.3, rect.center().y);
+
+        // A finger drag that starts on the slider must leave it alone.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(40.0, 0.0))],
+            &mut value,
+        );
+        let response = touch_frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(80.0, 0.0))],
+            &mut value,
+        );
+        assert!(!response.changed(), "a locked slider reported a change");
+        touch_frame(
+            &ctx,
+            vec![pointer_button(start + egui::vec2(80.0, 0.0), false)],
+            &mut value,
+        );
+        assert_eq!(value, 50.0, "the slider moved before it was tapped");
+
+        // A tap arms it without changing the value.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(&ctx, vec![pointer_button(start, false)], &mut value);
+        assert_eq!(value, 50.0, "the arming tap changed the value");
+
+        // The next drag adjusts the level.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(40.0, 0.0))],
+            &mut value,
+        );
+        let response = touch_frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(80.0, 0.0))],
+            &mut value,
+        );
+        assert!(response.changed(), "the armed slider ignored the drag");
+        touch_frame(
+            &ctx,
+            vec![pointer_button(start + egui::vec2(80.0, 0.0), false)],
+            &mut value,
+        );
+        assert!(value > 50.0, "the armed slider did not move: {value}");
+    }
+
+    #[test]
+    fn an_armed_slider_keeps_adjusting_through_a_vertical_drag() {
+        let ctx = egui::Context::default();
+        let mut value = 50.0_f64;
+        let rect = touch_frame(&ctx, Vec::new(), &mut value).rect;
+        let start = egui::pos2(rect.left() + rect.width() * 0.3, rect.center().y);
+
+        // Tap to arm.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(&ctx, vec![pointer_button(start, false)], &mut value);
+
+        // A vertical drag on the armed slider is an adjustment, not a page
+        // scroll: the guard stays for the rest of the interaction.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        for dy in [20.0, 45.0, 70.0] {
+            touch_frame(
+                &ctx,
+                vec![pointer_moved(start + egui::vec2(0.0, dy))],
+                &mut value,
+            );
+        }
+        touch_frame(
+            &ctx,
+            vec![pointer_button(start + egui::vec2(0.0, 70.0), false)],
+            &mut value,
+        );
+        let after_vertical = value;
+
+        // Still armed, so a horizontal drag changes the level.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(80.0, 0.0))],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_button(start + egui::vec2(80.0, 0.0), false)],
+            &mut value,
+        );
+        assert!(
+            value > after_vertical,
+            "a vertical drag restored the guard: {after_vertical} -> {value}"
+        );
+    }
+
+    #[test]
+    fn a_tap_elsewhere_puts_the_guard_back() {
+        let ctx = egui::Context::default();
+        let mut value = 50.0_f64;
+        let rect = touch_frame(&ctx, Vec::new(), &mut value).rect;
+        let start = egui::pos2(rect.left() + rect.width() * 0.3, rect.center().y);
+
+        // Tap the slider to arm it.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(&ctx, vec![pointer_button(start, false)], &mut value);
+
+        // Tap empty content. The guard comes back, so the next drag is ignored.
+        let blank = egui::pos2(rect.right() + 40.0, rect.center().y);
+        touch_frame(&ctx, vec![pointer_moved(blank)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(blank), pointer_button(blank, true)],
+            &mut value,
+        );
+        touch_frame(&ctx, vec![pointer_button(blank, false)], &mut value);
+
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(80.0, 0.0))],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_button(start + egui::vec2(80.0, 0.0), false)],
+            &mut value,
+        );
+        assert_eq!(value, 50.0, "a tap elsewhere did not restore the guard");
+    }
+
+    #[test]
+    fn using_the_mouse_releases_the_guard_again() {
+        let ctx = egui::Context::default();
+        let mut value = 50.0_f64;
+        let rect = touch_frame(&ctx, Vec::new(), &mut value).rect;
+        let start = egui::pos2(rect.left() + rect.width() * 0.3, rect.center().y);
+
+        // A touch guards the slider and a tap arms it.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(&ctx, vec![pointer_button(start, false)], &mut value);
+
+        // Moving the mouse makes the mouse the current device again; the
+        // guard and the armed state go away.
+        frame(&ctx, vec![pointer_moved(start)], &mut value);
+        frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(80.0, 0.0))],
+            &mut value,
+        );
+        frame(
+            &ctx,
+            vec![pointer_button(start + egui::vec2(80.0, 0.0), false)],
+            &mut value,
+        );
+
+        assert!(value > 50.0, "the mouse drag was still guarded: {value}");
+    }
+
+    #[test]
+    fn a_swipe_elsewhere_puts_the_guard_back() {
+        let ctx = egui::Context::default();
+        let mut value = 50.0_f64;
+        let rect = touch_frame(&ctx, Vec::new(), &mut value).rect;
+        let start = egui::pos2(rect.left() + rect.width() * 0.3, rect.center().y);
+
+        // Tap the slider, then drag it to a new level.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(&ctx, vec![pointer_button(start, false)], &mut value);
+        // One idle frame: the tap arms the slider when the press is released.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start + egui::vec2(80.0, 0.0))],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_button(start + egui::vec2(80.0, 0.0), false)],
+            &mut value,
+        );
+        let armed_value = value;
+        assert!(armed_value > 50.0, "the slider did not arm: {value}");
+
+        // A vertical swipe on empty content puts the guard back instead of
+        // leaving the level armed.
+        let swipe = egui::pos2(rect.right() + 40.0, rect.center().y);
+        touch_frame(&ctx, vec![pointer_moved(swipe)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(swipe), pointer_button(swipe, true)],
+            &mut value,
+        );
+        for dy in [20.0, 45.0, 70.0] {
+            touch_frame(
+                &ctx,
+                vec![pointer_moved(swipe + egui::vec2(0.0, dy))],
+                &mut value,
+            );
+        }
+        touch_frame(
+            &ctx,
+            vec![pointer_button(swipe + egui::vec2(0.0, 70.0), false)],
+            &mut value,
+        );
+        assert_eq!(value, armed_value, "the swipe changed the level");
+
+        // The guard is back: a horizontal drag no longer moves it.
+        touch_frame(&ctx, vec![pointer_moved(start)], &mut value);
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start), pointer_button(start, true)],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_moved(start - egui::vec2(80.0, 0.0))],
+            &mut value,
+        );
+        touch_frame(
+            &ctx,
+            vec![pointer_button(start - egui::vec2(80.0, 0.0), false)],
+            &mut value,
+        );
+        assert_eq!(value, armed_value, "a swipe did not restore the guard");
     }
 
     #[test]

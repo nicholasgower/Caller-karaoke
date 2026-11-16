@@ -137,7 +137,7 @@ succeeds. Then work in an observe → act → verify loop:
 | `batch` | Run several actions and observations in one round trip. |
 | `session_state` | Read the Session tab's transport state, beat, tempo, band volume, toggles, and (while Preferences is open) whether Undo and Redo are available. |
 | `session_action` | Press the **Play/Pause** toggle, **Restart**, **End**, or **Cancel ending**; `undo` and `redo` press the keyboard chords. |
-| `session_set` | Set the tempo, band volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. The **Caller volume** slider carries an accessible name, so the generic widget tools can set it too. |
+| `session_set` | Set the tempo, band volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. Each slider is tapped at its handle before it is dragged, because a touch build guards a slider until it is tapped. The **Caller volume** slider carries an accessible name, so the generic widget tools can set it too (tap it first on a touch build). |
 | `session_wait` | Wait until the transport reaches a state or the beat crosses a bound. |
 
 Everything uses logical points in one coordinate frame: widget `bounds`, raw
@@ -184,8 +184,8 @@ Useful checks for this app:
 The generic tools can click a button, but the session tab needs more than blind
 input: play and pause sound identical to a muted machine, egui reports a
 checkbox's state only in the accessibility node (which the generic widget
-projection drops), and a slider ignores a click on its rail. The `session_*`
-tools cover those gaps.
+projection drops), and a touch build guards a slider until it is tapped. The
+`session_*` tools cover those gaps.
 
 Work in the same observe → act → verify loop:
 
@@ -221,11 +221,11 @@ Details worth knowing:
   64`), so a screenshot shows the same state.
 - `beat` is the whole beat the progress bar displays. During the count-in it is
   `null`; use `count_in_beats_left` or wait for `transport: "playing"`.
-- `session_set` drags sliders from their handle, because a click on the rail
-  does nothing. egui snaps a dragged slider to a nearby convenient value and the
-  rail quantises to a pixel, so the applied tempo or volume can differ from the
-  request. The returned state reports the value the app actually adopted; assert
-  on that, not on the request.
+- `session_set` taps each slider handle and then drags from it, because a touch
+  build guards a slider until it is tapped. egui snaps a dragged slider to a
+  nearby convenient value and the rail quantises to a pixel, so the applied
+  tempo or volume can differ from the request. The returned state reports the
+  value the app actually adopted; assert on that, not on the request.
 - `session_action` brings the Session tab to the front first, so it also works
   after inspecting a picker. `play` and `pause` share one toggle button whose
   accessible name is the action it offers; asking for the state the session is

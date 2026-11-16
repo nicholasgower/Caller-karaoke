@@ -584,16 +584,16 @@
     },
     {
       "id": "session-mobile-controls",
-      "alt": "The session screen at phone width with one-row tabs, full-width Tempo and Volume sliders, Play/Pause, Restart, and End on one row, and a green CALL NOW prompt above the dance card.",
-      "caption": "The phone layout gives the sliders the full width and every control a 44-pixel touch target.",
+      "alt": "The session screen at phone width with one-row tabs, full-width Tempo, Caller, and Band sliders whose rails sit inside rounded outlines with padlocks, Play/Pause, Restart, and End on one row, and a green CALL NOW prompt above the dance card.",
+      "caption": "The phone layout gives the sliders the full width and every control a 44-pixel touch target; each rail is outlined with a padlock until the slider is tapped.",
       "status": "ready",
       "width": 390,
       "height": 844
     },
     {
       "id": "main-mobile",
-      "alt": "The session screen in a 390-pixel-wide window with compact tabs, stacked transport controls, the READY prompt, and the dance card below.",
-      "caption": "The compact layout keeps every session control usable at phone width.",
+      "alt": "The session screen in a 390-pixel-wide window with compact tabs, outlined and padlocked Tempo, Caller, and Band sliders, stacked transport controls, the READY prompt, and the dance card below.",
+      "caption": "The compact layout keeps every session control usable at phone width, with outlined sliders guarded until tapped.",
       "status": "ready",
       "width": 390,
       "height": 844

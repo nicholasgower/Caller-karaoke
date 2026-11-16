@@ -3102,6 +3102,7 @@ impl ContraApp {
         // is compared against the state that came before it.
         let history_before = self.snapshot();
         let previous_screen = self.screen;
+        let previous_prefs_page = self.prefs_page;
 
         if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
@@ -3156,8 +3157,16 @@ impl ContraApp {
             }
         });
         // Swipe navigation is read after the screen draws so the slider list
-        // for this frame is complete.
+        // for this frame is complete. A press that landed anywhere but on a
+        // slider puts its guard back, so the next swipe cannot move a level.
+        ui::finish_slider_frame(ui);
         self.tab_swipe(ui, content_rect);
+
+        // An armed slider belongs to the page that showed it. Leaving the
+        // screen or the Preferences category restores every guard.
+        if self.screen != previous_screen || self.prefs_page != previous_prefs_page {
+            ui::disarm_sliders(ui);
+        }
 
         // A touch definition card belongs to the screen that opened it. Keep it
         // out of the next screen and draw it last so no scroll area clips it.

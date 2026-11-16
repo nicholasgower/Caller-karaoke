@@ -97,7 +97,8 @@ The default is **240 BPM**, which gives a 0.5-second dance beat and a 32-second
 
 <Steps>
   <Step shot="transport-tempo">
-    Move the **Tempo** slider. The app shows the prepare-music message when
+    Move the **Tempo** slider. On a touch screen, tap the padlocked rail first,
+    then drag sideways. The app shows the prepare-music message when
     stopped; while playing it re-renders the loop without restarting and keeps
     the current beat.
   </Step>
