@@ -451,7 +451,7 @@ impl Arrangement {
         notes
     }
 
-    /// The second accompaniment voice: a countermelody under the tune.
+    /// The countermelody voice: a melody instrument under the tune.
     ///
     /// This is what makes the default session a trio. It places one note per
     /// dance beat, a diatonic third below the melody note sounding at that beat,
@@ -1198,7 +1198,7 @@ mod tests {
     fn countermelody_fills_the_loop_below_the_tune() {
         let arrangement = Arrangement::from_score(&simple_score(), 64.0);
         let notes = arrangement.countermelody_notes();
-        assert!(!notes.is_empty(), "the second accompaniment must play");
+        assert!(!notes.is_empty(), "the countermelody must play");
         assert!(
             notes
                 .iter()
@@ -1792,7 +1792,7 @@ mod tests {
         assert_eq!(arrangement.count_in_chord().symbol(), "A");
         assert!(
             !arrangement.countermelody_notes().is_empty(),
-            "the bundled tune must produce the trio's second accompaniment"
+            "the bundled tune must produce the trio's countermelody"
         );
     }
 

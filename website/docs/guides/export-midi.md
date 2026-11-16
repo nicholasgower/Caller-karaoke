@@ -26,8 +26,12 @@ the tune title with unsafe characters replaced.
 
 The export contains:
 
-- three tracks when the second accompaniment is on — melody, accompaniment, and
-  second accompaniment (countermelody) — or two tracks when it is **Off**;
+- three tracks when the countermelody is on — melody, accompaniment, and
+  countermelody — or two tracks when it is **Off**;
+- one additional track per copy of a part: two melody players become
+  **Melody 1** and **Melody 2** on their own channels, each with a pan
+  controller so the section is visible in a DAW. Percussion stays one track
+  because General MIDI has a single drum channel;
 - a fourth track on the General MIDI drum channel when percussion is on;
 - the selected accompaniment rhythm;
 - General MIDI reverb, chorus, and echo sends at the start of every channel
@@ -39,7 +43,9 @@ The export contains:
 The melody is lifted above the accompaniment and accented on the dance pulse.
 Later passes add deterministic melody ornaments, chord-tone harmony doubles,
 and an occasional octave lift. Existing note timing is unchanged, so the
-64-beat grid still lines up with the dance.
+64-beat grid still lines up with the dance. Copies are written on the same
+beats as their part — the millisecond spread the app uses for playback is a
+performance effect, not a change to the music — so the file stays grid-exact.
 
 The MIDI does **not** include the four-beat count-in, the pickup notes, or the
 live slow ending. It is the arranged loop, not the full playback buffer. Because

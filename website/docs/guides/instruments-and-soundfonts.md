@@ -1,12 +1,13 @@
 ---
 title: Instruments and soundfonts
-description: Choose the melody, accompaniment, and second-accompaniment voices and rhythm, balance the mix, add reverb, echo, or chorus, and load an optional user-supplied SF2 SoundFont.
+description: Choose the melody, accompaniment, and countermelody voices, add copies of each player, balance the mix, add reverb, echo, or chorus, and load an optional user-supplied SF2 SoundFont.
 sidebar_position: 6
 ---
 
 Contra Karaoke imitates a small contra band. By default it plays a trio: a
-melody instrument, a chordal accompaniment, and a second accompaniment that is a
-melody instrument playing a countermelody under the tune. Playback uses sampled
+melody instrument, a chordal accompaniment, and a countermelody that is a
+melody instrument playing under the tune. Each part can expand to as many as
+four players, so a session can sound like a full band. Playback uses sampled
 instruments from a bundled subset of the Fluid R3 GM soundfont, so the app sounds
 like a band on first launch without any downloads.
 
@@ -22,7 +23,7 @@ like a band on first launch without any downloads.
     then choose a **Rhythm** from the menu beside it.
   </Step>
   <Step shot="prefs-instrument-second">
-    Leave **Second accompaniment** at **Accordion** for the default trio, choose
+    Leave **Countermelody** at **Accordion** for the default trio, choose
     **Fiddle** for a second fiddle, or choose **Off** for a duo.
   </Step>
   <Step shot="prefs-instrument-percussion">
@@ -31,17 +32,40 @@ like a band on first launch without any downloads.
     Then choose a **Percussion rhythm**; **Match style** gives foot taps a
     gallop and the drumset its basic kit.
   </Step>
+  <Step shot="prefs-instrument-mix">
+    Use the **Copies** stepper beside each part to add players, then balance the
+    mix with the volume sliders.
+  </Step>
 </Steps>
 
-The session's tune summary shows the selected parts below the call prompt.
+The session's tune summary shows the selected parts and any copy counts below
+the call prompt.
 
-## The second accompaniment
+## Copies
 
-The second accompaniment is not another chord track. It is a countermelody
-generated from the tune: one note per dance beat, voiced a diatonic third below
-whichever melody note is sounding and snapped to a nearby chord tone. It follows
-the tune's contour instead of holding a pedal, and it leaves a beat open rather
-than repeating a pitch.
+Every part has a **Copies** stepper. **Melody**, **Accompaniment**, and
+**Countermelody** accept one to four players; **Percussion** accepts one to
+three. The default is one player per part, which is exactly the previous single
+instrument, so an existing session sounds the same until you add a copy.
+
+A copy is a real second player, not a volume boost. Each copy gets its own pan
+position, a few milliseconds of constant latency, and a small tuning or velocity
+difference, so a two-fiddle section sounds wider and thicker instead of merely
+louder. All copies still play on the same dance-beat grid: the latency is a fixed
+offset of at most a dozen milliseconds, never drift. The section is levelled so
+that four players do not quadruple the mix, and the renderer still removes any
+peak above its headroom.
+
+Copy counts are saved with the other preferences. Changing one re-renders the
+loop without restarting playback, like an instrument change.
+
+## The countermelody
+
+The countermelody is not another chord track. It is a countermelody generated
+from the tune: one note per dance beat, voiced a diatonic third below whichever
+melody note is sounding and snapped to a nearby chord tone. It follows the
+tune's contour instead of holding a pedal, and it leaves a beat open rather than
+repeating a pitch.
 
 It stays on the same 64-beat grid, adds no new timing, and is mixed at the
 **Accompaniment volume** level a little to the other side of the stereo field.
@@ -108,12 +132,13 @@ progression when the ABC has none. Only its rhythm changes.
   <Step shot="prefs-instrument-mix">
     Adjust **Melody volume**, **Accompaniment volume**, and **Percussion
     volume**. The first two range from 0 to 1.5, with defaults of 0.75 and 0.65;
-    percussion defaults to 0.5. The second accompaniment follows the
-    accompaniment volume.
+    percussion defaults to 0.5. The countermelody follows the accompaniment
+    volume.
   </Step>
 </Steps>
 
 The session **Volume** control is a master level applied on top of this mix.
+Copy counts do not change the balance; the section is levelled automatically.
 
 ## Effects
 
@@ -146,15 +171,15 @@ which players honor the echo send.
 The melody is also lifted in velocity and accented on the dance pulse so it
 stays clearly above the accompaniment. The variation is deterministic for a
 given tune and arrangement; it keeps the selected rhythm and does not change
-the dance timing or the 64-beat loop length. On a melody-alone bar the second
-accompaniment rests too.
+the dance timing or the 64-beat loop length. On a melody-alone bar the
+countermelody rests too.
 
 ## Apply the change
 
-Instrument, rhythm, volume, effect, and music-variation changes apply without
-restarting the music. Release the control and the app re-renders the loop,
-keeping the current beat. If the session is not playing, press **Play** to
-render and start.
+Instrument, rhythm, copy-count, volume, effect, and music-variation changes
+apply without restarting the music. Release the control and the app re-renders
+the loop, keeping the current beat. If the session is not playing, press
+**Play** to render and start.
 Session **Volume** changes apply immediately to the existing buffer.
 
 ## Soundfont
@@ -162,7 +187,7 @@ Session **Volume** changes apply immediately to the existing buffer.
 **Bundled: Fluid R3 GM** is the default. It is a trimmed subset of Frank Wen's
 Fluid R3 General MIDI soundfont, which is MIT licensed; `CREDITS.md` records the
 full notice. The subset contains only the four programs in the table below (the
-melody and second-accompaniment choices share two of them), which is why it is
+melody and countermelody choices share two of them), which is why it is
 about 15 MB instead of the 141 MB full bank. Percussion is generated separately,
 so it needs no drum preset. It needs no network access and is available on every
 platform, including the browser and Android builds.
@@ -193,8 +218,13 @@ The chosen instruments map to General MIDI programs in either font:
 | Piano (accompaniment) | 0 — Acoustic Grand Piano | Yes |
 | Guitar (accompaniment) | 25 — Acoustic Guitar (steel) | Yes |
 | Accordion (accompaniment) | 21 — Accordion | Yes |
-| Accordion (second accompaniment) | 21 — Accordion | Yes |
-| Fiddle (second accompaniment) | 40 — Violin | Yes |
+| Accordion (countermelody) | 21 — Accordion | Yes |
+| Fiddle (countermelody) | 40 — Violin | Yes |
+
+Copies of a part use the same program as that part. With a loaded font, each
+copy is a separate General MIDI channel (and its own track in an exported MIDI
+file), so the font's own round-robin or pan behaviour is not shared between
+copies.
 
 If a font you load does not contain one of those programs, the result depends on
 the file and may be silent for that part. Choose **Use bundled** to go back to
@@ -219,7 +249,7 @@ simple progression is inferred from the key and strong-beat melody notes. The
 selected rhythm decides which notes sound on which part of the beat. The strum
 rhythm alternates a full downstroke on the beat with a lighter upstroke off the
 beat, so the guitar sounds strummed up and down rather than in one direction.
-The second accompaniment is derived from the melody and that chord track, so it
+The countermelody is derived from the melody and that chord track, so it
 never needs symbols of its own. The optional percussion follows the selected
 percussion rhythm, the meter, and the dance-beat grid. When a chord tone would
 sit closer than a minor third to the melody note sounding at the same time, the

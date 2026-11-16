@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, MelodyInstrument, Percussion,
-    PercussionRhythm, SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, Countermelody, InstrumentCopies,
+    MelodyInstrument, Percussion, PercussionRhythm,
 };
 use rustysynth::SoundFont;
 
@@ -17,9 +17,13 @@ pub struct RenderRequest {
     pub melody: MelodyInstrument,
     pub accompaniment: AccompanimentInstrument,
     pub accompaniment_rhythm: AccompanimentRhythm,
-    /// The countermelody voice that completes the trio; [`SecondAccompaniment::Off`]
+    /// The countermelody voice that completes the trio; [`Countermelody::Off`]
     /// renders a duo.
-    pub second_accompaniment: SecondAccompaniment,
+    pub second_accompaniment: Countermelody,
+    /// Players per part. One is the single-player default; extra copies are
+    /// rendered as separate players with their own pan and micro-timing. See
+    /// [`crate::copies`].
+    pub copies: InstrumentCopies,
     /// Optional percussion layer; [`Percussion::Off`] renders no percussion.
     pub percussion: Percussion,
     /// Rhythm used to place the percussion layer.

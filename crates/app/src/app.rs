@@ -6,9 +6,9 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, COUNT_IN_BEATS, Dance,
-    FolderFilter, Library, MelodyInstrument, MoveKind, Percussion, PercussionRhythm,
-    PracticeTimeline, Preferences, RolePreset, ScheduledCall, SecondAccompaniment, Theme,
+    AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, COUNT_IN_BEATS,
+    Countermelody, Dance, FolderFilter, InstrumentCopies, Library, MelodyInstrument, MoveKind,
+    Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset, ScheduledCall, Theme,
     TimelineConfig, Tune,
 };
 use contra_music::{
@@ -373,7 +373,8 @@ struct RenderSettings {
     melody: MelodyInstrument,
     accompaniment: AccompanimentInstrument,
     accompaniment_rhythm: AccompanimentRhythm,
-    second_accompaniment: SecondAccompaniment,
+    second_accompaniment: Countermelody,
+    copies: InstrumentCopies,
     percussion: Percussion,
     percussion_rhythm: PercussionRhythm,
     melody_volume: f32,
@@ -394,6 +395,7 @@ impl RenderSettings {
             accompaniment: self.accompaniment,
             accompaniment_rhythm: self.accompaniment_rhythm,
             second_accompaniment: self.second_accompaniment,
+            copies: self.copies,
             percussion: self.percussion,
             percussion_rhythm: self.percussion_rhythm,
             melody_volume: self.melody_volume,
@@ -1051,6 +1053,7 @@ impl ContraApp {
             accompaniment: self.prefs.accompaniment,
             accompaniment_rhythm: self.prefs.accompaniment_rhythm,
             second_accompaniment: self.prefs.second_accompaniment,
+            copies: self.prefs.instrument_copies,
             percussion: self.prefs.percussion,
             percussion_rhythm: self.prefs.percussion_rhythm,
             melody_volume: self.prefs.melody_volume,
@@ -1683,6 +1686,7 @@ impl ContraApp {
                 self.prefs.tempo_bpm,
                 variation_passes,
                 self.prefs.effects,
+                self.prefs.instrument_copies,
             );
             match std::fs::write(&path, bytes) {
                 Ok(()) => self.status = format!("Saved MIDI to {}", path.display()),

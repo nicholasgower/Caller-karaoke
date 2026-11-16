@@ -188,8 +188,10 @@ Soundfont file selection:
 
 - Export the arranged loop as a Standard MIDI File using `midly`.
 - The once-only slow ending is a live transport action and is not exported.
-- Melody and accompaniment tracks, plus a countermelody track when the second
-  accompaniment is on.
+- Melody and accompaniment tracks, plus a countermelody track when the
+  countermelody is on.
+- One track per copy of a melodic part, each on its own General MIDI channel
+  with a pan controller; percussion stays one drum track.
 - A percussion track on the General MIDI drum channel when percussion is on.
 - Include tempo, meter, key, and program changes.
 - Write the same variation passes as playback: one plain 64-beat pass when

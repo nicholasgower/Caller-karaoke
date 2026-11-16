@@ -81,24 +81,29 @@ impl AccompanimentInstrument {
     }
 }
 
-/// The second accompaniment voice, which turns the duo into a trio.
+/// The countermelody voice, which turns the duo into a trio.
 ///
-/// The melody and [`AccompanimentInstrument`] provide two voices. The second
-/// accompaniment is a countermelody played by a melody instrument underneath
-/// the tune, so the default session sounds like a small contra band rather than
-/// a solo with a backing track. Set it to [`Self::Off`] for a duo.
+/// The melody and [`AccompanimentInstrument`] provide two voices. The
+/// countermelody is played by a melody instrument underneath the tune, so the
+/// default session sounds like a small contra band rather than a solo with a
+/// backing track. Set it to [`Self::Off`] for a duo.
+///
+/// This type was called `SecondAccompaniment`. The preference field is still
+/// [`Preferences::second_accompaniment`] and the serialized values are
+/// unchanged (`"Accordion"`, `"Fiddle"`, `"Off"`), so older preference files
+/// keep loading and the rename needs no migration.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SecondAccompaniment {
+pub enum Countermelody {
     /// An accordion countermelody under the tune (the default trio).
     #[default]
     Accordion,
     /// A second fiddle playing the countermelody.
     Fiddle,
-    /// No second voice; play the melody and one accompaniment.
+    /// No countermelody; play the melody and one accompaniment.
     Off,
 }
 
-impl SecondAccompaniment {
+impl Countermelody {
     /// Every choice, in display order.
     pub const ALL: [Self; 3] = [Self::Accordion, Self::Fiddle, Self::Off];
 
@@ -122,6 +127,81 @@ impl SecondAccompaniment {
     /// General MIDI program for the countermelody voice, if it is enabled.
     pub fn gm_program(self) -> Option<u8> {
         self.instrument().map(MelodyInstrument::gm_program)
+    }
+}
+
+/// How many players each part of the virtual band has.
+///
+/// Contra bands thicken a line by doubling it: two fiddles, a piano and a
+/// guitar, two accordions. Every copy is rendered as its own player with a
+/// small independent pan, a few milliseconds of timing spread, and a slight
+/// tuning or velocity difference, so a section sounds wider rather than merely
+/// louder.
+///
+/// One is the single-player default, so an existing session sounds exactly the
+/// same until the user adds a copy. Files written before this setting existed
+/// get the default through `serde`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct InstrumentCopies {
+    /// Players on the melody line.
+    pub melody: u8,
+    /// Players on the chordal accompaniment.
+    pub accompaniment: u8,
+    /// Players on the countermelody.
+    pub countermelody: u8,
+    /// Players on the optional percussion layer.
+    pub percussion: u8,
+}
+
+impl Default for InstrumentCopies {
+    fn default() -> Self {
+        Self {
+            melody: 1,
+            accompaniment: 1,
+            countermelody: 1,
+            percussion: 1,
+        }
+    }
+}
+
+impl InstrumentCopies {
+    /// Fewest players a part can have.
+    pub const MIN: u8 = 1;
+    /// Most players a melodic part can have.
+    ///
+    /// Four keeps the three melodic parts inside the fifteen General MIDI
+    /// channels that are not the drum channel.
+    pub const MAX: u8 = 4;
+    /// Most players the percussion layer can have.
+    pub const MAX_PERCUSSION: u8 = 3;
+
+    /// Clamp hand-edited or older values into the supported range.
+    pub fn validate(&mut self) {
+        self.melody = self.melody.clamp(Self::MIN, Self::MAX);
+        self.accompaniment = self.accompaniment.clamp(Self::MIN, Self::MAX);
+        self.countermelody = self.countermelody.clamp(Self::MIN, Self::MAX);
+        self.percussion = self.percussion.clamp(Self::MIN, Self::MAX_PERCUSSION);
+    }
+
+    /// Melody players, clamped for a renderer.
+    pub fn melody_count(self) -> usize {
+        usize::from(self.melody.clamp(Self::MIN, Self::MAX))
+    }
+
+    /// Accompaniment players, clamped for a renderer.
+    pub fn accompaniment_count(self) -> usize {
+        usize::from(self.accompaniment.clamp(Self::MIN, Self::MAX))
+    }
+
+    /// Countermelody players, clamped for a renderer.
+    pub fn countermelody_count(self) -> usize {
+        usize::from(self.countermelody.clamp(Self::MIN, Self::MAX))
+    }
+
+    /// Percussion players, clamped for a renderer.
+    pub fn percussion_count(self) -> usize {
+        usize::from(self.percussion.clamp(Self::MIN, Self::MAX_PERCUSSION))
     }
 }
 
@@ -453,8 +533,12 @@ pub struct Preferences {
     /// Pattern used for the accompaniment chords; see [`AccompanimentRhythm`].
     pub accompaniment_rhythm: AccompanimentRhythm,
     /// The countermelody voice that completes the default trio; see
-    /// [`SecondAccompaniment`].
-    pub second_accompaniment: SecondAccompaniment,
+    /// [`Countermelody`]. The field keeps its original name so older preference
+    /// files keep loading.
+    pub second_accompaniment: Countermelody,
+    /// Players per part of the virtual band; see [`InstrumentCopies`].
+    #[serde(default)]
+    pub instrument_copies: InstrumentCopies,
     /// Optional percussion layer; see [`Percussion`].
     pub percussion: Percussion,
     /// Rhythm used to place the percussion layer; see [`PercussionRhythm`].
@@ -558,7 +642,7 @@ pub const MIGRATIONS: &[Migration] = &[
     Migration {
         tag: "second-accompaniment-v7",
         version: 7,
-        apply: migrate_v6_second_accompaniment,
+        apply: migrate_v6_countermelody,
     },
     Migration {
         tag: "tune-rotation-v7",
@@ -638,10 +722,11 @@ fn migrate_v5_accompaniment_rhythm(_prefs: &mut Preferences) {
     // padding; `serde` supplies the defaults for older files.
 }
 
-fn migrate_v6_second_accompaniment(_prefs: &mut Preferences) {
-    // v7 adds the second accompaniment. Older files have no value, so `serde`
-    // supplies the default (Accordion), which gives every session the trio
-    // sound. A file that stores `Off` keeps it.
+fn migrate_v6_countermelody(_prefs: &mut Preferences) {
+    // v7 adds the countermelody (then called the second accompaniment). Older
+    // files have no value, so `serde` supplies the default (Accordion), which
+    // gives every session the trio sound. A file that stores `Off` keeps it.
+    // The tag keeps its original name because a tag must never be renamed.
 }
 
 fn migrate_v6_tune_rotation(_prefs: &mut Preferences) {
@@ -731,7 +816,8 @@ impl Default for Preferences {
             melody: MelodyInstrument::default(),
             accompaniment: AccompanimentInstrument::default(),
             accompaniment_rhythm: AccompanimentRhythm::default(),
-            second_accompaniment: SecondAccompaniment::default(),
+            second_accompaniment: Countermelody::default(),
+            instrument_copies: InstrumentCopies::default(),
             percussion: Percussion::default(),
             percussion_rhythm: PercussionRhythm::default(),
             theme: Theme::default(),
@@ -798,6 +884,7 @@ impl Preferences {
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
         self.tune_rotation.validate();
         self.tts_rate = self.tts_rate.clamp(MIN_TTS_RATE, MAX_TTS_RATE);
+        self.instrument_copies.validate();
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
         self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
         self.percussion_volume = self.percussion_volume.clamp(0.0, 2.0);
@@ -875,6 +962,7 @@ impl Preferences {
                 || self.accompaniment != old.accompaniment
                 || self.accompaniment_rhythm != old.accompaniment_rhythm
                 || self.second_accompaniment != old.second_accompaniment
+                || self.instrument_copies != old.instrument_copies
                 || self.percussion != old.percussion
                 || self.percussion_rhythm != old.percussion_rhythm
                 || self.melody_volume != old.melody_volume
@@ -901,11 +989,16 @@ mod tests {
         assert_eq!(prefs.melody, MelodyInstrument::Fiddle);
         assert_eq!(prefs.accompaniment, AccompanimentInstrument::Piano);
         assert_eq!(prefs.accompaniment_rhythm, AccompanimentRhythm::Auto);
-        assert_eq!(prefs.second_accompaniment, SecondAccompaniment::Accordion);
+        assert_eq!(prefs.second_accompaniment, Countermelody::Accordion);
         assert!(
             prefs.second_accompaniment.instrument().is_some(),
             "the default session is a trio"
         );
+        assert_eq!(prefs.instrument_copies, InstrumentCopies::default());
+        assert_eq!(prefs.instrument_copies.melody, 1);
+        assert_eq!(prefs.instrument_copies.accompaniment, 1);
+        assert_eq!(prefs.instrument_copies.countermelody, 1);
+        assert_eq!(prefs.instrument_copies.percussion, 1);
         assert_eq!(prefs.percussion, Percussion::Off);
         assert!(!prefs.percussion.is_enabled());
         assert_eq!(prefs.effects, AudioEffects::default());
@@ -1220,32 +1313,89 @@ mod tests {
     }
 
     #[test]
-    fn second_accompaniment_can_be_turned_off_and_round_trips() {
+    fn the_countermelody_can_be_turned_off_and_round_trips() {
         let prefs = Preferences {
-            second_accompaniment: SecondAccompaniment::Off,
+            second_accompaniment: Countermelody::Off,
             ..Preferences::default()
         };
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
-        assert_eq!(restored.second_accompaniment, SecondAccompaniment::Off);
+        assert_eq!(restored.second_accompaniment, Countermelody::Off);
         assert_eq!(restored.second_accompaniment.instrument(), None);
     }
 
     #[test]
-    fn second_accompaniment_uses_a_melody_instrument() {
+    fn the_countermelody_uses_a_melody_instrument() {
         assert_eq!(
-            SecondAccompaniment::Accordion.instrument(),
+            Countermelody::Accordion.instrument(),
             Some(MelodyInstrument::Accordion)
         );
         assert_eq!(
-            SecondAccompaniment::Fiddle.instrument(),
+            Countermelody::Fiddle.instrument(),
             Some(MelodyInstrument::Fiddle)
         );
-        assert_eq!(SecondAccompaniment::Off.gm_program(), None);
+        assert_eq!(Countermelody::Off.gm_program(), None);
         assert_eq!(
-            SecondAccompaniment::Accordion.gm_program(),
+            Countermelody::Accordion.gm_program(),
             Some(MelodyInstrument::Accordion.gm_program())
         );
+    }
+
+    #[test]
+    fn instrument_copies_round_trip_and_clamp() {
+        let prefs = Preferences {
+            instrument_copies: InstrumentCopies {
+                melody: 2,
+                accompaniment: 3,
+                countermelody: 4,
+                percussion: 2,
+            },
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.instrument_copies, prefs.instrument_copies);
+        assert_eq!(restored.instrument_copies.melody_count(), 2);
+        assert_eq!(restored.instrument_copies.accompaniment_count(), 3);
+        assert_eq!(restored.instrument_copies.countermelody_count(), 4);
+        assert_eq!(restored.instrument_copies.percussion_count(), 2);
+
+        let mut hand_edited = InstrumentCopies {
+            melody: 0,
+            accompaniment: 99,
+            countermelody: 0,
+            percussion: 99,
+        };
+        hand_edited.validate();
+        assert_eq!(
+            hand_edited,
+            InstrumentCopies {
+                melody: InstrumentCopies::MIN,
+                accompaniment: InstrumentCopies::MAX,
+                countermelody: InstrumentCopies::MIN,
+                percussion: InstrumentCopies::MAX_PERCUSSION,
+            }
+        );
+        // The renderer accessors clamp too, so a value from a file that never
+        // went through `validate` cannot ask for a channel the plan lacks.
+        let raw = InstrumentCopies {
+            melody: 0,
+            accompaniment: 200,
+            countermelody: 0,
+            percussion: 200,
+        };
+        assert_eq!(raw.melody_count(), 1);
+        assert_eq!(raw.accompaniment_count(), 4);
+        assert_eq!(raw.percussion_count(), 3);
+    }
+
+    #[test]
+    fn older_files_get_one_copy_of_every_part() {
+        // The copy counts are a plain serde default: no migration tag and no
+        // schema bump, because one player is the previous behaviour.
+        let prefs = Preferences::from_json(r#"{"schema_version": 11}"#).expect("deserialize");
+        assert_eq!(prefs.instrument_copies, InstrumentCopies::default());
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
@@ -1279,7 +1429,7 @@ mod tests {
         let json = r#"{"schema_version": 6}"#;
         let prefs = Preferences::from_json(json).expect("deserialize");
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
-        assert_eq!(prefs.second_accompaniment, SecondAccompaniment::Accordion);
+        assert_eq!(prefs.second_accompaniment, Countermelody::Accordion);
     }
 
     #[test]
@@ -1511,7 +1661,7 @@ mod tests {
         );
 
         let mut second = base.clone();
-        second.second_accompaniment = SecondAccompaniment::Off;
+        second.second_accompaniment = Countermelody::Off;
         assert_eq!(
             second.changes_since(&base),
             ChangeSet {
@@ -1525,6 +1675,17 @@ mod tests {
         percussion.percussion = Percussion::FootTaps;
         assert_eq!(
             percussion.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: true,
+                tone: false
+            }
+        );
+
+        let mut copies = base.clone();
+        copies.instrument_copies.melody = 2;
+        assert_eq!(
+            copies.changes_since(&base),
             ChangeSet {
                 timeline: false,
                 audio: true,
