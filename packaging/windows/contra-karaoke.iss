@@ -23,21 +23,23 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\contra-karaoke.exe
+SetupIconFile=..\..\assets\icons\contra-karaoke.ico
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Files]
 Source: "..\..\target\release\contra-karaoke.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\assets\icons\contra-karaoke.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\CREDITS.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Contra Karaoke"; Filename: "{app}\contra-karaoke.exe"
+Name: "{group}\Contra Karaoke"; Filename: "{app}\contra-karaoke.exe"; IconFilename: "{app}\contra-karaoke.ico"
 Name: "{group}\Credits"; Filename: "{app}\CREDITS.md"
-Name: "{autodesktop}\Contra Karaoke"; Filename: "{app}\contra-karaoke.exe"; Tasks: desktopicon
+Name: "{autodesktop}\Contra Karaoke"; Filename: "{app}\contra-karaoke.exe"; IconFilename: "{app}\contra-karaoke.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\contra-karaoke.exe"; Description: "Launch Contra Karaoke"; Flags: nowait postinstall skipifsilent

@@ -12,7 +12,9 @@ The pieces are:
   `EGUI_INSPECTION` is set.
 - **`contra-mcp`** — an MCP server over stdio. It exposes `attach`, `screenshot`,
   `widget_tree`, `click`, `type_text`, `press_key`, and related tools, then
-  forwards them to the app over the inspection protocol.
+  forwards them to the app over the inspection protocol. It also adds
+  session-tab tools (`session_state`, `session_action`, `session_set`, and
+  `session_wait`) for testing the practice screen.
 
 ## 1. Run an inspectable app
 
@@ -52,9 +54,9 @@ out.
 ## 2. Run the MCP server
 
 The server speaks MCP JSON-RPC over stdin/stdout and logs diagnostics to
-stderr. It does not start the app itself. `contra-mcp` is a thin wrapper around
-the upstream `egui-mcp` server, so a client may display the server name
-`egui-mcp`.
+stderr. It does not start the app itself. `contra-mcp` uses the upstream
+`egui-mcp` tool set for generic input and adds its own session-tab tools; the
+server advertises itself as `contra-mcp`.
 
 ```sh
 cargo run -p contra-mcp
@@ -128,6 +130,10 @@ succeeds. Then work in an observe → act → verify loop:
 | `resize` | Change the viewport size in logical points. |
 | `wait_for` | Poll until matching widgets or frames appear. |
 | `batch` | Run several actions and observations in one round trip. |
+| `session_state` | Read the Session tab's transport state, beat, tempo, volume, and toggles. |
+| `session_action` | Press Play, Pause, Restart, End, or Cancel ending. |
+| `session_set` | Set the tempo, volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. |
+| `session_wait` | Wait until the transport reaches a state or the beat crosses a bound. |
 
 Everything uses logical points in one coordinate frame: widget `bounds`, raw
 positions, `resize` dimensions, and a default `screenshot` (1 pixel per point).
@@ -149,6 +155,62 @@ Useful checks for this app:
   asserting the session screen changed.
 - The screenshot is useful for theme and layout checks; `widget_tree` is better
   for behaviour because it does not depend on rendering.
+
+## 4. Test the session tab
+
+The generic tools can click a button, but the session tab needs more than blind
+input: play and pause sound identical to a muted machine, egui reports a
+checkbox's state only in the accessibility node (which the generic widget
+projection drops), and a slider ignores a click on its rail. The `session_*`
+tools cover those gaps.
+
+Work in the same observe → act → verify loop:
+
+```jsonc
+// 1. Where is the session, and what is it doing?
+{ "name": "session_state" }
+// → {"screen":"session","transport":"ready","beat":0.0,
+//    "tempo_bpm":240.0,"volume":0.8,"loop_enabled":true,
+//    "count_in":true,"speak_calls":false, ...}
+
+// 2. Press the real Play button (renders pending music first).
+{ "name": "session_action", "arguments": { "action": "play" } }
+
+// 3. Wait for a known point in the dance instead of sleeping.
+{ "name": "session_wait", "arguments": { "min_beat": 8 } }
+// → the state once the progress bar reads beat 8
+
+// 4. Change controls as a user would; the result is the applied state.
+{ "name": "session_set", "arguments": {
+    "tempo_bpm": 280, "volume": 0.5,
+    "loop_enabled": false, "count_in": true
+} }
+
+// 5. Stop and verify the explicit transport state.
+{ "name": "session_action", "arguments": { "action": "pause" } }
+// → {"transport":"paused","beat":12.0, ...}
+```
+
+Details worth knowing:
+
+- `transport` is one of `ready`, `count_in`, `playing`, `paused`, `ending`, or
+  `finished`. The progress bar names it in the UI as well (`Playing · beat 12 /
+  64`), so a screenshot shows the same state.
+- `beat` is the whole beat the progress bar displays. During the count-in it is
+  `null`; use `count_in_beats_left` or wait for `transport: "playing"`.
+- `session_set` drags sliders from their handle, because a click on the rail
+  does nothing. egui snaps a dragged slider to a nearby convenient value and the
+  rail quantises to a pixel, so the applied tempo or volume can differ from the
+  request. The returned state reports the value the app actually adopted; assert
+  on that, not on the request.
+- `session_action` brings the Session tab to the front first, so it also works
+  after inspecting a picker. `end` presses **End tune**, or **Cancel ending**
+  when an ending is waiting; the ending itself starts at the tune's last bar, so
+  `transport` stays `playing` until then.
+- Controls are located by accessible name, so the desktop and phone layouts both
+  work: `resize` to `390 × 844` and repeat the same calls to check the compact
+  layout. The generic tools still cover anything the session tools do not, such
+  as opening a picker or reading the dance card text.
 
 ## Diagnostics
 

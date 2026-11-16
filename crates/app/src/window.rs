@@ -289,9 +289,54 @@ fn matches_ratio(expected: egui::Vec2, size: egui::Vec2, scale: f32) -> bool {
         && (size.y - target.y).abs() <= tolerance.y.abs() + SIZE_EPSILON
 }
 
+/// The icon shown by the window manager, taskbar, and alt-tab switcher.
+///
+/// The PNG is embedded so a portable copy of the app carries no loose files,
+/// and 256 px covers the largest size Windows asks for at common scale
+/// factors. The mark itself lives in `assets/icons/`.
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+const ICON_PNG: &[u8] = include_bytes!("../../../assets/icons/contra-karaoke-256.png");
+
+/// Decode the bundled icon for the platform window.
+///
+/// A damaged or missing asset degrades to the platform's default icon rather
+/// than stopping the app from starting, hence the `Option`.
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+pub fn window_icon() -> Option<egui::IconData> {
+    let image = image::load_from_memory(ICON_PNG).ok()?.into_rgba8();
+    let (width, height) = image.dimensions();
+    Some(egui::IconData {
+        rgba: image.into_raw(),
+        width,
+        height,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The bundled mark must decode, and it must stay a rounded tile: opaque
+    /// inside and transparent at the corners, or every platform draws a
+    /// different silhouette.
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[test]
+    fn bundled_icon_decodes() {
+        let icon = window_icon().expect("the bundled icon PNG decodes");
+        assert_eq!((icon.width, icon.height), (256, 256));
+        assert_eq!(icon.rgba.len(), 256 * 256 * 4);
+        // Split the RGBA buffer into pixels; `rest` is empty by construction.
+        let (pixels, rest) = icon.rgba.as_chunks::<4>();
+        assert!(rest.is_empty(), "the buffer is whole pixels");
+        assert!(
+            pixels.iter().any(|pixel| pixel[3] == 255),
+            "the tile is opaque"
+        );
+        assert!(
+            pixels.iter().any(|pixel| pixel[3] == 0),
+            "the corners are transparent"
+        );
+    }
 
     /// Runs one frame and returns the viewport commands it sent.
     ///

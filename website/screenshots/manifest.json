@@ -264,7 +264,7 @@
     },
     {
       "id": "prefs-instrument-melody",
-      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment, rhythm, and second-accompaniment menus below it, and the volume sliders visible.",
+      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment, rhythm, second-accompaniment, and percussion menus below it, and the volume sliders visible.",
       "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
       "status": "ready",
       "width": 1280,
@@ -272,7 +272,7 @@
     },
     {
       "id": "prefs-instrument-accompaniment",
-      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it, above the Second accompaniment row.",
+      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it, above the Second accompaniment and Percussion rows.",
       "caption": "Piano, Guitar, and Accordion are the chordal accompaniment voices; the Rhythm menu chooses the backing pattern.",
       "status": "ready",
       "width": 1280,
@@ -280,14 +280,20 @@
     },
     {
       "id": "prefs-instrument-second",
-      "alt": "The Instruments section with the Second accompaniment menu set to Fiddle and the countermelody note beside it.",
+      "alt": "The Instruments section with the Second accompaniment menu set to Fiddle and the countermelody note beside it, above the Percussion row.",
       "caption": "The default trio adds an accordion countermelody; Fiddle gives a second fiddle, and Off leaves a duo.",
       "status": "pending"
     },
     {
+      "id": "prefs-instrument-percussion",
+      "alt": "The Instruments section with the Percussion menu set to Foot taps, the Percussion rhythm menu set to Gallop, and the optional note beside them.",
+      "caption": "Percussion is optional; Foot taps play a gallop by default, Drumset adds kick, snare, and hi-hat, and the rhythm menu changes the pattern.",
+      "status": "pending"
+    },
+    {
       "id": "prefs-instrument-mix",
-      "alt": "The Instruments section showing the Melody volume and Accompaniment volume sliders.",
-      "caption": "Balance the melody against the accompaniment; the second accompaniment follows the accompaniment volume.",
+      "alt": "The Instruments section showing the Melody volume, Accompaniment volume, and Percussion volume sliders.",
+      "caption": "Balance the melody against the accompaniment and the optional percussion; the second accompaniment follows the accompaniment volume.",
       "status": "ready",
       "width": 1280,
       "height": 2250
@@ -550,7 +556,7 @@
     },
     {
       "id": "transport-summary",
-      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, accompaniment, and second accompaniment.",
+      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, accompaniment, second accompaniment, and percussion with its rhythm.",
       "caption": "The summary confirms what will play before you start.",
       "status": "ready",
       "width": 1280,

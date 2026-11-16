@@ -8,7 +8,8 @@ use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, PercussionRhythm,
+    SecondAccompaniment,
 };
 
 use crate::arrange::Arrangement;
@@ -18,12 +19,15 @@ pub const TICKS_PER_QUARTER: u16 = 480;
 pub const TICKS_PER_DANCE_BEAT: u64 = TICKS_PER_QUARTER as u64 * 2;
 
 /// Build a Standard MIDI File for the arranged loop.
+#[allow(clippy::too_many_arguments)]
 pub fn export_midi(
     arrangement: &Arrangement,
     melody: MelodyInstrument,
     accompaniment: AccompanimentInstrument,
     accompaniment_rhythm: AccompanimentRhythm,
     second_accompaniment: SecondAccompaniment,
+    percussion: Percussion,
+    percussion_rhythm: PercussionRhythm,
     bpm: f64,
 ) -> Vec<u8> {
     let accompaniment_notes =
@@ -55,6 +59,22 @@ pub fn export_midi(
             instrument.gm_program(),
             "Second accompaniment",
             &arrangement.countermelody_notes(),
+            false,
+            bpm,
+            arrangement,
+        ));
+    }
+    if percussion.is_enabled() {
+        tracks.push(build_track(
+            9,
+            0,
+            "Percussion",
+            &crate::percussion::notes(
+                arrangement.loop_beats,
+                arrangement.meter,
+                percussion,
+                percussion_rhythm,
+            ),
             false,
             bpm,
             arrangement,
@@ -212,6 +232,8 @@ mod tests {
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         assert!(bytes.starts_with(b"MThd"));
@@ -244,6 +266,8 @@ mod tests {
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Block,
             SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         let sustained = export_midi(
@@ -252,6 +276,8 @@ mod tests {
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Sustained,
             SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         assert_ne!(
@@ -270,6 +296,8 @@ mod tests {
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Accordion,
+            Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         let second = export_midi(
@@ -278,6 +306,8 @@ mod tests {
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Accordion,
+            Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         assert_eq!(first, second);
@@ -293,6 +323,8 @@ mod tests {
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
             SecondAccompaniment::Accordion,
+            Percussion::Off,
+            PercussionRhythm::Auto,
             240.0,
         );
         let smf = Smf::parse(&trio).expect("parse midi");
@@ -310,5 +342,36 @@ mod tests {
             })
             .count();
         assert!(counter_notes > 0, "the second accompaniment must sound");
+    }
+
+    #[test]
+    fn percussion_exports_on_the_general_midi_drum_channel() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let bytes = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Accordion,
+            Percussion::Drumset,
+            PercussionRhythm::Auto,
+            240.0,
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+        assert_eq!(smf.tracks.len(), 4);
+        let drum_notes = smf.tracks[3]
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event.kind,
+                    TrackEventKind::Midi {
+                        channel,
+                        message: MidiMessage::NoteOn { vel, .. },
+                    } if channel.as_int() == 9 && vel.as_int() > 0
+                )
+            })
+            .count();
+        assert!(drum_notes > 0, "the percussion track must sound");
     }
 }

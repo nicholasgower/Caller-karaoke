@@ -12,6 +12,11 @@ The app crate now exposes `crate-type = ["cdylib", "lib"]` and an
 packaging. This is tracked in Milestone M5/M6 of `ROADMAP.md`; the desktop
 build does not require it.
 
+The launcher icons for all five densities are in `res/mipmap-*`
+(`ic_launcher.png`, 48 to 192 px). They are legacy icons, not an adaptive
+foreground/background pair; moving to adaptive icons means shrinking the art
+into the 66% safe circle first.
+
 Build environment:
 
 ```sh

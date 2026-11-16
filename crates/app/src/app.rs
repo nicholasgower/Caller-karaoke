@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use contra_core::{
     AccompanimentInstrument, AccompanimentRhythm, AliasTable, COUNT_IN_BEATS, Dance, FolderFilter,
-    Library, MelodyInstrument, MoveKind, PracticeTimeline, Preferences, RolePreset, RoleTerms,
-    SecondAccompaniment, Theme, TimelineConfig, Tune,
+    Library, MelodyInstrument, MoveKind, Percussion, PercussionRhythm, PracticeTimeline,
+    Preferences, RolePreset, RoleTerms, SecondAccompaniment, Theme, TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi, parse_abc, render,
@@ -366,8 +366,11 @@ struct RenderSettings {
     accompaniment: AccompanimentInstrument,
     accompaniment_rhythm: AccompanimentRhythm,
     second_accompaniment: SecondAccompaniment,
+    percussion: Percussion,
+    percussion_rhythm: PercussionRhythm,
     melody_volume: f32,
     accompaniment_volume: f32,
+    percussion_volume: f32,
     count_in_beats: f64,
     sample_rate: u32,
     variation_passes: u32,
@@ -382,8 +385,11 @@ impl RenderSettings {
             accompaniment: self.accompaniment,
             accompaniment_rhythm: self.accompaniment_rhythm,
             second_accompaniment: self.second_accompaniment,
+            percussion: self.percussion,
+            percussion_rhythm: self.percussion_rhythm,
             melody_volume: self.melody_volume,
             accompaniment_volume: self.accompaniment_volume,
+            percussion_volume: self.percussion_volume,
             count_in_beats: self.count_in_beats,
             sample_rate: self.sample_rate,
             variation_passes: self.variation_passes,
@@ -464,7 +470,7 @@ impl ContraApp {
         };
 
         let mut speech = Speech::new(cache_dir.join("tts"), audio.0.sample_rate());
-        speech.set_rate(prefs.tts_rate);
+        speech.set_rate(prefs.speech_rate());
         speech.set_voice(&prefs.tts_voice);
         speech.set_tone(prefs.tts_tone);
         if prefs.tts_enabled {
@@ -843,7 +849,7 @@ impl ContraApp {
         audio.set_volume(prefs.master_volume);
 
         let mut speech = Speech::stub();
-        speech.set_rate(prefs.tts_rate);
+        speech.set_rate(prefs.speech_rate());
         speech.set_tone(prefs.tts_tone);
 
         let source = SourceClient::new(
@@ -997,8 +1003,11 @@ impl ContraApp {
             accompaniment: self.prefs.accompaniment,
             accompaniment_rhythm: self.prefs.accompaniment_rhythm,
             second_accompaniment: self.prefs.second_accompaniment,
+            percussion: self.prefs.percussion,
+            percussion_rhythm: self.prefs.percussion_rhythm,
             melody_volume: self.prefs.melody_volume,
             accompaniment_volume: self.prefs.accompaniment_volume,
+            percussion_volume: self.prefs.percussion_volume,
             count_in_beats,
             sample_rate: self.audio.sample_rate(),
             variation_passes: if self.prefs.accompaniment_variations {
@@ -1625,6 +1634,8 @@ impl ContraApp {
                 self.prefs.accompaniment,
                 self.prefs.accompaniment_rhythm,
                 self.prefs.second_accompaniment,
+                self.prefs.percussion,
+                self.prefs.percussion_rhythm,
                 self.prefs.tempo_bpm,
             );
             match std::fs::write(&path, bytes) {

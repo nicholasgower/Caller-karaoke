@@ -98,6 +98,8 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         app.prefs.melody = contra_core::MelodyInstrument::Accordion;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
         app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
+        app.prefs.percussion = contra_core::Percussion::Drumset;
+        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
     }
     capture(harness, out, "transport-summary")?;
     {
@@ -105,6 +107,8 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         app.prefs.melody = contra_core::MelodyInstrument::Fiddle;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Piano;
         app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
+        app.prefs.percussion = contra_core::Percussion::Off;
+        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Auto;
         app.prefs.master_volume = 0.5;
     }
     capture(harness, out, "transport-volume")?;
@@ -533,7 +537,7 @@ fn preference_shots(
     // Preferences sections that sit below the fold at 1280x800. The height
     // leaves room for the whole form; `npm run screenshots` records the actual
     // size for the manifest at release time.
-    harness.set_size(Vec2::new(1280.0, 2400.0));
+    harness.set_size(Vec2::new(1280.0, 2900.0));
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
@@ -562,9 +566,16 @@ fn preference_shots(
     capture(harness, out, "prefs-instrument-second")?;
     {
         let app = harness.state_mut();
+        app.prefs.percussion = contra_core::Percussion::FootTaps;
+        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Gallop;
+    }
+    capture(harness, out, "prefs-instrument-percussion")?;
+    {
+        let app = harness.state_mut();
         app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
         app.prefs.melody_volume = 0.5;
         app.prefs.accompaniment_volume = 0.5;
+        app.prefs.percussion_volume = 0.5;
     }
     capture(harness, out, "prefs-instrument-mix")?;
     {
@@ -598,7 +609,7 @@ fn preference_shots(
     capture(harness, out, "prefs-timing-rebuild")?;
     {
         let app = harness.state_mut();
-        app.prefs.tts_rate = 1.5;
+        app.prefs.tts_rate = contra_core::MAX_TTS_RATE;
     }
     capture(harness, out, "prefs-tts-rate")?;
     {

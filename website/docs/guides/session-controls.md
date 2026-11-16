@@ -25,11 +25,13 @@ volume settings.
 
 <Shot id="transport-tempo" />
 
-Changing tempo, count-in, an instrument or second-accompaniment choice, an
-accompaniment rhythm, melody/accompaniment volume, or a SoundFont marks the music
-for a rebuild. Playback settings apply without restarting the music: release the
-control and the app re-renders the loop and keeps the current beat. The session
-master **Volume** applies immediately. If the session is not playing, it shows:
+Changing tempo, count-in, an instrument, second-accompaniment, or percussion
+choice, a percussion rhythm, an accompaniment rhythm,
+melody/accompaniment/percussion volume, or a SoundFont marks the music for a
+rebuild. Playback settings apply without
+restarting the music: release the control and the app re-renders the loop and
+keeps the current beat. The session master **Volume** applies immediately. If
+the session is not playing, it shows:
 
 > Press Play to prepare the music with these settings.
 
@@ -94,15 +96,18 @@ the count-in, the panel shows **CALL NOW** and the call text instead of
 
 ## The tune summary and dance card
 
-Above the prompt, the tune line shows the tune title, key, rhythm, melody, and
-accompaniment. The dance card below the prompt shows every figure with its
-phrase label and beat count. The active figure row is highlighted as the music
-moves.
+Above the prompt, the tune line shows the tune title, key, rhythm, melody,
+accompaniment, second accompaniment, and any enabled percussion. The dance card
+below the prompt shows every figure with its phrase label and beat count. The
+active figure row is highlighted as the music moves.
 
 <Shot id="transport-summary" />
 
-The progress bar shows the current beat out of the 64-beat loop. During the
-count-in it stays at zero.
+The progress bar shows the current beat out of the 64-beat loop, and its text
+names the transport state: `Ready`, `Count-in`, `Playing`, `Paused`, `Ending`,
+or `Finished`. The state is there because a paused session sounds the same as a
+muted one. During the count-in the bar stays at zero and the text counts the
+beats left.
 
 ## Looping, pausing, and finishing
 
@@ -165,10 +170,10 @@ See [Text to speech](/docs/guides/text-to-speech) for availability and rate.
 
 ## Volume
 
-The session **Volume** slider is the master level. The melody and accompaniment
-balances live in **Preferences → Instruments**; the second accompaniment follows
-the accompaniment balance. They are separate controls; a quiet master with a loud
-melody is still quiet overall.
+The session **Volume** slider is the master level. The melody, accompaniment,
+and percussion balances live in **Preferences → Instruments**; the second
+accompaniment follows the accompaniment balance. They are separate controls; a
+quiet master with a loud melody is still quiet overall.
 
 <Shot id="transport-volume" />
 
