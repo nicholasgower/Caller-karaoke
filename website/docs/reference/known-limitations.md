@@ -96,6 +96,10 @@ accessibility tree is still being audited. Several search, alias, and slider
 controls are visually labelled without a formal accessible-name association.
 Screen-reader support is incomplete.
 
+Android text entry uses the system keyboard without suggestions or autocorrect.
+An IME that depends on a candidate window (some CJK keyboards) may not behave as
+expected; the basic Latin keyboard and the editing keys do.
+
 Android does not run a foreground service, so the media session controls a
 session that is still running; Android may stop the app, and the music with it,
 when it needs the memory.

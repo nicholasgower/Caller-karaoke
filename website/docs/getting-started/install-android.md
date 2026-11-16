@@ -99,6 +99,11 @@ Android stops the app in the background, playback stops with it.
   setting. Tapping or swiping anywhere outside the slider puts the padlock
   back. While an unlocked slider is being dragged the page does not scroll; a
   swipe that starts on a locked slider still scrolls.
+- **Tap a text field** to open the system keyboard. Backspace, Enter, and the
+  arrow keys work in the focused field, and the page resizes so the field stays
+  visible. Dismiss the keyboard with the system Back gesture; tap the field
+  again to bring it back. Suggestions and autocorrect are off so aliases,
+  searches, and ABC source arrive exactly as typed.
 - Swipe tab changes are ignored while a text field has focus, while a drop-down
   is open, and while the **About** window is showing, so they cannot interrupt
   typing, a menu, or a dialog.
@@ -115,6 +120,9 @@ Android stops the app in the background, playback stops with it.
 - There is no Play Store release. Use the nightly APK or build from source.
 - Preferences and the source cache use the app's private storage; clearing app
   data resets them.
+- The on-screen keyboard is basic: suggestions and autocorrect are off, and an
+  IME that depends on a candidate window (some CJK keyboards) may not behave as
+  expected.
 
 ## Uninstall
 

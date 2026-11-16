@@ -77,6 +77,30 @@ is independent of it, so headset, Bluetooth, lock-screen, and system controls
 still work. Nothing here is a foreground service; Android may still stop the app
 in the background, and playback stops with it.
 
+## Text input
+
+A native activity's content view is a plain `View` with no input connection, so
+Android's `InputMethodManager.showSoftInput()` ignores it and no keyboard
+appears. `MainActivity` therefore adds a one-pixel, fully transparent `EditText`
+to the window and focuses it when egui has a text field focused.
+
+- `setTextInputActive(boolean)` is called from Rust through the same activity
+  bridge as the media session. It requests focus and shows the IME, or hides the
+  IME and clears focus.
+- `BridgeInputConnection` forwards committed text and editing keys to
+  `nativeImeText(String)` / `nativeImeKey(int)` in
+  `crates/app/src/android_ime.rs`. The app turns them into ordinary
+  `egui::Event`s, so the focused text field applies them exactly once.
+- The `KEY_*` constants in `MainActivity.java` must match the `KEY_*` constants
+  in `android_ime.rs`; a change on one side must change the other.
+- Suggestions and autocorrect are disabled (`TYPE_TEXT_FLAG_NO_SUGGESTIONS`) so
+  aliases, searches, and ABC source are not rewritten. Line breaks in committed
+  text become Enter key presses.
+
+This is separate from the media-session JNI path. Both use
+`nativeAttachActivity` to pin the activity class, because the native event-loop
+thread cannot look up app classes itself.
+
 ## File import and export
 
 The saved-tune and saved-dance screens import and export local files. Rust calls

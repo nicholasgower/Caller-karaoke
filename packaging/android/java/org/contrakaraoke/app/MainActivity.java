@@ -22,8 +22,16 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.text.InputType;
 import android.view.KeyEvent;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -76,6 +84,24 @@ public class MainActivity extends NativeActivity {
     private static String title = "Contra Karaoke";
     private static String artist = "";
     private static String album = "Contra Karaoke";
+    /**
+     * The invisible field that gives this native activity a working soft keyboard.
+     *
+     * <p>A {@link NativeActivity}'s content view has no input connection, so
+     * {@link InputMethodManager#showSoftInput} ignores it. Focusing this field
+     * gives the IME somewhere to send text; {@link BridgeInputConnection}
+     * forwards that text to Rust.
+     */
+    private static EditText textInput;
+
+    /** Key codes for {@link #nativeImeKey}; they must match `KEY_*` in `android_ime.rs`. */
+    private static final int KEY_BACKSPACE = 1;
+    private static final int KEY_DELETE = 2;
+    private static final int KEY_ENTER = 3;
+    private static final int KEY_LEFT = 4;
+    private static final int KEY_RIGHT = 5;
+    private static final int KEY_UP = 6;
+    private static final int KEY_DOWN = 7;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +114,7 @@ public class MainActivity extends NativeActivity {
         // loader, so FindClass there cannot see this activity (see
         // media_keys.rs).
         nativeAttachActivity();
+        createTextInput();
 
         // Feed the actual status/navigation bar insets to Rust. The native
         // content rectangle also includes the gesture area on some devices,
@@ -553,6 +580,305 @@ public class MainActivity extends NativeActivity {
         }
     }
 
+    /**
+     * Create the invisible field that hosts the system IME.
+     *
+     * <p>The content view of a native activity is a plain {@link View}, so the
+     * IME refuses to show for it. This field is one pixel in the corner, fully
+     * transparent, and never receives touches outside that pixel; it exists
+     * only to own an {@link InputConnection}. The app shows and hides it from
+     * Rust through {@link #setTextInputActive}.
+     */
+    private void createTextInput() {
+        EditText input = new EditText(this) {
+            @Override
+            public boolean onKeyDown(int keyCode, KeyEvent event) {
+                if (forwardKey(event)) {
+                    return true;
+                }
+                return super.onKeyDown(keyCode, event);
+            }
+
+            @Override
+            public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event) {
+                String characters = event.getCharacters();
+                if (characters != null && !characters.isEmpty()) {
+                    for (int index = 0; index < repeatCount; index++) {
+                        nativeImeText(characters);
+                    }
+                    return true;
+                }
+                return super.onKeyMultiple(keyCode, repeatCount, event);
+            }
+
+            @Override
+            public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+                // No suggestions or autocorrect: aliases, searches, and ABC
+                // source must reach the app exactly as typed. It also keeps
+                // most IMEs committing text one character at a time, which
+                // the bridge can forward without tracking candidate windows.
+                outAttrs.inputType =
+                        InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+                outAttrs.imeOptions = EditorInfo.IME_ACTION_DONE
+                        | EditorInfo.IME_FLAG_NO_EXTRACT_UI
+                        | EditorInfo.IME_FLAG_NO_FULLSCREEN;
+                return new BridgeInputConnection(this);
+            }
+        };
+        input.setSingleLine(true);
+        input.setInputType(
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        input.setImeOptions(EditorInfo.IME_ACTION_DONE
+                | EditorInfo.IME_FLAG_NO_EXTRACT_UI
+                | EditorInfo.IME_FLAG_NO_FULLSCREEN);
+        input.setBackground(null);
+        input.setTextColor(0x00000000);
+        input.setAlpha(0.0f);
+        input.setCursorVisible(false);
+        input.setFocusable(true);
+        input.setFocusableInTouchMode(true);
+        input.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        addContentView(input, new ViewGroup.LayoutParams(1, 1));
+        textInput = input;
+    }
+
+    /**
+     * Show or hide the system keyboard for the focused egui text field.
+     *
+     * <p>Called from Rust once per focus change (and again on a tap, so a
+     * dismissed keyboard can be brought back). The call arrives on the native
+     * event-loop thread and is posted to the UI thread.
+     */
+    public static void setTextInputActive(final boolean active) {
+        final MainActivity activity = appActivity;
+        final EditText input = textInput;
+        if (activity == null || input == null) {
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            InputMethodManager imm =
+                    input.getContext().getSystemService(InputMethodManager.class);
+            if (active) {
+                if (!input.hasFocus()) {
+                    // The field is only a carrier for the IME. Clearing it
+                    // prevents a half-typed hardware key from leaking into the
+                    // next field the user opens.
+                    input.setText("");
+                    input.requestFocus();
+                }
+                if (imm != null) {
+                    input.post(() -> {
+                        if (input.hasFocus()) {
+                            imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
+                        }
+                    });
+                }
+            } else {
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(input.getWindowToken(), 0);
+                }
+                input.clearFocus();
+            }
+        });
+    }
+
+    /** Forward one key from the IME or a hardware keyboard to Rust. */
+    private static boolean forwardKey(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_UP) {
+            return handledKey(event.getKeyCode());
+        }
+        switch (event.getKeyCode()) {
+            case KeyEvent.KEYCODE_DEL:
+                nativeImeKey(KEY_BACKSPACE);
+                return true;
+            case KeyEvent.KEYCODE_FORWARD_DEL:
+                nativeImeKey(KEY_DELETE);
+                return true;
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:
+                nativeImeKey(KEY_ENTER);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                nativeImeKey(KEY_LEFT);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                nativeImeKey(KEY_RIGHT);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                nativeImeKey(KEY_UP);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                nativeImeKey(KEY_DOWN);
+                return true;
+            default:
+                break;
+        }
+        if (event.isCtrlPressed() || event.isAltPressed()) {
+            return false;
+        }
+        int unicode = event.getUnicodeChar();
+        if (unicode != 0) {
+            nativeImeText(new String(Character.toChars(unicode)));
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean handledKey(int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DEL:
+            case KeyEvent.KEYCODE_FORWARD_DEL:
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /** Send committed text, turning line breaks into Enter key presses. */
+    private static void sendText(String text) {
+        int start = 0;
+        for (int index = 0; index < text.length(); index++) {
+            char character = text.charAt(index);
+            if (character == '\n' || character == '\r') {
+                if (index > start) {
+                    nativeImeText(text.substring(start, index));
+                }
+                nativeImeKey(KEY_ENTER);
+                if (character == '\r'
+                        && index + 1 < text.length()
+                        && text.charAt(index + 1) == '\n') {
+                    index++;
+                }
+                start = index + 1;
+            }
+        }
+        if (start < text.length()) {
+            nativeImeText(text.substring(start));
+        }
+    }
+
+    /**
+     * The input connection behind {@link #createTextInput}.
+     *
+     * <p>The field has no text of its own: every edit is forwarded to Rust and
+     * egui applies it to the focused text field. That keeps the real text,
+     * selection, undo, and validation in one place.
+     */
+    private static final class BridgeInputConnection extends BaseInputConnection {
+        /** The text the IME is currently composing, already shown in the app. */
+        private String composing = "";
+
+        BridgeInputConnection(EditText target) {
+            super(target, false);
+        }
+
+        @Override
+        public boolean commitText(CharSequence text, int newCursorPosition) {
+            String value = text.toString();
+            if (!composing.isEmpty()) {
+                if (value.equals(composing)) {
+                    // Every composing character already reached the app.
+                    composing = "";
+                    return true;
+                }
+                deleteComposing();
+            }
+            sendText(value);
+            return true;
+        }
+
+        @Override
+        public boolean setComposingText(CharSequence text, int newCursorPosition) {
+            String value = text.toString();
+            if (value.startsWith(composing)) {
+                // An IME adds one character at a time; forward only the suffix.
+                sendText(value.substring(composing.length()));
+            } else {
+                deleteComposing();
+                sendText(value);
+            }
+            composing = value;
+            return true;
+        }
+
+        @Override
+        public boolean finishComposingText() {
+            composing = "";
+            return true;
+        }
+
+        @Override
+        public boolean setComposingRegion(int start, int end) {
+            return true;
+        }
+
+        @Override
+        public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
+            return deleteSurroundingText(beforeLength, afterLength);
+        }
+
+        @Override
+        public CharSequence getTextBeforeCursor(int length, int flags) {
+            // The real text lives in egui. An empty string keeps IMEs that ask
+            // for the surrounding text from receiving a null.
+            return "";
+        }
+
+        @Override
+        public CharSequence getTextAfterCursor(int length, int flags) {
+            return "";
+        }
+
+        @Override
+        public CharSequence getSelectedText(int flags) {
+            return null;
+        }
+
+        @Override
+        public int getCursorCapsMode(int reqModes) {
+            return 0;
+        }
+
+        @Override
+        public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+            composing = "";
+            for (int index = 0; index < beforeLength; index++) {
+                nativeImeKey(KEY_BACKSPACE);
+            }
+            for (int index = 0; index < afterLength; index++) {
+                nativeImeKey(KEY_DELETE);
+            }
+            return true;
+        }
+
+        @Override
+        public boolean sendKeyEvent(KeyEvent event) {
+            forwardKey(event);
+            return true;
+        }
+
+        @Override
+        public boolean performEditorAction(int actionCode) {
+            nativeImeKey(KEY_ENTER);
+            return true;
+        }
+
+        /** Remove the composing text already applied in the app. */
+        private void deleteComposing() {
+            int count = composing.codePointCount(0, composing.length());
+            for (int index = 0; index < count; index++) {
+                nativeImeKey(KEY_BACKSPACE);
+            }
+            composing = "";
+        }
+    }
+
     /** Publish this activity's class to the media bridge; see `media_keys.rs`. */
     private static native void nativeAttachActivity();
 
@@ -564,4 +890,10 @@ public class MainActivity extends NativeActivity {
 
     /** A file chosen in the document picker; see `files.rs`. */
     private static native void nativeImportedFile(int kind, String name, String text);
+
+    /** Text committed by the system IME; see `android_ime.rs`. */
+    private static native void nativeImeText(String text);
+
+    /** One editing key from the system IME; see `android_ime.rs`. */
+    private static native void nativeImeKey(int key);
 }

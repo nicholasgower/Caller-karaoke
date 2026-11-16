@@ -3638,6 +3638,10 @@ impl eframe::App for ContraApp {
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         #[cfg(target_os = "android")]
         {
+            // The activity forwards the system keyboard through JNI. Events
+            // land here, before egui starts the frame, so the focused text
+            // field applies them exactly once.
+            raw_input.events.extend(crate::android_ime::drain_events());
             let [left, top, right, bottom] = crate::android_insets::system_bar_insets();
             let pixels_per_point = ctx.pixels_per_point().max(1.0);
             let viewport = raw_input
@@ -3680,6 +3684,11 @@ impl eframe::App for ContraApp {
         {
             self.ui_contents(ui, frame);
         }
+
+        // Focus is settled by the end of the frame, so this is where a field
+        // that was just tapped asks the activity for the system keyboard.
+        #[cfg(target_os = "android")]
+        crate::android_ime::sync_text_input(ui.ctx());
     }
 
     /// Session work that must also run while the window is minimized or hidden.
@@ -3692,6 +3701,8 @@ impl eframe::App for ContraApp {
     }
 
     fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
+        #[cfg(target_os = "android")]
+        let _ = crate::media_keys::set_text_input_active(false);
         self.shutdown(gl);
     }
 }
