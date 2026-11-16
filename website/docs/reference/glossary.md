@@ -31,6 +31,14 @@ call text** is on, and the figure list in a dance preview. The link keeps the
 same size and colour as the surrounding text and is marked with an underline, so
 it does not rely on colour alone.
 
+Hovering a linked term shows its definition in a tooltip. On a touch screen,
+rest a finger on the term instead; the definition appears in a card at the top
+of the screen and stays briefly after the finger lifts. Selecting a term still
+opens the glossary, and the entry for the selected term keeps an emphasized box
+around it so it is easy to find in the list.
+
+<Shot id="glossary-tooltip" />
+
 Only recognised terms become links. Longest matches win, so "balance and swing"
 is one link rather than a link for "balance" and another for "swing". A word such
 as "swinging" is not treated as a link.

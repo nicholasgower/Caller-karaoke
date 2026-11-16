@@ -54,8 +54,14 @@
     },
     {
       "id": "glossary",
-      "alt": "The Dance glossary reference page with a filter field, a source link, and a scrolling list of contra dance terms with short definitions.",
+      "alt": "The Dance glossary reference page with a filter field, a source link, a scrolling list of contra dance terms, and the Balance and swing entry boxed with an emphasis border.",
       "caption": "The in-app glossary opens from a linked term or the Dance card header and works offline.",
+      "status": "pending"
+    },
+    {
+      "id": "glossary-tooltip",
+      "alt": "The session screen with a definition card above it naming Balance and swing and explaining the balance-then-swing figure.",
+      "caption": "Hovering a linked term on a desktop, or resting a finger on it on a phone, shows its short definition.",
       "status": "pending"
     },
     {

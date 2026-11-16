@@ -332,10 +332,51 @@ fn a_glossary_term_opens_its_entry_and_back_returns_to_the_session() {
 
     assert_eq!(harness.state().screen, Screen::Glossary);
     assert_eq!(harness.state().glossary_return, Screen::Session);
+    assert_eq!(
+        harness.state().glossary_focus.as_deref(),
+        Some("Balance and swing"),
+        "the entry stays focused after the opening frame"
+    );
+    assert!(harness.state().glossary_focus_scrolled);
 
     harness.get_by_label("< Back to session").click();
     harness.run_steps(2);
     assert_eq!(harness.state().screen, Screen::Session);
+}
+
+#[test]
+fn hovering_a_dance_card_term_shows_its_glossary_definition() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Session;
+            app.error = None;
+            app
+        });
+    harness.ctx.style_mut_of(egui::Theme::Dark, |style| {
+        style.interaction.tooltip_delay = 0.0
+    });
+    harness.run_steps(3);
+
+    let term = harness
+        .query_all_by_label("balance and swing")
+        .next()
+        .expect("the dance card links the balance and swing figure");
+    harness.hover_at(term.rect().center());
+    harness.run_steps(3);
+
+    assert!(
+        harness
+            .query_all_by_label("Balance first, then swing the same partner or neighbor.")
+            .next()
+            .is_some(),
+        "hovering a linked term should show its glossary definition"
+    );
 }
 
 #[test]

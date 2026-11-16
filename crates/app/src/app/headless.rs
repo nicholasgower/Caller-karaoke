@@ -826,12 +826,26 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     }
     capture(harness, out, "about-window")?;
 
-    // The glossary is a reference page opened from a term or from About.
+    // The glossary is a reference page opened from a term or from About. Open
+    // one entry so the emphasis around the followed term is visible.
     {
         let app = harness.state_mut();
-        app.open_glossary(None, Screen::Preferences);
+        app.open_glossary(Some("Balance and swing"), Screen::Preferences);
     }
     capture(harness, out, "glossary")?;
+
+    // A definition card above an active session, as a touch long press shows it.
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::Session;
+        app.started = true;
+        app.needs_render = false;
+        app.audio.play();
+        app.audio.seek_beat(4.0);
+    }
+    harness.run_steps(2);
+    super::ui::show_tooltip_preview(&harness.ctx, "Balance and swing");
+    capture(harness, out, "glossary-tooltip")?;
 
     Ok(())
 }
@@ -860,6 +874,10 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         app.audio.seek_beat(4.0);
     }
     capture(harness, out, "session-call-now")?;
+
+    harness.run_steps(2);
+    super::ui::show_tooltip_preview(&harness.ctx, "Balance and swing");
+    capture(harness, out, "glossary-tooltip")?;
 
     {
         let app = harness.state_mut();

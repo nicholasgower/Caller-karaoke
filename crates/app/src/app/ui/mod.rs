@@ -22,7 +22,9 @@ use crate::theme;
 pub(in crate::app) use abc_editor::{AbcEditorState, share_prompt};
 use contra_core::{Dance, FolderFilter, Tune};
 use eframe::egui;
-pub(in crate::app) use glossary::glossary_text;
+#[cfg(feature = "headless")]
+pub(in crate::app) use glossary::show_tooltip_preview;
+pub(in crate::app) use glossary::{clear_tooltip, glossary_text, glossary_tooltip};
 pub(in crate::app) use widgets::{
     RowPress, action_width, block_button, block_selectable, clamp_pane_width, combo_option,
     empty_label, group_chip, long_press_row, pane_splitter, row_activated, row_menu_button,

@@ -417,6 +417,10 @@ pub struct ContraApp {
     /// screen Back returns to from the glossary.
     glossary_query: String,
     glossary_focus: Option<String>,
+    /// Whether the focused entry has already been scrolled to. The emphasis
+    /// stays on the entry, but a later filter edit must not keep pulling the
+    /// list back to it.
+    glossary_focus_scrolled: bool,
     glossary_return: Screen,
     /// Bumped when the glossary opens so its scroll area starts at the top
     /// instead of where the previous visit left it.
@@ -877,6 +881,7 @@ impl ContraApp {
             about_reveal: false,
             glossary_query: String::new(),
             glossary_focus: None,
+            glossary_focus_scrolled: false,
             glossary_return: Screen::Session,
             glossary_epoch: 0,
             dance,
@@ -1531,6 +1536,7 @@ impl ContraApp {
             about_reveal: false,
             glossary_query: String::new(),
             glossary_focus: None,
+            glossary_focus_scrolled: false,
             glossary_return: Screen::Session,
             glossary_epoch: 0,
             dance,
@@ -3095,6 +3101,13 @@ impl ContraApp {
         // Swipe navigation is read after the screen draws so the slider list
         // for this frame is complete.
         self.tab_swipe(ui, content_rect);
+
+        // A touch definition card belongs to the screen that opened it. Keep it
+        // out of the next screen and draw it last so no scroll area clips it.
+        if self.screen != previous_screen {
+            ui::clear_tooltip(&ctx);
+        }
+        ui::glossary_tooltip(&ctx, header.rect.bottom() + 8.0);
 
         // Leaving the editor by any route discards the draft. Save and Restore
         // write the library themselves before changing the screen.
