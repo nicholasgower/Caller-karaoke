@@ -4,13 +4,19 @@
 //! accordion, sax, clarinet, piano, and guitar timbres from procedural
 //! oscillators, and acts as the fallback when the bundled Fluid R3 GM subset or
 //! a user-supplied SF2 cannot be loaded (see `soundfont.rs`).
+//!
+//! Every pitched slot in the request's band is rendered separately: the part
+//! chooses the notes, the voice chooses the timbre, the player count creates an
+//! ensemble, and the slot's volume, pan, and depth place it in the output
+//! layout.
 
 use std::f32::consts::TAU;
 
-use contra_core::{AccompanimentInstrument, MelodyInstrument};
+use contra_core::{AccompanimentInstrument, BandSlot, BandVoice, MelodyInstrument, OutputMode};
 
 use crate::arrange::EndingNote;
 use crate::humanize::{Humanizer, Voice, VoiceTiming, chord_members};
+use crate::layout;
 use crate::render::{AudioBuffer, RenderRequest};
 use crate::score::NoteEvent;
 
@@ -28,6 +34,7 @@ enum Timbre {
 
 pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
     let sample_rate = request.sample_rate.max(8_000);
+    let channels = usize::from(request.output.channels());
     let beat_seconds = 120.0 / request.bpm.max(1.0);
     let samples_per_beat = beat_seconds * sample_rate as f64;
     let count_in_samples = (request.count_in_beats.max(0.0) * samples_per_beat).round() as u64;
@@ -47,117 +54,73 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         .unwrap_or(0);
     let total_samples = count_in_samples + loop_samples + ending_samples;
 
-    let mut samples = vec![0.0f32; total_samples as usize * 2];
+    let mut samples = vec![0.0f32; total_samples as usize * channels];
+    let band = crate::band::effective(request);
 
     render_count_in(
         &mut samples,
         request,
+        &band,
+        channels,
         count_in_samples,
         samples_per_beat,
         sample_rate,
     );
 
-    let melody_voice = melody_timbre(request.melody);
-    let accompaniment_timbre = accompaniment_timbre(request.accompaniment);
-    let copies = request.copies;
     let humanizer = Humanizer::new(request);
     for pass in 0..passes {
         let offset = count_in_samples as i64 + pass as i64 * pass_samples as i64;
-        if pass == 0 {
+        for slot in band.iter().filter(|slot| slot.is_pitched()) {
+            let notes = crate::band::notes_for_pass(request, slot, pass);
+            if notes.is_empty() {
+                continue;
+            }
+            let Some(voice) = crate::band::humanized_voice(slot.part) else {
+                continue;
+            };
             render_section(
                 &mut samples,
-                &request.arrangement.pickup,
-                melody_voice,
-                request.melody_volume,
-                offset,
-                samples_per_beat,
-                sample_rate,
-                -0.10,
-                copies.melody_count(),
-                Voice::Melody,
-                &humanizer,
-            );
-        }
-        let melody = request.arrangement.melody_notes_for_pass(pass);
-        render_section(
-            &mut samples,
-            &melody,
-            melody_voice,
-            request.melody_volume,
-            offset,
-            samples_per_beat,
-            sample_rate,
-            -0.10,
-            copies.melody_count(),
-            Voice::Melody,
-            &humanizer,
-        );
-
-        let accompaniment = request
-            .arrangement
-            .accompaniment_notes_for_pass_with_rhythm(
-                request.accompaniment,
-                request.accompaniment_rhythm,
-                pass,
-            );
-        render_section(
-            &mut samples,
-            &accompaniment,
-            accompaniment_timbre,
-            request.accompaniment_volume,
-            offset,
-            samples_per_beat,
-            sample_rate,
-            0.10,
-            copies.accompaniment_count(),
-            Voice::Accompaniment,
-            &humanizer,
-        );
-
-        // Countermelody: a countermelody on a melody instrument, mixed a little
-        // quieter and to the other side so the trio stays legible.
-        if let Some(countermelody) = request.second_accompaniment.instrument() {
-            let notes = request.arrangement.countermelody_notes_for_pass(pass);
-            render_section(
-                &mut samples,
+                channels,
                 &notes,
-                melody_timbre(countermelody),
-                request.accompaniment_volume * 0.8,
+                voice_timbre(slot.voice),
+                slot.volume,
                 offset,
                 samples_per_beat,
                 sample_rate,
-                0.30,
-                copies.countermelody_count(),
-                Voice::Countermelody,
+                slot.pan,
+                slot.player_count(),
+                voice,
                 &humanizer,
+                request.output,
+                slot.depth,
             );
         }
     }
 
     if let Some(ending) = &ending {
         let offset = (count_in_samples + loop_samples) as i64;
-        render_ending_section(
-            &mut samples,
-            &ending.melody,
-            melody_voice,
-            request.melody_volume,
-            offset,
-            sample_rate,
-            -0.10,
-            copies.melody_count(),
-        );
-        render_ending_section(
-            &mut samples,
-            &ending.accompaniment,
-            accompaniment_timbre,
-            request.accompaniment_volume,
-            offset,
-            sample_rate,
-            0.10,
-            copies.accompaniment_count(),
-        );
+        for slot in band.iter().filter(|slot| slot.is_pitched()) {
+            let notes = crate::band::ending_notes_for_slot(slot, ending);
+            if notes.is_empty() {
+                continue;
+            }
+            render_ending_section(
+                &mut samples,
+                channels,
+                notes,
+                voice_timbre(slot.voice),
+                slot.volume,
+                offset,
+                sample_rate,
+                slot.pan,
+                slot.player_count(),
+                request.output,
+                slot.depth,
+            );
+        }
         apply_ending_fade(
             &mut samples,
+            channels,
             sample_rate,
             (count_in_samples + loop_samples) as usize,
             ending.seconds,
@@ -165,13 +128,13 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         );
     }
 
-    apply_fades(&mut samples, sample_rate, total_samples as usize);
+    apply_fades(&mut samples, channels, sample_rate);
     normalize(&mut samples);
 
     AudioBuffer {
         samples,
         sample_rate,
-        channels: 2,
+        channels: request.output.channels(),
         count_in_samples,
         loop_start_sample: count_in_samples,
         loop_end_sample: count_in_samples + loop_samples,
@@ -185,10 +148,16 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
     }
 }
 
+/// Render the four potatoes from the band's accompaniment slots.
+///
+/// A band without an accompaniment slot borrows its first pitched slot, so the
+/// count-in never disappears or moves off the beat.
 #[allow(clippy::too_many_arguments)]
 fn render_count_in(
     samples: &mut [f32],
     request: &RenderRequest,
+    band: &[BandSlot],
+    channels: usize,
     count_in_samples: u64,
     samples_per_beat: f64,
     sample_rate: u32,
@@ -197,42 +166,49 @@ fn render_count_in(
         return;
     }
     let chord = request.arrangement.count_in_chord();
-    let timbre = accompaniment_timbre(request.accompaniment);
     let chord_notes = chord.voicing(55);
     let duration = (0.40 * samples_per_beat) as usize;
     let count = request.count_in_beats.round().clamp(0.0, 4.0) as usize;
-    // The count-in is accompaniment, so it gets the accompaniment section: a
-    // two-piano band counts in with both pianos.
-    let voices = crate::copies::voices(0.10, request.copies.accompaniment_count(), sample_rate);
-    for beat in 0..count {
-        let beat_start = (beat as f64 * samples_per_beat).round() as usize;
-        for voice in &voices {
-            let start = beat_start + voice.delay_samples as usize;
-            render_note(
-                samples,
-                start,
-                duration,
-                chord.bass_midi(),
-                62,
-                timbre,
-                sample_rate as f32,
-                request.accompaniment_volume * 0.8 * voice.gain,
-                voice.pan,
-                voice.detune,
-            );
-            for midi in &chord_notes {
+    for index in crate::band::count_in_slots(band) {
+        let slot = &band[index];
+        let timbre = voice_timbre(slot.voice);
+        let voices = crate::copies::voices(slot.pan, slot.player_count(), sample_rate);
+        for beat in 0..count {
+            let beat_start = (beat as f64 * samples_per_beat).round() as usize;
+            for voice in &voices {
+                let start = beat_start + voice.delay_samples as usize;
                 render_note(
                     samples,
+                    channels,
                     start,
                     duration,
-                    *midi,
-                    55,
+                    chord.bass_midi(),
+                    62,
                     timbre,
                     sample_rate as f32,
-                    request.accompaniment_volume * 0.6 * voice.gain,
+                    slot.volume * 0.8 * voice.gain,
+                    request.output,
                     voice.pan,
+                    slot.depth,
                     voice.detune,
                 );
+                for midi in &chord_notes {
+                    render_note(
+                        samples,
+                        channels,
+                        start,
+                        duration,
+                        *midi,
+                        55,
+                        timbre,
+                        sample_rate as f32,
+                        slot.volume * 0.6 * voice.gain,
+                        request.output,
+                        voice.pan,
+                        slot.depth,
+                        voice.detune,
+                    );
+                }
             }
         }
     }
@@ -247,15 +223,34 @@ fn melody_timbre(instrument: MelodyInstrument) -> Timbre {
     }
 }
 
-/// Render one part's notes once per copy.
-///
-/// A single copy goes through the same code as before copies existed, with
-/// unity gain, the part's base pan, and no latency or detune. Human timing is
-/// per copy: each player's curve is seeded from the tune, the voice, and the
-/// copy index.
+fn accompaniment_timbre(instrument: AccompanimentInstrument) -> Timbre {
+    match instrument {
+        AccompanimentInstrument::Piano => Timbre::Piano,
+        AccompanimentInstrument::Guitar => Timbre::Guitar,
+        AccompanimentInstrument::Accordion => Timbre::Accordion,
+    }
+}
+
+/// The procedural voice for a band voice.
+fn voice_timbre(voice: BandVoice) -> Timbre {
+    match voice {
+        BandVoice::Fiddle => melody_timbre(MelodyInstrument::Fiddle),
+        BandVoice::Accordion => melody_timbre(MelodyInstrument::Accordion),
+        BandVoice::AltoSax | BandVoice::TenorSax => melody_timbre(MelodyInstrument::AltoSax),
+        BandVoice::Clarinet => melody_timbre(MelodyInstrument::Clarinet),
+        BandVoice::Piano => accompaniment_timbre(AccompanimentInstrument::Piano),
+        BandVoice::Guitar => accompaniment_timbre(AccompanimentInstrument::Guitar),
+        // Percussion is rendered by `crate::percussion`; this is only a
+        // defensive fallback for a hand-edited request.
+        BandVoice::FootTaps | BandVoice::Drumset => Timbre::Piano,
+    }
+}
+
+/// Render one part's notes once per player in the slot.
 #[allow(clippy::too_many_arguments)]
 fn render_section(
     samples: &mut [f32],
+    channels: usize,
     notes: &[NoteEvent],
     timbre: Timbre,
     volume: f32,
@@ -263,18 +258,21 @@ fn render_section(
     samples_per_beat: f64,
     sample_rate: u32,
     base_pan: f32,
-    copies: usize,
+    players: usize,
     voice: Voice,
     humanizer: &Humanizer,
+    output: OutputMode,
+    depth: f32,
 ) {
     let chord = chord_members(notes);
-    for (copy, player) in crate::copies::voices(base_pan, copies, sample_rate)
+    for (copy, player) in crate::copies::voices(base_pan, players, sample_rate)
         .into_iter()
         .enumerate()
     {
         let timing = humanizer.voice(voice, copy);
         render_notes(
             samples,
+            channels,
             notes,
             timbre,
             volume * player.gain,
@@ -285,6 +283,8 @@ fn render_section(
             player.detune,
             timing.as_ref(),
             &chord,
+            output,
+            depth,
         );
     }
 }
@@ -292,6 +292,7 @@ fn render_section(
 #[allow(clippy::too_many_arguments)]
 fn render_notes(
     samples: &mut [f32],
+    channels: usize,
     notes: &[NoteEvent],
     timbre: Timbre,
     volume: f32,
@@ -302,6 +303,8 @@ fn render_notes(
     detune: f32,
     timing: Option<&VoiceTiming>,
     chord: &[bool],
+    output: OutputMode,
+    depth: f32,
 ) {
     for (index, note) in notes.iter().enumerate() {
         let humanized = timing.map_or(0.0, |timing| {
@@ -321,6 +324,7 @@ fn render_notes(
         }
         render_note(
             samples,
+            channels,
             start as usize,
             duration,
             note.midi,
@@ -328,28 +332,34 @@ fn render_notes(
             timbre,
             sample_rate as f32,
             volume,
+            output,
             pan,
+            depth,
             detune,
         );
     }
 }
 
-/// Render the ending's notes once per copy, timed in seconds because the
-/// ending deliberately leaves the dance-beat grid.
+/// Render the ending's notes once per player in the slot, timed in seconds
+/// because the ending deliberately leaves the dance-beat grid.
 #[allow(clippy::too_many_arguments)]
 fn render_ending_section(
     samples: &mut [f32],
+    channels: usize,
     notes: &[EndingNote],
     timbre: Timbre,
     volume: f32,
     offset: i64,
     sample_rate: u32,
     base_pan: f32,
-    copies: usize,
+    players: usize,
+    output: OutputMode,
+    depth: f32,
 ) {
-    for voice in crate::copies::voices(base_pan, copies, sample_rate) {
+    for voice in crate::copies::voices(base_pan, players, sample_rate) {
         render_ending_notes(
             samples,
+            channels,
             notes,
             timbre,
             volume * voice.gain,
@@ -357,6 +367,8 @@ fn render_ending_section(
             sample_rate,
             voice.pan,
             voice.detune,
+            output,
+            depth,
         );
     }
 }
@@ -366,6 +378,7 @@ fn render_ending_section(
 #[allow(clippy::too_many_arguments)]
 fn render_ending_notes(
     samples: &mut [f32],
+    channels: usize,
     notes: &[EndingNote],
     timbre: Timbre,
     volume: f32,
@@ -373,6 +386,8 @@ fn render_ending_notes(
     sample_rate: u32,
     pan: f32,
     detune: f32,
+    output: OutputMode,
+    depth: f32,
 ) {
     for note in notes {
         let start = offset + (note.start_seconds * sample_rate as f64).round() as i64;
@@ -384,6 +399,7 @@ fn render_ending_notes(
         }
         render_note(
             samples,
+            channels,
             start as usize,
             duration,
             note.midi,
@@ -391,7 +407,9 @@ fn render_ending_notes(
             timbre,
             sample_rate as f32,
             volume,
+            output,
             pan,
+            depth,
             detune,
         );
     }
@@ -401,6 +419,7 @@ fn render_ending_notes(
 /// edge. The fade never starts before the linger, so the last note still rings.
 fn apply_ending_fade(
     samples: &mut [f32],
+    channels: usize,
     sample_rate: u32,
     ending_start: usize,
     ending_seconds: f64,
@@ -408,6 +427,7 @@ fn apply_ending_fade(
 ) {
     crate::render::fade_ending(
         samples,
+        channels,
         sample_rate,
         ending_start as u64,
         ending_seconds,
@@ -415,17 +435,11 @@ fn apply_ending_fade(
     );
 }
 
-fn accompaniment_timbre(instrument: AccompanimentInstrument) -> Timbre {
-    match instrument {
-        AccompanimentInstrument::Piano => Timbre::Piano,
-        AccompanimentInstrument::Guitar => Timbre::Guitar,
-        AccompanimentInstrument::Accordion => Timbre::Accordion,
-    }
-}
-
+/// Add one mono note to every output channel with the slot's placement.
 #[allow(clippy::too_many_arguments)]
 fn render_note(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     midi: u8,
@@ -433,93 +447,102 @@ fn render_note(
     timbre: Timbre,
     sample_rate: f32,
     gain: f32,
+    output: OutputMode,
     pan: f32,
+    depth: f32,
     detune: f32,
 ) {
-    if duration == 0 || start >= out.len() / 2 {
+    if duration == 0 || start >= out.len() / channels {
         return;
     }
     let velocity = (velocity.max(1) as f32 / 127.0).clamp(0.05, 1.0);
     let gain = gain * velocity;
     let freq = midi_frequency(midi) * detune;
-    let pan = pan.clamp(-1.0, 1.0);
-    let left_gain = (0.5 * (1.0 - pan)).sqrt();
-    let right_gain = (0.5 * (1.0 + pan)).sqrt();
-    let duration = duration.min(out.len() / 2 - start);
+    let gains = layout::channel_gains(output, pan, depth);
+    let gains = &gains[..channels];
+    let duration = duration.min(out.len() / channels - start);
 
     match timbre {
         Timbre::Fiddle => render_fiddle(
             out,
+            channels,
             start,
             duration,
             freq,
             gain,
-            left_gain,
-            right_gain,
+            gains,
             sample_rate,
         ),
         Timbre::Accordion => render_accordion(
             out,
+            channels,
             start,
             duration,
             freq,
             gain,
-            left_gain,
-            right_gain,
+            gains,
             sample_rate,
         ),
         Timbre::Sax => render_sax(
             out,
+            channels,
             start,
             duration,
             freq,
             gain,
-            left_gain,
-            right_gain,
+            gains,
             sample_rate,
         ),
         Timbre::Clarinet => render_clarinet(
             out,
+            channels,
             start,
             duration,
             freq,
             gain,
-            left_gain,
-            right_gain,
+            gains,
             sample_rate,
         ),
         Timbre::Piano => render_piano(
             out,
+            channels,
             start,
             duration,
             freq,
             gain,
-            left_gain,
-            right_gain,
+            gains,
             sample_rate,
         ),
         Timbre::Guitar => render_guitar(
             out,
+            channels,
             start,
             duration,
             freq,
             gain,
-            left_gain,
-            right_gain,
+            gains,
             sample_rate,
         ),
+    }
+}
+
+/// Add a mono sample to an interleaved frame with the channel gains.
+fn mix_frame(out: &mut [f32], channels: usize, frame: usize, sample: f32, gains: &[f32]) {
+    let base = frame * channels;
+    for (channel, gain) in gains.iter().enumerate() {
+        out[base + channel] += sample * gain;
     }
 }
 
 #[allow(clippy::too_many_arguments)]
 fn render_fiddle(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     freq: f32,
     gain: f32,
-    left_gain: f32,
-    right_gain: f32,
+    gains: &[f32],
     sample_rate: f32,
 ) {
     let mut phase = 0.0f32;
@@ -542,20 +565,19 @@ fn render_fiddle(
             0.10,
         );
         let sample = saw * gain * envelope * 0.55;
-        out[(start + index) * 2] += sample * left_gain;
-        out[(start + index) * 2 + 1] += sample * right_gain;
+        mix_frame(out, channels, start + index, sample, gains);
     }
 }
 
 #[allow(clippy::too_many_arguments)]
 fn render_accordion(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     freq: f32,
     gain: f32,
-    left_gain: f32,
-    right_gain: f32,
+    gains: &[f32],
     sample_rate: f32,
 ) {
     let mut phase_a = 0.0f32;
@@ -577,8 +599,7 @@ fn render_accordion(
             0.08,
         );
         let sample = saw * gain * envelope * tremolo * 0.45;
-        out[(start + index) * 2] += sample * left_gain;
-        out[(start + index) * 2 + 1] += sample * right_gain;
+        mix_frame(out, channels, start + index, sample, gains);
     }
 }
 
@@ -591,12 +612,12 @@ fn render_accordion(
 #[allow(clippy::too_many_arguments)]
 fn render_sax(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     freq: f32,
     gain: f32,
-    left_gain: f32,
-    right_gain: f32,
+    gains: &[f32],
     sample_rate: f32,
 ) {
     let mut phase = 0.0f32;
@@ -618,8 +639,7 @@ fn render_sax(
             0.10,
         );
         let sample = (lowpass + edge) * gain * envelope * 0.34;
-        out[(start + index) * 2] += sample * left_gain;
-        out[(start + index) * 2 + 1] += sample * right_gain;
+        mix_frame(out, channels, start + index, sample, gains);
     }
 }
 
@@ -629,12 +649,12 @@ fn render_sax(
 #[allow(clippy::too_many_arguments)]
 fn render_clarinet(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     freq: f32,
     gain: f32,
-    left_gain: f32,
-    right_gain: f32,
+    gains: &[f32],
     sample_rate: f32,
 ) {
     let mut phase = 0.0f32;
@@ -655,20 +675,19 @@ fn render_clarinet(
             0.12,
         );
         let sample = (lowpass + body) * gain * envelope * 0.38;
-        out[(start + index) * 2] += sample * left_gain;
-        out[(start + index) * 2 + 1] += sample * right_gain;
+        mix_frame(out, channels, start + index, sample, gains);
     }
 }
 
 #[allow(clippy::too_many_arguments)]
 fn render_piano(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     freq: f32,
     gain: f32,
-    left_gain: f32,
-    right_gain: f32,
+    gains: &[f32],
     sample_rate: f32,
 ) {
     let partials = [1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0];
@@ -685,20 +704,19 @@ fn render_piano(
         }
         let release = ((duration as f32 / sample_rate - t) / 0.08).clamp(0.0, 1.0);
         let sample = sample * gain * attack * release * 0.35;
-        out[(start + index) * 2] += sample * left_gain;
-        out[(start + index) * 2 + 1] += sample * right_gain;
+        mix_frame(out, channels, start + index, sample, gains);
     }
 }
 
 #[allow(clippy::too_many_arguments)]
 fn render_guitar(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     freq: f32,
     gain: f32,
-    left_gain: f32,
-    right_gain: f32,
+    gains: &[f32],
     sample_rate: f32,
 ) {
     let delay_len = ((sample_rate / freq).round() as usize).clamp(4, 4096);
@@ -720,8 +738,7 @@ fn render_guitar(
         let envelope = ((duration as f32 / sample_rate - sample_index as f32 / sample_rate) / 0.12)
             .clamp(0.0, 1.0);
         let sample = current * gain * envelope * 0.55;
-        out[(start + sample_index) * 2] += sample * left_gain;
-        out[(start + sample_index) * 2 + 1] += sample * right_gain;
+        mix_frame(out, channels, start + sample_index, sample, gains);
     }
 }
 
@@ -742,15 +759,16 @@ fn midi_frequency(midi: u8) -> f32 {
     440.0 * 2.0_f32.powf((midi as f32 - 69.0) / 12.0)
 }
 
-fn apply_fades(samples: &mut [f32], sample_rate: u32, frames: usize) {
+fn apply_fades(samples: &mut [f32], channels: usize, sample_rate: u32) {
+    let frames = samples.len() / channels;
     let fade = ((sample_rate as f32 * 0.004).round() as usize).max(1);
     for index in 0..fade.min(frames) {
         let gain = index as f32 / fade as f32;
-        samples[index * 2] *= gain;
-        samples[index * 2 + 1] *= gain;
-        let tail = frames - 1 - index;
-        samples[tail * 2] *= gain;
-        samples[tail * 2 + 1] *= gain;
+        for channel in 0..channels {
+            samples[index * channels + channel] *= gain;
+            let tail = frames - 1 - index;
+            samples[tail * channels + channel] *= gain;
+        }
     }
 }
 
@@ -771,7 +789,7 @@ mod tests {
     use super::*;
     use crate::abc::parse_abc;
     use crate::arrange::Arrangement;
-    use contra_core::COUNT_IN_BEATS;
+    use contra_core::{BandPart, COUNT_IN_BEATS};
 
     const TUNE: &str = "X:1\nT:Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n";
 
@@ -784,9 +802,11 @@ mod tests {
             accompaniment: AccompanimentInstrument::Piano,
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
             second_accompaniment: contra_core::Countermelody::Accordion,
-            copies: contra_core::InstrumentCopies::default(),
-            band: contra_core::default_band(),
+            // Empty means "use the legacy fields"; the band-list tests below
+            // fill it explicitly, exactly as the app does.
+            band: Vec::new(),
             output: contra_core::OutputMode::Stereo,
+            copies: contra_core::InstrumentCopies::default(),
             variations: contra_core::VariationOptions::default(),
             humanize_options: contra_core::HumanizeOptions::default(),
             ending_options: contra_core::EndingOptions::default(),
@@ -809,8 +829,9 @@ mod tests {
 
     /// RMS of the loop region, which excludes the count-in and the ending.
     fn loop_rms(buffer: &AudioBuffer) -> f64 {
-        let start = buffer.loop_start_sample as usize * buffer.channels as usize;
-        let end = buffer.loop_end_sample as usize * buffer.channels as usize;
+        let channels = buffer.channels as usize;
+        let start = buffer.loop_start_sample as usize * channels;
+        let end = buffer.loop_end_sample as usize * channels;
         let sum: f64 = buffer.samples[start..end]
             .iter()
             .map(|sample| f64::from(*sample) * f64::from(*sample))
@@ -821,6 +842,7 @@ mod tests {
     #[test]
     fn renders_count_in_and_loop() {
         let buffer = render_builtin(&request());
+        assert_eq!(buffer.channels, 2);
         assert_eq!(buffer.samples.len() % 2, 0);
         assert!(buffer.count_in_samples > 0);
         assert!(buffer.frames() > buffer.count_in_samples as usize);
@@ -1102,5 +1124,183 @@ mod tests {
                 "{melody:?} should not sound like the fiddle ({difference})"
             );
         }
+    }
+
+    fn band_request() -> RenderRequest {
+        let mut request = request();
+        request.band = contra_core::default_band();
+        request.humanize_timing = false;
+        request
+    }
+
+    fn loop_energy(buffer: &AudioBuffer) -> f32 {
+        let channels = buffer.channels as usize;
+        let start = buffer.loop_start_sample as usize * channels;
+        let end = buffer.loop_end_sample as usize * channels;
+        buffer.samples[start..end]
+            .iter()
+            .map(|sample| sample.abs())
+            .sum()
+    }
+
+    #[test]
+    fn the_default_band_is_rendered_from_the_list() {
+        let buffer = crate::render::render(&band_request(), None).expect("render band");
+        assert_eq!(buffer.channels, 2);
+        assert!(loop_energy(&buffer) > 1.0, "the default band must sound");
+        assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
+        assert!(buffer.samples.iter().all(|sample| sample.abs() <= 1.0));
+
+        // Every part is present: mute one slot at a time and hear a change.
+        let reference = loop_rms(&buffer);
+        for index in 0..4 {
+            let mut request = band_request();
+            request.band[index].volume = 0.0;
+            let muted = crate::render::render(&request, None).expect("render muted band");
+            let decibels = 20.0 * (loop_rms(&muted) / reference).log10();
+            assert!(
+                decibels < -0.05,
+                "muting slot {index} should lower the mix, moved {decibels:.2} dB"
+            );
+        }
+    }
+
+    #[test]
+    fn band_renders_are_deterministic() {
+        let request = band_request();
+        let first = render_builtin(&request);
+        let second = render_builtin(&request);
+        assert_eq!(first.samples, second.samples);
+        assert_eq!(first.loop_pass_samples, second.loop_pass_samples);
+        assert!(first.samples.iter().all(|sample| sample.is_finite()));
+    }
+
+    #[test]
+    fn a_second_piano_is_an_independent_slot_not_a_copy() {
+        let mut request = band_request();
+        request.band = vec![
+            BandSlot {
+                part: BandPart::Accompaniment,
+                voice: BandVoice::Piano,
+                players: 1,
+                volume: 0.8,
+                pan: -0.5,
+                depth: 0.0,
+            },
+            BandSlot {
+                part: BandPart::Accompaniment,
+                voice: BandVoice::Piano,
+                players: 1,
+                volume: 0.2,
+                pan: 0.5,
+                depth: 0.0,
+            },
+            BandSlot {
+                part: BandPart::Melody,
+                voice: BandVoice::Fiddle,
+                players: 1,
+                volume: 0.7,
+                pan: 0.0,
+                depth: 0.0,
+            },
+        ];
+        let two = render_builtin(&request);
+        request.band.truncate(2);
+        request.band[1].volume = 0.8;
+        let equal = render_builtin(&request);
+        assert_eq!(two.frames(), equal.frames());
+        let difference = two
+            .samples
+            .iter()
+            .zip(&equal.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-3,
+            "the second piano must keep its own level and side"
+        );
+    }
+
+    #[test]
+    fn mono_is_the_stereo_downmix_and_surround_adds_channels() {
+        let mut stereo_request = band_request();
+        let stereo = render_builtin(&stereo_request);
+        let mut mono_request = band_request();
+        mono_request.output = OutputMode::Mono;
+        let mono = render_builtin(&mono_request);
+        assert_eq!(mono.channels, 1);
+        assert_eq!(stereo.channels, 2);
+        assert_eq!(mono.frames(), stereo.frames());
+        // With dry effects the mono render is the sample-for-sample average of
+        // the stereo render.
+        mono_request.effects = contra_core::AudioEffects {
+            reverb: contra_core::ReverbPreset::Off,
+            chorus: contra_core::ChorusPreset::Off,
+            echo: contra_core::EchoPreset::Off,
+        };
+        stereo_request.effects = mono_request.effects;
+        let mono = render_builtin(&mono_request);
+        let stereo = render_builtin(&stereo_request);
+        let worst = mono
+            .samples
+            .iter()
+            .enumerate()
+            .map(|(frame, sample)| {
+                let left = stereo.samples[frame * 2];
+                let right = stereo.samples[frame * 2 + 1];
+                (sample - (left + right) * 0.5).abs()
+            })
+            .fold(0.0f32, f32::max);
+        assert!(worst < 1e-5, "mono downmix differs by {worst}");
+
+        let mut surround_request = band_request();
+        surround_request.output = OutputMode::Surround;
+        let surround = render_builtin(&surround_request);
+        assert_eq!(surround.channels, 5);
+        assert_eq!(surround.frames(), stereo.frames());
+        assert!(surround.samples.iter().all(|sample| sample.is_finite()));
+        assert!(surround.samples.iter().all(|sample| sample.abs() <= 1.0));
+        assert!(
+            surround
+                .samples
+                .iter()
+                .skip(3)
+                .step_by(5)
+                .any(|sample| sample.abs() > 1e-4),
+            "the rear pair must carry the default band"
+        );
+    }
+
+    #[test]
+    fn depth_changes_the_surround_rear_channels() {
+        let mut front = band_request();
+        front.output = OutputMode::Surround;
+        for slot in &mut front.band {
+            slot.depth = 0.0;
+        }
+        let mut rear = front.clone();
+        rear.band[0].depth = 0.9;
+
+        let front = render_builtin(&front);
+        let rear = render_builtin(&rear);
+        assert_eq!(front.frames(), rear.frames());
+        assert_eq!(front.channels, 5);
+
+        let rear_energy = |buffer: &AudioBuffer| -> f32 {
+            buffer
+                .samples
+                .as_chunks::<5>()
+                .0
+                .iter()
+                .map(|frame| frame[3].abs() + frame[4].abs())
+                .sum()
+        };
+        let front_rear = rear_energy(&front);
+        let rear_rear = rear_energy(&rear);
+        assert!(
+            rear_rear > front_rear + 1.0,
+            "depth must move the slot to the rear pair: {front_rear} -> {rear_rear}"
+        );
+        assert!(rear.samples.iter().all(|sample| sample.is_finite()));
+        assert!(rear.samples.iter().all(|sample| sample.abs() <= 1.0));
     }
 }

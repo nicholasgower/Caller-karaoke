@@ -18,8 +18,8 @@ use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, Countermelody, InstrumentCopies,
-    MelodyInstrument, Percussion, PercussionRhythm,
+    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, BandPart, BandSlot, Countermelody,
+    InstrumentCopies, MelodyInstrument, Percussion, PercussionRhythm,
 };
 
 use crate::arrange::Arrangement;
@@ -181,6 +181,7 @@ pub fn export_midi_with_passes(
             arrangement,
             end_beats,
             None,
+            None,
         ));
     }
 
@@ -196,6 +197,156 @@ pub fn export_midi_with_passes(
     smf.write_std(&mut bytes)
         .expect("writing an in-memory MIDI file cannot fail");
     bytes
+}
+
+/// Build a Standard MIDI File from the user's band list.
+///
+/// One track and one General MIDI channel per player, in band order, so two
+/// pianos or a clarinet countermelody keep their own program, level, and pan.
+/// Channel 9 is the drum channel, so fifteen pitched players fit; a larger band
+/// writes its first fifteen players and the documentation records the limit.
+/// The percussion rows are merged onto the single drum channel.
+///
+/// The export is grid-exact: the millisecond player spread and the human timing
+/// of playback are performance effects and are not written, so the file lines
+/// up with the dance.
+#[allow(clippy::too_many_arguments)]
+pub fn export_midi_with_band(
+    arrangement: &Arrangement,
+    band: &[BandSlot],
+    accompaniment_rhythm: AccompanimentRhythm,
+    percussion_rhythm: PercussionRhythm,
+    bpm: f64,
+    variation_passes: u32,
+    effects: AudioEffects,
+) -> Vec<u8> {
+    let passes = variation_passes.max(1);
+    let end_beats = arrangement.loop_beats * passes as f64;
+    let mut channels = (0u8..16).filter(|channel| *channel != 9);
+    let mut tracks = Vec::new();
+    let mut metadata_used = false;
+    let mut percussion_slots = Vec::new();
+    let mut percussion_volume = 0.0f32;
+    let mut percussion_notes = Vec::new();
+
+    for slot in band.iter().filter(|slot| slot.is_pitched()) {
+        let Some(program) = slot.voice.gm_program() else {
+            continue;
+        };
+        let Some(first_channel) = channels.next() else {
+            break;
+        };
+        let names = match slot.part {
+            BandPart::Melody => &MELODY_TRACK_NAMES,
+            BandPart::Accompaniment => &ACCOMPANIMENT_TRACK_NAMES,
+            BandPart::Countermelody => &COUNTERMELODY_TRACK_NAMES,
+            BandPart::Percussion => continue,
+        };
+        let players = slot.player_count();
+        let notes = gather_band_notes(arrangement, slot, accompaniment_rhythm, passes);
+        let voices = crate::copies::voices(slot.pan, players, 1);
+        for (copy, voice) in voices.into_iter().enumerate() {
+            let channel = if copy == 0 {
+                first_channel
+            } else {
+                let Some(channel) = channels.next() else {
+                    break;
+                };
+                channel
+            };
+            let level =
+                (slot.volume.clamp(0.0, 1.0) * 110.0 * voice.gain.sqrt()).clamp(0.0, 127.0) as u8;
+            tracks.push(build_track(
+                channel,
+                program,
+                copy_track_name(names, players, copy),
+                &notes,
+                !metadata_used,
+                bpm,
+                arrangement,
+                end_beats,
+                Some(crate::copies::pan_cc(voice.pan) as u8),
+                Some(level),
+            ));
+            metadata_used = true;
+        }
+    }
+
+    for slot in band.iter().filter(|slot| !slot.is_pitched()) {
+        if let Some(style) = slot.voice.percussion_style() {
+            percussion_volume = percussion_volume.max(slot.volume);
+            percussion_slots.push(style);
+        }
+    }
+    if !percussion_slots.is_empty() {
+        for pass in 0..passes {
+            let offset = pass as f64 * arrangement.loop_beats;
+            for style in &percussion_slots {
+                percussion_notes.extend(
+                    crate::percussion::notes(
+                        arrangement.loop_beats,
+                        arrangement.meter,
+                        *style,
+                        percussion_rhythm,
+                    )
+                    .into_iter()
+                    .map(|note| shifted(note, offset)),
+                );
+            }
+        }
+        tracks.push(build_track(
+            9,
+            0,
+            "Percussion",
+            &percussion_notes,
+            false,
+            bpm,
+            arrangement,
+            end_beats,
+            None,
+            Some((percussion_volume.clamp(0.0, 1.0) * 110.0) as u8),
+        ));
+    }
+
+    let mut smf = Smf {
+        header: Header::new(
+            Format::Parallel,
+            Timing::Metrical(u15::new(TICKS_PER_QUARTER)),
+        ),
+        tracks,
+    };
+    apply_effects(&mut smf, effects);
+    let mut bytes = Vec::new();
+    smf.write_std(&mut bytes)
+        .expect("writing an in-memory MIDI file cannot fail");
+    bytes
+}
+
+/// The notes a band slot plays across all variation passes.
+fn gather_band_notes(
+    arrangement: &Arrangement,
+    slot: &BandSlot,
+    rhythm: AccompanimentRhythm,
+    passes: u32,
+) -> Vec<NoteEvent> {
+    let mut notes = Vec::new();
+    for pass in 0..passes {
+        let offset = pass as f64 * arrangement.loop_beats;
+        let pass_notes = match slot.part {
+            BandPart::Melody => arrangement.melody_notes_for_pass(pass),
+            BandPart::Countermelody => arrangement.countermelody_notes_for_pass(pass),
+            BandPart::Accompaniment => {
+                let instrument = slot
+                    .voice
+                    .accompaniment_instrument()
+                    .unwrap_or(AccompanimentInstrument::Piano);
+                arrangement.accompaniment_notes_for_pass_with_rhythm(instrument, rhythm, pass)
+            }
+            BandPart::Percussion => Vec::new(),
+        };
+        notes.extend(pass_notes.into_iter().map(|note| shifted(note, offset)));
+    }
+    notes
 }
 
 /// Add the selected General MIDI effect sends to an already built MIDI file.
@@ -359,6 +510,7 @@ fn push_part_tracks(
             arrangement,
             end_beats,
             (copies > 1).then(|| crate::copies::pan_cc(voice.pan) as u8),
+            None,
         ));
     }
 }
@@ -381,6 +533,7 @@ fn build_track(
     arrangement: &Arrangement,
     end_beats: f64,
     pan: Option<u8>,
+    volume: Option<u8>,
 ) -> Vec<TrackEvent<'static>> {
     let mut events: Vec<(u64, u8, TrackEventKind<'static>)> = Vec::new();
     let channel = u4::new(channel);
@@ -435,6 +588,19 @@ fn build_track(
 
     // A section puts each copy on its own channel with its own pan. A single
     // player writes no pan controller, exactly as before copies existed.
+    if let Some(volume) = volume {
+        events.push((
+            0,
+            0,
+            TrackEventKind::Midi {
+                channel,
+                message: MidiMessage::Controller {
+                    controller: u7::new(7),
+                    value: u7::new(volume),
+                },
+            },
+        ));
+    }
     if let Some(pan) = pan {
         events.push((
             0,
@@ -514,6 +680,7 @@ fn key_signature(key: &crate::score::Key) -> (i8, bool) {
 mod tests {
     use super::*;
     use crate::abc::parse_abc;
+    use contra_core::BandVoice;
 
     const TUNE: &str = "X:1\nT:Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n";
 
@@ -1016,5 +1183,108 @@ mod tests {
             !has_gm2_reverb_type(&smf, 0x01),
             "applying a second pass must replace the previous room"
         );
+    }
+
+    #[test]
+    fn the_band_list_exports_one_track_per_player() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let band = contra_core::default_band();
+        let bytes = export_midi_with_band(
+            &arrangement,
+            &band,
+            AccompanimentRhythm::Auto,
+            PercussionRhythm::Auto,
+            240.0,
+            1,
+            AudioEffects::default(),
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+        // Default band: two melody fiddles, one piano, two countermelody
+        // fiddles, and the merged percussion track.
+        assert_eq!(smf.tracks.len(), 6);
+        let names = track_names(&smf);
+        assert!(names.contains(&"Melody 1"));
+        assert!(names.contains(&"Melody 2"));
+        assert!(names.contains(&"Accompaniment"));
+        assert!(names.contains(&"Countermelody 2"));
+        assert!(names.contains(&"Percussion"));
+        assert!(
+            smf.tracks
+                .iter()
+                .flat_map(|track| track.iter())
+                .any(|event| matches!(
+                    event.kind,
+                    TrackEventKind::Midi {
+                        message: MidiMessage::NoteOn { .. },
+                        ..
+                    }
+                ))
+        );
+        assert!(
+            smf.tracks
+                .iter()
+                .flat_map(|track| track.iter())
+                .any(|event| matches!(
+                    event.kind,
+                    TrackEventKind::Midi {
+                        message: MidiMessage::Controller {
+                            controller,
+                            ..
+                        },
+                        ..
+                    } if controller.as_int() == 7
+                )),
+            "band slots write their own level"
+        );
+    }
+
+    #[test]
+    fn a_second_piano_exports_its_own_program_and_channel() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let band = vec![
+            BandSlot {
+                part: BandPart::Accompaniment,
+                voice: BandVoice::Piano,
+                players: 1,
+                volume: 0.8,
+                pan: -0.4,
+                depth: 0.0,
+            },
+            BandSlot {
+                part: BandPart::Accompaniment,
+                voice: BandVoice::Piano,
+                players: 1,
+                volume: 0.3,
+                pan: 0.4,
+                depth: 0.0,
+            },
+        ];
+        let bytes = export_midi_with_band(
+            &arrangement,
+            &band,
+            AccompanimentRhythm::Auto,
+            PercussionRhythm::Auto,
+            240.0,
+            1,
+            AudioEffects::default(),
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+        // Two independent accompaniment rows, not a copy count: two tracks on
+        // two channels, each with the piano program.
+        assert_eq!(smf.tracks.len(), 2);
+        let channels = smf
+            .tracks
+            .iter()
+            .filter_map(|track| {
+                track.iter().find_map(|event| match event.kind {
+                    TrackEventKind::Midi { channel, .. } => Some(channel.as_int()),
+                    _ => None,
+                })
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(channels.len(), 2);
+        assert_ne!(channels[0], channels[1], "each piano gets its own channel");
     }
 }

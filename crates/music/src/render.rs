@@ -77,7 +77,10 @@ pub struct RenderRequest {
 
 #[derive(Clone, Debug)]
 pub struct AudioBuffer {
-    /// Interleaved stereo f32 samples.
+    /// Interleaved f32 samples in the channel order of the output layout.
+    ///
+    /// `channels` is 1 for mono, 2 for stereo, and 5 for surround (front left,
+    /// front right, centre, rear left, rear right).
     pub samples: Vec<f32>,
     pub sample_rate: u32,
     pub channels: u16,
@@ -158,7 +161,12 @@ pub fn render(
         None => crate::synth::render_builtin(request),
     };
     crate::percussion::mix(&mut buffer, request);
-    crate::effects::apply(&mut buffer.samples, buffer.sample_rate, request.effects);
+    crate::effects::apply(
+        &mut buffer.samples,
+        buffer.sample_rate,
+        buffer.channels,
+        request.effects,
+    );
     if buffer.samples.is_empty() {
         return Err(RenderError::Empty);
     }
@@ -172,12 +180,14 @@ pub fn render(
 /// buffer edge.
 pub(crate) fn fade_ending(
     samples: &mut [f32],
+    channels: usize,
     sample_rate: u32,
     ending_start: u64,
     ending_seconds: f64,
     linger_seconds: f64,
 ) {
-    let frames = samples.len() / 2;
+    let channels = channels.max(1);
+    let frames = samples.len() / channels;
     // The transport jumps into the ending at a note boundary; a few
     // milliseconds of fade-in hide the sample discontinuity.
     let fade_in = ((sample_rate as f64 * 0.004).round() as usize).max(1);
@@ -188,8 +198,9 @@ pub(crate) fn fade_ending(
             break;
         }
         let gain = index as f32 / fade_in as f32;
-        samples[frame * 2] *= gain;
-        samples[frame * 2 + 1] *= gain;
+        for channel in 0..channels {
+            samples[frame * channels + channel] *= gain;
+        }
     }
 
     let end =
@@ -201,7 +212,8 @@ pub(crate) fn fade_ending(
         // `index` walks backwards from the last sample, so the very last sample
         // gets zero and the start of the fade keeps full level.
         let gain = (index as f32 / fade.max(1) as f32).powf(0.8);
-        samples[frame * 2] *= gain;
-        samples[frame * 2 + 1] *= gain;
+        for channel in 0..channels {
+            samples[frame * channels + channel] *= gain;
+        }
     }
 }

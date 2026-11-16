@@ -1,63 +1,64 @@
 ---
 title: Instruments and soundfonts
-description: Choose the melody, accompaniment, and countermelody voices, add copies of each player, balance the mix, add reverb, echo, or chorus, and load an optional user-supplied SF2 SoundFont.
+description: Build a band from a user-editable instrument list, set per-instrument level and direction, balance the caller against the band, choose mono, stereo, or surround output, add reverb, echo, or chorus, and load an optional user-supplied SF2 SoundFont.
 sidebar_position: 6
 ---
 
-Contra Karaoke imitates a small contra band. By default it plays a trio: a
-melody instrument, a chordal accompaniment, and a countermelody that is a
-melody instrument playing under the tune. Each part can expand to as many as
-four players, so a session can sound like a full band. Playback uses sampled
-instruments from a bundled subset of the Fluid R3 GM soundfont, so the app sounds
-like a band on first launch without any downloads.
+Contra Karaoke imitates a small contra band. The band is a list you edit: by
+default it has two melody fiddles, a piano, two countermelody fiddles, and three
+foot taps, so a session sounds like a full band on first launch. Playback uses
+sampled instruments from a bundled subset of the Fluid R3 GM soundfont, so no
+download is needed.
 
-## Choose instruments
+## The band list
 
 <Steps>
   <Step shot="prefs-instrument-melody">
-    Open **Preferences** and find **Instruments**. Set **Melody** to **Fiddle**
-    (default), **Accordion**, **Alto sax**, **Tenor sax**, or **Clarinet**.
+    Open **Preferences** and find **Instruments**. Each row is one instrument:
+    its **Part** chooses the notes (**Melody**, **Countermelody**,
+    **Accompaniment**, or **Percussion**), its **Instrument** chooses the voice,
+    its **Players** stepper creates a section, and its **Direction** places it
+    in the stereo or surround image.
   </Step>
   <Step shot="prefs-instrument-accompaniment">
-    Set **Accompaniment** to **Piano** (default), **Guitar**, or **Accordion**,
-    then choose a **Rhythm** from the menu beside it.
+    Use **Add instrument** to add a row and **Remove** to take one away. **Up**
+    and **Down** reorder the list, which is the order the summary and exported
+    MIDI use. A second piano is its own row, not a copy of the first.
   </Step>
   <Step shot="prefs-instrument-second">
-    Leave **Countermelody** at **Accordion** for the default trio, choose
-    **Fiddle** for a second fiddle, or choose **Off** for a duo.
+    Set a row's **Part** to **Countermelody** for the line under the tune. The
+    part chooses the notes; the instrument can be a fiddle, an accordion, a
+    clarinet, or any other voice.
   </Step>
   <Step shot="prefs-instrument-percussion">
-    Choose **Foot taps** to keep the dance beat with a soft tap, choose
-    **Drumset** for kick, snare, and hi-hat, or leave **Off** for no percussion.
-    Then choose a **Percussion rhythm**; **Match style** gives foot taps a
-    gallop and the drumset its basic kit.
+    Add a **Percussion** row and choose **Foot taps** to keep the dance beat with
+    a soft tap, or **Drumset** for kick, snare, and hi-hat. Remove every
+    percussion row for no percussion.
   </Step>
   <Step shot="prefs-instrument-mix">
-    Use the **Copies** stepper beside each part to add players, then balance the
-    mix with the volume sliders.
+    Set each row's **Volume**, then use the shared **Caller volume** and **Band
+    volume** sliders. The caller and the band have independent levels.
   </Step>
 </Steps>
 
-The session's tune summary shows the selected parts and any copy counts below
-the call prompt.
+The session's tune summary lists every band row below the call prompt. The band
+always keeps at least one pitched instrument: removing the last one falls back
+to a front fiddle rather than leaving the session silent.
 
-## Copies
+## Players and sections
 
-Every part has a **Copies** stepper. **Melody**, **Accompaniment**, and
-**Countermelody** accept one to four players; **Percussion** accepts one to
-three. The default is one player per part, which is exactly the previous single
-instrument, so an existing session sounds the same until you add a copy.
+A row's **Players** stepper accepts one to four players for a pitched part and
+one to three for percussion. Each player is a real second player, not a volume
+boost: it gets its own pan position, a few milliseconds of constant latency, and
+a small tuning or velocity difference, so a two-fiddle section sounds wider and
+thicker instead of merely louder. All players still play on the same dance-beat
+grid: the latency is a fixed offset of at most a dozen milliseconds, never
+drift. The section is levelled so that adding players thickens the part without
+changing how loud it is, and the renderer still removes any peak above its
+headroom.
 
-A copy is a real second player, not a volume boost. Each copy gets its own pan
-position, a few milliseconds of constant latency, and a small tuning or velocity
-difference, so a two-fiddle section sounds wider and thicker instead of merely
-louder. All copies still play on the same dance-beat grid: the latency is a fixed
-offset of at most a dozen milliseconds, never drift. The section is levelled so
-that adding players thickens the part without changing how loud it is, and the
-renderer still removes any peak above its headroom.
-
-Copy counts are saved with the other preferences. Changing one re-renders the
-loop without restarting playback, like an instrument change.
+The list is saved with the other preferences. Changing a row re-renders the loop
+without restarting playback, like any other instrument change.
 
 ## The countermelody
 
@@ -67,25 +68,25 @@ melody note is sounding and snapped to a nearby chord tone. It follows the
 tune's contour instead of holding a pedal, and it leaves a beat open rather than
 repeating a pitch.
 
-It stays on the same 64-beat grid, adds no new timing, and is mixed at the
-**Accompaniment volume** level a little to the other side of the stereo field.
-During a variation pass it rests in the same bar as the accompaniment, so a
-"melody alone" bar really is alone.
+It stays on the same 64-beat grid, adds no new timing, and uses its own row's
+**Volume** and **Direction** settings. During a variation pass it rests in the
+same bar as the accompaniment, so a "melody alone" bar really is alone.
 
 ## Percussion
 
-Percussion is optional and off by default. **Foot taps** play a one-and-a
-gallop by default: on each dance beat, an eighth-note tap on the beat followed
-by two sixteenth-note taps halfway and three-quarters through the beat
+Percussion is optional and comes from the band list; the default band has one
+foot-tap row with three players. **Foot taps** play a one-and-a gallop by
+default: on each dance beat, an eighth-note tap on the beat followed by two
+sixteenth-note taps halfway and three-quarters through the beat
 (“one and a two and a…”). **Drumset** adds a basic kick, snare, and hi-hat
 pattern: the hats subdivide each beat in half for reels and in thirds for
 compound meters such as jigs. The rhythm menu can change either pattern.
 
-Percussion starts with the count-in when enabled and sits on the same 64-beat
-grid. It does not change the dance timing or the calls. **Percussion volume**
-controls its level; the control is available whenever percussion is on. The
-percussion voices are generated by the app, so they work with the bundled
-soundfont, a user-supplied font, and the built-in synth.
+Percussion starts with the count-in and sits on the same 64-beat grid. It does
+not change the dance timing or the calls. Each percussion row has its own
+**Volume**, **Players**, and **Direction**; the percussion voices are generated
+by the app, so they work with the bundled soundfont, a user-supplied font, and
+the built-in synth. Removing every percussion row leaves them out.
 
 ### Percussion rhythms
 
@@ -130,15 +131,34 @@ progression when the ABC has none. Only its rhythm changes.
 
 <Steps>
   <Step shot="prefs-instrument-mix">
-    Adjust **Melody volume**, **Accompaniment volume**, and **Percussion
-    volume**. The first two range from 0 to 1.5, with defaults of 0.75 and 0.65;
-    percussion defaults to 0.5. The countermelody follows the accompaniment
-    volume.
+    Set each row's **Volume** (0 to 1.5). Then use the two shared sliders:
+    **Caller volume** for the spoken calls and **Band volume** for the whole
+    music mix. Both range from 0 to 1.5.
   </Step>
 </Steps>
 
-The session **Volume** control is a master level applied on top of this mix.
-Copy counts do not change the balance; the section is levelled automatically.
+The caller and band levels are independent: turning the band down never hides a
+call, and turning the caller down never changes the music. Both apply
+immediately without re-rendering. The band master sits on top of the per-row
+volumes; adding players does not change the balance, because the section is
+levelled automatically.
+
+## Output layout
+
+**Preferences → Playback → Output mode** chooses how the band is mixed:
+
+| Mode | Channels | What you hear |
+| --- | --- | --- |
+| Mono | 1 | The same music folded to one channel. |
+| Stereo | 2 | The default left/right image. |
+| Surround | 5 | Front left, front right, centre, rear left, rear right. |
+
+A row's **Direction** sets its side and whether it sits at the front or behind
+the dancers. In surround, a rear row is sent to the rear pair and a front row to
+the front pair, with a smooth crossfade at intermediate depth. A surround render
+played on a stereo device is folded down to the front pair plus a little centre
+and rear, so no instrument disappears; a mono or stereo render on a
+multichannel device keeps its channels and leaves the extra outputs silent.
 
 ## Effects
 
@@ -149,8 +169,12 @@ voice shares the same space:
 | Effect | Choices | Default |
 | --- | --- | --- |
 | Reverb | Off, Small room, Medium room, Large room, Hall | Medium room |
-| Echo | Off, Subtle, Strong | Off |
+| Echo | Off, Subtle, Strong | Subtle |
 | Chorus | Off, Subtle, Rich | Off |
+
+The subtle echo is a short slapback: it widens the band without smearing the
+dance pulse. Choose **Off** for a completely dry session or **Strong** for a
+longer echo.
 
 Changes re-render the loop without restarting; playback keeps its position.
 The same settings are written into an exported MIDI file as General MIDI effect
@@ -180,8 +204,9 @@ countermelody rests too.
 does not play to a click, so each player is allowed to drift a little against
 the beat:
 
-- every voice — melody, accompaniment, and countermelody, including each copy —
-  has its own slow tempo deviation, never more than 0.35 % of the chosen tempo;
+- every voice — melody, accompaniment, and countermelody, including each player
+  in a section — has its own slow tempo deviation, never more than 0.35 % of the
+  chosen tempo;
 - a PID controller, one per player, pulls the accumulated timing error back to
   the user-set tempo over about sixteen bars, so a player can wander but never
   settles into a permanent offset;
@@ -202,11 +227,11 @@ sounds the same each time it is rendered.
 
 ## Apply the change
 
-Instrument, rhythm, copy-count, volume, effect, and music-variation changes
-apply without restarting the music. Release the control and the app re-renders
-the loop, keeping the current beat. If the session is not playing, press
-**Play** to render and start.
-Session **Volume** changes apply immediately to the existing buffer.
+Instrument, rhythm, player-count, volume, direction, output-mode, effect, and
+music-variation changes apply without restarting the music. Release the control
+and the app re-renders the loop, keeping the current beat. If the session is not
+playing, press **Play** to render and start. The caller and band levels apply
+immediately to the existing buffer.
 
 ## Soundfont
 
@@ -238,21 +263,19 @@ The chosen instruments map to General MIDI programs in either font:
 
 | Instrument | GM program | In the bundled subset |
 | --- | --- | --- |
-| Fiddle (melody) | 40 — Violin | Yes |
-| Accordion (melody) | 21 — Accordion | Yes |
-| Alto sax (melody) | 65 — Alto Sax | Yes |
-| Tenor sax (melody) | 66 — Tenor Sax | Yes |
-| Clarinet (melody) | 71 — Clarinet | Yes |
-| Piano (accompaniment) | 0 — Acoustic Grand Piano | Yes |
-| Guitar (accompaniment) | 25 — Acoustic Guitar (steel) | Yes |
-| Accordion (accompaniment) | 21 — Accordion | Yes |
-| Accordion (countermelody) | 21 — Accordion | Yes |
-| Fiddle (countermelody) | 40 — Violin | Yes |
+| Fiddle | 40 — Violin | Yes |
+| Accordion | 21 — Accordion | Yes |
+| Alto sax | 65 — Alto Sax | Yes |
+| Tenor sax | 66 — Tenor Sax | Yes |
+| Clarinet | 71 — Clarinet | Yes |
+| Piano | 0 — Acoustic Grand Piano | Yes |
+| Guitar | 25 — Acoustic Guitar (steel) | Yes |
 
-Copies of a part use the same program as that part. With a loaded font, each
-copy is a separate General MIDI channel (and its own track in an exported MIDI
-file), so the font's own round-robin or pan behaviour is not shared between
-copies.
+Any voice can play any pitched part, so the table is not a role list: a
+clarinet melody and a piano countermelody are valid. Players in a row share the
+row's program. With a loaded font, each player is a separate General MIDI
+channel (and its own track in an exported MIDI file), so the font's own
+round-robin or pan behaviour is not shared between players.
 
 If a font you load does not contain one of those programs, the result depends on
 the file and may be silent for that part. Choose **Use bundled** to go back to

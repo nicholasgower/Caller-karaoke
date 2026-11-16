@@ -6,14 +6,14 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, BandSlot,
-    COUNT_IN_BEATS, Countermelody, DEFAULT_DANCE_SOURCE, Dance, DancerSoundEvent, EndingOptions,
-    FolderFilter, HumanizeOptions, InstrumentCopies, Library, MelodyInstrument, MoveKind,
-    OutputMode, Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset,
+    AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, BandPart, BandSlot,
+    BandVoice, COUNT_IN_BEATS, Countermelody, DEFAULT_DANCE_SOURCE, Dance, DancerSoundEvent,
+    EndingOptions, FolderFilter, HumanizeOptions, InstrumentCopies, Library, MelodyInstrument,
+    MoveKind, OutputMode, Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset,
     ScheduledCall, Theme, TimelineConfig, Tune, VariationOptions,
 };
 use contra_music::{
-    Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
+    Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_band, parse_abc,
     render,
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -601,12 +601,14 @@ impl ContraApp {
             Ok(audio) => {
                 audio.set_looping(prefs.loop_enabled);
                 audio.set_volume(prefs.master_volume);
+                audio.set_caller_volume(prefs.caller_volume);
                 (audio, None)
             }
             Err(error) => {
                 let audio = AudioEngine::silent(48_000);
                 audio.set_looping(prefs.loop_enabled);
                 audio.set_volume(prefs.master_volume);
+                audio.set_caller_volume(prefs.caller_volume);
                 (audio, Some(error))
             }
         };
@@ -1081,6 +1083,7 @@ impl ContraApp {
         let audio = AudioEngine::headless_clock(48_000, prefs.tempo_bpm);
         audio.set_looping(prefs.loop_enabled);
         audio.set_volume(prefs.master_volume);
+        audio.set_caller_volume(prefs.caller_volume);
 
         let mut speech = Speech::stub();
         speech.set_rate(prefs.speech_rate());
@@ -1295,6 +1298,7 @@ impl ContraApp {
         // value again.
         self.audio.set_looping(self.prefs.loop_enabled);
         self.audio.set_volume(self.prefs.master_volume);
+        self.audio.set_caller_volume(self.prefs.caller_volume);
         self.source.set_proxy(
             self.prefs.web_proxy_url.clone(),
             self.prefs.web_proxy_token.clone(),
@@ -1534,6 +1538,7 @@ impl ContraApp {
         self.arrangement = Some(arrangement);
         self.audio.set_looping(self.prefs.loop_enabled);
         self.audio.set_volume(self.prefs.master_volume);
+        self.audio.set_caller_volume(self.prefs.caller_volume);
         self.needs_render = false;
         self.pending_audio = false;
         self.status = "Music ready".into();
@@ -2068,7 +2073,7 @@ impl ContraApp {
     fn export_midi(&mut self) {
         #[cfg(any(target_arch = "wasm32", target_os = "android"))]
         {
-            let _ = export_midi_with_passes;
+            let _ = export_midi_with_band;
             self.error = Some("MIDI export is not available in this build yet.".into());
         }
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
@@ -2094,18 +2099,14 @@ impl ContraApp {
             } else {
                 1
             };
-            let bytes = export_midi_with_passes(
+            let bytes = export_midi_with_band(
                 &arrangement,
-                self.prefs.melody,
-                self.prefs.accompaniment,
+                &self.prefs.band_slots(),
                 self.prefs.accompaniment_rhythm,
-                self.prefs.second_accompaniment,
-                self.prefs.percussion,
                 self.prefs.percussion_rhythm,
                 self.prefs.tempo_bpm,
                 variation_passes,
                 self.prefs.effects,
-                self.prefs.instrument_copies,
             );
             match std::fs::write(&path, bytes) {
                 Ok(()) => self.status = format!("Saved MIDI to {}", path.display()),

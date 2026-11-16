@@ -24,7 +24,11 @@ struct Shared {
     /// Play the once-only ending at the end of the current pass instead of
     /// looping. The app sets this from the **End tune** control.
     ending: AtomicBool,
+    /// Band level from Preferences::master_volume.
     volume: AtomicU32,
+    /// Caller/speech level from Preferences::caller_volume. Independent of the
+    /// band, so turning the band down never hides a call.
+    caller_volume: AtomicU32,
     speech: ArcSwapOption<Vec<f32>>,
     speech_position: AtomicU64,
     speech_playing: AtomicBool,
@@ -210,6 +214,13 @@ impl AudioEngine {
             .store(volume.clamp(0.0, 2.0).to_bits(), Ordering::Relaxed);
     }
 
+    /// Set the caller/speech level without touching the band mix.
+    pub fn set_caller_volume(&self, volume: f32) {
+        self.shared
+            .caller_volume
+            .store(volume.clamp(0.0, 2.0).to_bits(), Ordering::Relaxed);
+    }
+
     pub fn is_playing(&self) -> bool {
         self.shared.playing.load(Ordering::Relaxed)
     }
@@ -258,6 +269,7 @@ impl Shared {
             finished: AtomicBool::new(false),
             ending: AtomicBool::new(false),
             volume: AtomicU32::new(1.0f32.to_bits()),
+            caller_volume: AtomicU32::new(1.0f32.to_bits()),
             speech: ArcSwapOption::empty(),
             speech_position: AtomicU64::new(0),
             speech_playing: AtomicBool::new(false),
@@ -294,12 +306,16 @@ where
 {
     let channels = channels.max(1);
     let volume = f32::from_bits(shared.volume.load(Ordering::Relaxed));
+    let caller_volume = f32::from_bits(shared.caller_volume.load(Ordering::Relaxed));
     let music_buffer = shared.buffer.load();
     let music_playing = shared.playing.load(Ordering::Relaxed);
     let music = music_buffer
         .as_ref()
         .filter(|_| music_playing)
         .map(|buffer| buffer.as_ref());
+    let output_channels = music.map(|buffer| buffer.channels.max(1)).unwrap_or(2);
+    let output_mode = mode_of(output_channels);
+    let caller_gains = contra_music::layout::caller_gains(output_mode);
     let looping = shared.looping.load(Ordering::Relaxed);
     let ending_requested = shared.ending.load(Ordering::Relaxed);
     let mut music_position = shared.position.load(Ordering::Relaxed);
@@ -311,7 +327,7 @@ where
     let mut speech_position = shared.speech_position.load(Ordering::Relaxed);
 
     for frame in data.chunks_mut(channels) {
-        let (mut left, mut right) = (0.0f32, 0.0f32);
+        let mut staged = [0.0f32; contra_music::layout::MAX_CHANNELS];
 
         if let Some(buffer) = music {
             if ending_requested {
@@ -364,36 +380,39 @@ where
                 }
             }
             if !music_finished {
-                let index = music_position as usize * 2;
-                left = buffer.samples.get(index).copied().unwrap_or(0.0) * volume;
-                right = buffer.samples.get(index + 1).copied().unwrap_or(left) * volume;
+                let source_channels = buffer.channels.max(1) as usize;
+                let index = music_position as usize * source_channels;
+                for channel in 0..source_channels.min(staged.len()) {
+                    staged[channel] =
+                        buffer.samples.get(index + channel).copied().unwrap_or(0.0) * volume;
+                }
                 music_position += 1;
             }
         }
 
         if speech_playing && let Some(samples) = speech {
             if let Some(sample) = samples.get(speech_position as usize) {
-                let sample = sample * volume;
-                left += sample;
-                right += sample;
+                let sample = sample * caller_volume;
+                for (channel, gain) in caller_gains
+                    .iter()
+                    .enumerate()
+                    .take(output_channels as usize)
+                {
+                    if channel < staged.len() {
+                        staged[channel] += sample * gain;
+                    }
+                }
                 speech_position += 1;
             } else {
                 speech_playing = false;
             }
         }
 
-        left = left.clamp(-1.0, 1.0);
-        right = right.clamp(-1.0, 1.0);
-        match frame.len() {
-            0 => {}
-            1 => frame[0] = T::from_sample((left + right) * 0.5),
-            _ => {
-                frame[0] = T::from_sample(left);
-                frame[1] = T::from_sample(right);
-                for sample in frame.iter_mut().skip(2) {
-                    *sample = T::from_sample(0.0);
-                }
-            }
+        let mut mixed = [0.0f32; 8];
+        let length = frame.len().min(mixed.len());
+        downmix(&staged[..output_channels as usize], &mut mixed[..length]);
+        for (index, sample) in frame.iter_mut().enumerate() {
+            *sample = T::from_sample(mixed.get(index).copied().unwrap_or(0.0));
         }
     }
 
@@ -408,6 +427,61 @@ where
     shared
         .speech_playing
         .store(speech_playing, Ordering::Relaxed);
+}
+
+/// The layout a rendered buffer uses, from its channel count.
+fn mode_of(channels: u16) -> contra_core::OutputMode {
+    match channels {
+        1 => contra_core::OutputMode::Mono,
+        5 => contra_core::OutputMode::Surround,
+        _ => contra_core::OutputMode::Stereo,
+    }
+}
+
+/// Map one rendered frame onto the device's channels without allocating.
+///
+/// A mono device hears the energy average of every rendered channel. A stereo
+/// device folds a surround frame to its front pair plus a little centre and
+/// rear, so no instrument disappears. A device with more channels than the
+/// render keeps the layout's channel order and leaves the rest silent.
+fn downmix(src: &[f32], dst: &mut [f32]) {
+    for sample in dst.iter_mut() {
+        *sample = 0.0;
+    }
+    match (src.len(), dst.len()) {
+        (5, 1) => {
+            dst[0] = (src[0] + src[1] + src[2] + src[3] + src[4]) / 5.0;
+        }
+        (5, 2) => {
+            dst[0] = src[0] + 0.5 * src[2] + 0.707 * src[3];
+            dst[1] = src[1] + 0.5 * src[2] + 0.707 * src[4];
+        }
+        (5, _) => {
+            for (channel, sample) in src.iter().enumerate().take(dst.len()) {
+                dst[channel] = *sample;
+            }
+        }
+        (2, 1) => dst[0] = (src[0] + src[1]) * 0.5,
+        (2, _) => {
+            dst[0] = src[0];
+            if dst.len() > 1 {
+                dst[1] = src[1];
+            }
+        }
+        (1, _) => {
+            for sample in dst.iter_mut() {
+                *sample = src[0];
+            }
+        }
+        (_, _) => {
+            for (channel, sample) in src.iter().enumerate().take(dst.len()) {
+                dst[channel] = *sample;
+            }
+        }
+    }
+    for sample in dst.iter_mut() {
+        *sample = sample.clamp(-1.0, 1.0);
+    }
 }
 
 // Keep `cpal::Sample` in scope for the generic conversion above.
@@ -546,5 +620,107 @@ mod tests {
         assert!(!shared.playing.load(Ordering::Relaxed));
         assert_eq!(shared.position.load(Ordering::Relaxed), 4_000);
         assert!(data[0] > 0.4);
+    }
+
+    fn constant_buffer(value: f32, channels: u16) -> AudioBuffer {
+        let mut buffer = test_buffer();
+        buffer.channels = channels;
+        buffer.samples = vec![value; buffer.loop_end_sample as usize * channels as usize + 200];
+        buffer
+    }
+
+    #[test]
+    fn the_caller_level_is_independent_of_the_band_level() {
+        // Silent band, audible caller.
+        let shared = Shared::new();
+        shared.buffer.store(Some(Arc::new(constant_buffer(0.0, 2))));
+        shared.playing.store(true, Ordering::Relaxed);
+        shared.speech.store(Some(Arc::new(vec![0.5; 64])));
+        shared.speech_playing.store(true, Ordering::Relaxed);
+        shared.volume.store(0.0f32.to_bits(), Ordering::Relaxed);
+        shared
+            .caller_volume
+            .store(1.0f32.to_bits(), Ordering::Relaxed);
+        let mut data = [0.0f32; 8];
+        write_data(&mut data, 2, &shared);
+        assert!(data[0] > 0.4, "the caller must survive a muted band");
+
+        // Audible band, silent caller.
+        let shared = Shared::new();
+        shared.buffer.store(Some(Arc::new(constant_buffer(0.5, 2))));
+        shared.playing.store(true, Ordering::Relaxed);
+        shared.speech.store(Some(Arc::new(vec![0.5; 64])));
+        shared.speech_playing.store(true, Ordering::Relaxed);
+        shared.volume.store(1.0f32.to_bits(), Ordering::Relaxed);
+        shared
+            .caller_volume
+            .store(0.0f32.to_bits(), Ordering::Relaxed);
+        let mut data = [0.0f32; 8];
+        write_data(&mut data, 2, &shared);
+        assert!(
+            (data[0] - 0.5).abs() < 1e-6,
+            "the band is unaffected by the caller"
+        );
+        assert!((data[1] - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_surround_buffer_plays_on_a_stereo_device_without_missing_parts() {
+        let shared = Shared::new();
+        let mut buffer = constant_buffer(0.0, 5);
+        // Front left, front right, centre, rear left, rear right.
+        for frame in buffer.samples.as_chunks_mut::<5>().0.iter_mut() {
+            frame[0] = 0.2;
+            frame[1] = -0.2;
+            frame[2] = 0.1;
+            frame[3] = 0.1;
+            frame[4] = -0.1;
+        }
+        shared.buffer.store(Some(Arc::new(buffer)));
+        shared.playing.store(true, Ordering::Relaxed);
+        let mut data = [0.0f32; 10];
+        write_data(&mut data, 2, &shared);
+        assert!(
+            data[0] > 0.1,
+            "front and rear left reach the left device channel"
+        );
+        assert!(
+            data[1] < -0.1,
+            "front and rear right reach the right channel"
+        );
+        assert!(data.iter().all(|sample| sample.is_finite()));
+        assert!(data.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn a_surround_buffer_keeps_all_five_channels_on_a_surround_device() {
+        let shared = Shared::new();
+        let mut buffer = constant_buffer(0.0, 5);
+        for frame in buffer.samples.as_chunks_mut::<5>().0.iter_mut() {
+            frame[0] = 0.1;
+            frame[1] = 0.2;
+            frame[2] = 0.3;
+            frame[3] = 0.4;
+            frame[4] = 0.5;
+        }
+        shared.buffer.store(Some(Arc::new(buffer)));
+        shared.playing.store(true, Ordering::Relaxed);
+        let mut data = [0.0f32; 10];
+        write_data(&mut data, 5, &shared);
+        assert!((data[0] - 0.1).abs() < 1e-6);
+        assert!((data[1] - 0.2).abs() < 1e-6);
+        assert!((data[2] - 0.3).abs() < 1e-6);
+        assert!((data[3] - 0.4).abs() < 1e-6);
+        assert!((data[4] - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_stereo_buffer_plays_on_a_mono_device_as_its_sum() {
+        let shared = Shared::new();
+        shared.buffer.store(Some(Arc::new(constant_buffer(0.4, 2))));
+        shared.playing.store(true, Ordering::Relaxed);
+        let mut data = [0.0f32; 4];
+        write_data(&mut data, 1, &shared);
+        assert!((data[0] - 0.4).abs() < 1e-6);
     }
 }

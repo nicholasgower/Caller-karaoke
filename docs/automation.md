@@ -134,9 +134,9 @@ succeeds. Then work in an observe → act → verify loop:
 | `resize` | Change the viewport size in logical points. |
 | `wait_for` | Poll until matching widgets or frames appear. |
 | `batch` | Run several actions and observations in one round trip. |
-| `session_state` | Read the Session tab's transport state, beat, tempo, volume, toggles, and (while Preferences is open) whether Undo and Redo are available. |
+| `session_state` | Read the Session tab's transport state, beat, tempo, band volume, toggles, and (while Preferences is open) whether Undo and Redo are available. |
 | `session_action` | Press Play, Pause, Restart, End, or Cancel ending; `undo` and `redo` press the keyboard chords. |
-| `session_set` | Set the tempo, volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. |
+| `session_set` | Set the tempo, band volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. The **Caller volume** slider carries an accessible name, so the generic widget tools can set it too. |
 | `session_wait` | Wait until the transport reaches a state or the beat crosses a bound. |
 
 Everything uses logical points in one coordinate frame: widget `bounds`, raw

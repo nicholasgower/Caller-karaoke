@@ -13,22 +13,28 @@ use std::f32::consts::TAU;
 
 use contra_core::{AudioEffects, ChorusPreset, EchoPreset, ReverbPreset};
 
-/// Apply the selected effects to an interleaved stereo buffer.
+/// Apply the selected effects to an interleaved buffer.
+///
+/// `channels` is the buffer's channel count. Stereo keeps the original chain
+/// sample-for-sample; mono runs the same chain on one channel; every extra
+/// surround channel gets its own delay line and reverb so a five-channel render
+/// is genuinely processed instead of being read as two-channel frames.
 ///
 /// Nothing changes when all three effects are off, which keeps the dry render
 /// sample-for-sample identical to the previous behaviour.
-pub fn apply(samples: &mut [f32], sample_rate: u32, effects: AudioEffects) {
-    if effects.is_dry() || samples.len() < 2 {
+pub fn apply(samples: &mut [f32], sample_rate: u32, channels: u16, effects: AudioEffects) {
+    let channels = usize::from(channels.max(1));
+    if effects.is_dry() || samples.len() < channels {
         return;
     }
     let sample_rate = sample_rate.max(8_000);
-    apply_chorus(samples, sample_rate, effects.chorus);
-    apply_echo(samples, sample_rate, effects.echo);
-    apply_reverb(samples, sample_rate, effects.reverb);
+    apply_chorus(samples, sample_rate, channels, effects.chorus);
+    apply_echo(samples, sample_rate, channels, effects.echo);
+    apply_reverb(samples, sample_rate, channels, effects.reverb);
     limit(samples);
 }
 
-fn apply_chorus(samples: &mut [f32], sample_rate: u32, preset: ChorusPreset) {
+fn apply_chorus(samples: &mut [f32], sample_rate: u32, channels: usize, preset: ChorusPreset) {
     let (rate_hz, depth_seconds, base_seconds, wet) = match preset {
         ChorusPreset::Off => return,
         ChorusPreset::Subtle => (0.45, 0.0025, 0.018, 0.10),
@@ -37,21 +43,21 @@ fn apply_chorus(samples: &mut [f32], sample_rate: u32, preset: ChorusPreset) {
     let base = base_seconds * sample_rate as f32;
     let depth = depth_seconds * sample_rate as f32;
     let length = (base + depth).ceil() as usize + 2;
-    let mut left = vec![0.0f32; length];
-    let mut right = vec![0.0f32; length];
+    let mut lines = vec![vec![0.0f32; length]; channels];
     let mut write = 0usize;
     let mut phase = 0.0f32;
     let step = rate_hz / sample_rate as f32;
 
-    for frame in samples.as_chunks_mut::<2>().0 {
-        left[write] = frame[0];
-        right[write] = frame[1];
-
-        // A quarter-cycle offset between the channels widens the image.
-        let delay_left = base + depth * (0.5 + 0.5 * (TAU * phase).sin());
-        let delay_right = base + depth * (0.5 + 0.5 * (TAU * (phase + 0.25)).sin());
-        frame[0] += wet * read_delay(&left, write, delay_left);
-        frame[1] += wet * read_delay(&right, write, delay_right);
+    for frame in samples.chunks_mut(channels) {
+        for (channel, line) in lines.iter_mut().enumerate() {
+            line[write] = frame[channel];
+            // A quarter-cycle offset between the first two channels widens the
+            // image exactly as the stereo chain always did. Extra channels
+            // continue the rotation rather than copying the front pair.
+            let channel_phase = phase + channel as f32 * 0.25;
+            let delay = base + depth * (0.5 + 0.5 * (TAU * channel_phase).sin());
+            frame[channel] += wet * read_delay(line, write, delay);
+        }
 
         write += 1;
         if write == length {
@@ -75,7 +81,7 @@ fn read_delay(buffer: &[f32], write: usize, delay: f32) -> f32 {
     buffer[first] * (1.0 - fraction) + buffer[second] * fraction
 }
 
-fn apply_echo(samples: &mut [f32], sample_rate: u32, preset: EchoPreset) {
+fn apply_echo(samples: &mut [f32], sample_rate: u32, channels: usize, preset: EchoPreset) {
     let (delay_seconds, feedback, wet) = match preset {
         EchoPreset::Off => return,
         EchoPreset::Subtle => (0.120, 0.22, 0.16),
@@ -85,17 +91,15 @@ fn apply_echo(samples: &mut [f32], sample_rate: u32, preset: EchoPreset) {
     if delay < 1 {
         return;
     }
-    let mut left = vec![0.0f32; delay];
-    let mut right = vec![0.0f32; delay];
+    let mut lines = vec![vec![0.0f32; delay]; channels];
     let mut index = 0usize;
 
-    for frame in samples.as_chunks_mut::<2>().0 {
-        let delayed_left = left[index];
-        let delayed_right = right[index];
-        left[index] = frame[0] + delayed_left * feedback;
-        right[index] = frame[1] + delayed_right * feedback;
-        frame[0] += delayed_left * wet;
-        frame[1] += delayed_right * wet;
+    for frame in samples.chunks_mut(channels) {
+        for (channel, line) in lines.iter_mut().enumerate() {
+            let delayed = line[index];
+            line[index] = frame[channel] + delayed * feedback;
+            frame[channel] += delayed * wet;
+        }
         index += 1;
         if index == delay {
             index = 0;
@@ -103,18 +107,38 @@ fn apply_echo(samples: &mut [f32], sample_rate: u32, preset: EchoPreset) {
     }
 }
 
-fn apply_reverb(samples: &mut [f32], sample_rate: u32, preset: ReverbPreset) {
+fn apply_reverb(samples: &mut [f32], sample_rate: u32, channels: usize, preset: ReverbPreset) {
     let Some((feedback, damp)) = reverb_room(preset) else {
         return;
     };
     // Keep the wet level tied to the same send level the MIDI export writes.
     let wet = preset.send_level() as f32 / 127.0 * 0.55;
-    let mut reverb = Reverb::new(sample_rate, feedback, damp, wet);
+    let mut front = Reverb::new(sample_rate, feedback, damp, wet);
+    // One extra mono reverb per channel beyond the front pair (the centre and
+    // the rear pair in a surround render). This keeps each channel's tail
+    // independent instead of folding the extra channels into the front pair.
+    let pairs = if channels >= 2 { 2 } else { 1 };
+    let mut mono = (pairs..channels)
+        .map(|_| Reverb::new(sample_rate, feedback, damp, wet))
+        .collect::<Vec<_>>();
 
-    for frame in samples.as_chunks_mut::<2>().0 {
-        let (left, right) = reverb.process(frame[0], frame[1]);
-        frame[0] = left;
-        frame[1] = right;
+    for frame in samples.chunks_mut(channels) {
+        if channels >= 2 {
+            let (left, right) = front.process(frame[0], frame[1]);
+            frame[0] = left;
+            frame[1] = right;
+        } else {
+            let (value, _) = front.process(frame[0], frame[0]);
+            frame[0] = value;
+        }
+        for (offset, reverb) in mono.iter_mut().enumerate() {
+            let channel = pairs + offset;
+            if channel >= channels {
+                break;
+            }
+            let (value, _) = reverb.process(frame[channel], frame[channel]);
+            frame[channel] = value;
+        }
     }
 }
 
@@ -304,6 +328,7 @@ mod tests {
         apply(
             &mut samples,
             SAMPLE_RATE,
+            2,
             effects(ReverbPreset::Off, ChorusPreset::Off, EchoPreset::Off),
         );
         assert_eq!(samples, original);
@@ -315,6 +340,7 @@ mod tests {
         apply(
             &mut samples,
             SAMPLE_RATE,
+            2,
             effects(ReverbPreset::MediumRoom, ChorusPreset::Off, EchoPreset::Off),
         );
         assert!(samples.iter().all(|sample| sample.is_finite()));
@@ -331,6 +357,7 @@ mod tests {
         apply(
             &mut samples,
             SAMPLE_RATE,
+            2,
             effects(ReverbPreset::Off, ChorusPreset::Off, EchoPreset::Subtle),
         );
         let quiet_before = energy(&samples, 0.02, 0.10);
@@ -346,6 +373,7 @@ mod tests {
         apply(
             &mut samples,
             SAMPLE_RATE,
+            2,
             effects(ReverbPreset::Off, ChorusPreset::Rich, EchoPreset::Off),
         );
         assert_eq!(samples.len(), length);
@@ -360,8 +388,8 @@ mod tests {
         let settings = effects(ReverbPreset::Hall, ChorusPreset::Subtle, EchoPreset::Strong);
         let mut first = impulse(2.0);
         let mut second = first.clone();
-        apply(&mut first, SAMPLE_RATE, settings);
-        apply(&mut second, SAMPLE_RATE, settings);
+        apply(&mut first, SAMPLE_RATE, 2, settings);
+        apply(&mut second, SAMPLE_RATE, 2, settings);
         assert_eq!(first, second);
     }
 
@@ -371,9 +399,68 @@ mod tests {
         apply(
             &mut samples,
             SAMPLE_RATE,
+            2,
             effects(ReverbPreset::Hall, ChorusPreset::Rich, EchoPreset::Strong),
         );
         assert!(samples.iter().all(|sample| sample.is_finite()));
         assert!(samples.iter().all(|sample| sample.abs() <= 0.981));
+    }
+
+    #[test]
+    fn surround_channels_are_processed_independently() {
+        // Five channels, with signal only in the centre and rear pair. A naive
+        // stereo pass would leave those frames untouched or read them as
+        // out-of-phase front channels.
+        let frames = SAMPLE_RATE as usize / 2;
+        let mut samples = vec![0.0f32; frames * 5];
+        samples[2] = 0.5;
+        samples[3] = 0.4;
+        samples[4] = -0.4;
+        samples[5 + 2] = 0.3;
+        apply(
+            &mut samples,
+            SAMPLE_RATE,
+            5,
+            effects(
+                ReverbPreset::MediumRoom,
+                ChorusPreset::Off,
+                EchoPreset::Subtle,
+            ),
+        );
+        assert!(samples.iter().all(|sample| sample.is_finite()));
+        assert!(samples.iter().all(|sample| sample.abs() <= 0.981));
+        for channel in [2usize, 3, 4] {
+            assert!(
+                samples
+                    .iter()
+                    .skip(channel)
+                    .step_by(5)
+                    .any(|sample| sample.abs() > 1e-6),
+                "surround channel {channel} lost its audio"
+            );
+        }
+    }
+
+    #[test]
+    fn a_mono_buffer_runs_the_same_chain() {
+        let frames = SAMPLE_RATE as usize;
+        let mut samples = vec![0.0f32; frames];
+        samples[0] = 0.5;
+        apply(
+            &mut samples,
+            SAMPLE_RATE,
+            1,
+            effects(
+                ReverbPreset::MediumRoom,
+                ChorusPreset::Off,
+                EchoPreset::Subtle,
+            ),
+        );
+        assert!(samples.iter().all(|sample| sample.is_finite()));
+        assert!(
+            samples[..SAMPLE_RATE as usize / 2]
+                .iter()
+                .any(|sample| sample.abs() > 1e-6)
+        );
     }
 }

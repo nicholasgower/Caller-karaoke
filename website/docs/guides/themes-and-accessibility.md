@@ -59,8 +59,8 @@ toggle — uses a 44-pixel interaction height, and the app window has a minimum
 size of 360×560. Below about 640 pixels wide the **Session** tab switches to
 that phone layout: the wordmark and long tab labels give way to three short tabs
 beside the pinned Preferences gear, which keeps the same 44-pixel target, the
-tempo and volume sliders use the full width, and the transport buttons split the
-row evenly. On a short window the whole session page scrolls so the dance card is
+tempo, caller, and band sliders use the full width, and the transport buttons
+split the row evenly. On a short window the whole session page scrolls so the dance card is
 never pushed out of reach.
 
 Swipe left or right across the content to change tabs on a touch screen, or use

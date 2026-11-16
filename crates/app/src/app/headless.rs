@@ -84,26 +84,46 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
     {
         let app = harness.state_mut();
         app.prefs.tempo_bpm = 240.0;
-        app.prefs.melody = contra_core::MelodyInstrument::Accordion;
-        app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
-        app.prefs.second_accompaniment = contra_core::Countermelody::Fiddle;
-        app.prefs.instrument_copies = contra_core::InstrumentCopies {
-            melody: 2,
-            accompaniment: 2,
-            countermelody: 2,
-            percussion: 2,
-        };
-        app.prefs.percussion = contra_core::Percussion::Drumset;
+        app.prefs.band = vec![
+            contra_core::BandSlot {
+                part: contra_core::BandPart::Melody,
+                voice: contra_core::BandVoice::Accordion,
+                players: 2,
+                volume: 0.75,
+                pan: -0.15,
+                depth: 0.0,
+            },
+            contra_core::BandSlot {
+                part: contra_core::BandPart::Accompaniment,
+                voice: contra_core::BandVoice::Guitar,
+                players: 2,
+                volume: 0.65,
+                pan: 0.10,
+                depth: 0.10,
+            },
+            contra_core::BandSlot {
+                part: contra_core::BandPart::Countermelody,
+                voice: contra_core::BandVoice::Fiddle,
+                players: 2,
+                volume: 0.55,
+                pan: 0.30,
+                depth: 0.05,
+            },
+            contra_core::BandSlot {
+                part: contra_core::BandPart::Percussion,
+                voice: contra_core::BandVoice::Drumset,
+                players: 2,
+                volume: 0.5,
+                pan: 0.0,
+                depth: 0.20,
+            },
+        ];
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
     }
     capture(harness, out, "transport-summary")?;
     {
         let app = harness.state_mut();
-        app.prefs.melody = contra_core::MelodyInstrument::Fiddle;
-        app.prefs.accompaniment = contra_core::AccompanimentInstrument::Piano;
-        app.prefs.second_accompaniment = contra_core::Countermelody::Accordion;
-        app.prefs.instrument_copies = contra_core::InstrumentCopies::default();
-        app.prefs.percussion = contra_core::Percussion::Off;
+        app.prefs.band = contra_core::default_band();
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Auto;
         app.prefs.master_volume = 0.5;
     }
@@ -551,38 +571,57 @@ fn preference_shots(
         app.prefs.web_proxy_url = None;
         app.prefs.web_proxy_token = None;
         // Show a section in the first instrument shot; the shots after it add
-        // the other parts, and the mix shot returns to the single-player
-        // default.
-        app.prefs.instrument_copies.melody = 2;
+        // the other rows, and the mix shot returns to the default list.
+        if let Some(melody) = app.prefs.band.first_mut() {
+            melody.players = 2;
+        }
     }
     capture(harness, out, "prefs-instrument-melody")?;
     {
         let app = harness.state_mut();
-        app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
+        if let Some(accompaniment) = app
+            .prefs
+            .band
+            .iter_mut()
+            .find(|slot| slot.part == contra_core::BandPart::Accompaniment)
+        {
+            accompaniment.voice = contra_core::BandVoice::Guitar;
+            accompaniment.players = 2;
+        }
         app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::BoomChuck;
-        app.prefs.instrument_copies.accompaniment = 2;
     }
     capture(harness, out, "prefs-instrument-accompaniment")?;
     {
         let app = harness.state_mut();
-        app.prefs.second_accompaniment = contra_core::Countermelody::Fiddle;
-        app.prefs.instrument_copies.countermelody = 2;
+        if let Some(countermelody) = app
+            .prefs
+            .band
+            .iter_mut()
+            .find(|slot| slot.part == contra_core::BandPart::Countermelody)
+        {
+            countermelody.voice = contra_core::BandVoice::Fiddle;
+            countermelody.players = 2;
+        }
     }
     capture(harness, out, "prefs-instrument-second")?;
     {
         let app = harness.state_mut();
-        app.prefs.percussion = contra_core::Percussion::FootTaps;
+        if let Some(percussion) = app
+            .prefs
+            .band
+            .iter_mut()
+            .find(|slot| slot.part == contra_core::BandPart::Percussion)
+        {
+            percussion.voice = contra_core::BandVoice::FootTaps;
+            percussion.players = 2;
+        }
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Gallop;
-        app.prefs.instrument_copies.percussion = 2;
     }
     capture(harness, out, "prefs-instrument-percussion")?;
     {
         let app = harness.state_mut();
-        app.prefs.second_accompaniment = contra_core::Countermelody::Accordion;
-        app.prefs.instrument_copies = contra_core::InstrumentCopies::default();
-        app.prefs.melody_volume = 0.5;
-        app.prefs.accompaniment_volume = 0.5;
-        app.prefs.percussion_volume = 0.5;
+        app.prefs.band = contra_core::default_band();
+        app.prefs.caller_volume = 1.0;
     }
     capture(harness, out, "prefs-instrument-mix")?;
     {

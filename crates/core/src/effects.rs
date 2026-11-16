@@ -205,6 +205,12 @@ mod tests {
         assert_eq!(effects.reverb, ReverbPreset::MediumRoom);
         assert_eq!(effects.chorus, ChorusPreset::Off);
         assert_eq!(effects.echo, EchoPreset::Subtle);
+        assert_eq!(EchoPreset::default(), EchoPreset::Subtle);
+        assert_eq!(
+            EchoPreset::ALL,
+            [EchoPreset::Off, EchoPreset::Subtle, EchoPreset::Strong],
+            "the Effects menu always offers Off, Subtle, and Strong"
+        );
         assert_eq!(effects.sends(), [(91, 64), (93, 0), (94, 48)]);
         assert!(!effects.is_dry());
     }
