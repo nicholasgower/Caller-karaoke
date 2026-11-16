@@ -468,14 +468,19 @@ impl ContraApp {
                 );
             }
             ui.separator();
-            for figure in &dance.figures {
-                ui.label(format!(
-                    "{}  {:.0}b  {}",
-                    figure.phrase.as_deref().unwrap_or(""),
-                    figure.beats,
-                    figure.text
-                ));
-            }
+            ui.scope(|ui| {
+                // A compact card packs its figures closer, matching the
+                // session's dance card and the saved-dance preview.
+                ui.spacing_mut().item_spacing.y = self.prefs.card_padding.gap();
+                for figure in &dance.figures {
+                    ui.label(format!(
+                        "{}  {:.0}b  {}",
+                        figure.phrase.as_deref().unwrap_or(""),
+                        figure.beats,
+                        figure.text
+                    ));
+                }
+            });
         } else if !self.picker.preview_loading {
             ui.label(
                 egui::RichText::new("Preview a dance to see its card.").color(theme::muted(ui)),

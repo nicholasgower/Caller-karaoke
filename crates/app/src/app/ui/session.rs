@@ -3,7 +3,7 @@ use crate::app::*;
 use crate::audio::AudioEngine;
 use crate::theme;
 use crate::tts::Speech;
-use contra_core::Preferences;
+use contra_core::{CardPadding, Preferences};
 use eframe::egui;
 
 /// The instrument line under the tune.
@@ -1113,6 +1113,32 @@ impl ContraApp {
     /// content-sized card leaves ragged edges and narrows the call text.
     fn dance_card_list(&self, ui: &mut egui::Ui, beat: f64, full_width: bool) {
         let animate = self.prefs.animations_enabled;
+        // The padding setting tightens both the box around each figure and the
+        // gap between its lines, so a compact card fits the whole dance on
+        // screen. Sparse is the room the card had before the setting.
+        let padding = self.prefs.card_padding;
+        ui.scope(|ui| {
+            ui.spacing_mut().item_spacing.y = padding.gap();
+            if padding == CardPadding::Compact {
+                // A card row is text, not a 40-point control, but
+                // `horizontal_wrapped` reserves the ambient control height for
+                // its phrase row. That one assumption doubled every row; the
+                // prompt card already opts out of it the same way.
+                ui.spacing_mut().interact_size.y = 0.0;
+            }
+            self.dance_card_figures(ui, beat, full_width, padding, animate);
+        });
+    }
+
+    /// Draw one padded box per figure inside [`Self::dance_card_list`].
+    fn dance_card_figures(
+        &self,
+        ui: &mut egui::Ui,
+        beat: f64,
+        full_width: bool,
+        padding: CardPadding,
+        animate: bool,
+    ) {
         let mut cursor = 0.0;
         for (figure_index, figure) in self.dance.figures.iter().enumerate() {
             let figure_end = cursor + figure.beats;
@@ -1138,7 +1164,7 @@ impl ContraApp {
             );
             egui::Frame::group(ui.style())
                 .fill(fill)
-                .inner_margin(egui::Margin::same(8))
+                .inner_margin(egui::Margin::same(padding.padding() as i8))
                 .show(ui, |ui| {
                     if full_width {
                         ui.set_width(ui.available_width());

@@ -305,6 +305,7 @@ impl ContraApp {
             String::new()
         };
         let mut action = None;
+        let card_padding = self.prefs.card_padding;
 
         if compact {
             if !empty_message.is_empty() {
@@ -319,9 +320,14 @@ impl ContraApp {
             }
             ui.separator();
             if let Some(dance) = &preview {
-                if let Some(next) =
-                    saved_dance_preview(ui, dance, &folders, preview_folder.as_deref(), true)
-                {
+                if let Some(next) = saved_dance_preview(
+                    ui,
+                    dance,
+                    &folders,
+                    preview_folder.as_deref(),
+                    true,
+                    card_padding,
+                ) {
                     action = Some(next);
                 }
             } else {
@@ -405,6 +411,7 @@ impl ContraApp {
                                             &folders,
                                             preview_folder.as_deref(),
                                             false,
+                                            card_padding,
                                         ) {
                                             action = Some(next);
                                         }
@@ -455,6 +462,7 @@ impl ContraApp {
                                     &folders,
                                     preview_folder.as_deref(),
                                     false,
+                                    card_padding,
                                 ) {
                                     action = Some(next);
                                 }
@@ -1862,6 +1870,7 @@ fn saved_dance_preview(
     folders: &[String],
     folder: Option<&str>,
     compact: bool,
+    padding: contra_core::CardPadding,
 ) -> Option<LibraryAction> {
     let mut action = None;
     ui.heading(&dance.title);
@@ -1889,14 +1898,18 @@ fn saved_dance_preview(
         );
     }
     ui.separator();
-    for figure in &dance.figures {
-        ui.label(format!(
-            "{}  {:.0}b  {}",
-            figure.phrase.as_deref().unwrap_or(""),
-            figure.beats,
-            figure.text
-        ));
-    }
+    ui.scope(|ui| {
+        // The card preview follows the same padding as the session's card.
+        ui.spacing_mut().item_spacing.y = padding.gap();
+        for figure in &dance.figures {
+            ui.label(format!(
+                "{}  {:.0}b  {}",
+                figure.phrase.as_deref().unwrap_or(""),
+                figure.beats,
+                figure.text
+            ));
+        }
+    });
     ui.add_space(6.0);
     let width = action_width(
         ui.available_width(),

@@ -19,7 +19,7 @@
 
 use super::*;
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, CallTone, Countermelody, EchoPreset,
+    AccompanimentInstrument, AccompanimentRhythm, CallTone, CardPadding, Countermelody, EchoPreset,
 };
 use eframe::egui;
 
@@ -247,6 +247,15 @@ const CONTROLS: &[Control] = &[
             prefs.theme = match prefs.theme {
                 Theme::Dark => Theme::Light,
                 Theme::Light => Theme::Dark,
+            }
+        },
+    },
+    Control {
+        name: "choice: dance card padding",
+        change: |prefs| {
+            prefs.card_padding = match prefs.card_padding {
+                CardPadding::Compact => CardPadding::Sparse,
+                CardPadding::Sparse => CardPadding::Compact,
             }
         },
     },

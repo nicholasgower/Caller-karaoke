@@ -191,6 +191,35 @@ fn assert_inside_horizontally(
     }
 }
 
+/// The bundled dance is what a caller sees first, so its whole card must fit
+/// on the desktop session tab without scrolling. The card pane hides its
+/// scroll bar when the figures fit, which makes the bar a direct check.
+#[test]
+fn the_default_dance_card_fits_without_scrolling_on_a_desktop() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Session;
+            app.started = false;
+            app.needs_render = false;
+            app
+        });
+    harness.run_steps(3);
+    let scroll_bars: Vec<_> = node_rects(&harness)
+        .into_iter()
+        .filter(|(_, role, _)| *role == accesskit::Role::ScrollBar)
+        .collect();
+    assert!(
+        scroll_bars.is_empty(),
+        "the default dance card scrolls at 1280x800: {scroll_bars:?}"
+    );
+}
+
 #[test]
 fn every_screen_fits_horizontally_at_every_supported_width() {
     for screen in SCREENS {

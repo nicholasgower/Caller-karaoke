@@ -894,6 +894,47 @@ impl Theme {
     }
 }
 
+/// How much air a dance card leaves around its figures.
+///
+/// A caller reads the card at a glance, so the compact rows fit a whole
+/// standard dance on a desktop session tab. Sparse keeps the roomier rows the
+/// app shipped with before the setting existed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CardPadding {
+    /// Tight padding, so a whole dance fits without scrolling.
+    #[default]
+    Compact,
+    /// The roomy padding used for every card before this setting existed.
+    Sparse,
+}
+
+impl CardPadding {
+    pub const ALL: [Self; 2] = [Self::Compact, Self::Sparse];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Compact => "Compact",
+            Self::Sparse => "Sparse",
+        }
+    }
+
+    /// Inner margin around a figure row, in points.
+    pub fn padding(self) -> f32 {
+        match self {
+            Self::Compact => 4.0,
+            Self::Sparse => 8.0,
+        }
+    }
+
+    /// Vertical gap between the lines of a card, in points.
+    pub fn gap(self) -> f32 {
+        match self {
+            Self::Compact => 4.0,
+            Self::Sparse => 8.0,
+        }
+    }
+}
+
 /// How the spoken call is delivered.
 ///
 /// The Kokoro model has no emotion or style input, and punctuation is reduced
@@ -1089,6 +1130,10 @@ pub struct Preferences {
     pub theme: Theme,
     /// Smooth transitions for tab changes, highlights, and screen entries.
     pub animations_enabled: bool,
+    /// Air around the figures in a dance card display; see [`CardPadding`].
+    ///
+    /// Files written before this setting existed load as [`CardPadding::Compact`].
+    pub card_padding: CardPadding,
     pub lead: LeadSettings,
     pub tempo_bpm: f64,
     pub tts_enabled: bool,
@@ -1168,7 +1213,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 12;
+pub const CURRENT_SCHEMA_VERSION: u32 = 13;
 
 /// The dance source a new or older preference file downloads from.
 ///
@@ -1466,6 +1511,7 @@ impl Default for Preferences {
             percussion_rhythm: PercussionRhythm::default(),
             theme: Theme::default(),
             animations_enabled: true,
+            card_padding: CardPadding::default(),
             lead: LeadSettings::default(),
             tempo_bpm: Tempo::DEFAULT_BPM,
             tts_enabled: false,
@@ -1786,6 +1832,7 @@ mod tests {
         );
         assert_eq!(prefs.theme, Theme::Dark);
         assert!(prefs.animations_enabled);
+        assert_eq!(prefs.card_padding, CardPadding::Compact);
         assert_eq!(prefs.tempo_bpm, 240.0);
         assert!(prefs.loop_enabled);
         assert!(prefs.count_in_enabled);
@@ -1836,6 +1883,18 @@ mod tests {
         assert_eq!(prefs.effects.echo, crate::effects::EchoPreset::Subtle);
         assert!(prefs.dancer_sounds);
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
+    }
+
+    /// The dance card is compact by default, including for a file written
+    /// before the setting existed, and sparse keeps the earlier room.
+    #[test]
+    fn dance_card_padding_defaults_to_compact() {
+        let prefs = Preferences::from_json(r#"{"schema_version":12}"#).expect("deserialize");
+        assert_eq!(prefs.card_padding, CardPadding::Compact);
+        assert!(CardPadding::Compact.padding() < CardPadding::Sparse.padding());
+        assert!(CardPadding::Compact.gap() < CardPadding::Sparse.gap());
+        assert_eq!(CardPadding::Sparse.padding(), 8.0);
+        assert_eq!(CardPadding::Sparse.gap(), 8.0);
     }
 
     #[test]
