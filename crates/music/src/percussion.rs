@@ -368,21 +368,19 @@ fn push(
     });
 }
 
-/// Mix the percussion pattern into a rendered buffer.
+/// Mix every percussion slot from the band into a rendered buffer.
 ///
 /// The count-in gets one clear note per beat, the loop passes use the selected
-/// rhythm, and the once-only ending keeps its own arrangement.
+/// rhythm, and the once-only ending keeps its own arrangement. Each slot keeps
+/// its own style, player count, level, side, and depth, so two percussion slots
+/// (a foot tap and a drum kit, say) are independent.
 pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
-    if !request.percussion.is_enabled() {
-        return;
-    }
-    let notes = notes(
-        request.arrangement.loop_beats,
-        request.arrangement.meter,
-        request.percussion,
-        request.percussion_rhythm,
-    );
-    if notes.is_empty() {
+    let band = crate::band::effective(request);
+    let slots = band
+        .iter()
+        .filter(|slot| slot.voice.percussion_style().is_some())
+        .collect::<Vec<_>>();
+    if slots.is_empty() {
         return;
     }
     let pass_samples = buffer.loop_pass_samples.max(1);
@@ -391,78 +389,92 @@ pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
         .saturating_sub(buffer.loop_start_sample))
         / pass_samples)
         .max(1) as u32;
-    let volume = request.percussion_volume.clamp(0.0, 2.0);
     let count_in_beats = request.count_in_beats.round().clamp(0.0, 8.0) as usize;
-    let voices = crate::copies::voices(0.0, request.copies.percussion_count(), buffer.sample_rate);
-    for note in count_in_notes(request.percussion, count_in_beats) {
-        let beat_start = (note.start_beat * buffer.samples_per_beat).round() as u64;
-        let duration = (note.duration_beats * buffer.samples_per_beat)
-            .round()
-            .max(1.0) as usize;
-        for voice in &voices {
-            render_note(
-                &mut buffer.samples,
-                (beat_start + voice.delay_samples) as usize,
-                duration,
-                note.midi,
-                note.velocity,
-                volume * voice.gain,
-                buffer.sample_rate,
-                voice.pan,
-            );
+    let channels = usize::from(buffer.channels.max(1));
+    for slot in slots {
+        let Some(style) = slot.voice.percussion_style() else {
+            continue;
+        };
+        let notes = notes(
+            request.arrangement.loop_beats,
+            request.arrangement.meter,
+            style,
+            request.percussion_rhythm,
+        );
+        if notes.is_empty() {
+            continue;
         }
-    }
-    for pass in 0..passes {
-        let offset = buffer.loop_start_sample + pass as u64 * pass_samples;
-        for note in &notes {
-            let start = offset + (note.start_beat * buffer.samples_per_beat).round() as u64;
+        let voices = crate::copies::voices(slot.pan, slot.player_count(), buffer.sample_rate);
+        for note in count_in_notes(style, count_in_beats) {
+            let beat_start = (note.start_beat * buffer.samples_per_beat).round() as u64;
             let duration = (note.duration_beats * buffer.samples_per_beat)
                 .round()
                 .max(1.0) as usize;
             for voice in &voices {
                 render_note(
                     &mut buffer.samples,
-                    (start + voice.delay_samples) as usize,
+                    channels,
+                    (beat_start + voice.delay_samples) as usize,
                     duration,
                     note.midi,
                     note.velocity,
-                    volume * voice.gain,
+                    slot.volume * voice.gain,
                     buffer.sample_rate,
+                    request.output,
                     voice.pan,
+                    slot.depth,
                 );
+            }
+        }
+        for pass in 0..passes {
+            let offset = buffer.loop_start_sample + pass as u64 * pass_samples;
+            for note in &notes {
+                let start = offset + (note.start_beat * buffer.samples_per_beat).round() as u64;
+                let duration = (note.duration_beats * buffer.samples_per_beat)
+                    .round()
+                    .max(1.0) as usize;
+                for voice in &voices {
+                    render_note(
+                        &mut buffer.samples,
+                        channels,
+                        (start + voice.delay_samples) as usize,
+                        duration,
+                        note.midi,
+                        note.velocity,
+                        slot.volume * voice.gain,
+                        buffer.sample_rate,
+                        request.output,
+                        voice.pan,
+                        slot.depth,
+                    );
+                }
             }
         }
     }
     normalize(&mut buffer.samples);
 }
 
-/// Pan gains for the percussion voices.
-///
-/// Linear rather than constant-power so that a centred, single player keeps
-/// exactly the level it had before copies existed. A panned copy only ever
-/// lowers one side, which cannot add headroom pressure.
-fn pan_gains(pan: f32) -> (f32, f32) {
-    let pan = pan.clamp(-1.0, 1.0);
-    (1.0 - pan.max(0.0), 1.0 + pan.min(0.0))
-}
-
 #[allow(clippy::too_many_arguments)]
 fn render_note(
     out: &mut [f32],
+    channels: usize,
     start: usize,
     duration: usize,
     midi: u8,
     velocity: u8,
     volume: f32,
     sample_rate: u32,
+    output: contra_core::OutputMode,
     pan: f32,
+    depth: f32,
 ) {
-    let frames = out.len() / 2;
+    let frames = out.len() / channels;
     if duration == 0 || start >= frames {
         return;
     }
     let duration = duration.min(frames - start);
-    let (left_gain, right_gain) = pan_gains(pan);
+    let gains = crate::layout::channel_gains(output, pan, depth);
+    let gains = &gains[..channels];
     let sample_rate = sample_rate.max(8_000) as f32;
     let velocity = (velocity.max(1) as f32 / 127.0).clamp(0.05, 1.0);
     let gain = volume * velocity;
@@ -518,8 +530,10 @@ fn render_note(
             }
         };
         let value = sample * gain * style_gain * envelope * 0.55;
-        out[start * 2 + index * 2] += value * left_gain;
-        out[start * 2 + index * 2 + 1] += value * right_gain;
+        let base = (start + index) * channels;
+        for (channel, gain) in gains.iter().enumerate() {
+            out[base + channel] += value * gain;
+        }
     }
 }
 
@@ -734,7 +748,7 @@ mod tests {
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
             second_accompaniment: contra_core::Countermelody::Off,
             copies: contra_core::InstrumentCopies::default(),
-            band: contra_core::default_band(),
+            band: Vec::new(),
             output: contra_core::OutputMode::Stereo,
             variations: contra_core::VariationOptions::default(),
             humanize_options: contra_core::HumanizeOptions::default(),
@@ -782,7 +796,7 @@ mod tests {
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
             second_accompaniment: contra_core::Countermelody::Accordion,
             copies: contra_core::InstrumentCopies::default(),
-            band: contra_core::default_band(),
+            band: Vec::new(),
             output: contra_core::OutputMode::Stereo,
             variations: contra_core::VariationOptions::default(),
             humanize_options: contra_core::HumanizeOptions::default(),
@@ -831,7 +845,7 @@ mod tests {
                 percussion: 2,
                 ..contra_core::InstrumentCopies::default()
             },
-            band: contra_core::default_band(),
+            band: Vec::new(),
             output: contra_core::OutputMode::Stereo,
             variations: contra_core::VariationOptions::default(),
             humanize_options: contra_core::HumanizeOptions::default(),
@@ -875,6 +889,78 @@ mod tests {
         assert!(
             (left - right).abs() > 1.0,
             "the percussion copies should not sit dead centre together"
+        );
+    }
+
+    #[test]
+    fn percussion_comes_from_the_band_slots_and_can_be_removed() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let mut request = RenderRequest {
+            arrangement,
+            bpm: 240.0,
+            melody: contra_core::MelodyInstrument::Fiddle,
+            accompaniment: contra_core::AccompanimentInstrument::Piano,
+            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
+            second_accompaniment: contra_core::Countermelody::Off,
+            copies: contra_core::InstrumentCopies::default(),
+            band: vec![
+                contra_core::BandSlot {
+                    part: contra_core::BandPart::Melody,
+                    voice: contra_core::BandVoice::Fiddle,
+                    players: 1,
+                    volume: 0.0,
+                    pan: 0.0,
+                    depth: 0.0,
+                },
+                contra_core::BandSlot {
+                    part: contra_core::BandPart::Percussion,
+                    voice: contra_core::BandVoice::FootTaps,
+                    players: 1,
+                    volume: 0.8,
+                    pan: -0.4,
+                    depth: 0.0,
+                },
+            ],
+            output: contra_core::OutputMode::Stereo,
+            variations: contra_core::VariationOptions::default(),
+            humanize_options: contra_core::HumanizeOptions::default(),
+            ending_options: contra_core::EndingOptions::default(),
+            dancer_sounds: false,
+            dancer_sound_volume: 0.0,
+            dancer_sound_events: Vec::new(),
+            percussion: contra_core::Percussion::Off,
+            percussion_rhythm: PercussionRhythm::Beat,
+            melody_volume: 0.0,
+            accompaniment_volume: 0.0,
+            percussion_volume: 0.0,
+            effects: contra_core::AudioEffects {
+                reverb: contra_core::ReverbPreset::Off,
+                chorus: contra_core::ChorusPreset::Off,
+                echo: contra_core::EchoPreset::Off,
+            },
+            count_in_beats: 4.0,
+            sample_rate: 24_000,
+            variation_passes: 1,
+            ending: false,
+            humanize_timing: true,
+        };
+        let with = crate::render::render(&request, None).expect("render taps");
+        let peak = with
+            .samples
+            .iter()
+            .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+        assert!(peak > 0.05, "the band's percussion slot must sound: {peak}");
+
+        request.band.retain(|slot| !slot.voice.is_percussion());
+        let without = crate::render::render(&request, None).expect("render silence");
+        assert!(
+            without.samples.iter().all(|sample| sample.abs() < 1e-9),
+            "removing every percussion slot leaves no percussion"
+        );
+        assert_eq!(
+            with.loop_pass_samples, without.loop_pass_samples,
+            "removing percussion must not move the 64-beat grid"
         );
     }
 }

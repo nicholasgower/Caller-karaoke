@@ -26,13 +26,13 @@ the tune title with unsafe characters replaced.
 
 The export contains:
 
-- three tracks when the countermelody is on — melody, accompaniment, and
-  countermelody — or two tracks when it is **Off**;
-- one additional track per copy of a part: two melody players become
-  **Melody 1** and **Melody 2** on their own channels, each with a pan
-  controller so the section is visible in a DAW. Percussion stays one track
-  because General MIDI has a single drum channel;
-- a fourth track on the General MIDI drum channel when percussion is on;
+- one track per player in the band list, each on its own General MIDI channel
+  with that row's program, level, and pan. A second piano or a clarinet
+  countermelody is an explicit track, not a copy count;
+- General MIDI has fifteen non-drum channels, so a band with more than fifteen
+  pitched players exports its first fifteen players; the others still play in
+  the app but are omitted from the file;
+- the percussion rows merged onto the single General MIDI drum channel;
 - the selected accompaniment rhythm;
 - General MIDI reverb, chorus, and echo sends at the start of every channel
   track (see [Effects](#effects));
@@ -45,9 +45,10 @@ The export contains:
 The melody is lifted above the accompaniment and accented on the dance pulse.
 Later passes add deterministic melody ornaments, chord-tone harmony doubles,
 and an occasional octave lift. Existing note timing is unchanged, so the
-64-beat grid still lines up with the dance. Copies are written on the same
-beats as their part — the millisecond spread the app uses for playback is a
-performance effect, not a change to the music — so the file stays grid-exact.
+64-beat grid still lines up with the dance. Players in a section are written on
+the same beats as their row — the millisecond spread the app uses for playback
+is a performance effect, not a change to the music — so the file stays
+grid-exact.
 The optional **Humanize timing** playback setting is likewise not written to
 the file: exported MIDI always describes the un-deviated beat grid.
 
@@ -66,9 +67,10 @@ renders the file. Set it in **Preferences → Effects**:
   controller 91 and, when reverb is on, a GM2 reverb-type message so a GM2
   player uses the requested room. Choose **Off**, **Small room**, **Medium
   room**, **Large room**, or **Hall**.
-- **Echo** defaults to **Off**. **Subtle** and **Strong** use the GM2 delay
-  send on controller 94. Players that only implement General MIDI level 1 may
-  ignore it, because controller 94 has no standard delay meaning there.
+- **Echo** defaults to **Subtle**. **Off** is dry and **Strong** is a longer
+  echo; both use the GM2 delay send on controller 94. Players that only
+  implement General MIDI level 1 may ignore it, because controller 94 has no
+  standard delay meaning there.
 - **Chorus** defaults to **Off**. **Subtle** and **Rich** use controller 93.
 
 The same settings are applied to playback in the app, after every virtual

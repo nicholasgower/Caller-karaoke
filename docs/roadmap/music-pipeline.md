@@ -55,7 +55,8 @@ Generate a backing track from the chord track:
   the weak pulse.
 - 2/2: half-note bass/chord pattern.
 - 3/4: one chord per bar with a bass note on beat 1.
-- Respect melody/accompaniment volume settings; percussion has its own volume.
+- Respect the band's per-instrument volume settings; percussion has its own
+  volume.
 - Lift the melody above the accompaniment and accent it on the dance pulse.
 - When variations are enabled, later passes add deterministic melody ornaments
   (diatonic grace notes, chord-tone doubles, occasional octave lifts) alongside
@@ -70,10 +71,21 @@ Generate a backing track from the chord track:
   closer than a minor third to the tune is moved down an octave. The bass and
   the countermelody already sit below the melody and are left alone.
 
-By default the arranger combines **two accompaniments with the melody**, forming
-a trio. The first is the chordal instrument above. The second is a countermelody
-played by a melody instrument (accordion by default, fiddle optional; Off gives a
-duo):
+The band is a user-editable list of slots. Each slot names a part (melody,
+countermelody, accompaniment, or percussion), a voice, a player count, a level,
+a side, and a depth. The part chooses the notes; the voice chooses the
+timbre/General MIDI program. Two slots on the same part are independent
+instruments, not a copy count: a second piano has its own level and place. The
+default list is two melody fiddles, one piano, two countermelody fiddles, and
+three foot taps.
+
+A slot with more than one player is a section. Each player gets an independent
+pan, a few milliseconds of constant latency, and a slight tuning or velocity
+difference, so the section sounds wider rather than merely louder. The renderer
+levels the section so its power matches a single player. The list must keep at
+least one pitched slot; removing the last one falls back to a front fiddle.
+
+The countermelody is derived from the tune rather than held as a pedal:
 
 - One note per dance beat on the same 64-beat grid, so it introduces no new
   timing.
@@ -84,9 +96,8 @@ duo):
   "melody alone" bar really is alone.
 - Derive it from the melody, key, and chord track only; the ABC needs no extra
   voice.
-- Mix it with the accompaniment volume, panned away from the melody.
 
-An optional percussion layer is off by default:
+Percussion is optional and comes from the band list:
 
 - **Foot taps** place a soft tap on every dance beat, accented at bar starts.
 - **Drumset** adds kick, snare, and hi-hat. The hats subdivide each dance beat in
@@ -96,7 +107,8 @@ An optional percussion layer is off by default:
   the once-only slow ending.
 - Render it with small procedural voices rather than a soundfont preset, so the
   bundled subset and user fonts both work.
-- Give it its own volume setting; it never changes the grid or the calls.
+- Give each percussion row its own volume, player count, side, and depth; it
+  never changes the grid or the calls.
 - Give it a rhythm menu like the accompaniment: match style, basic, on the beat,
   offbeats, half time, double time, shuffle, gallop, triplet, and train beat.
   Match style gives foot taps a gallop by default: one group per dance beat, an
@@ -158,9 +170,9 @@ accompaniment, so it works with the bundled subset and any user font.
 
 After every voice and the percussion layer are mixed, a deterministic effect
 chain applies chorus, echo, and reverb, then a peak limiter. Reverb defaults to
-a medium room; chorus and echo are off by default. The settings are shared with
-MIDI export, where the same choices become General MIDI sends. All-off leaves
-the dry buffer sample-for-sample unchanged.
+a medium room; echo defaults to a subtle slapback and chorus is off by default.
+The settings are shared with MIDI export, where the same choices become General
+MIDI sends. All-off leaves the dry buffer sample-for-sample unchanged.
 
 Do not add a full soundfont bank to the repository. A new bundled soundfont
 must be permissively licensed, trimmed to the programs used, and attributed.
@@ -173,20 +185,41 @@ Soundfont file selection:
 - Android: system document picker via a small JNI intent; fallback is scanning
   `files/soundfonts/` in the app data directory.
 
-### 6.6 Playback and clock
+### 6.6 Output layout
 
-- Render the count-in plus loop offline into a stereo PCM buffer.
+The render follows the selected output mode:
+
+- **Mono:** one channel, the level-preserving average of the stereo pair.
+- **Stereo:** the default constant-power left/right pair, unchanged from the
+  original render.
+- **Surround:** five channels - front left, front right, centre, rear left, rear
+  right. A slot's side sets its pan; its depth moves it from the front pair to
+  the rear pair with an equal-power crossfade. The centre carries the phantom
+  centre, and the rear pair is trimmed slightly.
+
+Effects process every channel independently, so a five-channel render is not
+read as two-channel frames. The cpal callback maps the rendered channels onto
+the device: mono averages, stereo folds the surround frame to its front pair
+plus a little centre and rear, and a multichannel device keeps the channel order
+and leaves unused channels silent. The band master and the caller level are
+separate gains, so turning the band down never hides a call.
+
+### 6.7 Playback and clock
+
+- Render the count-in plus loop offline into a PCM buffer with the configured
+  channel count.
 - Play through `cpal`; the audio callback only reads from the buffer and updates
   atomics (no allocation, locks, or logging).
 - The UI clock comes from the audio playback position, with latency
   compensation. Target visual accuracy: ±20 ms.
 - Pause outputs silence but keeps the stream alive; restart resets the sample
   position.
-- Tempo, instrument, or soundfont changes re-render and resume at the same
-  beat instead of restarting the loop.
+- Tempo, instrument, band, output, or soundfont changes re-render and resume at
+  the same beat instead of restarting the loop. Caller and band levels apply
+  immediately without a re-render.
 - Show a "Preparing music…" state while rendering.
 
-### 6.7 Slow ending
+### 6.8 Slow ending
 
 - The rendered buffer appends a once-only ending after the loop passes, so the
   transport can request it without another render.
@@ -201,7 +234,7 @@ Soundfont file selection:
   and shows a slow-finish state while it plays.
 - With looping off, the ending replaces the abrupt stop at the loop boundary.
 
-### 6.8 Tune rotation
+### 6.9 Tune rotation
 
 - A session may keep an ordered set of saved tunes and change at a 64-beat
   boundary after a configurable number of passes (default 8).
@@ -212,29 +245,31 @@ Soundfont file selection:
 - Rotation requires looping. The web build has no render worker and prepares
   the next tune at the boundary instead.
 
-### 6.9 MIDI export
+### 6.10 MIDI export
 
 - Export the arranged loop as a Standard MIDI File using `midly`.
 - The once-only slow ending is a live transport action and is not exported.
-- Melody and accompaniment tracks, plus a countermelody track when the
-  countermelody is on.
-- One track per copy of a melodic part, each on its own General MIDI channel
-  with a pan controller; percussion stays one drum track.
-- A percussion track on the General MIDI drum channel when percussion is on.
+- One track and one General MIDI channel per player in the band list, with that
+  slot's program, level, and pan. Two pianos or a clarinet countermelody are
+  explicit tracks, not a copy count.
+- General MIDI has fifteen non-drum channels, so a band with more than fifteen
+  pitched players exports its first fifteen players; the remaining rows are
+  omitted from the file (playback still plays them).
+- The percussion rows are merged onto the single General MIDI drum channel.
 - Include tempo, meter, key, and program changes.
 - Write the same variation passes as playback: one plain 64-beat pass when
   variations are off, four varied passes when they are on. The individual
   variation choices are applied too, so an exported file matches the loop the
   user hears.
 - Add General MIDI effect sends (reverb 91, chorus 93, delay/echo 94) to every
-  channel track. The default is a medium-room reverb with no chorus or echo.
-  A GM2 reverb-type message selects the requested room, and the sends are
-  replaced rather than stacked when an existing file is post-processed.
+  channel track. The default is a medium-room reverb with a subtle echo and no
+  chorus. A GM2 reverb-type message selects the requested room, and the sends
+  are replaced rather than stacked when an existing file is post-processed.
 - The notes must match what the synth plays. The reverb, chorus, and echo
   settings are shared with playback, where the same chain is applied to the
   rendered buffer; in the file they become General MIDI sends.
 
-### 6.10 Human timing
+### 6.11 Human timing
 
 Playback can humanize the band slightly; the preference is
 `humanize_timing`, on by default. The separate options are a tempo-drift switch,

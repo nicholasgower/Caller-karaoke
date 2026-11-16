@@ -8,7 +8,9 @@
 | Desktop UI toolkit | `eframe` / `egui` |
 | Audio I/O | `cpal` |
 | ABC parsing | `abc-parser` plus a project-owned sequencer |
-| Default instruments | Fiddle (melody), piano (accompaniment), accordion (countermelody); optional foot-tap or drumset percussion, off by default |
+| Default instruments | Editable band list: two melody fiddles, one piano, two countermelody fiddles, three foot taps; any pitched part can use any voice |
+| Output layout | Stereo by default; mono and five-channel surround (front L/R, centre, rear L/R) optional |
+| Caller level | Separate from the band master; both persist with the other preferences |
 | Soundfont support | Bundled Fluid R3 GM subset by default; optional user-supplied SF2 |
 | Web data access | Small Cloudflare Worker CORS proxy; bundled defaults as fallback |
 | Theme | Dark grey by default; light grey option |

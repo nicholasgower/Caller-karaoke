@@ -80,24 +80,25 @@ Listed in this order:
    alias templates, live previews, reset-to-default, and custom aliases for
    unmatched figures.
 3. **Instrument preferences**
-   - Melody: Fiddle (default), Accordion, Alto sax, Tenor sax, Clarinet.
-   - Accompaniment: Piano (default), Guitar, Accordion.
+   - The band is an editable list. Each row has a part (Melody, Countermelody,
+     Accompaniment, or Percussion), an instrument voice, 1-4 players (1-3 for
+     percussion), a volume, and a direction (left/centre/right, front/rear).
+   - Default list: two melody fiddles, one piano, two countermelody fiddles, and
+     three foot taps. Add, remove, and reorder rows. A band always keeps at least
+     one pitched instrument.
+   - Any pitched voice can play any pitched part: fiddle, accordion, alto sax,
+     tenor sax, clarinet, piano, or guitar.
    - Accompaniment rhythm: match instrument (default), block chords,
      boom-chuck, offbeat stabs, arpeggio, shuffle, strum, sustained.
-   - Countermelody: Accordion countermelody (default), Fiddle
-     countermelody, or Off for a duo. Melody plus the accompaniment is the
-     default trio.
-   - Copies: 1-4 players on the melody, accompaniment, and countermelody, and
-     1-3 on percussion. Each copy is a separate player with its own pan, a few
-     milliseconds of spread, and a slight detune or velocity difference; one
-     is the previous single instrument.
-   - Percussion: Off (default), Foot taps on each dance beat, or Drumset.
+   - Each row is independent: a second piano keeps its own level and place
+     rather than sharing a copy count.
    - Percussion rhythm: match style (default), basic, on the beat, offbeats,
      half time, double time, shuffle, gallop, triplet, or train beat. Match
      style gives foot taps a gallop: one group per dance beat, an eighth note
      followed by two sixteenths.
-   - Melody/accompaniment volume; the countermelody follows the
-     accompaniment volume. Percussion has its own volume.
+   - Caller volume and band volume are separate shared sliders.
+   - Output mode: Mono, Stereo (default), or Surround (five channels: front
+     left, front right, centre, rear left, rear right).
    - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.
 5. **Interface animations** — smooth tab and screen transitions, on by

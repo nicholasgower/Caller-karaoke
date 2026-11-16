@@ -491,6 +491,65 @@ impl BandVoice {
             _ => None,
         }
     }
+
+    /// The melody voice for an original melody-instrument choice.
+    pub fn from_melody(instrument: MelodyInstrument) -> Self {
+        match instrument {
+            MelodyInstrument::Fiddle => Self::Fiddle,
+            MelodyInstrument::Accordion => Self::Accordion,
+            MelodyInstrument::AltoSax => Self::AltoSax,
+            MelodyInstrument::TenorSax => Self::TenorSax,
+            MelodyInstrument::Clarinet => Self::Clarinet,
+        }
+    }
+
+    /// The band voice for an original accompaniment-instrument choice.
+    pub fn from_accompaniment(instrument: AccompanimentInstrument) -> Self {
+        match instrument {
+            AccompanimentInstrument::Piano => Self::Piano,
+            AccompanimentInstrument::Guitar => Self::Guitar,
+            AccompanimentInstrument::Accordion => Self::Accordion,
+        }
+    }
+
+    /// The band voice for the legacy percussion style.
+    pub fn from_percussion(style: Percussion) -> Option<Self> {
+        match style {
+            Percussion::Off => None,
+            Percussion::FootTaps => Some(Self::FootTaps),
+            Percussion::Drumset => Some(Self::Drumset),
+        }
+    }
+
+    /// The accompaniment instrument whose chord pattern this voice uses.
+    ///
+    /// A sustained voice (fiddle, clarinet, sax) comps like an accordion; the
+    /// arrangement only uses this to choose its `Auto` rhythm. The user's
+    /// explicit rhythm still wins.
+    pub fn accompaniment_instrument(self) -> Option<AccompanimentInstrument> {
+        match self {
+            Self::Piano => Some(AccompanimentInstrument::Piano),
+            Self::Guitar => Some(AccompanimentInstrument::Guitar),
+            Self::Accordion | Self::Fiddle | Self::AltoSax | Self::TenorSax | Self::Clarinet => {
+                Some(AccompanimentInstrument::Accordion)
+            }
+            Self::FootTaps | Self::Drumset => None,
+        }
+    }
+
+    /// The percussion style this voice plays, if it is a percussion voice.
+    pub fn percussion_style(self) -> Option<Percussion> {
+        match self {
+            Self::FootTaps => Some(Percussion::FootTaps),
+            Self::Drumset => Some(Percussion::Drumset),
+            _ => None,
+        }
+    }
+
+    /// Whether a slot with this voice contributes pitched notes.
+    pub fn is_pitched(self) -> bool {
+        !self.is_percussion()
+    }
 }
 
 /// One line of the user's band: an instrument, how many players, and where it
@@ -571,6 +630,42 @@ impl BandSlot {
                 Self::MAX_PLAYERS
             },
         ))
+    }
+
+    /// Whether this slot contributes pitched notes rather than percussion.
+    pub fn is_pitched(&self) -> bool {
+        self.voice.is_pitched()
+    }
+
+    /// Whether this slot sits behind the listener in a surround layout.
+    ///
+    /// A slot only reads as rear once it is meaningfully behind the front
+    /// stage; the default band's small depth offsets stay "front" in the label
+    /// while still giving the rear pair a little of the sound.
+    pub fn is_rear(&self) -> bool {
+        self.depth >= 0.3
+    }
+
+    /// A compact direction label for the session summary and the UI.
+    ///
+    /// `pan` names the side and `depth` names front or rear; a slot in the
+    /// middle reads "Centre front" or "Centre rear" rather than "middle".
+    pub fn direction_label(&self) -> &'static str {
+        let side = if self.pan < -0.2 {
+            "Left"
+        } else if self.pan > 0.2 {
+            "Right"
+        } else {
+            "Centre"
+        };
+        match (side, self.is_rear()) {
+            ("Left", false) => "Left front",
+            ("Left", true) => "Left rear",
+            ("Right", false) => "Right front",
+            ("Right", true) => "Right rear",
+            (_, false) => "Centre front",
+            (_, true) => "Centre rear",
+        }
     }
 }
 
@@ -1413,8 +1508,27 @@ impl Preferences {
     }
 
     /// The band to render, validated for the renderer.
+    ///
+    /// The list always contains at least one pitched slot. A file or UI that
+    /// removed every pitched instrument falls back to a single front fiddle
+    /// instead of rendering silence.
     pub fn band_slots(&self) -> Vec<BandSlot> {
-        self.band.clone()
+        let mut band = self.band.clone();
+        if band.is_empty() {
+            band = default_band();
+        }
+        if !band.iter().any(BandSlot::is_pitched) {
+            band.insert(0, BandSlot::default());
+        }
+        for slot in &mut band {
+            slot.validate();
+        }
+        band
+    }
+
+    /// Whether the list contains at least one pitched instrument.
+    pub fn has_pitched_band(&self) -> bool {
+        self.band.iter().any(BandSlot::is_pitched)
     }
 
     /// Mutable access to the band list.
@@ -1422,18 +1536,17 @@ impl Preferences {
         &mut self.band
     }
 
+    /// The first slot that plays pitched notes, if any.
+    pub fn first_pitched_slot(&self) -> Option<usize> {
+        self.band.iter().position(BandSlot::is_pitched)
+    }
+
     /// The one-slot-per-role band implied by the original settings.
     fn legacy_band(&self) -> Vec<BandSlot> {
         let mut band = Vec::new();
         band.push(BandSlot {
             part: BandPart::Melody,
-            voice: match self.melody {
-                MelodyInstrument::Fiddle => BandVoice::Fiddle,
-                MelodyInstrument::Accordion => BandVoice::Accordion,
-                MelodyInstrument::AltoSax => BandVoice::AltoSax,
-                MelodyInstrument::TenorSax => BandVoice::TenorSax,
-                MelodyInstrument::Clarinet => BandVoice::Clarinet,
-            },
+            voice: BandVoice::from_melody(self.melody),
             players: self.instrument_copies.melody,
             volume: self.melody_volume,
             pan: -0.15,
@@ -1441,11 +1554,7 @@ impl Preferences {
         });
         band.push(BandSlot {
             part: BandPart::Accompaniment,
-            voice: match self.accompaniment {
-                AccompanimentInstrument::Piano => BandVoice::Piano,
-                AccompanimentInstrument::Guitar => BandVoice::Guitar,
-                AccompanimentInstrument::Accordion => BandVoice::Accordion,
-            },
+            voice: BandVoice::from_accompaniment(self.accompaniment),
             players: self.instrument_copies.accompaniment,
             volume: self.accompaniment_volume,
             pan: 0.10,
@@ -1454,24 +1563,14 @@ impl Preferences {
         if let Some(instrument) = self.second_accompaniment.instrument() {
             band.push(BandSlot {
                 part: BandPart::Countermelody,
-                voice: match instrument {
-                    MelodyInstrument::Fiddle => BandVoice::Fiddle,
-                    MelodyInstrument::Accordion => BandVoice::Accordion,
-                    MelodyInstrument::AltoSax => BandVoice::AltoSax,
-                    MelodyInstrument::TenorSax => BandVoice::TenorSax,
-                    MelodyInstrument::Clarinet => BandVoice::Clarinet,
-                },
+                voice: BandVoice::from_melody(instrument),
                 players: self.instrument_copies.countermelody,
                 volume: self.accompaniment_volume * 0.8,
                 pan: 0.30,
                 depth: 0.05,
             });
         }
-        if let Some(voice) = match self.percussion {
-            Percussion::Off => None,
-            Percussion::FootTaps => Some(BandVoice::FootTaps),
-            Percussion::Drumset => Some(BandVoice::Drumset),
-        } {
+        if let Some(voice) = BandVoice::from_percussion(self.percussion) {
             band.push(BandSlot {
                 part: BandPart::Percussion,
                 voice,
@@ -1523,6 +1622,14 @@ impl Preferences {
         self.instrument_copies.validate();
         for slot in self.band.iter_mut() {
             slot.validate();
+        }
+        // A band must always have at least one pitched slot. Removing the last
+        // one (or loading a hand-edited file without one) falls back to a
+        // single front fiddle instead of rendering silence.
+        if self.band.is_empty() {
+            self.band = default_band();
+        } else if !self.band.iter().any(BandSlot::is_pitched) {
+            self.band.insert(0, BandSlot::default());
         }
         self.caller_volume = self.caller_volume.clamp(0.0, 2.0);
         if !self.tempo_min_bpm.is_finite() {
@@ -2579,8 +2686,103 @@ mod tests {
         volume.master_volume = 0.1;
         assert!(!volume.changes_since(&base).any());
 
+        let mut caller = base.clone();
+        caller.caller_volume = 0.2;
+        assert!(
+            !caller.changes_since(&base).any(),
+            "the caller level is applied live, not by re-rendering the band"
+        );
+
+        let mut output = base.clone();
+        output.output_mode = OutputMode::Surround;
+        assert!(
+            output.changes_since(&base).audio,
+            "the output layout changes the rendered channels"
+        );
+
+        let mut band = base.clone();
+        band.band[0].volume = 0.4;
+        assert!(
+            band.changes_since(&base).audio,
+            "a slot mix change re-renders the band"
+        );
+
         let mut theme = base.clone();
         theme.theme = Theme::Light;
         assert!(!theme.changes_since(&base).any());
+    }
+
+    #[test]
+    fn a_band_always_keeps_a_pitched_slot() {
+        let mut prefs = Preferences {
+            band: vec![BandSlot {
+                part: BandPart::Percussion,
+                voice: BandVoice::FootTaps,
+                players: 1,
+                volume: 0.5,
+                pan: 0.0,
+                depth: 0.2,
+            }],
+            ..Preferences::default()
+        };
+        prefs.validate();
+        assert!(
+            prefs.has_pitched_band(),
+            "a percussion-only file must gain a playable instrument"
+        );
+        assert_eq!(
+            prefs.band[0].voice,
+            BandVoice::Fiddle,
+            "the fallback comes first"
+        );
+
+        prefs.band.clear();
+        prefs.validate();
+        assert_eq!(
+            prefs.band,
+            default_band(),
+            "an empty list becomes the default band"
+        );
+    }
+
+    #[test]
+    fn a_slot_reports_its_stage_direction() {
+        let mut slot = BandSlot {
+            pan: -0.7,
+            depth: 0.0,
+            ..BandSlot::default()
+        };
+        assert_eq!(slot.direction_label(), "Left front");
+        slot.depth = 0.6;
+        assert_eq!(slot.direction_label(), "Left rear");
+        slot.pan = 0.0;
+        assert_eq!(slot.direction_label(), "Centre rear");
+        slot.depth = 0.0;
+        slot.pan = 0.8;
+        assert_eq!(slot.direction_label(), "Right front");
+    }
+
+    #[test]
+    fn voices_map_to_the_legacy_roles() {
+        assert_eq!(
+            BandVoice::from_melody(MelodyInstrument::Clarinet),
+            BandVoice::Clarinet
+        );
+        assert_eq!(
+            BandVoice::from_accompaniment(AccompanimentInstrument::Guitar),
+            BandVoice::Guitar
+        );
+        assert_eq!(
+            BandVoice::from_percussion(Percussion::Off),
+            None,
+            "Off has no voice"
+        );
+        assert_eq!(
+            BandVoice::Fiddle.accompaniment_instrument(),
+            Some(AccompanimentInstrument::Accordion)
+        );
+        assert_eq!(BandVoice::Drumset.accompaniment_instrument(), None);
+        assert!(BandVoice::Piano.is_pitched());
+        assert!(!BandVoice::Drumset.is_pitched());
     }
 }

@@ -46,7 +46,8 @@ system's media controls drive the transport from outside the app; see
   adds the entry when both fields are filled.
 - **Ctrl+Z** and **Ctrl+Y** work on every screen, including **Preferences** and
   the alias editor. They step through preferences (role terms, aliases,
-  instruments, copies, volumes, theme, timing, speech, proxy) and the
+  instruments, band rows, caller and band levels, output mode, theme, timing,
+  speech, proxy) and the
   selected dance and tune. Typing in a text field is left to the field's own
   undo: the app shortcut only fires when no text field has focus, and an open
   drop-down keeps it from firing. A drag on a slider is one step, not one step

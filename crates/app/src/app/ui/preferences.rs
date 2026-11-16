@@ -166,134 +166,129 @@ enum RoleField {
 
 fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Instruments");
-    if compact {
-        inline_field(ui, true, "Melody", |ui| {
-            melody_combo(ui, true, &mut app.prefs);
-        });
-        copies_field(
-            ui,
-            true,
-            "Melody",
-            &mut app.prefs.instrument_copies.melody,
-            InstrumentCopies::MAX,
-        );
-        inline_field(ui, true, "Accompaniment", |ui| {
-            accompaniment_combo(ui, true, &mut app.prefs);
-        });
-        inline_field(ui, true, "Rhythm", |ui| {
-            rhythm_combo(ui, true, &mut app.prefs);
-        });
-        copies_field(
-            ui,
-            true,
-            "Accompaniment",
-            &mut app.prefs.instrument_copies.accompaniment,
-            InstrumentCopies::MAX,
-        );
-        inline_field(ui, true, "Countermelody", |ui| {
-            countermelody_combo(ui, true, &mut app.prefs);
-        });
-        copies_field(
-            ui,
-            true,
-            "Countermelody",
-            &mut app.prefs.instrument_copies.countermelody,
-            InstrumentCopies::MAX,
-        );
-        inline_field(ui, true, "Percussion", |ui| {
-            percussion_combo(ui, true, &mut app.prefs);
-        });
-        inline_field(ui, true, "Percussion rhythm", |ui| {
-            percussion_rhythm_combo(ui, true, &mut app.prefs);
-        });
-        copies_field(
-            ui,
-            true,
-            "Percussion",
-            &mut app.prefs.instrument_copies.percussion,
-            InstrumentCopies::MAX_PERCUSSION,
-        );
-    } else {
-        egui::Grid::new("instruments")
-            .num_columns(2)
-            .show(ui, |ui| {
-                ui.label("Melody");
-                ui.horizontal(|ui| {
-                    melody_combo(ui, false, &mut app.prefs);
-                    copies_field(
-                        ui,
-                        false,
-                        "Melody",
-                        &mut app.prefs.instrument_copies.melody,
-                        InstrumentCopies::MAX,
-                    );
-                });
-                ui.end_row();
-                ui.label("Accompaniment");
-                ui.horizontal(|ui| {
-                    accompaniment_combo(ui, false, &mut app.prefs);
-                    ui.label("Rhythm");
-                    rhythm_combo(ui, false, &mut app.prefs);
-                    copies_field(
-                        ui,
-                        false,
-                        "Accompaniment",
-                        &mut app.prefs.instrument_copies.accompaniment,
-                        InstrumentCopies::MAX,
-                    );
-                });
-                ui.end_row();
-                ui.label("Countermelody");
-                ui.horizontal(|ui| {
-                    countermelody_combo(ui, false, &mut app.prefs);
-                    copies_field(
-                        ui,
-                        false,
-                        "Countermelody",
-                        &mut app.prefs.instrument_copies.countermelody,
-                        InstrumentCopies::MAX,
-                    );
-                });
-                ui.end_row();
-                ui.label("Percussion");
-                ui.horizontal(|ui| {
-                    percussion_combo(ui, false, &mut app.prefs);
-                    ui.label("Rhythm");
-                    percussion_rhythm_combo(ui, false, &mut app.prefs);
-                    copies_field(
-                        ui,
-                        false,
-                        "Percussion",
-                        &mut app.prefs.instrument_copies.percussion,
-                        InstrumentCopies::MAX_PERCUSSION,
-                    );
-                });
-                ui.end_row();
+    ui.label(
+        egui::RichText::new(
+            "The band is a list. Add any number of instruments, choose what each one plays, \
+             how many players stand in that section, and where it sits. The part chooses the \
+             notes; the instrument chooses the voice. A second piano is its own row with its \
+             own level and place, not a copy of the first.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+
+    ui.label(egui::RichText::new("Band").strong());
+    let mut remove = None;
+    let mut move_up = None;
+    let mut move_down = None;
+    let pitched_count = app
+        .prefs
+        .band
+        .iter()
+        .filter(|slot| slot.is_pitched())
+        .count();
+    let count = app.prefs.band.len();
+    for (index, slot) in app.prefs.band.iter_mut().enumerate() {
+        ui.group(|ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{}. {} · {}",
+                        index + 1,
+                        slot.part.label(),
+                        slot.voice.label()
+                    ))
+                    .strong(),
+                );
+                ui.label(
+                    egui::RichText::new(slot.direction_label())
+                        .small()
+                        .color(theme::muted(ui)),
+                );
             });
+            if compact {
+                ui.horizontal_wrapped(|ui| {
+                    part_combo(ui, true, index, slot);
+                    voice_combo(ui, true, index, slot);
+                });
+                ui.horizontal_wrapped(|ui| {
+                    players_field(ui, true, index, slot);
+                    direction_combo(ui, true, index, slot);
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Volume");
+                    volume_slider(ui, compact, index, slot);
+                });
+            } else {
+                ui.horizontal_wrapped(|ui| {
+                    part_combo(ui, false, index, slot);
+                    voice_combo(ui, false, index, slot);
+                    players_field(ui, false, index, slot);
+                    direction_combo(ui, false, index, slot);
+                    ui.label("Volume");
+                    volume_slider(ui, compact, index, slot);
+                });
+            }
+            ui.horizontal_wrapped(|ui| {
+                let can_remove = if slot.is_pitched() {
+                    pitched_count > 1
+                } else {
+                    count > 1
+                };
+                let remove_button = ui
+                    .add_enabled(can_remove, egui::Button::new("Remove"))
+                    .on_hover_text(if can_remove {
+                        "Remove this instrument from the band"
+                    } else {
+                        "A band needs at least one pitched instrument"
+                    })
+                    .accessible_name(format!("Remove instrument {}", index + 1));
+                if remove_button.clicked() {
+                    remove = Some(index);
+                }
+                let up = ui
+                    .add_enabled(index > 0, egui::Button::new("Up"))
+                    .accessible_name(format!("Move instrument {} up", index + 1));
+                if up.clicked() {
+                    move_up = Some(index);
+                }
+                let down = ui
+                    .add_enabled(index + 1 < count, egui::Button::new("Down"))
+                    .accessible_name(format!("Move instrument {} down", index + 1));
+                if down.clicked() {
+                    move_down = Some(index);
+                }
+            });
+        });
     }
+    if let Some(index) = remove {
+        app.prefs.band.remove(index);
+    }
+    if let Some(index) = move_up
+        && index > 0
+    {
+        app.prefs.band.swap(index, index - 1);
+    }
+    if let Some(index) = move_down
+        && index + 1 < app.prefs.band.len()
+    {
+        app.prefs.band.swap(index, index + 1);
+    }
+    if ui
+        .button("Add instrument")
+        .on_hover_text("Add another instrument to the band")
+        .accessible_name("Add instrument")
+        .clicked()
+    {
+        app.prefs.band.push(BandSlot::default());
+    }
+    app.prefs.validate();
+
     ui.label(
         egui::RichText::new(
-            "The melody, the chordal accompaniment, and a countermelody make the default trio. \
-             Choose Off for a duo; the countermelody follows the accompaniment volume.",
-        )
-        .small()
-        .color(theme::muted(ui)),
-    );
-    ui.label(
-        egui::RichText::new(
-            "Copies add players to a part, up to four (three for percussion). Every copy is a \
-             separate player with its own pan, a few milliseconds of spread, and a slight tuning \
-             difference, so the section sounds wider instead of just louder. One copy is the \
-             single player and sounds exactly as before.",
-        )
-        .small()
-        .color(theme::muted(ui)),
-    );
-    ui.label(
-        egui::RichText::new(
-            "Percussion is optional: foot taps play a one-and-a gallop (eighth + two sixteenths \
-             per dance beat), or a simple drum kit adds kick, snare, and hi-hat. The rhythm menu \
-             changes the pattern; it starts with the count-in.",
+            "Percussion is optional: add a foot-tap or drumset row for a one-and-a gallop or a \
+             simple kit. The rhythm menu changes the pattern; it starts with the count-in. \
+             Removing every percussion row leaves the band silent of percussion.",
         )
         .small()
         .color(theme::muted(ui)),
@@ -301,6 +296,9 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.checkbox(
         &mut app.prefs.dancer_sounds,
         "Dancer sounds (stomps and claps)",
+    )
+    .on_hover_text(
+        "Adds stomps on petronellas and long lines, and claps on balances, from the dance card",
     );
     ui.label(
         egui::RichText::new(
@@ -311,30 +309,6 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    slider_row(
-        ui,
-        compact,
-        "Melody volume",
-        &mut app.prefs.melody_volume,
-        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
-    );
-    slider_row(
-        ui,
-        compact,
-        "Accompaniment volume",
-        &mut app.prefs.accompaniment_volume,
-        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
-    );
-    let percussion_enabled = app.prefs.percussion.is_enabled();
-    ui.add_enabled_ui(percussion_enabled, |ui| {
-        slider_row(
-            ui,
-            compact,
-            "Percussion volume",
-            &mut app.prefs.percussion_volume,
-            |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
-        );
-    });
     let dancer_sounds = app.prefs.dancer_sounds;
     ui.add_enabled_ui(dancer_sounds, |ui| {
         slider_row(
@@ -345,27 +319,187 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
         );
     });
+    inline_field(ui, compact, "Percussion rhythm", |ui| {
+        percussion_rhythm_combo(ui, compact, &mut app.prefs);
+    });
+    inline_field(ui, compact, "Accompaniment rhythm", |ui| {
+        rhythm_combo(ui, compact, &mut app.prefs);
+    });
+    ui.label(
+        egui::RichText::new(
+            "The accompaniment rhythm changes how an accompaniment row realises the chords; it \
+             never moves the dance grid or the calls.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+
+    ui.separator();
+    ui.label(egui::RichText::new("Mix").strong());
+    slider_row(
+        ui,
+        compact,
+        "Caller volume",
+        &mut app.prefs.caller_volume,
+        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+    );
+    ui.label(
+        egui::RichText::new(
+            "The spoken calls have their own level. Turning the band down never hides a call, \
+             and turning the caller down never changes the music.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    slider_row(
+        ui,
+        compact,
+        "Band volume",
+        &mut app.prefs.master_volume,
+        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+    );
+    ui.label(
+        egui::RichText::new(
+            "The band master sits on top of each row's volume. Both levels apply immediately.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     ui.separator();
 }
 
-fn melody_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
-    let combo = egui::ComboBox::from_id_salt("melody");
+fn part_combo(ui: &mut egui::Ui, compact: bool, index: usize, slot: &mut BandSlot) {
+    ui.label(format!("Part {}", index + 1))
+        .on_hover_text("What this instrument plays");
+    let mut part = slot.part;
+    let combo = egui::ComboBox::from_id_salt(("band-part", index));
     responsive_combo(combo, ui, compact)
-        .selected_text(prefs.melody.label())
+        .selected_text(part.label())
         .show_ui(ui, |ui| {
-            for option in MelodyInstrument::ALL {
-                ui.selectable_value(&mut prefs.melody, option, option.label());
+            for option in BandPart::ALL {
+                ui.selectable_value(&mut part, option, option.label());
+            }
+        });
+    if part != slot.part {
+        slot.part = part;
+        if part == BandPart::Percussion && !slot.voice.is_percussion() {
+            slot.voice = BandVoice::FootTaps;
+        } else if part != BandPart::Percussion && slot.voice.is_percussion() {
+            slot.voice = BandVoice::Fiddle;
+        }
+    }
+}
+
+fn voice_combo(ui: &mut egui::Ui, compact: bool, index: usize, slot: &mut BandSlot) {
+    ui.label(format!("Instrument {}", index + 1))
+        .on_hover_text("The voice this instrument uses");
+    let percussion = slot.part == BandPart::Percussion;
+    let combo = egui::ComboBox::from_id_salt(("band-voice", index));
+    responsive_combo(combo, ui, compact)
+        .selected_text(slot.voice.label())
+        .show_ui(ui, |ui| {
+            for option in BandVoice::ALL {
+                if option.is_percussion() == percussion {
+                    ui.selectable_value(&mut slot.voice, option, option.label());
+                }
             }
         });
 }
 
-fn accompaniment_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
-    let combo = egui::ComboBox::from_id_salt("accompaniment");
+fn players_field(ui: &mut egui::Ui, compact: bool, index: usize, slot: &mut BandSlot) {
+    let max = if slot.voice.is_percussion() {
+        BandSlot::MAX_PERCUSSION_PLAYERS
+    } else {
+        BandSlot::MAX_PLAYERS
+    };
+    ui.label("Players");
+    players_stepper(ui, compact, index, &mut slot.players, max);
+}
+
+/// A players stepper whose buttons carry the instrument number, so an agent
+/// can tell the rows apart in the widget tree.
+fn players_stepper(ui: &mut egui::Ui, compact: bool, index: usize, players: &mut u8, max: u8) {
+    let name = format!("instrument {}", index + 1);
+    let fewer = format!("Fewer players on {name}");
+    let more = format!("More players on {name}");
+    let size = if compact {
+        egui::vec2(theme::TOUCH_TARGET, theme::TOUCH_TARGET)
+    } else {
+        egui::vec2(28.0, 20.0)
+    };
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 6.0;
+        let decrease = ui
+            .add_enabled(
+                *players > BandSlot::MIN_PLAYERS,
+                egui::Button::new("−").min_size(size),
+            )
+            .accessible_name(&fewer);
+        if decrease.clicked() {
+            *players = (*players).saturating_sub(1).max(BandSlot::MIN_PLAYERS);
+        }
+        ui.add_sized(
+            [size.x, size.y],
+            egui::Label::new(egui::RichText::new(players.to_string()).monospace()),
+        )
+        .accessible_name(format!("Players on {name}: {players}"));
+        let increase = ui
+            .add_enabled(*players < max, egui::Button::new("+").min_size(size))
+            .accessible_name(&more);
+        if increase.clicked() {
+            *players = (*players + 1).min(max);
+        }
+    });
+}
+
+/// The six places a slot can sit in.
+const DIRECTIONS: [(&str, f32, f32); 6] = [
+    ("Left front", -0.6, 0.0),
+    ("Centre front", 0.0, 0.0),
+    ("Right front", 0.6, 0.0),
+    ("Left rear", -0.6, 0.6),
+    ("Centre rear", 0.0, 0.6),
+    ("Right rear", 0.6, 0.6),
+];
+
+fn direction_combo(ui: &mut egui::Ui, compact: bool, index: usize, slot: &mut BandSlot) {
+    let combo = egui::ComboBox::from_id_salt(("band-direction", index));
     responsive_combo(combo, ui, compact)
-        .selected_text(prefs.accompaniment.label())
+        .selected_text(slot.direction_label())
         .show_ui(ui, |ui| {
-            for option in AccompanimentInstrument::ALL {
-                ui.selectable_value(&mut prefs.accompaniment, option, option.label());
+            for (label, pan, depth) in DIRECTIONS {
+                if ui
+                    .selectable_label(slot.direction_label() == label, label)
+                    .clicked()
+                {
+                    slot.pan = pan;
+                    slot.depth = depth;
+                }
+            }
+        });
+    ui.label(format!("Direction {}", index + 1))
+        .on_hover_text("Left/right and front/rear in the stereo or surround image");
+}
+
+fn volume_slider(ui: &mut egui::Ui, compact: bool, index: usize, slot: &mut BandSlot) {
+    if compact {
+        ui.spacing_mut().slider_width = (ui.available_width() - 90.0).max(96.0);
+    }
+    ui.add(
+        egui::Slider::new(&mut slot.volume, 0.0..=1.5)
+            .max_decimals(2)
+            .show_value(true),
+    )
+    .accessible_name(format!("Volume for instrument {}", index + 1));
+}
+
+fn percussion_rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+    let combo = egui::ComboBox::from_id_salt("percussion_rhythm");
+    responsive_combo(combo, ui, compact)
+        .selected_text(prefs.percussion_rhythm.label())
+        .show_ui(ui, |ui| {
+            for option in PercussionRhythm::ALL {
+                ui.selectable_value(&mut prefs.percussion_rhythm, option, option.label());
             }
         });
 }
@@ -377,82 +511,6 @@ fn rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
         .show_ui(ui, |ui| {
             for option in AccompanimentRhythm::ALL {
                 ui.selectable_value(&mut prefs.accompaniment_rhythm, option, option.label());
-            }
-        });
-}
-
-fn countermelody_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
-    let combo = egui::ComboBox::from_id_salt("second_accompaniment");
-    responsive_combo(combo, ui, compact)
-        .selected_text(prefs.second_accompaniment.label())
-        .show_ui(ui, |ui| {
-            for option in Countermelody::ALL {
-                ui.selectable_value(&mut prefs.second_accompaniment, option, option.label());
-            }
-        });
-}
-
-/// A labelled copies stepper: `Copies  −  1  +`.
-///
-/// Every part gets its own stepper; the buttons carry the part's name in their
-/// accessible label ("Fewer melody copies") so an agent can tell the four
-/// apart in the widget tree. On a phone both buttons are full 44-point touch
-/// targets.
-fn copies_field(ui: &mut egui::Ui, compact: bool, part: &str, copies: &mut u8, max: u8) {
-    inline_field(ui, compact, "Copies", |ui| {
-        copies_stepper(ui, compact, part, copies, max);
-    });
-}
-
-fn copies_stepper(ui: &mut egui::Ui, compact: bool, part: &str, copies: &mut u8, max: u8) {
-    let name = format!("{} copies", part.to_lowercase());
-    let fewer = format!("Fewer {name}");
-    let more = format!("More {name}");
-    let size = if compact {
-        egui::vec2(theme::TOUCH_TARGET, theme::TOUCH_TARGET)
-    } else {
-        egui::vec2(28.0, 20.0)
-    };
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 6.0;
-        let decrease = ui
-            .add_enabled(*copies > 1, egui::Button::new("−").min_size(size))
-            .accessible_name(&fewer);
-        if decrease.clicked() {
-            *copies = (*copies).saturating_sub(1).max(1);
-        }
-        ui.add_sized(
-            [size.x, size.y],
-            egui::Label::new(egui::RichText::new(copies.to_string()).monospace()),
-        )
-        .accessible_name(format!("{name}: {copies}"));
-        let increase = ui
-            .add_enabled(*copies < max, egui::Button::new("+").min_size(size))
-            .accessible_name(&more);
-        if increase.clicked() {
-            *copies = (*copies + 1).min(max);
-        }
-    });
-}
-
-fn percussion_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
-    let combo = egui::ComboBox::from_id_salt("percussion");
-    responsive_combo(combo, ui, compact)
-        .selected_text(prefs.percussion.label())
-        .show_ui(ui, |ui| {
-            for option in Percussion::ALL {
-                ui.selectable_value(&mut prefs.percussion, option, option.label());
-            }
-        });
-}
-
-fn percussion_rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
-    let combo = egui::ComboBox::from_id_salt("percussion_rhythm");
-    responsive_combo(combo, ui, compact)
-        .selected_text(prefs.percussion_rhythm.label())
-        .show_ui(ui, |ui| {
-            for option in PercussionRhythm::ALL {
-                ui.selectable_value(&mut prefs.percussion_rhythm, option, option.label());
             }
         });
 }
@@ -778,6 +836,29 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
+    ui.heading("Output");
+    inline_field(ui, compact, "Output mode", |ui| {
+        let combo = egui::ComboBox::from_id_salt("output_mode");
+        responsive_combo(combo, ui, compact)
+            .selected_text(app.prefs.output_mode.label())
+            .show_ui(ui, |ui| {
+                for option in OutputMode::ALL {
+                    ui.selectable_value(&mut app.prefs.output_mode, option, option.label());
+                }
+            });
+    });
+    ui.label(
+        egui::RichText::new(
+            "Mono folds the band to one channel. Stereo is the default left/right pair. \
+             Surround renders five channels: front left, front right, centre, rear left, rear \
+             right. An instrument's direction sets its side and whether it sits at the front or \
+             behind the dancers; a surround render played on a stereo device is folded down, and a \
+             mono or stereo render on a multichannel device keeps its channels and leaves the \
+             extras silent.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     ui.separator();
 }
 
@@ -848,8 +929,9 @@ fn effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     });
     ui.label(
         egui::RichText::new(
-            "A short slapback or a longer echo in playback and the exported file. Exported MIDI \
-             uses the General MIDI delay send; players that do not implement it ignore the echo.",
+            "Subtle is the default: a short slapback that widens the band without smearing the \
+             dance pulse. Strong is a longer echo; Off is completely dry. Exported MIDI uses the \
+             General MIDI delay send; players that do not implement it ignore the echo.",
         )
         .small()
         .color(theme::muted(ui)),

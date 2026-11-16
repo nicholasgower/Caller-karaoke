@@ -8,47 +8,25 @@ use eframe::egui;
 
 /// The instrument line under the tune.
 ///
-/// Copy counts appear only when a part has more than one player, so the
-/// default trio line keeps its old length. `×2` reads as two players on that
-/// part, which is how a band describes a section.
+/// Each editable band row appears once, with its player count when the section
+/// has more than one player. `×2` reads as two players on that part, which is
+/// how a band describes a section.
 fn instrument_summary(prefs: &Preferences) -> String {
-    let copies = prefs.instrument_copies;
-    let mut parts = vec![
-        part_summary("Melody", prefs.melody.label(), copies.melody_count()),
-        part_summary(
-            "Accompaniment",
-            prefs.accompaniment.label(),
-            copies.accompaniment_count(),
-        ),
-    ];
-    if let Some(countermelody) = prefs.second_accompaniment.instrument() {
-        parts.push(part_summary(
-            "Countermelody",
-            countermelody.label(),
-            copies.countermelody_count(),
-        ));
-    }
-    if prefs.percussion.is_enabled() {
-        let mut percussion = part_summary(
-            "Percussion",
-            prefs.percussion.label(),
-            copies.percussion_count(),
-        );
-        if prefs.percussion_rhythm != PercussionRhythm::Auto {
-            percussion.push_str(&format!(" ({})", prefs.percussion_rhythm.label()));
-        }
-        parts.push(percussion);
-    }
+    let slots = prefs.band_slots();
+    let parts = slots
+        .iter()
+        .map(|slot| part_summary(slot.part.label(), slot.voice.label(), slot.player_count()))
+        .collect::<Vec<_>>();
     parts.join(" · ")
 }
 
-fn part_summary(part: &str, instrument: &str, copies: usize) -> String {
-    format!("{part}: {}", part_copy_label(instrument, copies))
+fn part_summary(part: &str, instrument: &str, players: usize) -> String {
+    format!("{part}: {}", part_copy_label(instrument, players))
 }
 
-fn part_copy_label(instrument: &str, copies: usize) -> String {
-    if copies > 1 {
-        format!("{instrument} ×{copies}")
+fn part_copy_label(instrument: &str, players: usize) -> String {
+    if players > 1 {
+        format!("{instrument} ×{players}")
     } else {
         instrument.to_string()
     }
@@ -162,13 +140,26 @@ fn session_controls(
             }
         });
 
+        ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
         ui.horizontal(|ui| {
-            ui.label("Volume");
+            ui.label("Caller");
+            ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
+            let response = scroll_safe_slider(ui, &mut prefs.caller_volume, |ui, volume| {
+                ui.add(egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
+            });
+            let response = response.accessible_name("Caller volume");
+            if response.changed() {
+                audio.set_caller_volume(prefs.caller_volume);
+                changes.save = true;
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label("Band");
             ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
             let response = scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.0).max_decimals(2))
+                ui.add(egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
             });
-            let response = response.accessible_name("Volume");
+            let response = response.accessible_name("Band volume");
             if response.changed() {
                 audio.set_volume(prefs.master_volume);
                 changes.save = true;
@@ -246,11 +237,26 @@ fn session_controls(
                 }
                 changes.save = true;
             }
-            ui.label("Volume");
-            if scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.0))
+        });
+        // Caller and band levels sit on their own row so the two sliders keep
+        // a usable width instead of overflowing the wrapped control row at a
+        // wide window.
+        ui.horizontal(|ui| {
+            ui.label("Caller");
+            if scroll_safe_slider(ui, &mut prefs.caller_volume, |ui, volume| {
+                ui.add(egui::Slider::new(volume, 0.0..=1.5))
             })
-            .accessible_name("Volume")
+            .accessible_name("Caller volume")
+            .changed()
+            {
+                audio.set_caller_volume(prefs.caller_volume);
+                changes.save = true;
+            }
+            ui.label("Band");
+            if scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
+                ui.add(egui::Slider::new(volume, 0.0..=1.5))
+            })
+            .accessible_name("Band volume")
             .changed()
             {
                 audio.set_volume(prefs.master_volume);
@@ -1101,38 +1107,45 @@ impl ContraApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use contra_core::{Countermelody, InstrumentCopies, Percussion, PercussionRhythm};
 
     #[test]
-    fn the_tune_summary_names_every_player_and_the_copy_counts() {
+    fn the_tune_summary_names_every_band_row() {
         let prefs = Preferences::default();
         assert_eq!(
             instrument_summary(&prefs),
-            "Melody: Fiddle · Accompaniment: Piano · Countermelody: Accordion"
+            "Melody: Fiddle ×2 · Accompaniment: Piano · Countermelody: Fiddle ×2 · \
+             Percussion: Foot taps ×3"
         );
 
         let mut prefs = prefs;
-        prefs.instrument_copies = InstrumentCopies {
-            melody: 2,
-            accompaniment: 3,
-            countermelody: 2,
-            percussion: 2,
-        };
-        prefs.percussion = Percussion::Drumset;
-        prefs.percussion_rhythm = PercussionRhythm::Shuffle;
+        prefs.band = vec![
+            BandSlot {
+                part: BandPart::Melody,
+                voice: BandVoice::Clarinet,
+                players: 3,
+                volume: 0.7,
+                pan: -0.2,
+                depth: 0.0,
+            },
+            BandSlot {
+                part: BandPart::Accompaniment,
+                voice: BandVoice::Guitar,
+                players: 1,
+                volume: 0.6,
+                pan: 0.2,
+                depth: 0.0,
+            },
+        ];
         assert_eq!(
             instrument_summary(&prefs),
-            "Melody: Fiddle ×2 · Accompaniment: Piano ×3 · Countermelody: Accordion ×2 · \
-             Percussion: Drumset ×2 (Shuffle)"
+            "Melody: Clarinet ×3 · Accompaniment: Guitar"
         );
 
-        // Turning the countermelody off leaves the duo line, without a count.
-        prefs.second_accompaniment = Countermelody::Off;
-        prefs.percussion = Percussion::Off;
-        assert_eq!(
-            instrument_summary(&prefs),
-            "Melody: Fiddle ×2 · Accompaniment: Piano ×3"
-        );
+        // Removing every pitched row would be repaired by validation, so the
+        // summary always names something playable.
+        prefs.band.retain(|slot| slot.is_pitched());
+        prefs.validate();
+        assert!(!instrument_summary(&prefs).is_empty());
     }
 
     /// One scheduled call, for the card-footer tests.

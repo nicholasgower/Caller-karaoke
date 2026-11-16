@@ -74,7 +74,7 @@ fn request() -> RenderRequest {
         accompaniment_rhythm: AccompanimentRhythm::Auto,
         second_accompaniment: Countermelody::Accordion,
         copies: InstrumentCopies::default(),
-        band: contra_core::default_band(),
+        band: Vec::new(),
         output: contra_core::OutputMode::Stereo,
         variations: contra_core::VariationOptions::default(),
         humanize_options: contra_core::HumanizeOptions::default(),
@@ -161,12 +161,40 @@ fn every_countermelody_choice_is_audible() {
 fn bundled_font_renders_a_section_of_every_copy() {
     let font = bundled();
     let mut request = request();
-    request.copies = InstrumentCopies {
-        melody: 4,
-        accompaniment: 4,
-        countermelody: 4,
-        percussion: 3,
-    };
+    request.band = vec![
+        contra_core::BandSlot {
+            part: contra_core::BandPart::Melody,
+            voice: contra_core::BandVoice::Fiddle,
+            players: 4,
+            volume: 0.75,
+            pan: -0.15,
+            depth: 0.0,
+        },
+        contra_core::BandSlot {
+            part: contra_core::BandPart::Accompaniment,
+            voice: contra_core::BandVoice::Piano,
+            players: 4,
+            volume: 0.65,
+            pan: 0.10,
+            depth: 0.0,
+        },
+        contra_core::BandSlot {
+            part: contra_core::BandPart::Countermelody,
+            voice: contra_core::BandVoice::Fiddle,
+            players: 4,
+            volume: 0.55,
+            pan: 0.30,
+            depth: 0.0,
+        },
+        contra_core::BandSlot {
+            part: contra_core::BandPart::Percussion,
+            voice: contra_core::BandVoice::Drumset,
+            players: 3,
+            volume: 0.5,
+            pan: 0.0,
+            depth: 0.0,
+        },
+    ];
     request.percussion = contra_core::Percussion::Drumset;
     let section = render_soundfont(&request, &font).expect("renders the full section");
     let peak = section
@@ -185,10 +213,12 @@ fn bundled_font_renders_a_section_of_every_copy() {
         section.loop_pass_samples
     );
 
-    // The copies are separate players, so the section is not the single-player
+    // The players are separate voices, so the section is not the single-player
     // render at a higher level.
     let mut single = request.clone();
-    single.copies = InstrumentCopies::default();
+    for slot in &mut single.band {
+        slot.players = 1;
+    }
     let one = render_soundfont(&single, &font).expect("renders one player");
     assert_eq!(section.frames(), one.frames());
     let one_peak = one

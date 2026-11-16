@@ -21,16 +21,17 @@ volume settings.
 | **Cycle tunes** | off by default | Plays through a set of saved tunes, changing at a repeat. |
 | **Count-in** | on by default | Four accompaniment beats built from the tune's first chord. |
 | **Speak calls** | off by default | Speaks the active call if a system voice is available. |
-| **Volume** | 0–1, default 0.8 | Master playback volume. |
+| **Caller** | 0–1.5, default 1.0 | Level of the spoken calls, independent of the band. |
+| **Band** | 0–1.5, default 0.8 | Master level of the music mix. |
 
 <Shot id="transport-tempo" />
 
-Changing tempo, count-in, an instrument, countermelody, or percussion
-choice, a percussion rhythm, an accompaniment rhythm, a copy count,
-melody/accompaniment/percussion volume, a SoundFont, or **Humanize timing**
-marks the music for a rebuild. Playback settings apply without
-restarting the music: release the control and the app re-renders the loop and
-keeps the current beat. The session master **Volume** applies immediately. If
+Changing tempo, count-in, an instrument row, a player count, a row's volume or
+direction, the band list, the output mode, a percussion rhythm, an
+accompaniment rhythm, a SoundFont, or **Humanize timing** marks the music for a
+rebuild. Playback settings apply without restarting the music: release the
+control and the app re-renders the loop and keeps the current beat. The session
+**Caller** and **Band** levels apply immediately. If
 the session is not playing, it shows:
 
 > Press Play to prepare the music with these settings.
@@ -130,11 +131,11 @@ the count-in, the panel shows **CALL NOW** and the call text instead of
 
 ## The tune summary and dance card
 
-Below the prompt, the tune line shows the tune title, key, rhythm, melody,
-accompaniment, countermelody, and any enabled percussion, with a copy count such
-as `×2` when a part has more than one player. The dance card
-at the bottom of the session shows every figure with its phrase label and beat
-count. The active figure row is highlighted as the music moves.
+Below the prompt, the tune line shows the tune title, key, rhythm, and every band
+row with its player count such as `Fiddle ×2` when a row has more than one
+player. The dance card at the bottom of the session shows every figure with its
+phrase label and beat count. The active figure row is highlighted as the music
+moves.
 
 <Shot id="transport-summary" />
 
@@ -211,11 +212,11 @@ See [Text to speech](/docs/guides/text-to-speech) for availability and rate.
 
 ## Volume
 
-The session **Volume** slider is the master level. The melody, accompaniment,
-and percussion balances live in **Preferences → Instruments**; the
-countermelody follows the accompaniment balance, and the **Copies** steppers in
-that section set how many players each part has. They are separate controls; a
-quiet master with a loud melody is still quiet overall.
+The session has two sliders. **Caller** sets the spoken calls and **Band** sets
+the whole music mix. They are independent: a quiet band still lets the caller
+through, and turning the caller down leaves the music alone. Each band row's
+own **Volume** lives in **Preferences → Instruments**, under the shared **Band
+volume** master.
 
 <Shot id="transport-volume" />
 
@@ -252,8 +253,8 @@ or select **Session** to leave.
 
 At phone width the session tab uses its compact layout. The top row keeps three
 short tabs — **Session**, **Dance**, and **Tune** — beside the pinned gear button
-that opens **Preferences**, without the wordmark. The tempo and volume sliders
-span the screen with their value boxes, and **Play**, **Pause**,
+that opens **Preferences**, without the wordmark. The tempo, caller, and band
+sliders span the screen with their value boxes, and **Play**, **Pause**,
 **Restart**, and **End** split one row evenly. Loop, cycle tunes, count-in, and
 spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch
 target.

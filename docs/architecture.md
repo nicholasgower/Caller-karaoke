@@ -15,9 +15,17 @@ The data flow is:
 UI -> SourceClient -> provider request/parser -> Dance/Tune
    -> AliasTable + PracticeTimeline -> CallEvent list
    -> ABC parser -> Score -> Arrangement (64 beats)
-   -> bundled SoundFont, user SoundFont, or built-in synth -> PCM buffer -> cpal
+   -> band list + bundled SoundFont, user SoundFont, or built-in synth
+   -> mono, stereo, or 5-channel surround PCM buffer -> cpal
    -> MIDI export
 ```
+
+The band is a list of instrument slots rather than fixed roles. Each slot has a
+part, voice, player count, level, pan, and depth; `crates/music/src/band.rs`
+turns the list into note sources and `crates/music/src/layout.rs` places each
+player in the selected output layout. The audio callback maps the rendered
+channels onto the device and applies the caller gain separately from the band
+gain.
 
 The tune picker engraves the ABC separately from playback: `acorde` builds the
 display score, `acorde-render-svg` emits SVG, and `resvg` rasterizes it onto a
