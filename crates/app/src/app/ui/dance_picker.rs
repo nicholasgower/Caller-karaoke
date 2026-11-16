@@ -201,23 +201,30 @@ impl ContraApp {
         });
 
         ui.add_space(6.0);
-        if compact {
-            ui.label(egui::RichText::new("Results").strong());
-            self.dance_results_list(ui, true);
-            ui.separator();
-            ui.label(egui::RichText::new("Preview").strong());
-            self.dance_preview_panel(ui);
-        } else {
-            ui.columns(2, |columns| {
-                egui::ScrollArea::vertical()
-                    .id_salt("dance-results")
-                    .max_height(420.0)
-                    .show(&mut columns[0], |ui| self.dance_results_list(ui, false));
-                egui::ScrollArea::vertical()
-                    .id_salt("dance-preview")
-                    .max_height(420.0)
-                    .show(&mut columns[1], |ui| self.dance_preview_panel(ui));
-            });
+        match picker_pane_height(compact, ui.available_height(), PAGINATION_ROW_HEIGHT) {
+            None => {
+                // The phone page scrolls: the stacked list and preview keep
+                // their natural height instead of reserving an empty box.
+                ui.label(egui::RichText::new("Results").strong());
+                self.dance_results_list(ui, true);
+                ui.separator();
+                ui.label(egui::RichText::new("Preview").strong());
+                self.dance_preview_panel(ui, true);
+            }
+            Some(height) => {
+                ui.columns(2, |columns| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("dance-results")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[0], |ui| self.dance_results_list(ui, false));
+                    egui::ScrollArea::vertical()
+                        .id_salt("dance-preview")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[1], |ui| self.dance_preview_panel(ui, false));
+                });
+            }
         }
         self.pagination_ui(ui, true);
     }
@@ -268,7 +275,7 @@ impl ContraApp {
         }
     }
 
-    fn dance_preview_panel(&mut self, ui: &mut egui::Ui) {
+    fn dance_preview_panel(&mut self, ui: &mut egui::Ui, compact: bool) {
         if self.picker.preview_loading {
             ui.horizontal(|ui| {
                 ui.spinner();
@@ -299,32 +306,56 @@ impl ContraApp {
             let downloaded = self
                 .dance_library
                 .contains(&dance.source.provider, &dance.source.id);
+            // The preview actions share the column on a desktop and stack at
+            // full width on a phone, so every row is a 44-point target.
+            let width = action_width(
+                ui.available_width(),
+                ui.spacing().item_spacing.x,
+                3,
+                compact,
+            );
             ui.horizontal_wrapped(|ui| {
                 if ui
-                    .button(if downloaded {
-                        "Download again"
-                    } else {
-                        "Download dance"
-                    })
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new(if downloaded {
+                            "Download again"
+                        } else {
+                            "Download dance"
+                        })
+                        .wrap(),
+                    )
                     .on_hover_text("Save this card to your local library")
                     .clicked()
                 {
                     self.download_dance(dance.clone());
                 }
-                if ui.button("Use this dance").clicked() {
+                if ui
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new("Use this dance").wrap(),
+                    )
+                    .clicked()
+                {
                     self.use_dance(dance.clone());
                 }
-                if ui.button("View saved dances").clicked() {
+                if ui
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new("View saved dances").wrap(),
+                    )
+                    .clicked()
+                {
                     self.screen = Screen::DancePicker;
                 }
-                if downloaded {
-                    ui.label(
-                        egui::RichText::new("already downloaded")
-                            .small()
-                            .color(theme::muted(ui)),
-                    );
-                }
             });
+            if downloaded {
+                ui.label(
+                    egui::RichText::new("already downloaded")
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            }
             ui.separator();
             for figure in &dance.figures {
                 ui.label(format!(

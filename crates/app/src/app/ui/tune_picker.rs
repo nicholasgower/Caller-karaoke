@@ -148,23 +148,30 @@ impl ContraApp {
         });
 
         ui.add_space(6.0);
-        if compact {
-            ui.label(egui::RichText::new("Results").strong());
-            self.tune_results_list(ui, true);
-            ui.separator();
-            ui.label(egui::RichText::new("Preview").strong());
-            self.tune_preview_panel(ui);
-        } else {
-            ui.columns(2, |columns| {
-                egui::ScrollArea::vertical()
-                    .id_salt("tune-results")
-                    .max_height(420.0)
-                    .show(&mut columns[0], |ui| self.tune_results_list(ui, false));
-                egui::ScrollArea::vertical()
-                    .id_salt("tune-preview")
-                    .max_height(420.0)
-                    .show(&mut columns[1], |ui| self.tune_preview_panel(ui));
-            });
+        match picker_pane_height(compact, ui.available_height(), PAGINATION_ROW_HEIGHT) {
+            None => {
+                // The phone page scrolls: the stacked list and sheet music
+                // keep their natural height instead of a fixed empty box.
+                ui.label(egui::RichText::new("Results").strong());
+                self.tune_results_list(ui, true);
+                ui.separator();
+                ui.label(egui::RichText::new("Preview").strong());
+                self.tune_preview_panel(ui, true);
+            }
+            Some(height) => {
+                ui.columns(2, |columns| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("tune-results")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[0], |ui| self.tune_results_list(ui, false));
+                    egui::ScrollArea::vertical()
+                        .id_salt("tune-preview")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[1], |ui| self.tune_preview_panel(ui, false));
+                });
+            }
         }
         self.pagination_ui(ui, false);
     }
@@ -215,7 +222,7 @@ impl ContraApp {
         }
     }
 
-    fn tune_preview_panel(&mut self, ui: &mut egui::Ui) {
+    fn tune_preview_panel(&mut self, ui: &mut egui::Ui, compact: bool) {
         if self.picker.preview_loading {
             ui.horizontal(|ui| {
                 ui.spinner();
@@ -249,27 +256,49 @@ impl ContraApp {
                 .tune_library
                 .contains(&tune.source.provider, &tune.source.id);
             let in_rotation = self.tune_in_rotation(&tune);
+            // The preview actions share the column on a desktop and stack at
+            // full width on a phone, so every row is a 44-point target.
+            let width = action_width(
+                ui.available_width(),
+                ui.spacing().item_spacing.x,
+                4,
+                compact,
+            );
             ui.horizontal_wrapped(|ui| {
                 if ui
-                    .button(if downloaded {
-                        "Download again"
-                    } else {
-                        "Download tune"
-                    })
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new(if downloaded {
+                            "Download again"
+                        } else {
+                            "Download tune"
+                        })
+                        .wrap(),
+                    )
                     .on_hover_text("Save this tune to your local library")
                     .clicked()
                 {
                     self.download_tune(tune.clone());
                 }
-                if ui.button("Use this tune").clicked() {
+                if ui
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new("Use this tune").wrap(),
+                    )
+                    .clicked()
+                {
                     self.use_tune(tune.clone());
                 }
                 if ui
-                    .button(if in_rotation {
-                        "Remove from tune set"
-                    } else {
-                        "Add to tune set"
-                    })
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new(if in_rotation {
+                            "Remove from tune set"
+                        } else {
+                            "Add to tune set"
+                        })
+                        .wrap(),
+                    )
                     .on_hover_text(if in_rotation {
                         "Remove this tune from the set"
                     } else {
@@ -279,17 +308,23 @@ impl ContraApp {
                 {
                     self.toggle_rotation_tune(&tune);
                 }
-                if ui.button("View saved tunes").clicked() {
+                if ui
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new("View saved tunes").wrap(),
+                    )
+                    .clicked()
+                {
                     self.screen = Screen::TunePicker;
                 }
-                if downloaded {
-                    ui.label(
-                        egui::RichText::new("already downloaded")
-                            .small()
-                            .color(theme::muted(ui)),
-                    );
-                }
             });
+            if downloaded {
+                ui.label(
+                    egui::RichText::new("already downloaded")
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            }
             ui.separator();
             match self.tune_view {
                 TuneView::Sheet => {

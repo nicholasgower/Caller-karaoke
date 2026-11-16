@@ -26,6 +26,12 @@ Every word you type must match, so `belle ralph` finds Belle of the Ball but
 `belle erik` does not. Select a saved card to read its figures, beat total, and
 source link on the right. Select **Use** to load it.
 
+The saved list and the card preview fill the height below the search field and
+scroll inside their own panes, so a long card or a long folder list never pushes
+the search field off screen. The **Use** and **Folder:** actions on a card, and
+the **Use this dance** and **Remove from saved dances** actions in the preview,
+span their row; on a phone they stack as full-width buttons.
+
 <Shot id="dance-library-search" />
 
 The folder panel on the left filters the list:
@@ -60,6 +66,10 @@ already in the session.
 
 Select **Download dance** at the top of **Select dance** to open the ContraDB
 search screen. Downloading is explicit: previewing a card does not save it.
+
+The search form stays at the top, the **Previous** and **Next** row stays at the
+bottom, and the result list and preview share the height in between. On a phone
+the form, results, and preview stack into one scrolling page.
 
 <Shot id="dance-picker-open" />
 

@@ -34,6 +34,12 @@ the tune title, composer, key, meter, genre, and credits. Every word you type
 must match. Select a saved tune to read its metadata and engraved sheet music on
 the right, or **Use** to load the tune.
 
+The saved list and the sheet-music preview fill the height below the search field
+and scroll inside their own panes, so a long tune or a long folder list never
+pushes the search field off screen. The **Use**, **Add to set** / **In set**, and
+**Folder:** actions on a row, and the preview actions, span their row; on a phone
+they stack as full-width buttons.
+
 <Shot id="tune-library-search" />
 
 The folder panel works exactly as it does for dances:
@@ -61,6 +67,10 @@ playing.
 Select **Download tune** at the top of **Select tune** to open the ABC Session
 Tunes search screen. Previewing a tune does not save it; use **Download tune**,
 or **Use this tune** to download and load it at once.
+
+The search form stays at the top, the **Previous** and **Next** row stays at the
+bottom, and the result list and sheet-music preview share the height in between.
+On a phone the form, results, and preview stack into one scrolling page.
 
 <Shot id="tune-picker-open" />
 
