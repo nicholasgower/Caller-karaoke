@@ -8,8 +8,8 @@ use std::time::Duration;
 use contra_core::{
     AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, COUNT_IN_BEATS, Dance,
     FolderFilter, Library, MelodyInstrument, MoveKind, Percussion, PercussionRhythm,
-    PracticeTimeline, Preferences, RolePreset, RoleTerms, ScheduledCall, SecondAccompaniment,
-    Theme, TimelineConfig, Tune,
+    PracticeTimeline, Preferences, RolePreset, ScheduledCall, SecondAccompaniment, Theme,
+    TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
