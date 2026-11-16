@@ -170,9 +170,8 @@ fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64, rhythm: PercussionRhyt
             }
         }
         PercussionRhythm::Gallop => {
-            // One and a: an eighth note and two sixteenths, repeated on every
-            // quarter-note pulse. A dance beat is two quarter notes, so the
-            // group starts every half dance beat.
+            // One and a: an eighth note and two sixteenths. Foot taps play one
+            // group per dance beat, so the pattern stays light under the tune.
             let mut beat = 0.0;
             while beat < loop_beats - 1e-9 {
                 for (index, offset) in [0.0, 0.25, 0.375].into_iter().enumerate() {
@@ -189,7 +188,7 @@ fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64, rhythm: PercussionRhyt
                         loop_beats,
                     );
                 }
-                beat += 0.5;
+                beat += 1.0;
             }
         }
         PercussionRhythm::Triplet => {
@@ -638,9 +637,7 @@ mod tests {
             PercussionRhythm::Gallop,
         );
         let positions = notes.iter().map(|note| note.start_beat).collect::<Vec<_>>();
-        let expected = [
-            0.0, 0.25, 0.375, 0.5, 0.75, 0.875, 1.0, 1.25, 1.375, 1.5, 1.75, 1.875,
-        ];
+        let expected = [0.0, 0.25, 0.375, 1.0, 1.25, 1.375];
         assert_eq!(positions.len(), expected.len());
         for (position, expected) in positions.iter().zip(expected) {
             assert!(

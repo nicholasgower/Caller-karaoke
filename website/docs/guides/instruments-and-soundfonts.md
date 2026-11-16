@@ -51,9 +51,9 @@ During a variation pass it rests in the same bar as the accompaniment, so a
 ## Percussion
 
 Percussion is optional and off by default. **Foot taps** play a one-and-a
-gallop by default: an eighth note and two sixteenth notes, repeated
-(“one and a two and a…”). **Drumset** adds a basic kick, snare, and hi-hat
-pattern: the hats subdivide each beat in half for reels and in thirds for
+gallop by default: an eighth note and two sixteenth notes, repeated on every
+dance beat (“one and a two and a…”). **Drumset** adds a basic kick, snare, and
+hi-hat pattern: the hats subdivide each beat in half for reels and in thirds for
 compound meters such as jigs. The rhythm menu can change either pattern.
 
 Percussion starts with the count-in when enabled and sits on the same 64-beat
