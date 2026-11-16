@@ -86,9 +86,14 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
   preview stack into one scrolling column instead of two narrow columns.
 - Saved-library folders collapse behind a single summary row on a phone so the
   saved cards start on screen.
+- No button is shorter than the session tab's **Play** button: 40 points on a
+  desktop and the 44-point touch target on a phone. egui's `small_button`
+  shrinks to the text height and is a design regression; the
+  `no_button_is_shorter_than_the_session_play_button` layout test fails on one.
+  Rows that carry more than one line of text may be taller.
 - Actions that share a row in the saved-dance and saved-tune lists use one
-  density: dense small buttons on a desktop and 44-point buttons on a phone.
-  The **Folder:** menu follows the row buttons, so a row never mixes heights.
+  density, and the **Folder:** menu follows the row buttons, so a row never
+  mixes heights.
 - Every screen, picker, dialog, empty state, and error banner is checked at both
   a desktop viewport (1280×800) and a phone viewport (390×844).
 - Respect safe-area insets on mobile.

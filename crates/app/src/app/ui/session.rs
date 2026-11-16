@@ -516,7 +516,7 @@ fn dance_card_header(ui: &mut egui::Ui, compact: bool, glossary_enabled: bool) -
         let button = if compact {
             ui.add_sized([110.0, theme::TOUCH_TARGET], egui::Button::new("Glossary"))
         } else {
-            ui.small_button("Glossary")
+            ui.button("Glossary")
         };
         if button.on_hover_text("Open the dance glossary").clicked() {
             open = true;
@@ -800,7 +800,7 @@ impl ContraApp {
             let mut edit = false;
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(summary).small().color(theme::muted(ui)));
-                if ui.small_button("Edit tune set").clicked() {
+                if ui.button("Edit tune set").clicked() {
                     edit = true;
                 }
             });

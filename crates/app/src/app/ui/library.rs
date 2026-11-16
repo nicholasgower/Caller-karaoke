@@ -146,7 +146,7 @@ impl ContraApp {
                         .hint_text("title, choreographer, formation, or figure")
                         .desired_width(340.0),
                 );
-                if !self.dance_library_query.is_empty() && ui.small_button("Clear").clicked() {
+                if !self.dance_library_query.is_empty() && ui.button("Clear").clicked() {
                     self.dance_library_query.clear();
                 }
                 ui.label(
@@ -630,7 +630,7 @@ impl ContraApp {
                         .hint_text("title, composer, key, meter, or genre")
                         .desired_width(340.0),
                 );
-                if !self.tune_library_query.is_empty() && ui.small_button("Clear").clicked() {
+                if !self.tune_library_query.is_empty() && ui.button("Clear").clicked() {
                     self.tune_library_query.clear();
                 }
                 ui.label(
