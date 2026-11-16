@@ -501,6 +501,10 @@ pub struct ContraApp {
     role_edit_pending: bool,
     render_loading: bool,
     started: bool,
+    /// A Play press arrived while the startup prefetch was still running. The
+    /// finished buffer starts the transport immediately instead of making the
+    /// user press Play again.
+    pending_play: bool,
     /// Transient state of the dance and tune download screens.
     picker: PickerState,
     dance_library: Library<Dance>,
@@ -543,6 +547,15 @@ pub struct ContraApp {
     /// Bumped whenever a setting changes; prepared buffers from an older
     /// generation are discarded.
     render_generation: u64,
+    /// The last loop rendered from the current tune and audio settings. A
+    /// second Play, a restart, or an undo back to the same settings installs
+    /// this buffer instead of synthesizing the loop again.
+    render_cache: Option<CachedRender>,
+    /// A render started before the user pressed Play, so the first press can
+    /// take the cache instead of blocking the UI.
+    prefetch: Option<Prefetch>,
+    /// A prefetch that failed for this key; do not retry it every frame.
+    prefetch_failed_key: Option<RenderKey>,
     /// Undo/redo steps over preferences and the selected dance and tune.
     history: History,
     /// An undo or redo asked for during this frame; it is applied after the
@@ -640,6 +653,30 @@ struct PreparedTune {
     arrangement: Arrangement,
 }
 
+/// Everything that changes the rendered audio.
+///
+/// The key holds the tune's ABC text and the captured render settings, not the
+/// whole preference file: a theme, alias, or glossary change rebuilds calls but
+/// must not invalidate a perfectly good audio buffer.
+#[derive(Clone, PartialEq, Debug)]
+struct RenderKey {
+    tune_abc: String,
+    settings: RenderSettings,
+}
+
+/// The last rendered loop, shared with the audio engine.
+struct CachedRender {
+    key: RenderKey,
+    buffer: Arc<AudioBuffer>,
+    arrangement: Arrangement,
+}
+
+/// A render running on a worker thread before the user asks for it.
+struct Prefetch {
+    key: RenderKey,
+    rx: Receiver<Result<PreparedTune, String>>,
+}
+
 /// Bookkeeping for cycling through a set of tunes.
 #[derive(Default)]
 struct RotationState {
@@ -674,7 +711,7 @@ struct TimelineBasis {
 }
 
 /// The values a render needs, captured so a worker can render without the app.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 struct RenderSettings {
     bpm: f64,
     melody: MelodyInstrument,
@@ -937,6 +974,7 @@ impl ContraApp {
             role_edit_pending: false,
             render_loading: false,
             started: false,
+            pending_play: false,
             picker: PickerState {
                 dance_query: DanceQuery {
                     page_size: 10,
@@ -981,6 +1019,9 @@ impl ContraApp {
             alias_seed: 0,
             rotation: RotationState::default(),
             render_generation: 0,
+            render_cache: None,
+            prefetch: None,
+            prefetch_failed_key: None,
             history: History::default(),
             pending_history: None,
             history_status: None,
@@ -1604,6 +1645,7 @@ impl ContraApp {
             role_edit_pending: false,
             render_loading: false,
             started: false,
+            pending_play: false,
             picker: PickerState {
                 dance_query: DanceQuery {
                     page_size: 10,
@@ -1648,6 +1690,9 @@ impl ContraApp {
             alias_seed: 0,
             rotation: RotationState::default(),
             render_generation: 0,
+            render_cache: None,
+            prefetch: None,
+            prefetch_failed_key: None,
             history: History::default(),
             pending_history: None,
             history_status: None,
@@ -1902,6 +1947,12 @@ impl ContraApp {
     fn mark_render_pending_other(&mut self) {
         self.render_dirty_other = true;
         self.needs_render = true;
+        // The tune, dance, or SoundFont changed; a buffer or prefetch from the
+        // old source must not be installed.
+        self.render_cache = None;
+        self.prefetch = None;
+        self.prefetch_failed_key = None;
+        self.pending_play = false;
     }
 
     /// The current buffer and preferences agree again.
@@ -2261,8 +2312,130 @@ impl ContraApp {
         }
     }
 
+    /// The values that identify one rendered loop.
+    fn render_key(&self) -> RenderKey {
+        RenderKey {
+            tune_abc: self.tune.abc.clone(),
+            settings: self.render_settings(self.timeline.count_in_beats),
+        }
+    }
+
+    /// Whether the RAM cache already holds the loop for the current settings.
+    fn cached_render_matches(&self) -> bool {
+        self.render_cache
+            .as_ref()
+            .is_some_and(|cache| cache.key == self.render_key())
+    }
+
+    /// Start synthesizing the current loop before the user presses Play.
+    ///
+    /// The worker only fills the in-memory cache; the transport and the
+    /// installed buffer are untouched. A Play press while it runs becomes a
+    /// pending play and starts as soon as the cache is ready, rather than
+    /// synthesizing the same buffer again on the UI thread.
+    fn start_prefetch(&mut self) {
+        if self.prefetch.is_some() || self.pending_count_in.is_some() {
+            return;
+        }
+        // A live settings change is allowed to prefetch while the old buffer
+        // keeps playing; an ordinary running session is not.
+        if self.audio.is_playing() && !self.pending_audio {
+            return;
+        }
+        let key = self.render_key();
+        if self
+            .render_cache
+            .as_ref()
+            .is_some_and(|cache| cache.key == key)
+        {
+            return;
+        }
+        if self.prefetch_failed_key.as_ref() == Some(&key) {
+            return;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // The web build has no render worker; its first Play keeps the
+            // existing synchronous path.
+            let _ = key;
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let settings = key.settings.clone();
+            let soundfont = self.active_soundfont();
+            let tune = self.tune.clone();
+            let generation = self.render_generation;
+            let (tx, rx) = channel();
+            std::thread::spawn(move || {
+                let _ = tx.send(prepare_tune(&tune, &settings, soundfont, generation));
+            });
+            self.prefetch = Some(Prefetch { key, rx });
+        }
+    }
+
+    /// Collect a finished prefetch into the render cache.
+    fn poll_prefetch(&mut self) {
+        let Some(prefetch) = self.prefetch.take() else {
+            return;
+        };
+        match prefetch.rx.try_recv() {
+            Ok(Ok(prepared)) => {
+                let play_when_ready = std::mem::take(&mut self.pending_play);
+                if prepared.generation == self.render_generation
+                    && prefetch.key == self.render_key()
+                {
+                    self.render_cache = Some(CachedRender {
+                        key: prefetch.key,
+                        buffer: Arc::new(prepared.buffer),
+                        arrangement: prepared.arrangement,
+                    });
+                    self.prefetch_failed_key = None;
+                }
+                if play_when_ready {
+                    self.play();
+                }
+            }
+            Ok(Err(error)) => {
+                let play_when_ready = std::mem::take(&mut self.pending_play);
+                if prefetch.key == self.render_key() {
+                    self.prefetch_failed_key = Some(prefetch.key);
+                    self.status = format!("Could not prepare the music: {error}");
+                }
+                if play_when_ready {
+                    // Fall back to the synchronous path so a failed prefetch
+                    // does not swallow the press.
+                    self.play();
+                }
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => self.prefetch = Some(prefetch),
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                let play_when_ready = std::mem::take(&mut self.pending_play);
+                if prefetch.key == self.render_key() {
+                    self.prefetch_failed_key = Some(prefetch.key);
+                }
+                if play_when_ready {
+                    self.play();
+                }
+            }
+        }
+    }
+
     /// Parse and render the current tune with the current playback settings.
-    fn render_music(&mut self) -> Option<(AudioBuffer, Arrangement)> {
+    fn render_music(&mut self) -> Option<(Arc<AudioBuffer>, Arrangement)> {
+        let key = self.render_key();
+        if let Some(cache) = &self.render_cache
+            && cache.key == key
+        {
+            self.length_warning = cache
+                .arrangement
+                .check_dance_length(self.dance.total_beats())
+                .err()
+                .map(format_length_mismatch);
+            return Some((Arc::clone(&cache.buffer), cache.arrangement.clone()));
+        }
+
         let score = match parse_abc(&self.tune.abc) {
             Ok(score) => score,
             Err(error) => {
@@ -2277,15 +2450,22 @@ impl ContraApp {
             .check_dance_length(dance_beats)
             .err()
             .map(format_length_mismatch);
-        let settings = self.render_settings(self.timeline.count_in_beats);
+        let settings = key.settings.clone();
         let soundfont = self.active_soundfont();
-        match render(&settings.request(arrangement.clone()), soundfont.as_ref()) {
-            Ok(buffer) => Some((buffer, arrangement)),
+        let buffer = match render(&settings.request(arrangement.clone()), soundfont.as_ref()) {
+            Ok(buffer) => Arc::new(buffer),
             Err(error) => {
                 self.error = Some(format!("Could not render music: {error}"));
-                None
+                return None;
             }
-        }
+        };
+        self.render_cache = Some(CachedRender {
+            key,
+            buffer: Arc::clone(&buffer),
+            arrangement: arrangement.clone(),
+        });
+        self.prefetch_failed_key = None;
+        Some((buffer, arrangement))
     }
 
     /// Install a freshly rendered loop without restarting the transport.
@@ -2296,7 +2476,7 @@ impl ContraApp {
     /// settings change stops stale speech instead.
     fn install_music(
         &mut self,
-        buffer: AudioBuffer,
+        buffer: Arc<AudioBuffer>,
         arrangement: Arrangement,
         resume_beat: Option<f64>,
         keep_speech: bool,
@@ -2311,7 +2491,7 @@ impl ContraApp {
                 self.audio.pause();
             }
         }
-        self.audio.set_buffer(buffer);
+        self.audio.set_buffer_shared(buffer);
         self.arrangement = Some(arrangement);
         self.audio.set_looping(self.prefs.loop_enabled);
         self.audio.set_volume(self.prefs.master_volume);
@@ -2597,6 +2777,12 @@ impl ContraApp {
 
     /// Install a pre-rendered tune without interrupting the call timeline.
     fn switch_to_prepared_tune(&mut self, prepared: PreparedTune) {
+        // The prepared tune replaces the old source; cached or in-flight work
+        // for the previous tune must not be installed later.
+        self.render_cache = None;
+        self.prefetch = None;
+        self.prefetch_failed_key = None;
+        self.pending_play = false;
         let PreparedTune {
             tune,
             buffer,
@@ -2612,7 +2798,7 @@ impl ContraApp {
         self.prefs.last_tune = Some(self.tune.source.clone());
         self.rotation.passes = 0;
         self.rotation.last_beat = 0.0;
-        self.install_music(buffer, arrangement, Some(0.0), true);
+        self.install_music(Arc::new(buffer), arrangement, Some(0.0), true);
         self.last_spoken = None;
         self.last_beat = 0.0;
         self.status = format!("Tune change: {}", self.tune.title);
@@ -2695,6 +2881,17 @@ impl ContraApp {
     }
 
     fn play(&mut self) {
+        // A prefetch already holds the loop; let the worker finish instead of
+        // synthesizing the same buffer again on the UI thread. The completion
+        // poll calls Play again and installs the cache.
+        if !self.headless
+            && self.prefetch.is_some()
+            && (self.needs_render || !self.audio.has_buffer())
+        {
+            self.pending_play = true;
+            self.status = "Preparing music…".into();
+            return;
+        }
         self.timeline_basis = None;
         let from_finished = self.audio.is_finished();
         self.ensure_ready();
@@ -2718,6 +2915,7 @@ impl ContraApp {
     }
 
     fn pause(&mut self) {
+        self.pending_play = false;
         self.timeline_basis = None;
         self.audio.pause();
         self.speech.stop();
@@ -2737,6 +2935,7 @@ impl ContraApp {
     }
 
     fn restart(&mut self) {
+        self.pending_play = false;
         self.timeline_basis = None;
         // A restart is a new run: a count-in change that was waiting for the
         // current count-in to finish applies now, so this run honours it.
@@ -3046,6 +3245,7 @@ impl ContraApp {
     fn tick(&mut self, ctx: &egui::Context) {
         self.handle_source_events();
         self.poll_imported_files();
+        self.poll_prefetch();
         self.handle_media_keys();
 
         // The audio position is the only clock: speech is triggered from the
@@ -3069,15 +3269,50 @@ impl ContraApp {
             input.pointer.primary_down() && input.viewport().visible() != Some(false)
         });
         if self.pending_audio && self.pending_count_in.is_none() && self.started && !dragging {
-            self.apply_audio_settings();
+            // A settings change can render on a worker while the old loop
+            // keeps playing. The next tick installs the cached buffer at the
+            // current beat, so the control never freezes the UI. The web
+            // build has no worker and keeps the synchronous path.
+            let can_defer = !self.headless && cfg!(not(target_arch = "wasm32"));
+            if can_defer && !self.cached_render_matches() {
+                if self.prefetch.is_none() {
+                    let key = self.render_key();
+                    if self.prefetch_failed_key.as_ref() == Some(&key) {
+                        // The background attempt failed; report the real error
+                        // through the synchronous path.
+                        self.apply_audio_settings();
+                    } else {
+                        self.start_prefetch();
+                        self.status = "Preparing the new settings…".into();
+                    }
+                }
+            } else {
+                self.apply_audio_settings();
+            }
         }
 
         self.sync_media_session();
 
+        // Keep the loop warm before the user asks for it. The headless
+        // renderer stays deterministic and skips this: it drives the same app
+        // without an audio device and its tests stage the buffer themselves.
+        #[cfg(not(target_arch = "wasm32"))]
+        if !self.headless
+            && self.needs_render
+            && !self.audio.is_playing()
+            && self.pending_count_in.is_none()
+        {
+            self.start_prefetch();
+        }
+
         // Keep the event loop waking while there is something to advance. A
         // hidden window is throttled by eframe to one pass per 100 ms, but each
         // pass still reads the audio clock, so the caller stays on the beat.
-        if self.audio.is_playing() || self.render_loading || self.speech.is_busy() {
+        if self.audio.is_playing()
+            || self.render_loading
+            || self.speech.is_busy()
+            || self.prefetch.is_some()
+        {
             ctx.request_repaint_after(PLAYBACK_TICK);
         }
     }
@@ -3102,6 +3337,7 @@ impl ContraApp {
         // is compared against the state that came before it.
         let history_before = self.snapshot();
         let previous_screen = self.screen;
+        let previous_prefs_page = self.prefs_page;
 
         if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
@@ -3156,8 +3392,16 @@ impl ContraApp {
             }
         });
         // Swipe navigation is read after the screen draws so the slider list
-        // for this frame is complete.
+        // for this frame is complete. A press that landed anywhere but on a
+        // slider puts its guard back, so the next swipe cannot move a level.
+        ui::finish_slider_frame(ui);
         self.tab_swipe(ui, content_rect);
+
+        // An armed slider belongs to the page that showed it. Leaving the
+        // screen or the Preferences category restores every guard.
+        if self.screen != previous_screen || self.prefs_page != previous_prefs_page {
+            ui::disarm_sliders(ui);
+        }
 
         // A touch definition card belongs to the screen that opened it. Keep it
         // out of the next screen and draw it last so no scroll area clips it.
@@ -5568,6 +5812,90 @@ mod tests {
         assert!(app.picker.dance_query.formation.is_none());
     }
 
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn a_render_key_ignores_ui_only_preferences_and_tracks_audio() {
+        let ctx = egui::Context::default();
+        let cc = eframe::CreationContext::_new_kittest(ctx);
+        let mut app = ContraApp::new_headless(&cc);
+        let base = app.render_key();
+
+        app.prefs.theme = if app.prefs.theme == Theme::Dark {
+            Theme::Light
+        } else {
+            Theme::Dark
+        };
+        app.prefs.animations_enabled = !app.prefs.animations_enabled;
+        assert_eq!(
+            app.render_key(),
+            base,
+            "a theme or animation change must not invalidate the audio cache"
+        );
+
+        app.prefs.tempo_bpm += 10.0;
+        assert_ne!(
+            app.render_key(),
+            base,
+            "a tempo change must produce a different render key"
+        );
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn a_finished_prefetch_fills_the_cache_and_starts_a_pending_play() {
+        let ctx = egui::Context::default();
+        let cc = eframe::CreationContext::_new_kittest(ctx);
+        let mut app = ContraApp::new_headless(&cc);
+        app.headless = false;
+
+        let score = parse_abc(&app.tune.abc).expect("the bundled tune parses");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let samples_per_beat = app.audio.sample_rate() as f64 * 0.5;
+        let pass_samples = (64.0 * samples_per_beat).round() as u64;
+        let buffer = AudioBuffer {
+            samples: vec![0.0; (pass_samples as usize) * 2],
+            sample_rate: app.audio.sample_rate(),
+            channels: 2,
+            count_in_samples: 0,
+            loop_start_sample: 0,
+            loop_end_sample: pass_samples,
+            loop_pass_samples: pass_samples,
+            samples_per_beat,
+            ending_from_beat: 62.0,
+            ending_start_sample: None,
+        };
+        let prepared = PreparedTune {
+            generation: app.render_generation,
+            tune: app.tune.clone(),
+            buffer,
+            arrangement,
+        };
+        let (tx, rx) = channel();
+        app.prefetch = Some(Prefetch {
+            key: app.render_key(),
+            rx,
+        });
+
+        app.play();
+        assert!(app.pending_play, "Play waits for the running prefetch");
+        assert!(!app.audio.is_playing(), "nothing starts before it is ready");
+
+        tx.send(Ok(prepared))
+            .expect("the prefetch result is delivered");
+        app.poll_prefetch();
+
+        assert!(!app.pending_play);
+        assert!(app.audio.is_playing(), "the pending Play starts the loop");
+        assert!(app.render_cache.is_some());
+
+        let first = app.render_music().expect("the cache holds the loop");
+        let second = app.render_music().expect("the cache holds the loop");
+        assert!(
+            Arc::ptr_eq(&first.0, &second.0),
+            "a cache hit must reuse the installed buffer, not synthesize again"
+        );
+    }
+
     /// A headless app with an empty history and nothing rendered yet.
     #[cfg(all(
         feature = "headless",
@@ -5794,3 +6122,7 @@ mod history;
 
 #[cfg(feature = "headless")]
 pub mod headless;
+
+// Development-only CPU profiler for the screens and user-facing controls.
+#[cfg(feature = "headless")]
+pub mod perf;

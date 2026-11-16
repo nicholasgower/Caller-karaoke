@@ -7,6 +7,11 @@ the application.
 - `check.sh` — the same checks on Linux/macOS.
 - `inspect.ps1` / `inspect.sh` — run the desktop app with the `inspection`
   feature for MCP automation (see `docs/automation.md`).
+- `profile.ps1` / `profile.sh` — build `contra-perf` in release mode and print
+  the CPU profile of every screen and user-facing action. Pass a sample count
+  as the first argument; five samples is the default. The report names the
+  functions over the frame or action budget and writes nothing except to
+  stdout.
 - `rebuild-soundfont.py` — regenerate
   `assets/defaults/fluid-r3-gm-subset.sf2` from the full Fluid R3 GM bank. Needs
   only Python 3: it downloads the pinned official release, verifies its

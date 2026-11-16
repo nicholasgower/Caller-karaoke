@@ -59,7 +59,8 @@ minutes. Later builds are incremental.
 The app opens on the **Session** tab with **Another Last Dance** and **Sandy
 Boys** already loaded. The prompt says **READY** and the line above it says
 `Press Play to prepare the music with these settings.` The arrangement is
-rendered on the first **Play**.
+prepared in the background while the session is idle; the first **Play** installs
+the prepared loop.
 
 The app stores preferences and the source cache in the standard per-user
 configuration and cache directories. Searches and detail pages are fetched on

@@ -48,8 +48,10 @@ development release. These are the limitations to know before relying on it.
   silently. The saved-dance and saved-tune lists always work offline.
 - There is no cache-size or library-size display, and no manual source refresh;
   clearing the cache and downloading an item again are the maintenance actions.
-- The first **Play** renders the music synchronously. There is no progress bar
-  or cancel control while it runs.
+- The first **Play** may wait for the background render if it has not finished.
+  There is no progress bar or cancel control while it runs. Desktop and Android
+  render on a worker thread so the window stays responsive; the web build
+  renders on the press and can pause briefly.
 - A **minimized window** keeps playing and calling, but the desktop throttles a
   hidden window's frames to about one every 100 ms, so a call can begin up to a
   tenth of a second after its beat. The lead's safety padding covers that

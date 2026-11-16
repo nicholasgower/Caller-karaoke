@@ -58,8 +58,9 @@ With ADB, `adb install path/to/contra-karaoke.apk` performs the same install.
 ## First launch
 
 The app opens with *Another Last Dance* and *Sandy Boys*. Press **Play** to
-render the music. Android uses the AAudio backend through cpal; the first
-gesture is a normal app interaction, not a browser restriction.
+start; the music is prepared in the background. Android uses the AAudio backend
+through cpal; the first gesture is a normal app interaction, not a browser
+restriction.
 
 If audio or TTS misbehaves, include the device model, Android version, and
 whether a SoundFont was loaded in the issue report.
@@ -92,10 +93,12 @@ Android stops the app in the background, playback stops with it.
   left from Prefs returns to Session. A swipe needs roughly 60 points of
   mostly horizontal travel and changes the tab once per gesture. A press that
   starts on a button, slider, folder row, or splitter stays with that control.
-- **Drag a slider sideways** to change its value. A mostly vertical swipe that
-  starts on a slider scrolls the page instead, so scrolling past the volume or
-  tempo control does not knock it off its setting. A short tap on the rail still
-  jumps to that position.
+- **Tap a slider, then drag it sideways** to change its value. Every slider
+  shows a padlock and a rounded outline until it is tapped, so a thumb that lands
+  on the tempo or volume control while scrolling does not knock it off its
+  setting. Tapping or swiping anywhere outside the slider puts the padlock
+  back. While an unlocked slider is being dragged the page does not scroll; a
+  swipe that starts on a locked slider still scrolls.
 - **Tap a text field** to open the system keyboard. Backspace, Enter, and the
   arrow keys work in the focused field, and the page resizes so the field stays
   visible. Dismiss the keyboard with the system Back gesture; tap the field

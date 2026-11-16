@@ -35,15 +35,18 @@ Changing tempo, count-in, an instrument row, a player count, a row's volume or
 direction, the band list, the output mode, a percussion rhythm, an
 accompaniment rhythm, a SoundFont, or **Humanize timing** marks the music for a
 rebuild. Playback settings apply without restarting the music: release the
-control and the app re-renders the loop and keeps the current beat. The session
-**Caller** and **Band** levels apply immediately. If
+control and the app prepares the new loop in the background, keeps the current
+beat, and installs the new loop when it is ready. The old loop keeps playing in
+the meantime. The session **Caller** and **Band** levels apply immediately. If
 the session is not playing, it shows:
 
 > Press Play to prepare the music with these settings.
 
-Press **Play** to render and start. The app renders synchronously on that press;
-there is no separate “preparing music” screen in 0.1.0. Role, alias, and lead
-changes rebuild the call timeline without re-rendering the music.
+Press **Play** to install the prepared loop and start. If preparation has not
+finished, the status reads `Preparing music…` and playback starts when it is
+ready. The web build has no render worker and prepares the loop on the press.
+Role, alias, and lead changes rebuild the call timeline without re-rendering the
+music.
 
 **Undo** and **Redo** (Ctrl+Z and Ctrl+Y) put a setting or a dance/tune choice
 back. A running session keeps its beat when only playback settings changed: the
@@ -96,7 +99,7 @@ karaoke prompt. It moves through these states:
 
 | State | Display | What to do |
 | --- | --- | --- |
-| Ready | `READY`, `Press Play to begin` | Press **Play** to build the music. |
+| Ready | `READY`, `Press Play to begin` | Press **Play** to start the prepared music. |
 | Count-in | `COUNT-IN`, a large number, and either **CALL NOW** or `Listen for the first chord` | Wait for the loop, or say the first call if it is already due. |
 | Calling | `CALL NOW`, green card | Say the words now. The detail line counts down to the execute beat, and the **NEXT:** footer previews the following call. |
 | Executing | `UPCOMING MOVE`, red card, the next call, and `call in N beats` | The figure is happening; prepare to say the next call. The dance card still highlights the figure in progress. |
@@ -315,8 +318,14 @@ at phone width, with full-width fields and the preview below the results.
 On a touch screen, swipe left or right across empty content to change tabs. A
 press that starts on a control — a button, slider, folder row, splitter, or
 open menu — belongs to that control, so dragging from it never changes tabs.
-A mostly vertical swipe scrolls instead. Drag a slider sideways to change it on
-purpose.
+A mostly vertical swipe scrolls instead. Sliders are guarded on a touch screen:
+tap the rail (a padlock and rounded outline mark it) to unlock the level, then
+drag sideways to change it. The padlock goes away while a slider is unlocked,
+tapping or swiping anywhere outside it puts the padlock back, and the page does
+not scroll while you drag an unlocked level. A swipe that starts on a locked
+slider still scrolls. On a desktop with a touch screen the guard follows the
+input you used last: touching the screen guards the sliders, and moving or
+clicking with the mouse releases them again.
 
 <Shot id="session-mobile-controls" />
 

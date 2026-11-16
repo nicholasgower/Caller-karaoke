@@ -859,6 +859,27 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
 
 fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), Box<dyn Error>> {
     harness.set_size(MOBILE);
+    // The phone build is touch-first. Teach egui that a finger has touched the
+    // screen so the guarded sliders draw their padlocks in this set, just as
+    // they do on a device. The touch starts and ends in one frame, so no
+    // control sees a press.
+    harness.input_mut().events.extend([
+        egui::Event::Touch {
+            device_id: egui::TouchDeviceId(1),
+            id: egui::TouchId(1),
+            phase: egui::TouchPhase::Start,
+            pos: egui::pos2(4.0, 4.0),
+            force: None,
+        },
+        egui::Event::Touch {
+            device_id: egui::TouchDeviceId(1),
+            id: egui::TouchId(1),
+            phase: egui::TouchPhase::End,
+            pos: egui::pos2(4.0, 4.0),
+            force: None,
+        },
+    ]);
+    harness.run_steps(1);
     {
         let app = harness.state_mut();
         app.prefs.animations_enabled = false;

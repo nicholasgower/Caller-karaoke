@@ -70,7 +70,10 @@ starts a tab swipe: a mouse or trackpad drag over the same content selects text
 or moves the thing under the pointer, and the tab stays put. A press that
 starts on any control — a button, slider, folder row, resizable splitter, text
 field, or open menu — belongs to that control and never changes tabs. A mostly
-vertical swipe scrolls instead. The
+vertical swipe scrolls instead. Sliders carry a padlock and a rounded outline
+until they are tapped: tap the rail to unlock the level, drag sideways to change
+it, and tap or swipe anywhere outside the slider to put the guard back. The
+page does not scroll while an unlocked slider is being dragged. The
 system back button follows the **Esc** path: a Preferences category returns to
 the category list, and the list, a picker, or a download screen returns as
 described above.

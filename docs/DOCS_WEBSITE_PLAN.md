@@ -315,7 +315,7 @@ The UI does not implement them; screenshots would be fake or unreachable:
 - dance non-64-beat warning
 - tune arrangement warning
 - offline “using cached data” banner
-- “Preparing music…” progress/cancel state (rendering is synchronous on Play)
+- cancel control for a running render (the “Preparing music…” status is implemented)
 - cache size display and manual refresh
 - TTS voice picker (rate only)
 - SoundFont missing-program fallback message
@@ -895,7 +895,7 @@ shortcut reference page; their shots are in the manifest under `install-*` and
 | Non-64-beat warning | Preview shows total beats but no warning |
 | Arrangement warning | Not shown in tune preview |
 | Offline banner | Stale cache is used silently |
-| Preparing/cancel | Music render is synchronous on Play |
+| Cancel a running render | “Preparing music…” exists; there is no cancel control |
 | Cache size/refresh | Only “Clear source cache” exists |
 | TTS voice picker | Rate slider only |
 | SoundFont fallback | Only a generic load error is shown |

@@ -88,7 +88,9 @@ with your preferences; do not share a screenshot of a real token.
 
 ## What is not cached
 
-- Audio renders are not stored; the app re-renders on Play after a change.
+- The rendered loop is kept in memory for the current tune and settings, so a
+  second **Play**, a restart, or an undo is immediate. It is not written to disk
+  and is rebuilt after a change.
 - Your current transport position is not persisted.
 - A failed response is not cached as a valid result.
 - Saved dances and tunes are stored in the library, not in the source cache;
