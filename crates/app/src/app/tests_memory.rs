@@ -76,6 +76,7 @@ fn memory_report_accounts_for_every_category() {
         "audio_buffer",
         "prepared_tune",
         "speech_audio",
+        "speech_cache",
         "arrangement",
         "call_timeline",
         "saved_libraries",
@@ -174,6 +175,25 @@ fn memory_report_shrinks_when_the_neural_voice_is_off() {
         on.total_bytes().saturating_sub(off.total_bytes()) > 114 * 1024 * 1024,
         "turning speech off must release the model estimate and nothing else"
     );
+}
+
+#[test]
+fn memory_report_counts_prepared_deliveries() {
+    let (mut app, ctx) = measured_app();
+    app.speech.set_speech_bytes_for_test(8 * 1024 * 1024);
+    app.prefs.tts_enabled = true;
+    app.speech.set_enabled(true);
+    let on = app.memory_report(Some(&ctx));
+    assert_eq!(
+        on.bytes_for("speech_cache"),
+        Some(8 * 1024 * 1024),
+        "the prepared deliveries must be visible in the table"
+    );
+
+    app.speech.set_enabled(false);
+    let off = app.memory_report(Some(&ctx));
+    assert_eq!(off.bytes_for("speech_cache"), Some(0));
+    assert_eq!(off.bytes_for("neural_tts"), Some(0));
 }
 
 #[test]

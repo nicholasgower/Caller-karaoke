@@ -26,6 +26,21 @@ pub const MIN_TTS_RATE: f32 = 0.4;
 /// 1.25, rounded to one decimal place.
 pub const MAX_TTS_RATE: f32 = 1.3;
 
+/// Fewest deliveries the neural voice prepares for each call text.
+pub const MIN_TTS_DELIVERIES: u8 = 1;
+
+/// Most deliveries the neural voice prepares for each call text.
+///
+/// Every delivery is a separate inference, so this is also the multiplier on
+/// preparation time and on the synthesized-call cache.
+pub const MAX_TTS_DELIVERIES: u8 = 4;
+
+/// Deliveries per call for a fresh or upgraded preference file.
+///
+/// Four lets a repeated call rotate through a small set of tones. The setting
+/// is optional: one delivery restores the previous single-rendering behaviour.
+pub const DEFAULT_TTS_DELIVERIES: u8 = 4;
+
 /// The instrument that plays the tune.
 ///
 /// The two original contra voices (fiddle and accordion) are joined by the
@@ -1197,6 +1212,15 @@ pub struct Preferences {
     /// Delivery tone for spoken calls; see [`CallTone`].
     #[serde(default)]
     pub tts_tone: CallTone,
+    /// How many different deliveries of each call text the desktop neural voice
+    /// prepares; see [`MIN_TTS_DELIVERIES`] and [`MAX_TTS_DELIVERIES`].
+    ///
+    /// Repeated calls rotate through the prepared deliveries, which keeps a
+    /// looping dance from sounding like the same recording every pass. One
+    /// delivery turns the variation off. Platform voices always speak one
+    /// delivery.
+    #[serde(default = "default_tts_deliveries")]
+    pub tts_deliveries: u8,
     /// Speak and show a randomly chosen alternative call alias for moves that
     /// have one. Off by default so calls stay predictable.
     pub shuffle_alternatives: bool,
@@ -1269,7 +1293,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 14;
+pub const CURRENT_SCHEMA_VERSION: u32 = 15;
 
 /// The dance source a new or older preference file downloads from.
 ///
@@ -1370,6 +1394,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "dancer-sounds-v12",
         version: 12,
         apply: migrate_v11_dancer_sounds,
+    },
+    Migration {
+        tag: "tts-deliveries-v15",
+        version: 15,
+        apply: migrate_v14_tts_deliveries,
     },
 ];
 
@@ -1507,6 +1536,12 @@ fn migrate_v11_dancer_sounds(_prefs: &mut Preferences) {
     // nothing to adjust.
 }
 
+fn migrate_v14_tts_deliveries(_prefs: &mut Preferences) {
+    // v15 adds the number of prepared deliveries per call. `serde` supplies
+    // the four-delivery default; a file written by this build keeps whatever
+    // the user chose.
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -1525,17 +1560,23 @@ pub struct ChangeSet {
     pub audio: bool,
     /// Spoken calls must be synthesized again: the delivery tone changed.
     pub tone: bool,
+    /// The number of prepared deliveries per call changed.
+    pub deliveries: bool,
 }
 
 impl ChangeSet {
     /// Whether anything has to be redone.
     pub fn any(self) -> bool {
-        self.timeline || self.audio || self.tone
+        self.timeline || self.audio || self.tone || self.deliveries
     }
 }
 
 fn default_tts_voice() -> String {
     "af_heart".to_string()
+}
+
+fn default_tts_deliveries() -> u8 {
+    DEFAULT_TTS_DELIVERIES
 }
 
 /// Human timing is on by default; it is part of the band's sound, not an
@@ -1580,6 +1621,7 @@ impl Default for Preferences {
             tts_rate: 1.0,
             tts_voice: default_tts_voice(),
             tts_tone: CallTone::default(),
+            tts_deliveries: default_tts_deliveries(),
             shuffle_alternatives: false,
             loop_enabled: true,
             count_in_enabled: true,
@@ -1727,6 +1769,9 @@ impl Preferences {
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
         self.tune_rotation.validate();
         self.tts_rate = self.tts_rate.clamp(MIN_TTS_RATE, MAX_TTS_RATE);
+        self.tts_deliveries = self
+            .tts_deliveries
+            .clamp(MIN_TTS_DELIVERIES, MAX_TTS_DELIVERIES);
         self.instrument_copies.validate();
         for slot in self.band.iter_mut() {
             slot.validate();
@@ -1857,6 +1902,7 @@ impl Preferences {
                 || self.effects != old.effects
                 || self.soundfont != old.soundfont,
             tone: self.tts_tone != old.tts_tone,
+            deliveries: self.tts_deliveries != old.tts_deliveries,
         }
     }
 }
@@ -1905,6 +1951,7 @@ mod tests {
         assert!((prefs.speech_rate() - 1.2).abs() < 1e-6);
         assert_eq!(prefs.tts_voice, "af_heart");
         assert_eq!(prefs.tts_tone, CallTone::Commanding);
+        assert_eq!(prefs.tts_deliveries, DEFAULT_TTS_DELIVERIES);
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
         assert!(!prefs.shuffle_alternatives);
         assert!(!prefs.tune_rotation.enabled);
@@ -2781,6 +2828,34 @@ mod tests {
     }
 
     #[test]
+    fn deliveries_clamp_to_the_supported_range() {
+        let mut prefs = Preferences::default();
+        assert_eq!(prefs.tts_deliveries, MAX_TTS_DELIVERIES);
+
+        prefs.tts_deliveries = 0;
+        prefs.validate();
+        assert_eq!(prefs.tts_deliveries, MIN_TTS_DELIVERIES);
+
+        prefs.tts_deliveries = 9;
+        prefs.validate();
+        assert_eq!(prefs.tts_deliveries, MAX_TTS_DELIVERIES);
+    }
+
+    #[test]
+    fn a_delivery_choice_survives_migration() {
+        // A file written before the setting existed gets the four-delivery
+        // default, not one delivery.
+        let old = Preferences::from_json(r#"{"schema_version": 14}"#).expect("deserialize");
+        assert_eq!(old.tts_deliveries, DEFAULT_TTS_DELIVERIES);
+        assert!(old.applied_migrations.contains("tts-deliveries-v15"));
+
+        // A file written by this build keeps the user's choice.
+        let kept =
+            Preferences::from_json(r#"{"schema_version": 15, "tts_deliveries": 1}"#).expect("json");
+        assert_eq!(kept.tts_deliveries, 1);
+    }
+
+    #[test]
     fn changes_since_routes_settings_to_their_subsystems() {
         let base = Preferences::default();
         assert_eq!(base.changes_since(&base), ChangeSet::default());
@@ -2792,7 +2867,8 @@ mod tests {
             ChangeSet {
                 timeline: true,
                 audio: true,
-                tone: false
+                tone: false,
+                deliveries: false
             }
         );
 
@@ -2803,7 +2879,8 @@ mod tests {
             ChangeSet {
                 timeline: true,
                 audio: false,
-                tone: false
+                tone: false,
+                deliveries: false
             }
         );
 
@@ -2814,7 +2891,8 @@ mod tests {
             ChangeSet {
                 timeline: false,
                 audio: true,
-                tone: false
+                tone: false,
+                deliveries: false
             }
         );
 
@@ -2825,7 +2903,8 @@ mod tests {
             ChangeSet {
                 timeline: false,
                 audio: true,
-                tone: false
+                tone: false,
+                deliveries: false
             }
         );
 
@@ -2836,7 +2915,8 @@ mod tests {
             ChangeSet {
                 timeline: false,
                 audio: false,
-                tone: true
+                tone: true,
+                deliveries: false
             }
         );
 
@@ -2847,7 +2927,8 @@ mod tests {
             ChangeSet {
                 timeline: false,
                 audio: true,
-                tone: false
+                tone: false,
+                deliveries: false
             }
         );
 
@@ -2858,7 +2939,8 @@ mod tests {
             ChangeSet {
                 timeline: false,
                 audio: true,
-                tone: false
+                tone: false,
+                deliveries: false
             }
         );
 
@@ -2869,7 +2951,8 @@ mod tests {
             ChangeSet {
                 timeline: false,
                 audio: true,
-                tone: false
+                tone: false,
+                deliveries: false
             }
         );
 
@@ -2880,7 +2963,20 @@ mod tests {
             ChangeSet {
                 timeline: false,
                 audio: true,
-                tone: false
+                tone: false,
+                deliveries: false
+            }
+        );
+
+        let mut deliveries = base.clone();
+        deliveries.tts_deliveries = 2;
+        assert_eq!(
+            deliveries.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: false,
+                tone: false,
+                deliveries: true
             }
         );
 

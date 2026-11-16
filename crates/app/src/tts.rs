@@ -6,6 +6,7 @@
 //! the neural model is not built. Both backends receive the reviewed dance-term
 //! respellings from [`contra_core::pronounce`].
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 use std::time::{Duration, Instant};
@@ -138,6 +139,16 @@ pub struct Speech {
     enabled: bool,
     rate: f32,
     tone: CallTone,
+    /// Prepared deliveries per call text; see [`contra_core::Preferences::tts_deliveries`].
+    ///
+    /// The platform voice always speaks one delivery, so this is only read by
+    /// the desktop coordinator.
+    #[cfg_attr(any(target_arch = "wasm32", target_os = "android"), allow(dead_code))]
+    deliveries: u8,
+    /// Next delivery to use for each call text, so a repeated call rotates
+    /// through the prepared versions instead of replaying one recording.
+    #[cfg_attr(any(target_arch = "wasm32", target_os = "android"), allow(dead_code))]
+    delivery_cursor: HashMap<String, u8>,
     last_calls: Vec<String>,
     voice_id: String,
     #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
@@ -148,6 +159,10 @@ pub struct Speech {
     /// uses the silent stub coordinator and never loads the real model.
     #[cfg(test)]
     neural_bytes_override: Option<u64>,
+    /// Test-only stand-in for the synthesized-call cache, which lives on the
+    /// worker thread in a real session.
+    #[cfg(test)]
+    speech_bytes_override: Option<u64>,
 }
 
 impl Speech {
@@ -184,9 +199,13 @@ impl Speech {
                 enabled: false,
                 rate: 1.0,
                 tone: CallTone::default(),
+                deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+                delivery_cursor: HashMap::new(),
                 last_calls: Vec::new(),
                 #[cfg(test)]
                 neural_bytes_override: None,
+                #[cfg(test)]
+                speech_bytes_override: None,
                 voice_id: DEFAULT_VOICE_ID.to_string(),
                 pending_rate: None,
                 pending_kokoro_text: None,
@@ -210,9 +229,13 @@ impl Speech {
                 enabled: false,
                 rate: 1.0,
                 tone: CallTone::default(),
+                deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+                delivery_cursor: HashMap::new(),
                 last_calls: Vec::new(),
                 #[cfg(test)]
                 neural_bytes_override: None,
+                #[cfg(test)]
+                speech_bytes_override: None,
                 voice_id: DEFAULT_VOICE_ID.to_string(),
             }
         }
@@ -237,9 +260,13 @@ impl Speech {
             enabled: false,
             rate: 1.0,
             tone: CallTone::default(),
+            deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+            delivery_cursor: HashMap::new(),
             last_calls: Vec::new(),
             #[cfg(test)]
             neural_bytes_override: None,
+            #[cfg(test)]
+            speech_bytes_override: None,
             voice_id: DEFAULT_VOICE_ID.to_string(),
             pending_rate: None,
             pending_kokoro_text: None,
@@ -265,9 +292,13 @@ impl Speech {
             enabled: false,
             rate: 1.0,
             tone: CallTone::default(),
+            deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+            delivery_cursor: HashMap::new(),
             last_calls: Vec::new(),
             #[cfg(test)]
             neural_bytes_override: None,
+            #[cfg(test)]
+            speech_bytes_override: None,
             voice_id: DEFAULT_VOICE_ID.to_string(),
             pending_rate: None,
             pending_kokoro_text: None,
@@ -310,6 +341,33 @@ impl Speech {
         self.neural_bytes_override = Some(bytes);
     }
 
+    /// Bytes held by the prepared call deliveries, or zero when speech is off.
+    ///
+    /// The buffers live on the Kokoro worker; it publishes their total after
+    /// every cache change so the Preferences memory table can show them
+    /// without blocking on the worker.
+    pub fn speech_cache_bytes(&self) -> u64 {
+        #[cfg(test)]
+        if let Some(bytes) = self.speech_bytes_override {
+            return if self.enabled { bytes } else { 0 };
+        }
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        {
+            if self.enabled
+                && let Some(kokoro) = &self.kokoro
+            {
+                return kokoro.cache_bytes();
+            }
+        }
+        0
+    }
+
+    /// Stand in for a prepared-call cache in memory-report tests.
+    #[cfg(test)]
+    pub fn set_speech_bytes_for_test(&mut self, bytes: u64) {
+        self.speech_bytes_override = Some(bytes);
+    }
+
     pub fn error(&self) -> Option<&str> {
         self.status
             .error
@@ -339,6 +397,12 @@ impl Speech {
         (self.rate, self.tone)
     }
 
+    /// Prepared deliveries per call, for the state fingerprint.
+    #[cfg(test)]
+    pub fn deliveries_for_test(&self) -> u8 {
+        self.deliveries
+    }
+
     pub fn can_retry(&self) -> bool {
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
@@ -358,6 +422,7 @@ impl Speech {
             return;
         }
         self.voice_id = voice.id.to_string();
+        self.delivery_cursor.clear();
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         if let Some(kokoro) = &self.kokoro {
             if self.enabled {
@@ -369,6 +434,26 @@ impl Speech {
             if self.enabled {
                 kokoro.prewarm(self.last_calls.clone());
             }
+        }
+    }
+
+    /// Set how many deliveries each call text is prepared with.
+    ///
+    /// The worker drops the in-memory buffers and reloads or re-synthesizes
+    /// the new set; the on-disk cache keeps work that is still valid.
+    pub fn set_deliveries(&mut self, deliveries: u8) {
+        let deliveries = deliveries.clamp(
+            contra_core::MIN_TTS_DELIVERIES,
+            contra_core::MAX_TTS_DELIVERIES,
+        );
+        if self.deliveries == deliveries {
+            return;
+        }
+        self.deliveries = deliveries;
+        self.delivery_cursor.clear();
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        if let Some(kokoro) = &self.kokoro {
+            kokoro.set_deliveries(deliveries);
         }
     }
 
@@ -391,16 +476,23 @@ impl Speech {
             return;
         }
         self.enabled = enabled;
-        if !enabled {
+        if enabled {
+            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+            if self.status.error.is_some() {
+                self.retry();
+            } else if let Some(kokoro) = &self.kokoro {
+                kokoro.enable(true);
+                kokoro.prewarm(self.last_calls.clone());
+            }
+        } else {
+            self.delivery_cursor.clear();
+            // Release the model and the prepared deliveries, as the memory
+            // table and the documentation promise. Re-enabling reloads them.
+            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+            if let Some(kokoro) = &self.kokoro {
+                kokoro.enable(false);
+            }
             self.stop();
-            return;
-        }
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
-        if self.status.error.is_some() {
-            self.retry();
-        } else if let Some(kokoro) = &self.kokoro {
-            kokoro.enable(true);
-            kokoro.prewarm(self.last_calls.clone());
         }
     }
 
@@ -409,6 +501,7 @@ impl Speech {
             contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
             contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
         );
+        self.delivery_cursor.clear();
         self.platform.set_rate(self.rate);
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
@@ -424,6 +517,7 @@ impl Speech {
             return;
         }
         self.tone = tone;
+        self.delivery_cursor.clear();
         self.platform.set_tone(tone);
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         if let Some(kokoro) = &self.kokoro {
@@ -445,6 +539,10 @@ impl Speech {
                 unique.push(text);
             }
         }
+        if unique != self.last_calls {
+            // A new call set starts its rotation at the base delivery again.
+            self.delivery_cursor.clear();
+        }
         self.last_calls = unique;
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         if self.enabled
@@ -459,8 +557,9 @@ impl Speech {
         if self.enabled && self.status.ready && self.status.error.is_none() && self.kokoro.is_some()
         {
             self.pending_kokoro_text = Some(text.to_string());
+            let delivery = next_delivery(&mut self.delivery_cursor, text, self.deliveries);
             if let Some(kokoro) = &self.kokoro {
-                kokoro.speak(text);
+                kokoro.speak(text, delivery);
             }
             return;
         }
@@ -639,6 +738,20 @@ impl PlatformSpeech {
     }
 }
 
+/// Pick the next prepared delivery for a call text and advance its rotation.
+///
+/// The counter lives per text, so a dancer hears every delivery of a repeated
+/// call before any of them repeats. With one delivery the result is always
+/// zero, which is the old single-rendering behaviour.
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+fn next_delivery(cursor: &mut HashMap<String, u8>, text: &str, deliveries: u8) -> u8 {
+    let deliveries = deliveries.max(1);
+    let next = cursor.entry(text.to_string()).or_insert(0);
+    let delivery = *next % deliveries;
+    *next = next.wrapping_add(1);
+    delivery
+}
+
 /// Translate a [`CallTone`] into a platform TTS pitch value.
 ///
 /// Backends disagree on the scale (WinRT and Android use roughly 0..2, Speech
@@ -675,6 +788,40 @@ mod tests {
     fn unknown_voice_falls_back_to_the_default() {
         assert_eq!(voice("not-a-voice").id, DEFAULT_VOICE_ID);
         assert_eq!(voice(DEFAULT_VOICE_ID).label, "Heart (US female)");
+    }
+
+    #[test]
+    fn deliveries_rotate_per_call_text() {
+        let mut cursor = HashMap::new();
+        let seen: Vec<u8> = (0..9)
+            .map(|_| next_delivery(&mut cursor, "swing your partner", 4))
+            .collect();
+        assert_eq!(seen, vec![0, 1, 2, 3, 0, 1, 2, 3, 0]);
+        assert_eq!(
+            next_delivery(&mut cursor, "balance the ring", 4),
+            0,
+            "each call text has its own rotation"
+        );
+
+        let mut single = HashMap::new();
+        for _ in 0..3 {
+            assert_eq!(next_delivery(&mut single, "swing", 1), 0);
+        }
+    }
+
+    #[test]
+    fn delivery_count_is_clamped_by_the_coordinator() {
+        let mut speech = Speech::stub();
+        speech.set_deliveries(9);
+        assert_eq!(
+            speech.deliveries_for_test(),
+            contra_core::MAX_TTS_DELIVERIES
+        );
+        speech.set_deliveries(0);
+        assert_eq!(
+            speech.deliveries_for_test(),
+            contra_core::MIN_TTS_DELIVERIES
+        );
     }
 
     #[test]

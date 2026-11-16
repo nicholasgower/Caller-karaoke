@@ -57,6 +57,7 @@ struct AppStateFingerprint {
     history_status: Option<String>,
     speech_enabled: bool,
     speech_rate_tone: (f32, CallTone),
+    speech_deliveries: u8,
     speech_calls: usize,
     speech_status: String,
     soundfont_error: Option<String>,
@@ -116,6 +117,7 @@ impl ContraApp {
             history_status: self.history_status.clone(),
             speech_enabled: self.speech.enabled_for_test(),
             speech_rate_tone: self.speech.rate_and_tone(),
+            speech_deliveries: self.speech.deliveries_for_test(),
             speech_calls: self.speech.prepared_calls(),
             speech_status: self.speech.status().message.clone(),
             soundfont_error: self.soundfont_error.clone(),
@@ -404,6 +406,16 @@ const CONTROLS: &[Control] = &[
     Control {
         name: "number: tts rate",
         change: |prefs| prefs.tts_rate = (prefs.tts_rate + 0.1).min(contra_core::MAX_TTS_RATE),
+    },
+    Control {
+        name: "number: tts deliveries",
+        change: |prefs| {
+            prefs.tts_deliveries = if prefs.tts_deliveries > contra_core::MIN_TTS_DELIVERIES {
+                prefs.tts_deliveries - 1
+            } else {
+                contra_core::MAX_TTS_DELIVERIES
+            }
+        },
     },
     Control {
         name: "number: tune set interval",

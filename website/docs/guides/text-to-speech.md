@@ -1,6 +1,6 @@
 ---
 title: Text to speech
-description: Enable spoken calls, choose the local Kokoro voice and caller tone, set the speaking rate, and understand pronunciation corrections and fallbacks.
+description: Enable spoken calls, choose the local Kokoro voice and caller tone, vary repeated calls, set the speaking rate, and understand pronunciation corrections and fallbacks.
 sidebar_position: 8
 ---
 
@@ -64,6 +64,32 @@ The tone does not change the visual lead. Calls are still timed from the
 syllable estimate, and the clear-speech delivery stays inside the safety padding
 used for every call. Some platform voices ignore pitch changes; the desktop
 neural voice applies the full delivery.
+
+## Vary repeated calls
+
+<Steps>
+  <Step shot="prefs-tts-rate">
+    In **Preferences → Calling**, set **Deliveries per call** from 1 to 4. The
+    default is 4.
+  </Step>
+</Steps>
+
+The desktop neural voice prepares that many versions of every call and rotates
+them when the same line comes around again, so a looping dance does not replay
+one recording. The first delivery is the caller tone unchanged; the others move
+a fraction of a semitone up or down. Every delivery keeps the same duration, so
+the syllable-based lead still fits.
+
+Only the first delivery of every call is part of being ready; the other three
+prepare quietly in the background. If a call comes up before its chosen
+delivery is ready, the app speaks the first delivery instead of waiting. The
+prepared audio is cached on disk, so later launches reuse it instead of running
+the model again.
+
+Four deliveries cost preparation time and memory: roughly 8–28 MiB of RAM for
+the prepared calls, and 4–14 MB of disk per card, on top of the model. Set the
+control to 1 for a single rendering. Web and Android use the platform voice,
+which does not prepare deliveries.
 
 The same section has **Shuffle alternative call aliases**, which varies the call
 wording when the alias table has alternatives. Its behaviour is described in
