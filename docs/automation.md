@@ -111,12 +111,11 @@ succeeds. Then work in an observe → act → verify loop:
 
 1. `widget_tree` — list widgets, roles, labels, values, and ids.
 2. `get_widget` — get full text and logical-point `bounds` for one widget.
-3. `click`, `hover`, `scroll`, `drag`, `type_text`, or `press_key` — act. The
-   generic input tools also cover the touch gestures: a horizontal `drag` on
-   empty content emulates a tab swipe (a drag that starts on a control is left
-   to that control), and `press_key` with `ArrowLeft` or
-   `ArrowRight` moves to the previous or next tab. `session_state` reports the
-   tab now in front.
+3. `click`, `hover`, `scroll`, `drag`, `type_text`, or `press_key` — act.
+   `press_key` with `ArrowLeft` or `ArrowRight` moves to the previous or next
+   tab. A tab swipe is a touch gesture, so the generic `drag` does not emulate
+   one; use the `swipe` tool, which sends the finger gesture itself.
+   `session_state` reports the tab now in front.
 4. `screenshot` — look at the result (or pass `save_path`).
 5. `wait_for` — wait for async UI such as search results or a re-render.
 
@@ -132,6 +131,7 @@ succeeds. Then work in an observe → act → verify loop:
 | `type_text` | Type into the focused widget or a targeted one. |
 | `press_key` | Press a key such as `Space`, `R`, or `Escape`, optionally with modifiers (`command: true` is Ctrl on Windows/Linux and Cmd on macOS). |
 | `scroll` / `drag` | Scroll a target or drag from one target to another. |
+| `swipe` | Swipe tabs with a finger, the way a touch screen does (`left` is the next tab). |
 | `resize` | Change the viewport size in logical points. |
 | `wait_for` | Poll until matching widgets or frames appear. |
 | `batch` | Run several actions and observations in one round trip. |
@@ -167,7 +167,10 @@ Useful checks for this app:
   session uses; use it when changing the media integration. The Android
   session is a device feature and is not reachable from `contra-mcp`.
 - Number keys `1`-`3` switch tabs, `4` opens Preferences, and `Enter` in a
-  search field starts the search or adds a custom or alternative alias.
+  search field starts the search or adds a custom or alternative alias. Use
+  `swipe` to reproduce the phone tab gesture: the app reads only a finger as a
+  swipe, so a `drag` over the same content stays a mouse gesture and does not
+  change tabs.
 - Preferences is not a tab: click the header gear, whose accessible name is
   `Preferences`. Its accessible node reports the selected state while
   Preferences or the alias editor is in front.

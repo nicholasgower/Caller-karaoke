@@ -370,6 +370,34 @@ impl SessionAction {
     }
 }
 
+/// The way a finger travels across the screen to change tabs.
+///
+/// A swipe left moves to the next tab and a swipe right to the previous one,
+/// matching the app's own gesture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SwipeDirection {
+    /// The finger travels left: the next tab.
+    Left,
+    /// The finger travels right: the previous tab.
+    Right,
+}
+
+impl SwipeDirection {
+    /// How far the finger travels, in logical points.
+    ///
+    /// The app needs 60 points to see a swipe at all; 160 is a deliberate
+    /// gesture rather than a flick that might be read as a tap.
+    const TRAVEL: f32 = 160.0;
+
+    fn travel(self) -> f32 {
+        match self {
+            Self::Left => -Self::TRAVEL,
+            Self::Right => Self::TRAVEL,
+        }
+    }
+}
+
 /// Whether pressing the single Play/Pause button would move the transport.
 ///
 /// Play and Pause share one toggle button whose accessible name follows the
@@ -683,6 +711,50 @@ impl SessionClient {
         Ok((value, found.rect))
     }
 
+    /// Swipe across the screen with one finger and report the resulting state.
+    ///
+    /// A tab swipe is a touch gesture: the app ignores a mouse drag over the
+    /// same empty content. So this sends what a touch screen reports for a
+    /// finger — the touch itself plus the primary pointer press, moves and
+    /// release every backend derives from it — and tries a few points of empty
+    /// content until the tab actually changes.
+    pub async fn swipe(&self, direction: SwipeDirection) -> Result<SessionState, String> {
+        let before = self.state().await?;
+        let snap = self.bridge.fetch_tree().await?;
+        let starts = swipe_starts(&snap, direction);
+        if starts.is_empty() {
+            return Err(format!(
+                "found no empty content to swipe across on the {} screen — every point is a \
+                 control; use `press_key` with ArrowLeft/ArrowRight or click a tab instead",
+                before.screen.as_deref().unwrap_or("current")
+            ));
+        }
+        for from in starts {
+            let to = Pos2::new(from.x + direction.travel(), from.y);
+            self.touch_swipe(from, to).await?;
+            let after = self.state().await?;
+            if after.screen != before.screen {
+                return Ok(after);
+            }
+        }
+        Err(format!(
+            "the swipe did not change tabs from the {} screen; the screen may have a popup \
+             open",
+            before.screen.as_deref().unwrap_or("current")
+        ))
+    }
+
+    /// Put one finger down at `from`, drag it to `to`, and lift it.
+    ///
+    /// One frame per step, so the app sees a press, a moving finger and a
+    /// release rather than a teleport.
+    async fn touch_swipe(&self, from: Pos2, to: Pos2) -> Result<(), String> {
+        for frame in swipe_frames(from, to) {
+            self.bridge.apply_events(frame).await?;
+        }
+        Ok(())
+    }
+
     async fn click(&self, pos: Pos2) -> Result<(), String> {
         self.bridge
             .apply_events(vec![
@@ -720,6 +792,43 @@ fn pointer_button(pos: Pos2, pressed: bool) -> Event {
     }
 }
 
+/// The frames of one finger swipe: the touch down, the moves, and the lift.
+///
+/// The app reads a swipe from a frame that carries both the touch and the
+/// pointer press derived from it, the way `egui-winit` and the web backend
+/// deliver one finger, so the two stay together in the first frame.
+fn swipe_frames(from: Pos2, to: Pos2) -> Vec<Vec<Event>> {
+    const STEPS: u32 = 6;
+    let device_id = egui::TouchDeviceId(1);
+    let id = egui::TouchId(1);
+    let touch = |phase, pos| Event::Touch {
+        device_id,
+        id,
+        phase,
+        pos,
+        force: None,
+    };
+    let mut frames = vec![vec![
+        touch(egui::TouchPhase::Start, from),
+        Event::PointerMoved(from),
+        pointer_button(from, true),
+    ]];
+    for step in 1..=STEPS {
+        let t = step as f32 / STEPS as f32;
+        let pos = Pos2::new(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+        frames.push(vec![
+            touch(egui::TouchPhase::Move, pos),
+            Event::PointerMoved(pos),
+        ]);
+    }
+    frames.push(vec![
+        touch(egui::TouchPhase::End, to),
+        pointer_button(to, false),
+        Event::PointerGone,
+    ]);
+    frames
+}
+
 fn key_event(key: egui::Key, modifiers: Modifiers, pressed: bool) -> Event {
     Event::Key {
         key,
@@ -734,6 +843,105 @@ fn tree_of(snap: &egui_mcp::TreeSnapshot) -> Result<&Tree, String> {
     snap.tree
         .as_ref()
         .ok_or("no accessibility tree yet".to_owned())
+}
+
+/// Roles that take a press for themselves, so a swipe that starts on one is not
+/// a tab change. They mirror the controls the app treats as owning the gesture;
+/// labels and frames are not listed because a press on them is still a swipe.
+fn takes_a_press(role: Role) -> bool {
+    matches!(
+        role,
+        Role::Button
+            | Role::CheckBox
+            | Role::RadioButton
+            | Role::Slider
+            | Role::SpinButton
+            | Role::TextInput
+            | Role::ComboBox
+            | Role::Link
+            | Role::MenuItem
+            | Role::Tab
+            | Role::Switch
+            | Role::ScrollBar
+    )
+}
+
+/// Points where a finger swipe starts on empty content, best first.
+///
+/// The app reads a swipe only from the screen content, below the tab row. The
+/// grid walks down that area and across it in thirds: the app's screens stack
+/// boxes with gaps between them, so a clear point is usually a row or two down.
+fn swipe_starts(snap: &egui_mcp::TreeSnapshot, direction: SwipeDirection) -> Vec<Pos2> {
+    let Some(tree) = snap.tree.as_ref() else {
+        return Vec::new();
+    };
+    let root = tree.state().root();
+
+    // The root node carries no geometry of its own, so the window is the union
+    // of everything drawn in it. The tab row is the lowest tab button across
+    // the top, which bounds the content without hard-coding a height that
+    // changes between the desktop and phone layouts.
+    let mut viewport = egui::Rect::NOTHING;
+    let mut tab_row_bottom = None;
+    let mut blocked = Vec::new();
+    visit(root, &mut |node| {
+        if node.is_hidden() {
+            return;
+        }
+        let Some(rect) = rect_of(&node, snap.pixels_per_point) else {
+            return;
+        };
+        viewport = viewport.union(rect);
+        if node.role() == Role::Button
+            && screen_for_tab(&node.label().unwrap_or_default()).is_some()
+        {
+            tab_row_bottom =
+                Some(tab_row_bottom.map_or(rect.bottom(), |bottom: f32| bottom.max(rect.bottom())));
+        }
+        if takes_a_press(node.role()) {
+            blocked.push(rect);
+        }
+    });
+    if !viewport.is_positive() {
+        return Vec::new();
+    }
+    let content = egui::Rect::from_min_max(
+        Pos2::new(
+            viewport.left(),
+            tab_row_bottom.unwrap_or(viewport.top() + 64.0),
+        ),
+        viewport.max,
+    );
+    blank_points(viewport, content, direction, &blocked)
+}
+
+/// The candidate swipe starts for one direction, in the order to try them.
+fn blank_points(
+    viewport: egui::Rect,
+    content: egui::Rect,
+    direction: SwipeDirection,
+    blocked: &[egui::Rect],
+) -> Vec<Pos2> {
+    let mut points = Vec::new();
+    if !content.is_positive() {
+        return points;
+    }
+    // Eighths down the content: contacts sit in hand-sized rows, so a point
+    // between two boxes is usually within a row or two of the top.
+    for row in 0..8 {
+        let y = content.top() + content.height() * (0.06 + 0.12 * row as f32);
+        // Thirds across it, middle first: a swipe that starts at the edge would
+        // leave the window before it is long enough to be read.
+        for column in [0.5, 0.25, 0.75] {
+            let from = Pos2::new(content.left() + content.width() * column, y);
+            let to = Pos2::new(from.x + direction.travel(), y);
+            let clear = content.contains(from) && viewport.contains(to);
+            if clear && !blocked.iter().any(|rect| rect.contains(from)) {
+                points.push(from);
+            }
+        }
+    }
+    points
 }
 
 #[cfg(test)]
@@ -890,5 +1098,108 @@ mod tests {
             serde_json::from_str::<SessionAction>(r#""redo""#).expect("deserialize"),
             SessionAction::Redo
         );
+    }
+
+    #[test]
+    fn a_swipe_left_goes_forward_and_a_swipe_right_goes_back() {
+        // The finger travel, not the tab, names the direction: left is the
+        // next tab.
+        assert!(SwipeDirection::Left.travel() < 0.0);
+        assert!(SwipeDirection::Right.travel() > 0.0);
+        assert_eq!(
+            serde_json::from_str::<SwipeDirection>(r#""left""#).expect("deserialize"),
+            SwipeDirection::Left
+        );
+        assert_eq!(
+            serde_json::from_str::<SwipeDirection>(r#""right""#).expect("deserialize"),
+            SwipeDirection::Right
+        );
+    }
+
+    #[test]
+    fn a_swipe_starts_on_empty_content_and_stays_inside_the_window() {
+        let viewport = egui::Rect::from_min_size(Pos2::ZERO, egui::vec2(390.0, 844.0));
+        let content = egui::Rect::from_min_max(Pos2::new(0.0, 64.0), viewport.max);
+        // A full-width row, like a saved-item list, in the middle of the screen.
+        let row = egui::Rect::from_min_size(Pos2::new(0.0, 300.0), egui::vec2(390.0, 44.0));
+
+        for direction in [SwipeDirection::Left, SwipeDirection::Right] {
+            let points = blank_points(viewport, content, direction, &[row]);
+            assert!(!points.is_empty(), "empty content still offers a start");
+            for point in points {
+                assert!(content.contains(point), "{point:?} is above the content");
+                assert!(!row.contains(point), "{point:?} starts on a control");
+                let end = Pos2::new(point.x + direction.travel(), point.y);
+                assert!(
+                    viewport.contains(end),
+                    "{point:?} swiping {direction:?} leaves the window"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn controls_take_the_press_but_labels_do_not() {
+        assert!(takes_a_press(Role::Slider));
+        assert!(takes_a_press(Role::Button));
+        assert!(takes_a_press(Role::TextInput));
+        // A press on a plain label or a frame is still a tab swipe.
+        assert!(!takes_a_press(Role::Label));
+        assert!(!takes_a_press(Role::GenericContainer));
+        assert!(!takes_a_press(Role::Image));
+    }
+
+    #[test]
+    fn a_swipe_frame_pairs_the_finger_with_its_pointer_press() {
+        let from = Pos2::new(300.0, 400.0);
+        let to = Pos2::new(140.0, 400.0);
+        let frames = swipe_frames(from, to);
+
+        // The app only counts a swipe when the frame that presses the pointer
+        // also carries the touch, so they must not be split apart.
+        let first = &frames[0];
+        assert!(first.iter().any(|event| matches!(
+            event,
+            Event::Touch {
+                phase: egui::TouchPhase::Start,
+                ..
+            }
+        )));
+        assert!(
+            first
+                .iter()
+                .any(|event| matches!(event, Event::PointerButton { pressed: true, .. }))
+        );
+        assert!(
+            first
+                .iter()
+                .any(|event| matches!(event, Event::PointerMoved(_)))
+        );
+
+        // The release lifts the finger, and the gesture is purely horizontal:
+        // a vertical component would be read as a scroll.
+        let last = frames.last().expect("a swipe releases");
+        assert!(
+            last.iter()
+                .any(|event| matches!(event, Event::PointerButton { pressed: false, .. }))
+        );
+        assert!(last.iter().any(|event| matches!(
+            event,
+            Event::Touch {
+                phase: egui::TouchPhase::End,
+                ..
+            }
+        )));
+        for frame in &frames[1..] {
+            for event in frame {
+                if let Event::Touch { pos, .. } | Event::PointerMoved(pos) = event {
+                    assert!((pos.y - from.y).abs() < f32::EPSILON, "a swipe stays level");
+                    assert!(
+                        pos.x <= from.x && pos.x >= to.x,
+                        "the finger only moves left"
+                    );
+                }
+            }
+        }
     }
 }

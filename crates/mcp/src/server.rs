@@ -30,7 +30,9 @@ use serde::Deserialize;
 use serde_json::json;
 use tokio::sync::Mutex;
 
-use crate::session::{SessionAction, SessionClient, SessionSet, SessionState, TransportState};
+use crate::session::{
+    SessionAction, SessionClient, SessionSet, SessionState, SwipeDirection, TransportState,
+};
 
 /// A recoverable tool failure, rendered by `rmcp` as an error tool result.
 type ToolError = String;
@@ -158,6 +160,14 @@ pub struct SessionWaitArgs {
 
 fn default_wait_timeout() -> u64 {
     10
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SwipeArgs {
+    /// Which way the finger travels: `left` moves to the next tab and `right`
+    /// to the previous one.
+    pub direction: SwipeDirection,
 }
 
 // ---------------------------------------------------------------------------------------
@@ -362,6 +372,32 @@ impl ContraServer {
                 .await?,
         ))
     }
+
+    /// Swipe across the screen with a finger to change tabs, the way the phone
+    /// and tablet builds work, and report the state afterwards.
+    ///
+    /// A tab swipe is a touch gesture, so a mouse `drag` no longer emulates one;
+    /// this sends the touch events a finger produces at a point of empty screen
+    /// content. `left` moves to the next tab and `right` to the previous one, and
+    /// both wrap. Detail screens (a download search, the ABC editor, the alias
+    /// editor) step from the tab that contains them.
+    #[tool(
+        title = "Swipe tabs",
+        annotations(
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
+    )]
+    async fn swipe(
+        &self,
+        Parameters(args): Parameters<SwipeArgs>,
+    ) -> Result<Json<SessionState>, ToolError> {
+        let guard = self.session.lock().await;
+        let client = guard.as_ref().ok_or(NOT_CONNECTED)?;
+        Ok(Json(client.swipe(args.direction).await?))
+    }
 }
 
 // ---------------------------------------------------------------------------------------
@@ -379,6 +415,7 @@ Testing the session tab:
 - `session_action` presses Play, Pause, Restart, End, or Cancel ending through the real buttons and returns the resulting state. `undo` and `redo` press the app's Ctrl/Cmd+Z and Ctrl/Cmd+Y chords instead, so they work on any screen and do not switch tabs.
 - `session_set` drags the tempo and volume sliders and clicks the toggles. Sliders are quantised by the rail width: read the returned value, not the requested one.
 - `session_wait` polls until a transport state or a displayed beat is reached, which is how to inspect a specific point in the dance without sleeping. Play starts with a four-beat count-in, so wait for `transport: "playing"` or `min_beat: 0` before checking a call.
+- `swipe` changes tabs with a finger, the way a phone or tablet does. A tab swipe is a touch gesture only, so `drag` does not emulate one.
 - The session controls are located by accessible name, so both the desktop and the phone layout work; `resize` to 390×844 to test the phone layout.
 
 Conventions:
@@ -469,6 +506,7 @@ mod tests {
             "session_action",
             "session_set",
             "session_wait",
+            "swipe",
         ] {
             assert!(
                 names.iter().any(|name| name == expected),
@@ -492,6 +530,7 @@ mod tests {
             "session_action",
             "session_set",
             "session_wait",
+            "swipe",
         ] {
             let tool = server.get_tool(name).expect("a session tool");
             assert!(
@@ -508,6 +547,7 @@ mod tests {
         assert!(server.session_router.has_route("session_action"));
         assert!(server.session_router.has_route("session_set"));
         assert!(server.session_router.has_route("session_wait"));
+        assert!(server.session_router.has_route("swipe"));
         assert!(!server.session_router.has_route("click"));
     }
 }
