@@ -137,7 +137,7 @@ impl AudioEngine {
     /// Mix a mono speech buffer into the next output frames. The buffer is
     /// already at the device sample rate. Replacing a playing buffer starts
     /// the new call immediately.
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn play_speech(&self, samples: Vec<f32>) {
         if samples.is_empty() {
             return;

@@ -3,8 +3,9 @@
 //! ONNX Runtime is loaded dynamically on Windows so the application can keep
 //! its self-contained static-CRT build. The runtime DLL is fetched at build
 //! time, verified, and embedded in the executable; it is written to the local
-//! cache on first use. Other platforms link ONNX Runtime statically through
-//! `ort`, so this script does nothing there.
+//! cache on first use. Linux downloads its runtime at first use, and Android
+//! packages it from the pinned ONNX Runtime AAR in `packaging/android`, so this
+//! script does nothing there.
 
 use std::env;
 use std::fs;
@@ -25,6 +26,12 @@ fn main() {
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    if target_os == "android" {
+        // Android 15+ devices may use 16 KB pages. The ONNX Runtime binary from
+        // the AAR is built for that page size; align the app library to match.
+        println!("cargo:rustc-link-arg=-Wl,-z,max-page-size=16384");
+        println!("cargo:rustc-cdylib-link-arg=-Wl,-z,max-page-size=16384");
+    }
     if target_os == "windows" {
         embed_windows_resources();
     }

@@ -936,13 +936,14 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     }
     ui.label(
         egui::RichText::new(
-            "Desktop builds use the local Kokoro neural voice and download the selected \
-                     voice once, then cache it. Web and Android use the platform voice.",
+            "Desktop and Android builds use the local Kokoro neural voice and download the \
+                     model and selected voice once, then cache them. Web uses the platform \
+                     voice; Android falls back to it if the neural runtime is unavailable.",
         )
         .small()
         .color(theme::muted(ui)),
     );
-    let neural = !matches!(crate::platform(), "web" | "android");
+    let neural = crate::platform() != "web";
     inline_field(ui, compact, "Voice", |ui| {
         ui.add_enabled_ui(neural, |ui| {
             let selected = crate::tts::voice(&app.prefs.tts_voice);

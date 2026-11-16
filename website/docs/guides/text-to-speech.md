@@ -8,12 +8,16 @@ Text to speech is optional. The visual call prompt is always the primary
 signal; speech is an additional cue for practice or for callers who want to hear
 the wording.
 
-Desktop builds use a local **Kokoro-82M neural voice**. The selected voice is a
-small style file downloaded once and cached; the model itself runs locally, with
-no account or cloud service. Windows and Linux use the neural voice when it is
-ready. Web and Android use the platform voices: the browser's installed voices
-and Android's TTS engine. If the neural voice cannot start, desktop falls back to
-the platform voice.
+Desktop and Android builds use a local **Kokoro-82M neural voice**. The selected
+voice is a small style file downloaded once and cached; the model itself runs
+locally, with no account or cloud service. Windows, Linux, and Android use the
+neural voice when it is ready. Web uses the browser's installed voices. If the
+neural voice cannot start, desktop and Android fall back to the platform voice.
+
+On Android the ONNX Runtime that runs the model is packaged inside the APK. The
+first time you enable **Speak calls**, the app downloads the 92 MB model and the
+selected voice file; use Wi-Fi if mobile data is limited. The files stay in the
+app cache and later runs are offline.
 
 ## Enable spoken calls
 
@@ -33,17 +37,17 @@ if a long call is still being spoken.
 
 <Steps>
   <Step shot="prefs-tts-rate">
-    Open **Preferences → Calling**. On desktop, choose **Voice** from
-    Heart, Bella, Sarah, Michael, Fenrir, or Onyx. The description below the menu
-    summarises the selected voice. Web and Android show the selector disabled
-    because they use the platform voice.
+    Open **Preferences → Calling**. On desktop and Android, choose **Voice**
+    from Heart, Bella, Sarah, Michael, Fenrir, or Onyx. The description below the
+    menu summarises the selected voice. Web shows the selector disabled because
+    it uses the platform voice.
   </Step>
 </Steps>
 
 The default is **Heart (US female)**. All six voices use the same Kokoro model
 and differ only in the downloaded style file. On first use, the section shows a
 progress bar while the voice is prepared; later runs load it from the cache. If
-preparation fails, desktop shows **Retry neural voice** and continues with the
+preparation fails, the app shows **Retry neural voice** and continues with the
 platform voice.
 
 ## Choose a caller tone
@@ -58,12 +62,13 @@ platform voice.
 diction: the stressed vowel in each content word is held a little longer, and a
 presence and compression stage brings consonants forward. **Natural** uses the
 voice's recorded pitch and even emphasis. The tone changes delivery, not the
-words. On desktop, changing the tone prepares the neural voice again.
+words. On desktop and Android, changing the tone prepares the neural voice
+again.
 
 The tone does not change the visual lead. Calls are still timed from the
 syllable estimate, and the clear-speech delivery stays inside the safety padding
-used for every call. Some platform voices ignore pitch changes; the desktop
-neural voice applies the full delivery.
+used for every call. Some platform voices ignore pitch changes; the neural voice
+applies the full delivery.
 
 The same section has **Shuffle alternative call aliases**, which varies the call
 wording when the alias table has alternatives. Its behaviour is described in

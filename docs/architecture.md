@@ -37,13 +37,13 @@ Rules:
 - `core` has no UI, network, filesystem, or audio dependencies.
 - `music` is deterministic and offline.
 - `sources` parses bytes; it never touches `egui`.
-- `app` is the only crate that performs I/O, audio, or speech. The desktop
-  speech path is a Kokoro worker thread; it downloads and caches the model,
-  phonemizes on the worker, applies the caller-tone clear-speech pass
+- `app` is the only crate that performs I/O, audio, or speech. The desktop and
+  Android speech path is a Kokoro worker thread; it downloads and caches the
+  model, phonemizes on the worker, applies the caller-tone clear-speech pass
   (lengthening stressed vowels in the phoneme stream), synthesizes with a
   duration-neutral pitch shift, then high-passes, lifts presence, compresses,
-  and mixes the result into the cpal output stream. Web and Android use the
-  platform TTS backend.
+  and mixes the result into the cpal output stream. Web uses the platform TTS
+  backend.
 - `mcp` is a development/QA tool. It drives a development build through the
   `inspection` feature (off by default) and is not part of a release artifact.
 

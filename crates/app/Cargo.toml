@@ -105,7 +105,13 @@ eframe.workspace = true
 # playback state to it and receives transport commands over JNI.
 jni = "0.21"
 log = "0.4"
+# The local Kokoro voice uses the same ONNX Runtime and G2P as the desktop
+# build. The runtime is packaged into the APK by packaging/android/build-apk.py
+# and loaded from the native library directory.
+misaki-rs.workspace = true
 ndk-context = "0.1"
+ort = { workspace = true, features = ["std", "load-dynamic", "api-31"] }
+ureq.workspace = true
 winit = "0.30"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -157,6 +163,10 @@ icon = "@mipmap/ic_launcher"
 # The tts crate's Android backend calls into rs.tts.Bridge, which is packaged
 # as classes.dex by packaging/android/build-apk.py.
 has_code = true
+# The ONNX Runtime shared library is added to the APK after cargo-apk builds
+# it. Extraction makes the compressed library available in nativeLibraryDir,
+# where the dynamic loader can find it by soname.
+extract_native_libs = true
 
 [package.metadata.android.application.activity]
 # Load the native library from an app class so JNI_OnLoad's FindClass uses the

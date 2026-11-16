@@ -22,7 +22,7 @@ message in Preferences.
 | A media key does nothing | The operating system sends the key to the active media player. Pause any other player, or use **Space** in Contra Karaoke. On Android, check that the app is still running; the media session is not a foreground service, so Android can stop playback in the background. The browser build has no media session in 0.1.0. |
 | Search returns an error | Dismiss it and retry. Cached content may still be available. In a browser, check the web proxy URL/token. |
 | Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from **Preferences → Data & Storage**. |
-| No spoken calls | Check the **Speak calls** toggle, **Rate**, the selected **Voice**, and that the music is playing. On desktop, wait for the first voice preparation or select **Retry neural voice**. |
+| No spoken calls | Check the **Speak calls** toggle, **Rate**, the selected **Voice**, and that the music is playing. On desktop or Android, wait for the first voice preparation or select **Retry neural voice**. |
 | SoundFont sounds wrong or silent | On desktop, choose **Use bundled** to return to the packaged instruments; check the GM programs required by your file. |
 | SoundFont loading is unavailable | The browser and Android builds cannot load `.sf2` in 0.1.0; they play the bundled Fluid R3 GM subset. |
 | MIDI export is unavailable | Export is desktop-only in 0.1.0; the browser and Android builds report the limitation. |
@@ -80,11 +80,12 @@ instruments are used instead.
 
 ## TTS errors
 
-On desktop, the first use of a Kokoro voice downloads the model and style file.
-If that fails, the app shows the reason, offers **Retry neural voice**, and falls
-back to the platform voice. If neither voice is usable, **Speak calls** does not
-produce sound and the Preferences section shows the reason in muted text. Visual
-calls continue; see [Text to speech](/docs/guides/text-to-speech).
+On desktop and Android, the first use of a Kokoro voice downloads the model and
+style file. If that fails, the app shows the reason, offers **Retry neural
+voice**, and falls back to the platform voice. If neither voice is usable,
+**Speak calls** does not produce sound and the Preferences section shows the
+reason in muted text. Visual calls continue; see
+[Text to speech](/docs/guides/text-to-speech).
 
 ## SoundFont errors
 

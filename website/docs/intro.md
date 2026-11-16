@@ -40,8 +40,10 @@ highlighted card row.
 - A network connection the first time you download a dance or tune from
   ContraDB or ABC Session Tunes. The bundled defaults and anything already in
   your saved library work offline.
-- Optionally, a system text-to-speech voice and, on desktop, a user-supplied
-  `.sf2` SoundFont. The bundled Fluid R3 GM subset needs no download.
+- Optionally, the local Kokoro neural voice on desktop and Android (downloaded
+  on first use) or a system text-to-speech voice (the only voice on web), and,
+  on desktop, a user-supplied `.sf2` SoundFont. The bundled Fluid R3 GM subset
+  needs no download.
 
 ## The defaults
 

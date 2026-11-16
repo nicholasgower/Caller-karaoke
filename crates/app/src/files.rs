@@ -22,6 +22,10 @@ pub const DANCE_VERSION: u32 = 1;
 pub const LOCAL_PROVIDER: &str = "local";
 /// Largest file the importers will read. A tune or card is a few kilobytes;
 /// the cap keeps a mistaken pick from loading a video into memory.
+#[cfg_attr(
+    target_os = "android",
+    allow(dead_code) // the Android picker returns text, not a file path
+)]
 pub const MAX_IMPORT_BYTES: u64 = 4 * 1024 * 1024;
 /// Longest title-derived file name, in characters.
 const MAX_FILE_STEM: usize = 80;
@@ -694,7 +698,7 @@ mod platform {
         // the system so the user can send it elsewhere.
         let dir = export_dir
             .map(|dir| dir.join("exports"))
-            .unwrap_or_else(|| std::env::temp_dir());
+            .unwrap_or_else(std::env::temp_dir);
         std::fs::create_dir_all(&dir)
             .map_err(|error| format!("Could not create {}: {error}", dir.display()))?;
         // The caller already supplies a name with the extension; adding it

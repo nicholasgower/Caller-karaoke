@@ -70,18 +70,20 @@ See the `egui`/`epaint` source for the exact font files and notices.
 
 - **Kokoro-82M** — <https://huggingface.co/hexgrad/Kokoro-82M>. Model weights and
   the voice styles (Heart, Bella, Sarah, Michael, Fenrir, Onyx) are Apache-2.0.
-  The desktop app downloads `model_quantized.onnx`, the selected voice `.bin`,
-  and
-  `config.json` from
+  The desktop and Android apps download `model_quantized.onnx`, the selected
+  voice `.bin`, and `config.json` from
   <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX> on first use and
-  caches them locally. They are not stored in this repository or in the source
+  cache them locally. They are not stored in this repository or in the source
   tree.
 - **ONNX Runtime 1.31.0** — <https://onnxruntime.ai>. MIT licensed. The Windows
   build embeds the official `onnxruntime.dll` in the executable and unpacks it
   to the user cache on first use. Linux loads the official
   `libonnxruntime.so` dynamically; the app downloads and caches it on first use,
   so Flatpak and other offline package builds do not need a native runtime at
-  build time.
+  build time. The Android build packages `libonnxruntime.so` from the official
+  [`onnxruntime-android` 1.31.0 AAR](https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/1.31.0/onnxruntime-android-1.31.0.aar);
+  `packaging/android/build-apk.py` downloads and verifies the AAR at build time,
+  and the library is not stored in the repository.
 
   ```text
   MIT License

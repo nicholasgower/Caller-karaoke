@@ -111,8 +111,8 @@ Advanced settings:
 
 - Calling lead: automatic or manual, minimum/maximum beats, syllables per
   second, word gap, extra pause.
-- TTS voice (Kokoro Heart, Bella, Sarah, Michael, Fenrir, or Onyx on desktop),
-  rate, and tone (Commanding caller or Natural).
+- TTS voice (Kokoro Heart, Bella, Sarah, Michael, Fenrir, or Onyx on desktop and
+  Android), rate, and tone (Commanding caller or Natural).
 - Alternative call aliases (default off): randomly uses an alternative wording
   for moves that have one, such as “partner swing” instead of “swing your
   partner”. The chosen wording is shown and spoken, and its lead is computed
@@ -128,9 +128,9 @@ Advanced settings:
 ### 3.5 TTS
 
 - Optional setting: speak the alias text at the computed call time.
-- The desktop build prefers the local Kokoro-82M neural voice. The model and
-  voice style files are downloaded once, verified, and cached; the platform TTS
-  backend remains the fallback (and the only backend on web/Android).
+- The desktop and Android builds prefer the local Kokoro-82M neural voice. The
+  model and voice style files are downloaded once, verified, and cached; the
+  platform TTS backend remains the fallback (and the only backend on web).
 - Preferences offers six Kokoro voices: Heart, Bella, and Sarah (US female), and
   Michael, Fenrir, and Onyx (US male).
 - Call tone defaults to **Commanding caller**: a slightly lower, more projected

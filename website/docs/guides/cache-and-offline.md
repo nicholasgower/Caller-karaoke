@@ -12,9 +12,9 @@ caches the raw search and detail responses: files on the desktop and Android,
 and `localStorage` in the browser. The two bundled defaults are in the library
 from first launch.
 
-On desktop, the Kokoro neural voice is cached separately: the model and the
-selected voice style file are downloaded once and reused offline. The platform
-voice is used if the neural voice is not ready.
+On desktop and Android, the Kokoro neural voice is cached separately: the model
+and the selected voice style file are downloaded once and reused offline. The
+platform voice is used if the neural voice is not ready.
 
 ## Cache lifetimes
 

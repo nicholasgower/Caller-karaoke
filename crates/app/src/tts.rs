@@ -1,41 +1,42 @@
 //! Optional speech for calls.
 //!
-//! On desktop the preferred backend is a local Kokoro neural voice (see
-//! [`kokoro`]). The platform TTS backend remains available as a fallback so
-//! the app still speaks calls on first run, offline, or on web/Android where
-//! the neural model is not built. Both backends receive the reviewed dance-term
-//! respellings from [`contra_core::pronounce`].
+//! On desktop and Android the preferred backend is a local Kokoro neural voice
+//! (see [`kokoro`]). The platform TTS backend remains available as a fallback so
+//! the app still speaks calls on first run, offline, on web where the neural
+//! model is not built, or on Android when the packaged runtime cannot load.
+//! Both backends receive the reviewed dance-term respellings from
+//! [`contra_core::pronounce`].
 
 use std::path::PathBuf;
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 
 use crate::audio::AudioEngine;
 use contra_core::CallTone;
 use contra_core::pronounce;
 
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod kokoro;
 
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+#[cfg(not(target_arch = "wasm32"))]
 use kokoro::{KokoroEvent, KokoroSpeech};
 
 /// A selectable Kokoro voice.
 ///
 /// The first three fields are used by the UI on every platform. The asset
-/// fields are only used by the desktop neural-voice backend.
+/// fields are only used by the desktop and Android neural-voice backend.
 #[derive(Clone, Copy, Debug)]
 pub struct VoiceOption {
     pub id: &'static str,
     pub label: &'static str,
     pub detail: &'static str,
-    #[allow(dead_code)] // desktop Kokoro backend only
+    #[allow(dead_code)] // desktop and Android Kokoro backend only
     pub file: &'static str,
-    #[allow(dead_code)] // desktop Kokoro backend only
+    #[allow(dead_code)] // desktop and Android Kokoro backend only
     pub url: &'static str,
-    #[allow(dead_code)] // desktop Kokoro backend only
+    #[allow(dead_code)] // desktop and Android Kokoro backend only
     pub sha256: &'static str,
-    #[allow(dead_code)] // desktop Kokoro backend only
+    #[allow(dead_code)] // desktop and Android Kokoro backend only
     pub size: u64,
 }
 
@@ -118,7 +119,7 @@ pub struct SpeechStatus {
 }
 
 impl SpeechStatus {
-    #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+    #[cfg(target_arch = "wasm32")]
     fn platform_only(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -132,7 +133,7 @@ impl SpeechStatus {
 /// Speech coordinator.
 pub struct Speech {
     platform: PlatformSpeech,
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[cfg(not(target_arch = "wasm32"))]
     kokoro: Option<KokoroSpeech>,
     status: SpeechStatus,
     enabled: bool,
@@ -140,9 +141,9 @@ pub struct Speech {
     tone: CallTone,
     last_calls: Vec<String>,
     voice_id: String,
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[cfg(not(target_arch = "wasm32"))]
     pending_rate: Option<Instant>,
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[cfg(not(target_arch = "wasm32"))]
     pending_kokoro_text: Option<String>,
     /// Test-only stand-in for the neural working set, because the test build
     /// uses the silent stub coordinator and never loads the real model.
@@ -153,7 +154,7 @@ pub struct Speech {
 impl Speech {
     pub fn new(cache_dir: PathBuf, output_sample_rate: u32) -> Self {
         let platform = PlatformSpeech::new();
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             let kokoro = KokoroSpeech::spawn(cache_dir.clone(), output_sample_rate);
             let status = if kokoro.is_some() {
@@ -192,7 +193,7 @@ impl Speech {
                 pending_kokoro_text: None,
             }
         }
-        #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+        #[cfg(target_arch = "wasm32")]
         {
             let _ = (cache_dir, output_sample_rate);
             let status = if platform.available() {
@@ -275,11 +276,11 @@ impl Speech {
     }
 
     pub fn available(&self) -> bool {
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             self.platform.available() || (self.kokoro.is_some() && self.status.error.is_none())
         }
-        #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+        #[cfg(target_arch = "wasm32")]
         {
             self.platform.available()
         }
@@ -295,7 +296,7 @@ impl Speech {
         if let Some(bytes) = self.neural_bytes_override {
             return if self.enabled { bytes } else { 0 };
         }
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             if self.enabled && self.kokoro.is_some() {
                 return kokoro::working_set_bytes();
@@ -340,11 +341,11 @@ impl Speech {
     }
 
     pub fn can_retry(&self) -> bool {
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             self.kokoro.is_some()
         }
-        #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+        #[cfg(target_arch = "wasm32")]
         {
             false
         }
@@ -358,7 +359,7 @@ impl Speech {
             return;
         }
         self.voice_id = voice.id.to_string();
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(kokoro) = &self.kokoro {
             if self.enabled {
                 self.status.ready = false;
@@ -373,14 +374,14 @@ impl Speech {
     }
 
     pub fn is_busy(&self) -> bool {
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             self.pending_rate.is_some()
                 || (self.enabled
                     && self.status.error.is_none()
                     && (self.status.progress.is_some() || !self.status.ready))
         }
-        #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+        #[cfg(target_arch = "wasm32")]
         {
             false
         }
@@ -395,7 +396,7 @@ impl Speech {
             self.stop();
             return;
         }
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if self.status.error.is_some() {
             self.retry();
         } else if let Some(kokoro) = &self.kokoro {
@@ -410,7 +411,7 @@ impl Speech {
             contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
         );
         self.platform.set_rate(self.rate);
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             self.pending_rate = Some(Instant::now());
         }
@@ -425,7 +426,7 @@ impl Speech {
         }
         self.tone = tone;
         self.platform.set_tone(tone);
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(kokoro) = &self.kokoro {
             kokoro.set_tone(tone);
             if self.enabled {
@@ -446,7 +447,7 @@ impl Speech {
             }
         }
         self.last_calls = unique;
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if self.enabled
             && let Some(kokoro) = &self.kokoro
         {
@@ -455,7 +456,7 @@ impl Speech {
     }
 
     pub fn speak(&mut self, text: &str) {
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if self.enabled && self.status.ready && self.status.error.is_none() && self.kokoro.is_some()
         {
             self.pending_kokoro_text = Some(text.to_string());
@@ -470,7 +471,7 @@ impl Speech {
     pub fn stop(&mut self) {
         self.platform.stop();
         self.status.progress = None;
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         {
             self.pending_kokoro_text = None;
             if let Some(kokoro) = &self.kokoro {
@@ -481,7 +482,7 @@ impl Speech {
 
     /// Apply completed synthesis and status messages. Call once per UI frame.
     pub fn poll(&mut self, audio: &AudioEngine) {
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(since) = self.pending_rate
             && since.elapsed() >= Duration::from_millis(250)
         {
@@ -493,7 +494,7 @@ impl Speech {
                 }
             }
         }
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(kokoro) = &self.kokoro {
             while let Some(event) = kokoro.try_recv() {
                 match event {
@@ -530,7 +531,7 @@ impl Speech {
 
     /// Retry a failed neural-voice download or model load.
     pub fn retry(&mut self) {
-        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(kokoro) = &self.kokoro {
             self.status.error = None;
             self.status.message = "Preparing the neural voice".into();

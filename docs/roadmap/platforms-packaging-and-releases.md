@@ -16,7 +16,8 @@ Notes:
   `packaging/flatpak/`; `.deb` metadata under `packaging/deb/`.
 - Web: `eframe` with the `glow` renderer; WebGL2 is the baseline.
 - Android: `eframe` with `android-native-activity` and `glow`; `cpal` uses
-  AAudio; `tts` requires minSdk 26.
+  AAudio; `tts` requires minSdk 26. The packaging script adds the pinned ONNX
+  Runtime `libonnxruntime.so` for the local Kokoro voice.
 - No macOS/iOS artifacts in 0.1.0, but do not add platform-specific code that
   would prevent them.
 

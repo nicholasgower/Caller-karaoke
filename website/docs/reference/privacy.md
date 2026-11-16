@@ -19,8 +19,9 @@ does not send usage data to the project.
 - **SoundFont** — if you load one, the app stores its display name and path in
   preferences. The file itself remains where you put it. The bundled subset
   ships inside the application and stores nothing.
-- **Neural voice cache** — on desktop, the Kokoro model and the selected voice
-  style file are stored in the app cache after the first download.
+- **Neural voice cache** — on desktop and Android, the Kokoro model and the
+  selected voice style file are stored in the app cache after the first
+  download.
 
 ## What goes over the network
 
@@ -30,7 +31,7 @@ The app contacts only the sources you use:
 - `backend.abcsessiontunes.com` for tune search and details;
 - a configured web proxy, if you set one;
 - Hugging Face, once, to download the Kokoro model and voice files for the
-  desktop neural voice.
+  desktop and Android neural voice.
 
 There are no analytics endpoints, crash reports, or update checks. The app does
 not fetch a page unless a search or selection asks for it; it does not crawl a

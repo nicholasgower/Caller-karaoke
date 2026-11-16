@@ -14,7 +14,8 @@ driver overhead that the app does not own.
 
 | Consumer | Approximate resident memory | How it gets there |
 | --- | ---: | --- |
-| Neural voice (Kokoro + ONNX Runtime) | ~155 MiB | Optional; loaded when **Speak calls** is on. 92 MiB quantized model plus session arenas and the 16.5 MiB runtime |
+| Neural voice (Kokoro + ONNX Runtime, desktop) | ~155 MiB | Optional; loaded when **Speak calls** is on. 92 MiB quantized model plus session arenas and the 16.5 MiB runtime |
+| Neural voice on Android (Kokoro + ONNX Runtime) | ~165 MiB arm64 / ~155 MiB armv7 | Optional; the 92 MiB quantized model, session arenas, and the 34 MiB or 24 MiB runtime packaged in the APK |
 | Rendered music, four variation passes | ~50 MiB | Count-in + 4 × 64-beat passes + ending, interleaved stereo f32 at 48 kHz |
 | RAM render cache | shares the rendered music allocation | The cache and the audio callback hold the same `Arc`; a settings change can briefly hold the old loop and the new one |
 | Next tune prepared for **Cycle tunes** | ~50 MiB | A second rendered pass held until the rotation boundary |
@@ -86,16 +87,18 @@ app uses 1.5× the file size plus the runtime library as a labelled estimate.
   music buffers can be resident during a rotation. The current tune has the same
   treatment: an idle prefetch fills the RAM cache, and a playback-setting change
   can render the replacement while the old loop keeps playing.
-- **Speech.** The platform voice costs the app almost nothing. On desktop the
-  Kokoro neural voice is the default when available: a 92 MiB quantized model
-  is loaded into ONNX Runtime, with session arenas and the 16.5 MiB runtime.
-  Turning **Speak calls** off releases the model and the synthesized-call
-  cache; turning it back on reloads the already-cached files.
+- **Speech.** The platform voice costs the app almost nothing. On desktop and
+  Android the Kokoro neural voice is the default when available: a 92 MiB
+  quantized model is loaded into ONNX Runtime, with session arenas and the
+  runtime (16.5 MiB on Windows, 24–34 MiB in the Android APK). Turning **Speak
+  calls** off releases the model and the synthesized-call cache; turning it
+  back on reloads the already-cached files.
 - **Fonts.** egui's default fonts are a few hundred KiB of font data; the glyph
   atlas is a rasterized texture that grows with the characters actually drawn.
 - **Libraries and caches.** Saved dances and tunes are JSON cards, typically a
-  few KiB each. Search responses are cached; the desktop cache is on disk and
-  reports zero resident bytes, while the web build uses `localStorage`.
+  few KiB each. Search responses are cached; the desktop and Android caches are
+  on disk and report zero resident bytes, while the web build uses
+  `localStorage`.
 - **Sheet-music texture.** The tune preview is rasterized once and capped at
   1200×2400. It is one texture, freed when the preview is cleared or the
   display scale changes.

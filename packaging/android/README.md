@@ -20,9 +20,10 @@ sdkmanager "platform-tools" "platforms;android-35" \
 
 Then run the packaging script. It finds the SDK/NDK/JDK from the usual
 environment variables or Android Studio's default locations, builds the native
-APK, compiles the TTS Java bridge and the `MainActivity` that loads the native
-library from the app class loader, injects both as `classes.dex`, aligns the
-archive, and signs it:
+APK, downloads the pinned ONNX Runtime Android AAR, adds its
+`libonnxruntime.so` to the APK, compiles the TTS Java bridge and the
+`MainActivity` that loads the native library from the app class loader, injects
+both as `classes.dex`, aligns the archive, and signs it:
 
 ```sh
 python packaging/android/build-apk.py
@@ -36,6 +37,28 @@ The custom activity matters: `tts`'s `JNI_OnLoad` calls
 `FindClass("rs/tts/Bridge")`, and loading the library from the framework's
 `NativeActivity` would use a class loader that cannot see the app's
 `classes.dex`.
+
+## Neural voice runtime
+
+The Android build uses the same local Kokoro voice as the desktop build. ONNX
+Runtime is not linked into the Rust library; `libonnxruntime.so` is loaded from
+the app's native library directory at runtime. `build-apk.py` downloads the
+pinned `onnxruntime-android` 1.31.0 AAR from Maven Central, verifies its
+SHA-256, and adds the AAR's `jni/<abi>/libonnxruntime.so` for each ABI present
+in the APK. The APK sets `android:extractNativeLibs="true"`, so the library is
+extracted to the app's native library directory on install. Both the app library
+and the packaged ONNX Runtime binary use 16 KB page alignment for Android 15
+and newer.
+
+The AAR is cached under `target/android-ort/`; it is not committed. For an
+offline build, point `CONTRA_ORT_ANDROID_AAR` at the pinned AAR. Pass
+`--without-kokoro` to build an APK with only the platform TTS backend, which is
+useful for testing the fallback or reducing the APK size.
+
+The model and voice style files are still fetched by the app on first use and
+stored in the app's cache; they are not packaged in the APK. Adding the runtime
+makes the APK larger because the library is compressed inside the archive and
+extracted at install time.
 
 Do not use bare `cargo apk build` for a distributable artifact: cargo-apk
 cannot compile the `rs.tts.Bridge` class that the `tts` crate's Android backend

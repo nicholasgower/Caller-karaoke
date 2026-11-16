@@ -19,7 +19,7 @@ volume settings.
 | **Loop** | on by default | Repeats the 64-beat music loop. |
 | **Cycle tunes** | off by default | Plays through a set of saved tunes, changing at a repeat. |
 | **Count-in** | on by default | Four accompaniment beats built from the tune's first chord. |
-| **Speak calls** | off by default | Speaks the active call if a system voice is available. |
+| **Speak calls** | off by default | Speaks the active call with the neural voice, or the system voice as a fallback. |
 | **Caller** | 0–1.5, default 1.0 | Level of the spoken calls, independent of the band. |
 | **Band** | 0–1.5, default 0.8 | Master level of the music mix. |
 

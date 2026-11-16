@@ -1,6 +1,7 @@
 # Dance-term pronunciation review
 
-Contra Karaoke speaks calls with the local Kokoro-82M voice on desktop. Kokoro
+Contra Karaoke speaks calls with the local Kokoro-82M voice on desktop and
+Android. Kokoro
 does not read English letter by letter; it consumes phonemes from Misaki's
 grapheme-to-phoneme (G2P) model. That model is accurate for most of the contra
 vocabulary, but a few terms are not.

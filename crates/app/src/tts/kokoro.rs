@@ -74,10 +74,35 @@ pub(crate) fn runtime_bytes() -> u64 {
     {
         ONNX_RUNTIME_SO_SIZE
     }
-    #[cfg(all(unix, not(target_os = "linux")))]
+    #[cfg(target_os = "android")]
+    {
+        android_runtime_bytes()
+    }
+    #[cfg(all(unix, not(any(target_os = "linux", target_os = "android"))))]
     {
         0
     }
+}
+
+/// Size of the ONNX Runtime shared library packaged into the APK.
+///
+/// `packaging/android/build-apk.py` takes these files from the pinned
+/// `onnxruntime-android` AAR. Keep the numbers in step with the AAR version;
+/// they are only an estimate for the memory report, not a load check.
+#[cfg(any(target_os = "android", test))]
+fn runtime_bytes_for_arch(arch: &str) -> u64 {
+    match arch {
+        "aarch64" => 34_208_680,
+        "arm" => 24_182_012,
+        "x86_64" => 40_827_944,
+        "x86" => 40_741_404,
+        _ => 0,
+    }
+}
+
+#[cfg(target_os = "android")]
+fn android_runtime_bytes() -> u64 {
+    runtime_bytes_for_arch(std::env::consts::ARCH)
 }
 
 #[cfg(target_os = "linux")]
@@ -1125,7 +1150,72 @@ fn init_onnx(
         .map_err(|error| format!("could not start ONNX Runtime: {error}"))
 }
 
-#[cfg(all(unix, not(target_os = "linux")))]
+#[cfg(target_os = "android")]
+fn init_onnx(
+    _cache_dir: &Path,
+    _progress: &mut dyn FnMut(&str, u64, u64),
+) -> Result<ort::environment::Environment, String> {
+    // packaging/android/build-apk.py puts libonnxruntime.so next to
+    // libcontra_app.so in the APK's native library directory. Prefer that exact
+    // directory from /proc/self/maps over a bare soname lookup, then fall back
+    // to the soname so a differently packaged build can still load it.
+    let path = android_runtime_path();
+    match start_onnx(&path) {
+        Ok(environment) => Ok(environment),
+        Err(first) if path.as_path() != Path::new("libonnxruntime.so") => {
+            start_onnx(Path::new("libonnxruntime.so")).map_err(|_| first)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(target_os = "android")]
+fn start_onnx(path: &Path) -> Result<ort::environment::Environment, String> {
+    ort::init_from(path)
+        .map_err(|_| {
+            "the neural voice is not available in this build; using the platform voice".to_string()
+        })?
+        .with_name("contra-karaoke")
+        .build()
+        .map_err(|error| format!("could not start ONNX Runtime: {error}"))
+}
+
+/// Find the ONNX Runtime shared library beside the loaded app library.
+///
+/// Android's linker resolves a soname through the app namespace, but the
+/// process map gives the exact directory even when a custom loader packaged the
+/// libraries somewhere unexpected. Lines without a path, or a path that has
+/// since been deleted, are ignored.
+#[cfg(any(target_os = "android", test))]
+fn runtime_beside_app_library(maps: &str) -> Option<PathBuf> {
+    for line in maps.lines().rev() {
+        let Some(path) = line.split_whitespace().last() else {
+            continue;
+        };
+        let path = path.strip_suffix(" (deleted)").unwrap_or(path);
+        let path = Path::new(path);
+        if path.file_name().and_then(|name| name.to_str()) != Some("libcontra_app.so") {
+            continue;
+        }
+        return path
+            .parent()
+            .map(|directory| directory.join("libonnxruntime.so"));
+    }
+    None
+}
+
+#[cfg(target_os = "android")]
+fn android_runtime_path() -> PathBuf {
+    if let Ok(maps) = fs::read_to_string("/proc/self/maps")
+        && let Some(path) = runtime_beside_app_library(&maps)
+        && path.is_file()
+    {
+        return path;
+    }
+    PathBuf::from("libonnxruntime.so")
+}
+
+#[cfg(all(unix, not(any(target_os = "linux", target_os = "android"))))]
 fn init_onnx(
     _cache_dir: &Path,
     _progress: &mut dyn FnMut(&str, u64, u64),
@@ -1287,6 +1377,32 @@ fn resample_linear(input: &[f32], from: u32, to: u32) -> Vec<f32> {
 mod tests {
     use super::*;
     use std::sync::LazyLock;
+
+    #[test]
+    fn android_runtime_sizes_cover_every_packaged_abi() {
+        assert_eq!(runtime_bytes_for_arch("aarch64"), 34_208_680);
+        assert_eq!(runtime_bytes_for_arch("arm"), 24_182_012);
+        assert_eq!(runtime_bytes_for_arch("x86_64"), 40_827_944);
+        assert_eq!(runtime_bytes_for_arch("x86"), 40_741_404);
+        assert_eq!(runtime_bytes_for_arch("riscv64"), 0);
+    }
+
+    #[test]
+    fn finds_the_runtime_next_to_the_app_library() {
+        let maps = "\
+7f0000000000-7f0000001000 r-xp 00000000 fd:00 123 /system/lib64/libc.so
+7f0000100000-7f0000300000 r-xp 00000000 fd:00 456 /data/app/~~token/org.contrakaraoke.app-abc/lib/arm64/libcontra_app.so
+7f0000300000-7f0000301000 r--p 00000000 fd:00 789 /data/app/~~token/org.contrakaraoke.app-abc/lib/arm64/libonnxruntime.so
+";
+        assert_eq!(
+            runtime_beside_app_library(maps),
+            Some(PathBuf::from(
+                "/data/app/~~token/org.contrakaraoke.app-abc/lib/arm64/libonnxruntime.so"
+            ))
+        );
+        assert_eq!(runtime_beside_app_library(""), None);
+        assert_eq!(runtime_beside_app_library("no paths here\n"), None);
+    }
 
     static G2P: LazyLock<G2P> = LazyLock::new(|| {
         let mut g2p = G2P::new(Language::EnglishUS);

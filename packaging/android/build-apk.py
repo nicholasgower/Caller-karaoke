@@ -5,7 +5,8 @@
 crate's Android backend requires the `rs.tts.Bridge` class at runtime, and the
 app's `MainActivity` owns the Android media session and its notification, so
 this script compiles both, adds every resulting class to the APK as
-`classes.dex`, re-aligns the archive, and signs it.
+`classes.dex`, adds the pinned ONNX Runtime library for the local Kokoro voice,
+re-aligns the archive, and signs it.
 
 The release profile is signed with the debug keystore unless
 `CARGO_APK_RELEASE_KEYSTORE` and `CARGO_APK_RELEASE_KEYSTORE_PASSWORD` are set,
@@ -15,11 +16,13 @@ which matches the nightly/test-build policy.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -31,6 +34,17 @@ MAIN_ACTIVITY = (
 )
 TTS_PACKAGE = "rs/tts/Bridge.class"
 MAIN_ACTIVITY_PACKAGE = "org/contrakaraoke/app"
+
+# ONNX Runtime for the local Kokoro voice. Only libonnxruntime.so is taken from
+# the AAR; the Java bindings and the JNI wrapper are not used.
+ORT_AAR_VERSION = "1.31.0"
+ORT_AAR_NAME = f"onnxruntime-android-{ORT_AAR_VERSION}.aar"
+ORT_AAR_URL = (
+    "https://repo1.maven.org/maven2/com/microsoft/onnxruntime/"
+    f"onnxruntime-android/{ORT_AAR_VERSION}/{ORT_AAR_NAME}"
+)
+ORT_AAR_SHA256 = "72683787a80d0608a3121b967d8e1239aef48286826661c953211626690540a7"
+ORT_LIBRARY = "libonnxruntime.so"
 
 
 def run(args: list[str], *, env: dict[str, str] | None = None, cwd: Path = REPO) -> None:
@@ -240,15 +254,109 @@ def build_dex(env: dict[str, str], sdk: Path, java_home: Path, work: Path) -> Pa
     return classes_dex
 
 
-def inject_dex(apk: Path, classes_dex: Path, output: Path) -> None:
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def find_ort_aar() -> Path:
+    override = os.environ.get("CONTRA_ORT_ANDROID_AAR")
+    if override:
+        aar = Path(override)
+        if not aar.is_file():
+            raise SystemExit(f"CONTRA_ORT_ANDROID_AAR does not exist: {aar}")
+        if sha256_file(aar) != ORT_AAR_SHA256:
+            raise SystemExit(
+                "CONTRA_ORT_ANDROID_AAR does not match the pinned ONNX Runtime "
+                f"{ORT_AAR_VERSION} AAR"
+            )
+        return aar
+
+    cache = REPO / "target" / "android-ort" / ORT_AAR_NAME
+    if cache.is_file() and sha256_file(cache) == ORT_AAR_SHA256:
+        return cache
+
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    partial = cache.with_suffix(".aar.part")
+    print(f"+ download {ORT_AAR_URL}", flush=True)
+    request = urllib.request.Request(
+        ORT_AAR_URL, headers={"User-Agent": "contra-karaoke-build"}
+    )
+    with urllib.request.urlopen(request, timeout=300) as response, partial.open(
+        "wb"
+    ) as output:
+        shutil.copyfileobj(response, output, length=1024 * 1024)
+    if sha256_file(partial) != ORT_AAR_SHA256:
+        partial.unlink(missing_ok=True)
+        raise SystemExit(
+            f"ONNX Runtime {ORT_AAR_VERSION} download did not match the pinned SHA-256"
+        )
+    partial.replace(cache)
+    return cache
+
+
+def apk_native_abis(apk: Path) -> list[str]:
+    with zipfile.ZipFile(apk) as archive:
+        return sorted(
+            {
+                name.split("/")[1]
+                for name in archive.namelist()
+                if name.startswith("lib/")
+                and name.endswith("/libcontra_app.so")
+                and len(name.split("/")) == 3
+            }
+        )
+
+
+def inject_assets(
+    apk: Path,
+    classes_dex: Path,
+    output: Path,
+    *,
+    ort_aar: Path | None,
+) -> None:
+    abis = apk_native_abis(apk)
+    if not abis:
+        raise SystemExit(f"{apk} has no lib/<abi>/libcontra_app.so entries")
+    ort_libraries: dict[str, str] = {}
+    if ort_aar is not None:
+        with zipfile.ZipFile(ort_aar) as runtime:
+            runtime_names = set(runtime.namelist())
+        for abi in abis:
+            entry = f"jni/{abi}/{ORT_LIBRARY}"
+            if entry not in runtime_names:
+                raise SystemExit(
+                    f"ONNX Runtime {ORT_AAR_VERSION} has no {ORT_LIBRARY} for {abi}"
+                )
+            ort_libraries[abi] = entry
+    else:
+        print("warning: building without the Kokoro neural runtime", flush=True)
+
     with zipfile.ZipFile(apk) as source, zipfile.ZipFile(
         output, "w", compression=zipfile.ZIP_DEFLATED
     ) as target:
         for item in source.infolist():
             if item.filename.startswith("META-INF/") or item.filename == "classes.dex":
                 continue
+            if item.filename.startswith("lib/") and item.filename.endswith(
+                f"/{ORT_LIBRARY}"
+            ):
+                continue
             target.writestr(item, source.read(item.filename))
         target.write(classes_dex, "classes.dex")
+
+        if ort_aar is not None:
+            with zipfile.ZipFile(ort_aar) as runtime:
+                for abi, entry in sorted(ort_libraries.items()):
+                    info = zipfile.ZipInfo(f"lib/{abi}/{ORT_LIBRARY}")
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    info.external_attr = 0o644 << 16
+                    with runtime.open(entry) as source_file, target.open(info, "w") as output_file:
+                        shutil.copyfileobj(source_file, output_file)
+                    print(f"+ {info.filename}", flush=True)
 
 
 def sign(
@@ -265,7 +373,10 @@ def sign(
         [
             str(build_tool(sdk, "zipalign")),
             "-f",
-            "-p",
+            # 16 KB is the page size Android 15 and newer require for shared
+            # libraries. The ONNX Runtime binaries from the AAR are built for it.
+            "-P",
+            "16",
             "4",
             str(unsigned),
             str(aligned),
@@ -300,6 +411,11 @@ def main() -> int:
     parser.add_argument("--debug", action="store_true", help="build the dev profile")
     parser.add_argument("--target", help="build one Rust target, e.g. x86_64-linux-android")
     parser.add_argument("--skip-build", action="store_true", help="reuse the existing APK")
+    parser.add_argument(
+        "--without-kokoro",
+        action="store_true",
+        help="omit the ONNX Runtime library and use the platform voice",
+    )
     parser.add_argument("--output", type=Path, help="final APK path")
     args = parser.parse_args()
 
@@ -324,8 +440,9 @@ def main() -> int:
     work = Path(tempfile.mkdtemp(prefix="contra-android-", dir=REPO / "target"))
     try:
         classes_dex = build_dex(env, sdk, java_home, work)
+        ort_aar = None if args.without_kokoro else find_ort_aar()
         unsigned = work / "contra-karaoke-unsigned.apk"
-        inject_dex(apk, classes_dex, unsigned)
+        inject_assets(apk, classes_dex, unsigned, ort_aar=ort_aar)
         final = args.output or apk
         final.parent.mkdir(parents=True, exist_ok=True)
         sign(env, sdk, unsigned, keystore, password, key_password, final)

@@ -32,13 +32,15 @@ development release. These are the limitations to know before relying on it.
   still play in the app.
 - A **SoundFont you load** is your responsibility, including its license. The
   bundled subset is MIT licensed and credited in `CREDITS.md`.
-- **TTS** uses the local Kokoro neural voice on desktop. The model and selected
-  voice are downloaded on first use and then cached; a first run without a
-  network connection falls back to the platform voice. Web and Android always
-  use the platform voice. Visual calls continue if no voice is available.
+- **TTS** uses the local Kokoro neural voice on desktop and Android. The model
+  and selected voice are downloaded on first use and then cached; a first run
+  without a network connection falls back to the platform voice. Web always
+  uses the platform voice. On Android, the neural runtime is packaged in the
+  APK, which makes the APK larger; a build made without it uses the platform
+  voice. Visual calls continue if no voice is available.
   The session **Caller** slider applies to the caller mixed into the app's audio
-  engine (the desktop default); the platform fallback voice follows the device's
-  media volume.
+  engine when the neural voice is active; the platform fallback voice follows
+  the device's media volume.
 - ContraDB **page size** is fixed at ten results; there is no page-size selector.
   The Caller's Box has no paging at all: one search returns at most 50 matches,
   and a larger result must be narrowed by title, author, or figure text.
