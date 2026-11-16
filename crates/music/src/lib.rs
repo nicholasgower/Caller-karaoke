@@ -5,6 +5,7 @@
 pub mod abc;
 pub mod arrange;
 pub mod chord;
+pub mod effects;
 pub mod midi;
 pub mod percussion;
 pub mod render;

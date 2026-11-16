@@ -10,7 +10,7 @@ use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, MidiEffects, Percussion,
+    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, MelodyInstrument, Percussion,
     PercussionRhythm, SecondAccompaniment,
 };
 
@@ -31,7 +31,7 @@ pub fn export_midi(
     percussion: Percussion,
     percussion_rhythm: PercussionRhythm,
     bpm: f64,
-    effects: MidiEffects,
+    effects: AudioEffects,
 ) -> Vec<u8> {
     export_midi_with_passes(
         arrangement,
@@ -66,7 +66,7 @@ pub fn export_midi_with_passes(
     percussion_rhythm: PercussionRhythm,
     bpm: f64,
     variation_passes: u32,
-    effects: MidiEffects,
+    effects: AudioEffects,
 ) -> Vec<u8> {
     let passes = variation_passes.max(1);
     let mut melody_notes = Vec::new();
@@ -180,7 +180,7 @@ pub fn export_midi_with_passes(
 ///
 /// This is deliberately a separate pass so a caller can post-process a file it
 /// already has, not only the export built by this module.
-pub fn apply_effects(smf: &mut Smf<'_>, effects: MidiEffects) {
+pub fn apply_effects(smf: &mut Smf<'_>, effects: AudioEffects) {
     // Replace any sends already in the file so a second pass changes the
     // effect instead of stacking a second, older controller behind the new one.
     for track in &mut smf.tracks {
@@ -425,7 +425,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         assert!(bytes.starts_with(b"MThd"));
         let smf = Smf::parse(&bytes).expect("parse midi");
@@ -481,7 +481,7 @@ mod tests {
             PercussionRhythm::Auto,
             240.0,
             1,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
         let melody = note_velocities(&smf, 0);
@@ -513,7 +513,7 @@ mod tests {
             PercussionRhythm::Auto,
             240.0,
             1,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let varied = export_midi_with_passes(
             &arrangement,
@@ -525,7 +525,7 @@ mod tests {
             PercussionRhythm::Auto,
             240.0,
             4,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let plain = Smf::parse(&plain).expect("parse midi");
         let varied = Smf::parse(&varied).expect("parse midi");
@@ -552,7 +552,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let sustained = export_midi(
             &arrangement,
@@ -563,7 +563,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         assert_ne!(
             block, sustained,
@@ -584,7 +584,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let second = export_midi(
             &arrangement,
@@ -595,7 +595,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         assert_eq!(first, second);
     }
@@ -613,7 +613,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let smf = Smf::parse(&trio).expect("parse midi");
         assert_eq!(smf.tracks.len(), 3);
@@ -645,7 +645,7 @@ mod tests {
             Percussion::Drumset,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
         assert_eq!(smf.tracks.len(), 4);
@@ -712,7 +712,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
 
@@ -726,7 +726,7 @@ mod tests {
     fn effect_sends_follow_the_selected_presets() {
         let score = parse_abc(TUNE).expect("parse");
         let arrangement = Arrangement::from_score(&score, 64.0);
-        let effects = MidiEffects {
+        let effects = AudioEffects {
             reverb: contra_core::ReverbPreset::Off,
             chorus: contra_core::ChorusPreset::Rich,
             echo: contra_core::EchoPreset::Strong,
@@ -763,12 +763,12 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
-            MidiEffects::default(),
+            AudioEffects::default(),
         );
         let mut smf = Smf::parse(&bytes).expect("parse midi");
         apply_effects(
             &mut smf,
-            MidiEffects {
+            AudioEffects {
                 reverb: contra_core::ReverbPreset::Hall,
                 chorus: contra_core::ChorusPreset::Subtle,
                 echo: contra_core::EchoPreset::Off,

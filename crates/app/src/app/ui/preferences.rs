@@ -15,7 +15,7 @@ const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
     speech,
     playback,
     soundfont,
-    midi_effects,
+    effects,
     web_proxy,
     maintenance,
 ];
@@ -538,58 +538,64 @@ fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.separator();
 }
 
-fn midi_effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
-    ui.heading("MIDI effects");
+fn effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    ui.heading("Effects");
     ui.label(
         egui::RichText::new(
-            "Applied when you export the tune as a MIDI file; playback in this app is unchanged. \
-             The file carries General MIDI effect sends, so the sound also depends on the player.",
+            "Applied to playback without restarting the music, and written into exported MIDI \
+             files. Exported MIDI carries General MIDI sends, so its sound also depends on the player.",
         )
         .small()
         .color(theme::muted(ui)),
     );
     inline_field(ui, compact, "Reverb", |ui| {
-        let combo = egui::ComboBox::from_id_salt("midi_reverb");
+        let combo = egui::ComboBox::from_id_salt("effect_reverb");
         responsive_combo(combo, ui, compact)
-            .selected_text(app.prefs.midi_effects.reverb.label())
+            .selected_text(app.prefs.effects.reverb.label())
             .show_ui(ui, |ui| {
                 for option in ReverbPreset::ALL {
-                    ui.selectable_value(&mut app.prefs.midi_effects.reverb, option, option.label());
+                    ui.selectable_value(&mut app.prefs.effects.reverb, option, option.label());
                 }
             });
     });
     ui.label(
-        egui::RichText::new(app.prefs.midi_effects.reverb.detail())
+        egui::RichText::new(app.prefs.effects.reverb.detail())
             .small()
             .color(theme::muted(ui)),
     );
     inline_field(ui, compact, "Echo", |ui| {
-        let combo = egui::ComboBox::from_id_salt("midi_echo");
+        let combo = egui::ComboBox::from_id_salt("effect_echo");
         responsive_combo(combo, ui, compact)
-            .selected_text(app.prefs.midi_effects.echo.label())
+            .selected_text(app.prefs.effects.echo.label())
             .show_ui(ui, |ui| {
                 for option in EchoPreset::ALL {
-                    ui.selectable_value(&mut app.prefs.midi_effects.echo, option, option.label());
+                    ui.selectable_value(&mut app.prefs.effects.echo, option, option.label());
                 }
             });
     });
     ui.label(
         egui::RichText::new(
-            "Uses the General MIDI delay send. Players that do not implement it ignore the echo.",
+            "A short slapback or a longer echo in playback and the exported file. Exported MIDI \
+             uses the General MIDI delay send; players that do not implement it ignore the echo.",
         )
         .small()
         .color(theme::muted(ui)),
     );
     inline_field(ui, compact, "Chorus", |ui| {
-        let combo = egui::ComboBox::from_id_salt("midi_chorus");
+        let combo = egui::ComboBox::from_id_salt("effect_chorus");
         responsive_combo(combo, ui, compact)
-            .selected_text(app.prefs.midi_effects.chorus.label())
+            .selected_text(app.prefs.effects.chorus.label())
             .show_ui(ui, |ui| {
                 for option in ChorusPreset::ALL {
-                    ui.selectable_value(&mut app.prefs.midi_effects.chorus, option, option.label());
+                    ui.selectable_value(&mut app.prefs.effects.chorus, option, option.label());
                 }
             });
     });
+    ui.label(
+        egui::RichText::new("A light shimmer or a wide chorus on playback and the exported file.")
+            .small()
+            .color(theme::muted(ui)),
+    );
     ui.separator();
 }
 

@@ -49,8 +49,8 @@ ignored.
 ## Effects
 
 A Standard MIDI File contains performance instructions, not rendered audio, so
-the effects are written as the General MIDI sends that a player applies while it
-renders the file. Set them in **Preferences → MIDI effects**:
+the effect is written as the General MIDI sends that a player applies while it
+renders the file. Set it in **Preferences → Effects**:
 
 - **Reverb** defaults to **Medium room**. The file carries a reverb send on
   controller 91 and, when reverb is on, a GM2 reverb-type message so a GM2
@@ -61,9 +61,9 @@ renders the file. Set them in **Preferences → MIDI effects**:
   ignore it, because controller 94 has no standard delay meaning there.
 - **Chorus** defaults to **Off**. **Subtle** and **Rich** use controller 93.
 
-These settings do not change playback in the app: the soundfont synthesizer
-already adds its own reverb and chorus while rendering the loop. Because the
-effect sends are part of the MIDI file, the exact sound also depends on the
+The same settings are applied to playback in the app, after every virtual
+instrument and the percussion layer are mixed. Because the effect sends are
+part of the MIDI file, the exact sound of the export also depends on the
 player's own effects; a DAW can replace them with its own reverb or delay.
 
 ## File format and editing

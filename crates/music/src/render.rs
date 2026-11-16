@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, PercussionRhythm,
-    SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, MelodyInstrument, Percussion,
+    PercussionRhythm, SecondAccompaniment,
 };
 use rustysynth::SoundFont;
 
@@ -28,6 +28,9 @@ pub struct RenderRequest {
     pub accompaniment_volume: f32,
     /// Level of the optional percussion layer.
     pub percussion_volume: f32,
+    /// Reverb, chorus, and echo applied after all voices and percussion are
+    /// mixed. See [`crate::effects`].
+    pub effects: AudioEffects,
     pub count_in_beats: f64,
     pub sample_rate: u32,
     /// Number of 64-beat passes to render back to back.
@@ -126,6 +129,7 @@ pub fn render(
         None => crate::synth::render_builtin(request),
     };
     crate::percussion::mix(&mut buffer, request);
+    crate::effects::apply(&mut buffer.samples, buffer.sample_rate, request.effects);
     if buffer.samples.is_empty() {
         return Err(RenderError::Empty);
     }

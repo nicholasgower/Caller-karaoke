@@ -43,6 +43,7 @@ fn request() -> RenderRequest {
         melody_volume: 0.75,
         accompaniment_volume: 0.65,
         percussion_volume: 0.5,
+        effects: contra_core::AudioEffects::default(),
         count_in_beats: COUNT_IN_BEATS,
         sample_rate: 24_000,
         variation_passes: 1,
