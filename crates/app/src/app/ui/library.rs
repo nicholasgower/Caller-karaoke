@@ -261,6 +261,7 @@ impl ContraApp {
 
     fn dance_library_body(&mut self, ui: &mut egui::Ui, compact: bool, pane_height: f32) {
         let animate = self.prefs.animations_enabled;
+        let glossary_enabled = self.prefs.glossary_enabled;
         let mut entries: Vec<contra_core::LibraryEntry<Dance>> = self
             .dance_library
             .search(&self.dance_library_query, &self.dance_library_folder)
@@ -326,6 +327,7 @@ impl ContraApp {
                     &folders,
                     preview_folder.as_deref(),
                     true,
+                    glossary_enabled,
                     card_padding,
                 ) {
                     action = Some(next);
@@ -411,6 +413,7 @@ impl ContraApp {
                                             &folders,
                                             preview_folder.as_deref(),
                                             false,
+                                            glossary_enabled,
                                             card_padding,
                                         ) {
                                             action = Some(next);
@@ -462,6 +465,7 @@ impl ContraApp {
                                     &folders,
                                     preview_folder.as_deref(),
                                     false,
+                                    glossary_enabled,
                                     card_padding,
                                 ) {
                                     action = Some(next);
@@ -1874,6 +1878,7 @@ fn saved_dance_preview(
     folders: &[String],
     folder: Option<&str>,
     compact: bool,
+    glossary_enabled: bool,
     padding: contra_core::CardPadding,
 ) -> Option<LibraryAction> {
     let mut action = None;
@@ -1912,9 +1917,9 @@ fn saved_dance_preview(
                     figure.phrase.as_deref().unwrap_or(""),
                     figure.beats
                 ));
-                if let Some(entry) =
-                    glossary_text(ui, &figure.text, |text| egui::RichText::new(text))
-                {
+                if let Some(entry) = glossary_text(ui, &figure.text, glossary_enabled, |text| {
+                    egui::RichText::new(text)
+                }) {
                     action = Some(LibraryAction::OpenGlossary(entry.term));
                 }
             });

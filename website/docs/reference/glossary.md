@@ -43,6 +43,15 @@ Only recognised terms become links. Longest matches win, so "balance and swing"
 is one link rather than a link for "balance" and another for "swing". A word such
 as "swinging" is not treated as a link.
 
+## Turning the glossary off
+
+The glossary is on by default. Turn off **Show dance glossary** in
+**Preferences → Appearance** to remove every part of it: terms are no longer
+underlined or clickable, definition tooltips and the touch card do not appear,
+the **Glossary** button leaves the Dance card header, and the **Open the dance
+glossary** link leaves About. The saved glossary text is still on disk; turning
+the option back on restores it.
+
 Use **Filter terms** to search the whole list by name, alternative spelling, or
 wording in the definition. The count below the filter shows how many entries
 match.

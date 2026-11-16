@@ -476,6 +476,7 @@ fn prompt_card_footer(
     ui: &mut egui::Ui,
     next: &contra_core::ScheduledCall,
     compact: bool,
+    glossary_enabled: bool,
 ) -> Option<&'static contra_core::glossary::GlossaryEntry> {
     let timing = if compact {
         format!(
@@ -492,7 +493,7 @@ fn prompt_card_footer(
     ui.horizontal_wrapped(|ui| {
         ui.label(egui::RichText::new("NEXT:").small().color(theme::muted(ui)));
         let call_color = theme::on_card(ui);
-        clicked = glossary_text(ui, &next.call.text, |text| {
+        clicked = glossary_text(ui, &next.call.text, glossary_enabled, |text| {
             egui::RichText::new(text).strong().color(call_color)
         });
         ui.label(egui::RichText::new(timing).small().color(theme::muted(ui)));
@@ -505,10 +506,13 @@ fn prompt_card_footer(
 /// The button is the discoverable entry point for the reference; the glossary
 /// terms themselves open the same screen. It keeps a full touch target on a
 /// phone, where the heading row is otherwise only text.
-fn dance_card_header(ui: &mut egui::Ui, compact: bool) -> bool {
+fn dance_card_header(ui: &mut egui::Ui, compact: bool, glossary_enabled: bool) -> bool {
     let mut open = false;
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new("Dance card").strong());
+        if !glossary_enabled {
+            return;
+        }
         let button = if compact {
             ui.add_sized([110.0, theme::TOUCH_TARGET], egui::Button::new("Glossary"))
         } else {
@@ -548,6 +552,7 @@ impl ContraApp {
         card_scroll: bool,
     ) {
         let compact = layout.compact;
+        let glossary_enabled = self.prefs.glossary_enabled;
         if compact {
             // The phone layout gives every interactive control a 44 pt row.
             ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
@@ -649,7 +654,7 @@ impl ContraApp {
                         });
                 });
                 frame.show(&mut columns[1], |ui| {
-                    open_glossary |= dance_card_header(ui, compact);
+                    open_glossary |= dance_card_header(ui, compact, glossary_enabled);
                     egui::ScrollArea::vertical()
                         .id_salt("dance-card")
                         .max_height((height - 44.0).max(120.0))
@@ -665,7 +670,7 @@ impl ContraApp {
             rotation_changed |= self.session_summary(ui, compact);
             self.session_meter(ui, beat);
             ui.add_space(8.0);
-            open_glossary |= dance_card_header(ui, compact);
+            open_glossary |= dance_card_header(ui, compact, glossary_enabled);
             if card_scroll {
                 egui::ScrollArea::vertical()
                     .id_salt("dance-card")
@@ -990,12 +995,17 @@ impl ContraApp {
                                         .color(theme::on_card(ui)),
                                 );
                                 let call_color = theme::on_card(ui);
-                                clicked = glossary_text(ui, &call.call.text, |text| {
-                                    egui::RichText::new(text)
-                                        .size(26.0)
-                                        .strong()
-                                        .color(call_color)
-                                });
+                                clicked = glossary_text(
+                                    ui,
+                                    &call.call.text,
+                                    self.prefs.glossary_enabled,
+                                    |text| {
+                                        egui::RichText::new(text)
+                                            .size(26.0)
+                                            .strong()
+                                            .color(call_color)
+                                    },
+                                );
                             } else {
                                 ui.label(
                                     egui::RichText::new("Listen for the first chord").size(20.0),
@@ -1007,9 +1017,12 @@ impl ContraApp {
                                                 .color(theme::muted(ui)),
                                         );
                                         let next_color = theme::muted(ui);
-                                        clicked = glossary_text(ui, &next.call.text, |text| {
-                                            egui::RichText::new(text).color(next_color)
-                                        });
+                                        clicked = glossary_text(
+                                            ui,
+                                            &next.call.text,
+                                            self.prefs.glossary_enabled,
+                                            |text| egui::RichText::new(text).color(next_color),
+                                        );
                                     });
                                 }
                             }
@@ -1024,6 +1037,7 @@ impl ContraApp {
                                     upcoming,
                                     beat,
                                     self.prefs.show_original,
+                                    self.prefs.glossary_enabled,
                                     call_size,
                                 );
                             }
@@ -1035,12 +1049,17 @@ impl ContraApp {
                                     .color(theme::muted(ui)),
                             );
                             let call_color = theme::muted(ui);
-                            clicked = glossary_text(ui, &call.call.text, |text| {
-                                egui::RichText::new(text)
-                                    .size(call_size)
-                                    .strong()
-                                    .color(call_color)
-                            });
+                            clicked = glossary_text(
+                                ui,
+                                &call.call.text,
+                                self.prefs.glossary_enabled,
+                                |text| {
+                                    egui::RichText::new(text)
+                                        .size(call_size)
+                                        .strong()
+                                        .color(call_color)
+                                },
+                            );
                             ui.horizontal_wrapped(|ui| {
                                 ui.label(
                                     egui::RichText::new("final figure").color(theme::muted(ui)),
@@ -1050,9 +1069,14 @@ impl ContraApp {
                                         egui::RichText::new("·").small().color(theme::muted(ui)),
                                     );
                                     let original_color = theme::muted(ui);
-                                    clicked = glossary_text(ui, &call.call.original_text, |text| {
-                                        egui::RichText::new(text).small().color(original_color)
-                                    });
+                                    clicked = glossary_text(
+                                        ui,
+                                        &call.call.original_text,
+                                        self.prefs.glossary_enabled,
+                                        |text| {
+                                            egui::RichText::new(text).small().color(original_color)
+                                        },
+                                    );
                                 }
                             });
                         }
@@ -1075,12 +1099,17 @@ impl ContraApp {
                             } else {
                                 theme::on_card(ui)
                             };
-                            clicked = glossary_text(ui, &call.call.text, |text| {
-                                egui::RichText::new(text)
-                                    .size(call_size)
-                                    .strong()
-                                    .color(call_color)
-                            });
+                            clicked = glossary_text(
+                                ui,
+                                &call.call.text,
+                                self.prefs.glossary_enabled,
+                                |text| {
+                                    egui::RichText::new(text)
+                                        .size(call_size)
+                                        .strong()
+                                        .color(call_color)
+                                },
+                            );
                             ui.horizontal_wrapped(|ui| {
                                 ui.label(
                                     egui::RichText::new(if phase == CallPhase::Executing {
@@ -1098,9 +1127,14 @@ impl ContraApp {
                                         egui::RichText::new("·").small().color(theme::muted(ui)),
                                     );
                                     let original_color = theme::muted(ui);
-                                    clicked = glossary_text(ui, &call.call.original_text, |text| {
-                                        egui::RichText::new(text).small().color(original_color)
-                                    });
+                                    clicked = glossary_text(
+                                        ui,
+                                        &call.call.original_text,
+                                        self.prefs.glossary_enabled,
+                                        |text| {
+                                            egui::RichText::new(text).small().color(original_color)
+                                        },
+                                    );
                                 }
                             });
                         }
@@ -1142,7 +1176,7 @@ impl ContraApp {
                 // one. When there is no following call the row stays empty,
                 // and the reserved height keeps the card from shrinking.
                 if let Some(next) = footer {
-                    clicked = prompt_card_footer(ui, next, compact);
+                    clicked = prompt_card_footer(ui, next, compact, self.prefs.glossary_enabled);
                 }
                 // Pad inside the card instead of setting a minimum on the
                 // content ui: the blank space belongs under the last row, not
@@ -1256,16 +1290,21 @@ impl ContraApp {
                             CallPhase::Executing => theme::executing(ui),
                         };
                         let size = if active_figure { 19.0 } else { 16.0 };
-                        if let Some(entry) = glossary_text(ui, &call.text, |text| {
-                            egui::RichText::new(text).size(size).color(color)
-                        }) {
+                        if let Some(entry) =
+                            glossary_text(ui, &call.text, self.prefs.glossary_enabled, |text| {
+                                egui::RichText::new(text).size(size).color(color)
+                            })
+                        {
                             clicked = Some(entry);
                         }
                         if self.prefs.show_original && call.original_text != call.text {
                             let original_color = theme::subtle(ui);
-                            if let Some(entry) = glossary_text(ui, &call.original_text, |text| {
-                                egui::RichText::new(text).small().color(original_color)
-                            }) {
+                            if let Some(entry) = glossary_text(
+                                ui,
+                                &call.original_text,
+                                self.prefs.glossary_enabled,
+                                |text| egui::RichText::new(text).small().color(original_color),
+                            ) {
                                 clicked = Some(entry);
                             }
                         }

@@ -120,10 +120,15 @@ fn tooltip_width(screen_width: f32) -> f32 {
 pub(in crate::app) fn glossary_text(
     ui: &mut egui::Ui,
     text: &str,
+    enabled: bool,
     style: impl Fn(&str) -> egui::RichText,
 ) -> Option<&'static GlossaryEntry> {
     let mut clicked = None;
-    let matches = glossary::scan(text);
+    let matches = if enabled {
+        glossary::scan(text)
+    } else {
+        Vec::new()
+    };
     let touch = ui.input(|input| input.any_touches());
     ui.horizontal_wrapped(|ui| {
         // Words carry their own trailing spaces, so a wrapped line reads as one
@@ -185,6 +190,9 @@ impl ContraApp {
     /// session returns to the session while the About link returns to
     /// Preferences.
     pub(in crate::app) fn open_glossary(&mut self, term: Option<&str>, return_to: Screen) {
+        if !self.prefs.glossary_enabled {
+            return;
+        }
         self.glossary_query.clear();
         self.glossary_focus = term.map(str::to_owned);
         self.glossary_focus_scrolled = false;
@@ -203,6 +211,10 @@ impl ContraApp {
     }
 
     pub(in crate::app) fn glossary_ui(&mut self, ui: &mut egui::Ui) {
+        if !self.prefs.glossary_enabled {
+            self.leave_glossary();
+            return;
+        }
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
         if compact {

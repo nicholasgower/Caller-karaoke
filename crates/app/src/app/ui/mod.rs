@@ -506,6 +506,7 @@ pub(super) fn upcoming_move_card(
     next: &contra_core::ScheduledCall,
     beat: f64,
     show_original: bool,
+    glossary_enabled: bool,
     call_size: f32,
 ) -> Option<&'static contra_core::glossary::GlossaryEntry> {
     ui.label(
@@ -514,7 +515,7 @@ pub(super) fn upcoming_move_card(
             .color(theme::muted(ui)),
     );
     let call_color = theme::on_card(ui);
-    let mut clicked = glossary_text(ui, &next.call.text, |text| {
+    let mut clicked = glossary_text(ui, &next.call.text, glossary_enabled, |text| {
         egui::RichText::new(text)
             .size(call_size)
             .strong()
@@ -531,9 +532,11 @@ pub(super) fn upcoming_move_card(
         if show_original {
             ui.label(egui::RichText::new("·").small().color(theme::muted(ui)));
             let original_color = theme::muted(ui);
-            if let Some(entry) = glossary_text(ui, &next.call.original_text, |text| {
-                egui::RichText::new(text).small().color(original_color)
-            }) {
+            if let Some(entry) =
+                glossary_text(ui, &next.call.original_text, glossary_enabled, |text| {
+                    egui::RichText::new(text).small().color(original_color)
+                })
+            {
                 clicked = Some(entry);
             }
         }

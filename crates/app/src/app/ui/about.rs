@@ -33,10 +33,11 @@ pub(in crate::app) fn about(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bo
         egui::RichText::new("Documentation").underline(),
         DOCUMENTATION_URL,
     );
-    if ui
-        .link(egui::RichText::new("Open the dance glossary").underline())
-        .on_hover_text("Short definitions of the terms in a dance card and its calls")
-        .clicked()
+    if app.prefs.glossary_enabled
+        && ui
+            .link(egui::RichText::new("Open the dance glossary").underline())
+            .on_hover_text("Short definitions of the terms in a dance card and its calls")
+            .clicked()
     {
         app.open_glossary(None, Screen::Preferences);
     }

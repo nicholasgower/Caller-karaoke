@@ -3104,10 +3104,12 @@ impl ContraApp {
 
         // A touch definition card belongs to the screen that opened it. Keep it
         // out of the next screen and draw it last so no scroll area clips it.
-        if self.screen != previous_screen {
+        if self.screen != previous_screen || !self.prefs.glossary_enabled {
             ui::clear_tooltip(&ctx);
         }
-        ui::glossary_tooltip(&ctx, header.rect.bottom() + 8.0);
+        if self.prefs.glossary_enabled {
+            ui::glossary_tooltip(&ctx, header.rect.bottom() + 8.0);
+        }
 
         // Leaving the editor by any route discards the draft. Save and Restore
         // write the library themselves before changing the screen.

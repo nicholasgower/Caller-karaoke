@@ -345,6 +345,55 @@ fn a_glossary_term_opens_its_entry_and_back_returns_to_the_session() {
 }
 
 #[test]
+fn disabling_the_glossary_hides_its_links_and_entry_points() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Session;
+            app.error = None;
+            app.prefs.glossary_enabled = false;
+            app
+        });
+    harness.run_steps(3);
+
+    assert!(
+        harness.query_all_by_label("Glossary").next().is_none(),
+        "the Dance card header should not offer the glossary while it is off"
+    );
+    assert!(
+        harness
+            .query_all_by_label("balance and swing")
+            .next()
+            .is_none(),
+        "dance terms must not remain links while the glossary is off"
+    );
+
+    harness.state_mut().open_glossary(None, Screen::Session);
+    assert_eq!(
+        harness.state().screen,
+        Screen::Session,
+        "the glossary screen is unreachable while it is off"
+    );
+
+    harness.state_mut().screen = Screen::Preferences;
+    harness.state_mut().prefs_page = PreferencesPage::Category(PreferencesCategory::About);
+    harness.state_mut().about_reveal = true;
+    harness.run_steps(3);
+    assert!(
+        harness
+            .query_all_by_label("Open the dance glossary")
+            .next()
+            .is_none(),
+        "the About link must disappear with the rest of the glossary"
+    );
+}
+
+#[test]
 fn hovering_a_dance_card_term_shows_its_glossary_definition() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 800.0))

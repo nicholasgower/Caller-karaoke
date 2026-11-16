@@ -46,6 +46,12 @@ Smooth animations fade and slide between screens and animate tab and highlight
 changes. Turn them off to reduce motion; the app then switches screens
 immediately. The docs site also respects `prefers-reduced-motion`.
 
+Below those controls, **Dance card padding** chooses how tightly the session
+card packs its figures, and **Show dance glossary** (on by default) controls the
+optional dance-term reference. Turning the glossary off removes its underlined
+terms, definition tooltips, **Glossary** button, and About link altogether. See
+the [Dance glossary](/docs/reference/glossary) for the reference itself.
+
 **Undo** and **Redo** undo the last preference or dance/tune change and are
 disabled while there is nothing to undo or redo. They are full touch targets at
 phone width, and the same actions are on **Ctrl+Z** and **Ctrl+Y**

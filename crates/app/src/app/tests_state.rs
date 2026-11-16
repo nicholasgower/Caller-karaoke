@@ -219,6 +219,10 @@ const CONTROLS: &[Control] = &[
         change: |prefs| prefs.animations_enabled = !prefs.animations_enabled,
     },
     Control {
+        name: "checkbox: glossary",
+        change: |prefs| prefs.glossary_enabled = !prefs.glossary_enabled,
+    },
+    Control {
         name: "checkbox: automatic lead",
         change: |prefs| prefs.lead.auto = !prefs.lead.auto,
     },

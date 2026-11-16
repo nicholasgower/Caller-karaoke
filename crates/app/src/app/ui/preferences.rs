@@ -801,6 +801,14 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
+    ui.checkbox(&mut app.prefs.glossary_enabled, "Show dance glossary");
+    ui.label(
+        egui::RichText::new(
+            "Underline dance terms in calls and cards, show their definition tooltips, and open the glossary from the Dance card header.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     undo_redo_buttons(app, ui, compact);
     if let Some(message) = &app.history_status {
         ui.label(egui::RichText::new(message).small().color(theme::muted(ui)));

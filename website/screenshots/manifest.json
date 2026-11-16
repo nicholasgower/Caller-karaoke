@@ -220,8 +220,8 @@
     },
     {
       "id": "prefs-interface",
-      "alt": "The Appearance category of Preferences, showing the Theme buttons, the Interface section with Smooth animations, the Undo and Redo buttons, and the keyboard shortcut reference.",
-      "caption": "Appearance settings control theme, screen transitions, undo and redo, and the keyboard shortcuts.",
+      "alt": "The Appearance category of Preferences, showing the Theme buttons, the Interface section with Smooth animations, Dance card padding, and Show dance glossary, the Undo and Redo buttons, and the keyboard shortcut reference.",
+      "caption": "Appearance settings control theme, screen transitions, dance card spacing, the glossary, undo and redo, and the keyboard shortcuts.",
       "status": "ready",
       "width": 1280,
       "height": 1000

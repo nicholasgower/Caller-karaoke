@@ -1130,6 +1130,11 @@ pub struct Preferences {
     pub theme: Theme,
     /// Smooth transitions for tab changes, highlights, and screen entries.
     pub animations_enabled: bool,
+    /// Show the dance glossary: linked terms, definition tooltips, the
+    /// Glossary button, and the reference page. On by default; a caller who
+    /// does not want the extra reference can hide all of it.
+    #[serde(default = "default_glossary_enabled")]
+    pub glossary_enabled: bool,
     /// Air around the figures in a dance card display; see [`CardPadding`].
     ///
     /// Files written before this setting existed load as [`CardPadding::Compact`].
@@ -1213,7 +1218,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 13;
+pub const CURRENT_SCHEMA_VERSION: u32 = 14;
 
 /// The dance source a new or older preference file downloads from.
 ///
@@ -1488,6 +1493,11 @@ fn default_humanize_timing() -> bool {
     true
 }
 
+/// The glossary is a reference aid for new callers, so it starts available.
+fn default_glossary_enabled() -> bool {
+    true
+}
+
 fn default_dance_source() -> String {
     DEFAULT_DANCE_SOURCE.to_string()
 }
@@ -1511,6 +1521,7 @@ impl Default for Preferences {
             percussion_rhythm: PercussionRhythm::default(),
             theme: Theme::default(),
             animations_enabled: true,
+            glossary_enabled: default_glossary_enabled(),
             card_padding: CardPadding::default(),
             lead: LeadSettings::default(),
             tempo_bpm: Tempo::DEFAULT_BPM,
@@ -2080,6 +2091,19 @@ mod tests {
         };
         prefs.validate();
         assert_eq!(prefs.dance_source, DEFAULT_DANCE_SOURCE);
+    }
+
+    #[test]
+    fn glossary_is_on_by_default_and_round_trips() {
+        let prefs = Preferences::default();
+        assert!(prefs.glossary_enabled);
+        let off = Preferences {
+            glossary_enabled: false,
+            ..Preferences::default()
+        };
+        let json = off.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(!restored.glossary_enabled);
     }
 
     #[test]

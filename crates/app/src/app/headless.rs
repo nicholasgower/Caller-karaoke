@@ -520,6 +520,7 @@ fn preference_shots(
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Appearance);
         app.prefs.animations_enabled = true;
     }
     harness.set_size(Vec2::new(1280.0, 1000.0));

@@ -480,7 +480,9 @@ impl ContraApp {
                             figure.beats
                         ));
                         if let Some(entry) =
-                            glossary_text(ui, &figure.text, |text| egui::RichText::new(text))
+                            glossary_text(ui, &figure.text, self.prefs.glossary_enabled, |text| {
+                                egui::RichText::new(text)
+                            })
                         {
                             self.open_glossary(Some(entry.term), Screen::DanceDownload);
                         }
