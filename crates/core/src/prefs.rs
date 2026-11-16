@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::alias::AliasTable;
 use crate::dance::SourceRef;
-use crate::midi_effects::MidiEffects;
+use crate::effects::AudioEffects;
 use crate::roles::RoleTerms;
 use crate::time::Tempo;
 use crate::timing::LeadSettings;
@@ -480,11 +480,10 @@ pub struct Preferences {
     pub accompaniment_volume: f32,
     /// Level of the optional percussion layer, when it is enabled.
     pub percussion_volume: f32,
-    /// Reverb, chorus, and echo sends written into exported MIDI files.
-    ///
-    /// These do not change in-app playback; the soundfont already adds its own
-    /// effects while rendering the loop.
-    pub midi_effects: MidiEffects,
+    /// Reverb, chorus, and echo applied to in-app playback and to exported
+    /// MIDI files.
+    #[serde(alias = "midi_effects")]
+    pub effects: AudioEffects,
     pub master_volume: f32,
     pub soundfont: Option<SoundFontSetting>,
     pub web_proxy_url: Option<String>,
@@ -580,9 +579,9 @@ pub const MIGRATIONS: &[Migration] = &[
         apply: migrate_v8_tts_voice_nicole,
     },
     Migration {
-        tag: "midi-effects-v10",
+        tag: "audio-effects-v10",
         version: 10,
-        apply: migrate_v9_midi_effects,
+        apply: migrate_v9_audio_effects,
     },
 ];
 
@@ -665,10 +664,10 @@ fn migrate_v8_percussion_rhythm(_prefs: &mut Preferences) {
     // style's existing pattern.
 }
 
-fn migrate_v9_midi_effects(_prefs: &mut Preferences) {
-    // v10 adds the exported-MIDI effect sends. `serde` supplies the default
-    // medium-room reverb with no chorus or echo, so existing files get the new
-    // room sound without changing anything else.
+fn migrate_v9_audio_effects(_prefs: &mut Preferences) {
+    // v10 adds the playback and exported-MIDI effects. `serde` supplies the
+    // default medium-room reverb with no chorus or echo, so existing files get
+    // the new room sound without changing anything else.
 }
 
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
@@ -730,7 +729,7 @@ impl Default for Preferences {
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,
-            midi_effects: MidiEffects::default(),
+            effects: AudioEffects::default(),
             master_volume: 0.8,
             soundfont: None,
             web_proxy_url: None,
@@ -847,6 +846,7 @@ impl Preferences {
                 || self.melody_volume != old.melody_volume
                 || self.accompaniment_volume != old.accompaniment_volume
                 || self.percussion_volume != old.percussion_volume
+                || self.effects != old.effects
                 || self.soundfont != old.soundfont,
             tone: self.tts_tone != old.tts_tone,
         }
@@ -873,10 +873,10 @@ mod tests {
         );
         assert_eq!(prefs.percussion, Percussion::Off);
         assert!(!prefs.percussion.is_enabled());
-        assert_eq!(prefs.midi_effects, MidiEffects::default());
+        assert_eq!(prefs.effects, AudioEffects::default());
         assert_eq!(
-            prefs.midi_effects.reverb,
-            crate::midi_effects::ReverbPreset::MediumRoom
+            prefs.effects.reverb,
+            crate::effects::ReverbPreset::MediumRoom
         );
         assert_eq!(prefs.theme, Theme::Dark);
         assert!(prefs.animations_enabled);
@@ -936,8 +936,8 @@ mod tests {
             .aliases
             .add_alternative(crate::alias::MoveKind::Swing, "swing it around");
         prefs.shuffle_alternatives = true;
-        prefs.midi_effects.reverb = crate::midi_effects::ReverbPreset::Hall;
-        prefs.midi_effects.echo = crate::midi_effects::EchoPreset::Strong;
+        prefs.effects.reverb = crate::effects::ReverbPreset::Hall;
+        prefs.effects.echo = crate::effects::EchoPreset::Strong;
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
         assert_eq!(prefs, restored);
@@ -1038,17 +1038,26 @@ mod tests {
     }
 
     #[test]
-    fn v9_preferences_default_to_a_medium_room_midi_reverb() {
+    fn v9_preferences_default_to_a_medium_room_audio_reverb() {
         let json = r#"{"schema_version":9,"tempo_bpm":220.0}"#;
         let migrated = Preferences::from_json(json).expect("deserialize");
 
         assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
-        assert_eq!(migrated.midi_effects, MidiEffects::default());
+        assert_eq!(migrated.effects, AudioEffects::default());
         assert_eq!(
-            migrated.midi_effects.reverb,
-            crate::midi_effects::ReverbPreset::MediumRoom
+            migrated.effects.reverb,
+            crate::effects::ReverbPreset::MediumRoom
         );
         assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn preferences_accept_the_old_midi_effects_key() {
+        let json = r#"{"schema_version":10,"midi_effects":{"reverb":"Hall","chorus":"Rich","echo":"Strong"}}"#;
+        let prefs = Preferences::from_json(json).expect("deserialize");
+        assert_eq!(prefs.effects.reverb, crate::effects::ReverbPreset::Hall);
+        assert_eq!(prefs.effects.chorus, crate::effects::ChorusPreset::Rich);
+        assert_eq!(prefs.effects.echo, crate::effects::EchoPreset::Strong);
     }
 
     #[test]
@@ -1362,6 +1371,17 @@ mod tests {
         melody.melody = MelodyInstrument::Accordion;
         assert_eq!(
             melody.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: true,
+                tone: false
+            }
+        );
+
+        let mut effects = base.clone();
+        effects.effects.reverb = crate::effects::ReverbPreset::Hall;
+        assert_eq!(
+            effects.changes_since(&base),
             ChangeSet {
                 timeline: false,
                 audio: true,

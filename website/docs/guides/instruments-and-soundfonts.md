@@ -1,6 +1,6 @@
 ---
 title: Instruments and soundfonts
-description: Choose the melody, accompaniment, and second-accompaniment voices and rhythm, balance the mix, and load an optional user-supplied SF2 SoundFont.
+description: Choose the melody, accompaniment, and second-accompaniment voices and rhythm, balance the mix, add reverb, echo, or chorus, and load an optional user-supplied SF2 SoundFont.
 sidebar_position: 6
 ---
 
@@ -115,6 +115,24 @@ progression when the ABC has none. Only its rhythm changes.
 
 The session **Volume** control is a master level applied on top of this mix.
 
+## Effects
+
+**Preferences → Effects** adds room and movement to the whole band. The effect
+chain runs after the virtual instruments and percussion are mixed, so every
+voice shares the same space:
+
+| Effect | Choices | Default |
+| --- | --- | --- |
+| Reverb | Off, Small room, Medium room, Large room, Hall | Medium room |
+| Echo | Off, Subtle, Strong | Off |
+| Chorus | Off, Subtle, Rich | Off |
+
+Changes re-render the loop without restarting; playback keeps its position.
+The same settings are written into an exported MIDI file as General MIDI effect
+sends, so the arrangement retains its character in a DAW or MIDI player. See
+[Export MIDI](/docs/guides/export-midi#effects) for what the file carries and
+which players honor the echo send.
+
 ## Vary the music
 
 <Steps>
@@ -133,7 +151,7 @@ accompaniment rests too.
 
 ## Apply the change
 
-Instrument, rhythm, volume, and music-variation changes apply without
+Instrument, rhythm, volume, effect, and music-variation changes apply without
 restarting the music. Release the control and the app re-renders the loop,
 keeping the current beat. If the session is not playing, press **Play** to
 render and start.

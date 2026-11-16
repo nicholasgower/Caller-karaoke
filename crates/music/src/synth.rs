@@ -574,6 +574,7 @@ mod tests {
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,
+            effects: contra_core::AudioEffects::default(),
             count_in_beats: COUNT_IN_BEATS,
             sample_rate: 24_000,
             variation_passes: 1,
@@ -590,6 +591,37 @@ mod tests {
         assert!(buffer.samples.iter().any(|sample| sample.abs() > 0.001));
         assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
         assert!(buffer.samples.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn playback_applies_the_selected_effects() {
+        let dry = RenderRequest {
+            effects: contra_core::AudioEffects {
+                reverb: contra_core::ReverbPreset::Off,
+                chorus: contra_core::ChorusPreset::Off,
+                echo: contra_core::EchoPreset::Off,
+            },
+            ..request()
+        };
+        let wet = RenderRequest {
+            effects: contra_core::AudioEffects::default(),
+            ..request()
+        };
+        let dry = crate::render::render(&dry, None).expect("render dry");
+        let wet = crate::render::render(&wet, None).expect("render wet");
+
+        assert_eq!(dry.frames(), wet.frames());
+        let difference = dry
+            .samples
+            .iter()
+            .zip(&wet.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-3,
+            "the default medium-room reverb should change playback, not {difference}"
+        );
+        assert!(wet.samples.iter().all(|sample| sample.is_finite()));
+        assert!(wet.samples.iter().all(|sample| sample.abs() <= 1.0));
     }
 
     #[test]

@@ -1,14 +1,13 @@
-//! Effect sends written into an exported Standard MIDI File.
+//! Audio effect settings shared by in-app playback and MIDI export.
 //!
-//! A MIDI file cannot carry rendered audio, so these settings travel as the
-//! General MIDI effect sends a player applies while it renders the file:
-//! reverb (controller 91), chorus (controller 93), and echo/delay (controller
-//! 94, the GM2 delay send). The reverb choice also selects a GM2 reverb type,
-//! so a GM2 player really uses a room of the requested size instead of its
-//! default algorithm.
-//!
-//! They deliberately do not affect in-app playback. The soundfont synthesizer
-//! already adds its own reverb and chorus while rendering the loop.
+//! Playback applies the reverb, chorus, and echo chain to the rendered stereo
+//! buffer, after every virtual instrument and the percussion layer are mixed.
+//! An exported Standard MIDI File cannot carry rendered audio, so the same
+//! choices travel there as the General MIDI effect sends a player applies while
+//! it renders: reverb (controller 91), chorus (controller 93), and echo/delay
+//! (controller 94, the GM2 delay send). The reverb choice also selects a GM2
+//! reverb type, so a GM2 player really uses a room of the requested size instead
+//! of its default algorithm.
 
 use serde::{Deserialize, Serialize};
 
@@ -159,19 +158,19 @@ impl EchoPreset {
     }
 }
 
-/// Reverb, chorus, and echo sends for an exported MIDI file.
+/// Reverb, chorus, and echo settings for playback and exported MIDI.
 ///
 /// The default is a medium-room reverb with no chorus or echo, which gives a
 /// dry contra band a little room without changing the tune.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
-pub struct MidiEffects {
+pub struct AudioEffects {
     pub reverb: ReverbPreset,
     pub chorus: ChorusPreset,
     pub echo: EchoPreset,
 }
 
-impl MidiEffects {
+impl AudioEffects {
     /// Whether every send is off.
     pub fn is_dry(self) -> bool {
         self.reverb == ReverbPreset::Off
@@ -199,7 +198,7 @@ mod tests {
 
     #[test]
     fn default_is_a_medium_room_with_no_chorus_or_echo() {
-        let effects = MidiEffects::default();
+        let effects = AudioEffects::default();
         assert_eq!(effects.reverb, ReverbPreset::MediumRoom);
         assert_eq!(effects.chorus, ChorusPreset::Off);
         assert_eq!(effects.echo, EchoPreset::Off);
@@ -225,7 +224,7 @@ mod tests {
 
     #[test]
     fn off_is_completely_dry() {
-        let effects = MidiEffects {
+        let effects = AudioEffects {
             reverb: ReverbPreset::Off,
             chorus: ChorusPreset::Off,
             echo: EchoPreset::Off,

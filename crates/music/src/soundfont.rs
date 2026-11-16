@@ -67,7 +67,9 @@ pub fn render_soundfont(
     let mut settings = SynthesizerSettings::new(sample_rate as i32);
     settings.block_size = 64;
     settings.maximum_polyphony = 128;
-    settings.enable_reverb_and_chorus = true;
+    // Reverb and chorus are applied once, after every voice and the percussion
+    // layer are mixed, so playback and MIDI export share the same settings.
+    settings.enable_reverb_and_chorus = false;
     let mut synth = Synthesizer::new(soundfont, &settings)
         .map_err(|error| RenderError::SoundFont(error.to_string()))?;
 

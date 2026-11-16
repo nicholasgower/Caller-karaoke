@@ -132,6 +132,12 @@ foot-tap thump, a pitch-dropping kick, a noise-and-body snare, and a high-passed
 noise hi-hat. It is mixed into the rendered buffer after the melody and
 accompaniment, so it works with the bundled subset and any user font.
 
+After every voice and the percussion layer are mixed, a deterministic effect
+chain applies chorus, echo, and reverb, then a peak limiter. Reverb defaults to
+a medium room; chorus and echo are off by default. The settings are shared with
+MIDI export, where the same choices become General MIDI sends. All-off leaves
+the dry buffer sample-for-sample unchanged.
+
 Do not add a full soundfont bank to the repository. A new bundled soundfont
 must be permissively licensed, trimmed to the programs used, and attributed.
 
@@ -192,5 +198,6 @@ Soundfont file selection:
   channel track. The default is a medium-room reverb with no chorus or echo.
   A GM2 reverb-type message selects the requested room, and the sends are
   replaced rather than stacked when an existing file is post-processed.
-- The notes must match what the synth plays; the effect sends are an
-  export-only post-process and do not change in-app playback.
+- The notes must match what the synth plays. The reverb, chorus, and echo
+  settings are shared with playback, where the same chain is applied to the
+  rendered buffer; in the file they become General MIDI sends.
