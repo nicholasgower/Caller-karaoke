@@ -142,7 +142,7 @@ Copy counts do not change the balance; the section is levelled automatically.
 
 ## Effects
 
-**Preferences → Effects** adds room and movement to the whole band. The effect
+**Preferences → Band & Sound** adds room and movement to the whole band. The effect
 chain runs after the virtual instruments and percussion are mixed, so every
 voice shares the same space:
 
@@ -224,7 +224,7 @@ including its license.
 
 <Steps>
   <Step shot="prefs-sf2-loaded">
-    On Windows or Linux, open **Preferences → Soundfont**, select **Load
+    On Windows or Linux, open **Preferences → Band & Sound**, select **Load
     .sf2…**, and choose a file. The section shows the loaded name and a **Use
     bundled** button.
   </Step>

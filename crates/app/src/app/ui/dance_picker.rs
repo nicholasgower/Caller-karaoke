@@ -34,6 +34,28 @@ impl ContraApp {
             }
             ui.heading("Download dance");
         });
+        let mut chosen = None;
+        inline_field(ui, compact, "Dance source", |ui| {
+            let current = self.dance_source();
+            let combo = egui::ComboBox::from_id_salt("dance_download_source");
+            responsive_combo(combo, ui, compact)
+                .selected_text(current.display_name())
+                .show_ui(ui, |ui| {
+                    for option in contra_sources::dance_providers() {
+                        if ui
+                            .selectable_label(option.id() == current.id(), option.display_name())
+                            .clicked()
+                        {
+                            chosen = Some(option.id());
+                        }
+                    }
+                });
+        });
+        if let Some(id) = chosen {
+            // A new source invalidates the filters, results, and preview; see
+            // `set_dance_source`.
+            self.set_dance_source(id);
+        }
         let provider = self.dance_source();
         let display_name = provider.display_name();
         ui.label(

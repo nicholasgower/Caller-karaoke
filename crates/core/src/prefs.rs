@@ -1536,6 +1536,16 @@ impl Preferences {
         if self.tempo_min_bpm > self.tempo_max_bpm {
             std::mem::swap(&mut self.tempo_min_bpm, &mut self.tempo_max_bpm);
         }
+        // An equal pair would make the session slider a single point. Keep a
+        // one-BPM window instead, staying inside the global limits.
+        if self.tempo_min_bpm >= self.tempo_max_bpm {
+            if self.tempo_max_bpm >= Tempo::MAX_BPM {
+                self.tempo_max_bpm = Tempo::MAX_BPM;
+                self.tempo_min_bpm = Tempo::MAX_BPM - 1.0;
+            } else {
+                self.tempo_max_bpm = self.tempo_min_bpm + 1.0;
+            }
+        }
         self.humanize_options.amount = self.humanize_options.amount.clamp(0.0, 1.0);
         self.dancer_sound_volume = self.dancer_sound_volume.clamp(0.0, 2.0);
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
@@ -1801,6 +1811,26 @@ mod tests {
         };
         prefs.validate();
         assert_eq!((prefs.tempo_min_bpm, prefs.tempo_max_bpm), (120.0, 320.0));
+
+        // An equal pair must become a usable one-BPM window, including at the
+        // top of the global range.
+        for (min, max, expected) in [
+            (250.0, 250.0, (250.0, 251.0)),
+            (320.0, 320.0, (319.0, 320.0)),
+            (100.0, 100.0, (120.0, 121.0)),
+        ] {
+            let mut prefs = Preferences {
+                tempo_min_bpm: min,
+                tempo_max_bpm: max,
+                ..Preferences::default()
+            };
+            prefs.validate();
+            assert_eq!(
+                (prefs.tempo_min_bpm, prefs.tempo_max_bpm),
+                expected,
+                "min={min} max={max}"
+            );
+        }
     }
 
     #[test]

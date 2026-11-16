@@ -12,6 +12,7 @@ use contra_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary}
 use eframe::egui::{self, Vec2};
 use egui_kittest::Harness;
 
+use super::ui::preferences::{PreferencesCategory, PreferencesPage};
 use super::{ContraApp, Screen};
 
 const DESKTOP: Vec2 = Vec2::new(1280.0, 800.0);
@@ -470,6 +471,7 @@ fn preference_shots(
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
         app.picker.tune_query.rhythm = None;
         app.prefs.theme = contra_core::Theme::Dark;
         app.error = None;
@@ -540,6 +542,7 @@ fn preference_shots(
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::BandAndSound);
         app.alias_filter.clear();
         app.prefs.theme = contra_core::Theme::Dark;
         app.prefs.tts_enabled = true;
@@ -587,12 +590,14 @@ fn preference_shots(
     capture(harness, out, "prefs-instrument-mix")?;
     {
         let app = harness.state_mut();
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Playback);
         app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::Auto;
         app.prefs.accompaniment_variations = true;
     }
     capture(harness, out, "prefs-accompaniment-variations")?;
     {
         let app = harness.state_mut();
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
         app.prefs.accompaniment_variations = false;
         app.prefs.lead.auto = false;
     }
@@ -621,6 +626,7 @@ fn preference_shots(
     capture(harness, out, "prefs-tts-rate")?;
     {
         let app = harness.state_mut();
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::BandAndSound);
         app.prefs.tts_rate = 1.0;
         app.prefs.soundfont = Some(contra_core::SoundFontSetting {
             name: "demo.sf2".into(),
@@ -645,6 +651,7 @@ fn preference_shots(
     capture(harness, out, "error-sf2")?;
     {
         let app = harness.state_mut();
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::DataAndStorage);
         app.soundfont_error = None;
         app.cache_clear_confirm = true;
     }
@@ -668,6 +675,7 @@ fn preference_shots(
     capture(harness, out, "prefs-maintenance")?;
     {
         let app = harness.state_mut();
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
         app.speech = crate::tts::Speech::stub_unavailable();
     }
     capture(harness, out, "prefs-tts-unavailable")?;
@@ -700,6 +708,7 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Appearance);
     }
     // A taller viewport shows the Theme buttons below the Calling lead heading.
     harness.set_size(Vec2::new(1280.0, 1000.0));
@@ -773,6 +782,7 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
         app.prefs.web_proxy_url = None;
         app.prefs.web_proxy_token = None;
         app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::About);
         app.about_reveal = true;
     }
     capture(harness, out, "about-window")?;
@@ -872,6 +882,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Categories;
         app.prefs.role_terms = contra_core::RoleTerms::default();
         app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
         app.prefs.theme = contra_core::Theme::Dark;
@@ -879,6 +890,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     capture(harness, out, "preferences")?;
     {
         let app = harness.state_mut();
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
         app.prefs.role_terms = contra_core::RoleTerms {
             left_singular: "port".into(),
             left_plural: "ports".into(),
@@ -982,6 +994,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
+        app.prefs_page = PreferencesPage::Category(PreferencesCategory::About);
         app.about_reveal = true;
     }
     capture(harness, out, "about-window")?;

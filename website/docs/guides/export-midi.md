@@ -17,7 +17,7 @@ and Android builds report that export is not available in this build yet.
 
 <Steps>
   <Step shot="prefs-maintenance">
-    Open **Preferences → Maintenance** and select **Export MIDI…**.
+    Open **Preferences → Data & Storage** and select **Export MIDI…**.
   </Step>
 </Steps>
 
@@ -58,7 +58,7 @@ ignored.
 
 A Standard MIDI File contains performance instructions, not rendered audio, so
 the effect is written as the General MIDI sends that a player applies while it
-renders the file. Set it in **Preferences → Effects**:
+renders the file. Set it in **Preferences → Band & Sound**:
 
 - **Reverb** defaults to **Medium room**. The file carries a reverb send on
   controller 91 and, when reverb is on, a GM2 reverb-type message so a GM2

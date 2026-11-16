@@ -53,7 +53,7 @@ from the **Download dance** or **Download tune** screen.
 
 <Steps>
   <Step shot="prefs-cache-confirm">
-    Open **Preferences → Maintenance** and select **Clear source cache**. The
+    Open **Preferences → Data & Storage** and select **Clear source cache**. The
     button changes to **Confirm clear cache** and **Cancel**.
   </Step>
   <Step shot="prefs-cache-cleared">
@@ -77,7 +77,7 @@ repository includes a Cloudflare Worker proxy in `proxy/`.
 
 <Steps>
   <Step shot="prefs-proxy">
-    In **Preferences → Web data proxy**, enter the deployed proxy **Proxy URL**
+    In **Preferences → Data & Storage**, enter the deployed proxy **Proxy URL**
     and, if the deployment requires one, a **Token**.
   </Step>
 </Steps>

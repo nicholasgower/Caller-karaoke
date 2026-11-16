@@ -79,6 +79,33 @@ impl Screen {
     }
 }
 
+/// Where a Back gesture (Escape or the Android system back button) leads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BackAction {
+    /// Leave for another screen.
+    Screen(Screen),
+    /// Stay in Preferences and return to its category list.
+    PreferencesPage(ui::preferences::PreferencesPage),
+}
+
+/// Resolve one Back gesture.
+///
+/// A phone's Preferences drills into a category, so the first Back returns to
+/// the category list and the next one to the session. A desktop shows the list
+/// beside the settings, so Back leaves at once.
+fn back_action(
+    screen: Screen,
+    page: ui::preferences::PreferencesPage,
+    compact: bool,
+) -> Option<BackAction> {
+    if screen == Screen::Preferences
+        && let Some(page) = page.back_target(compact)
+    {
+        return Some(BackAction::PreferencesPage(page));
+    }
+    screen.escape_target().map(BackAction::Screen)
+}
+
 /// One top-row tab: the screens it covers, its labels, and its shortcut key.
 ///
 /// A tab stays lit for every screen it covers, so a detail screen such as the
@@ -307,6 +334,13 @@ pub struct ContraApp {
     source: SourceClient,
     source_rx: Receiver<SourceEvent>,
     screen: Screen,
+    /// Which page of Preferences is in front: the category list or one
+    /// category's settings. A desktop shows the list and the selected category
+    /// side by side; a phone shows one page at a time.
+    prefs_page: ui::preferences::PreferencesPage,
+    /// A count-in change that must wait for the running count-in to finish
+    /// before the timeline and the rendered music can change together.
+    pending_count_in: Option<bool>,
     /// Progress (0..1) of the fade/slide used when the active screen changes.
     screen_anim: f32,
     /// The screen the animation progress belongs to; a mismatch restarts it.
@@ -642,7 +676,8 @@ impl ContraApp {
         };
         dance_library.validate();
         tune_library.validate();
-        let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
+        let timeline = build_timeline(&dance, &prefs, 0)
+            .unwrap_or_else(|_| empty_timeline(count_in_for(&prefs)));
         speech.prewarm(call_texts(&timeline));
         let length_warning = length_warning_for(&dance, &tune);
 
@@ -686,6 +721,8 @@ impl ContraApp {
             source,
             source_rx,
             screen: Screen::Session,
+            prefs_page: ui::preferences::PreferencesPage::Categories,
+            pending_count_in: None,
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
             headless: false,
@@ -803,7 +840,10 @@ impl ContraApp {
             (
                 input.key_pressed(egui::Key::Space),
                 input.key_pressed(egui::Key::R),
-                input.key_pressed(egui::Key::Escape),
+                // Escape and the Android system back button share one action.
+                // eframe forwards Android's back gesture as BrowserBack on the
+                // platforms that have it, and as Escape when the OS maps it.
+                input.key_pressed(egui::Key::Escape) || input.key_pressed(egui::Key::BrowserBack),
                 number_key_shortcut(input),
                 input.key_pressed(egui::Key::ArrowLeft),
                 input.key_pressed(egui::Key::ArrowRight),
@@ -827,8 +867,13 @@ impl ContraApp {
         if restart {
             self.restart();
         }
-        if escape && let Some(target) = self.screen.escape_target() {
-            self.screen = target;
+        if escape {
+            let compact = compact_layout(ui.available_width());
+            match back_action(self.screen, self.prefs_page, compact) {
+                Some(BackAction::PreferencesPage(page)) => self.prefs_page = page,
+                Some(BackAction::Screen(screen)) => self.screen = screen,
+                None => {}
+            }
         }
     }
 
@@ -1099,7 +1144,8 @@ impl ContraApp {
         dance_library.insert(dance.clone(), None, 0);
         let mut tune_library = Library::default();
         tune_library.insert(tune.clone(), None, 0);
-        let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
+        let timeline = build_timeline(&dance, &prefs, 0)
+            .unwrap_or_else(|_| empty_timeline(count_in_for(&prefs)));
         let length_warning = length_warning_for(&dance, &tune);
 
         theme::apply(&cc.egui_ctx, prefs.theme, prefs.animations_enabled);
@@ -1114,6 +1160,8 @@ impl ContraApp {
             source,
             source_rx,
             screen: Screen::Session,
+            prefs_page: ui::preferences::PreferencesPage::Categories,
+            pending_count_in: None,
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
             headless: true,
@@ -1289,6 +1337,9 @@ impl ContraApp {
         self.tune = snapshot.tune;
         self.alias_seed = snapshot.alias_seed;
         self.error = None;
+        // An undo is a new state of the world; never keep a count-in change
+        // waiting against a transport it was planned for.
+        self.pending_count_in = None;
 
         // Settings that apply immediately rather than through a rebuild. These
         // mirror the Preferences screen, so undo sounds like choosing the old
@@ -1391,7 +1442,130 @@ impl ContraApp {
     }
 
     fn rebuild_timeline(&mut self) {
-        match build_timeline(&self.dance, &self.prefs, self.alias_seed) {
+        // While a count-in change waits for the loop start, the installed
+        // timeline (and the buffer already playing) keep the old count-in, so
+        // an unrelated rebuild must not apply the new setting early.
+        let count_in_beats = if self.pending_count_in.is_some() {
+            self.timeline.count_in_beats
+        } else {
+            count_in_for(&self.prefs)
+        };
+        match build_timeline_with_count_in(
+            &self.dance,
+            &self.prefs,
+            self.alias_seed,
+            count_in_beats,
+        ) {
+            Ok(timeline) => {
+                self.timeline = timeline;
+                self.speech.prewarm(call_texts(&self.timeline));
+                self.last_spoken = None;
+                self.last_beat = 0.0;
+                self.first_call_pending = should_announce_first_call(
+                    &self.timeline,
+                    self.current_beat(),
+                    self.last_spoken,
+                );
+            }
+            Err(error) => {
+                // Keep the last good timeline; the error is shown, and the
+                // fallback constructed at launch already used the caller's
+                // count-in rather than a hardcoded four beats.
+                self.error = Some(error);
+            }
+        }
+    }
+
+    /// Apply a count-in change to the timeline, the music, and the transport
+    /// together.
+    ///
+    /// `prefs.count_in_enabled` is read, not written: the checkbox already
+    /// updated it. Shortening a count-in that is playing is deferred to the loop
+    /// start (see [`plan_count_in_change`]) so it cannot restart the dance; every
+    /// other change re-renders now, keeping the musical position. The caller's
+    /// first call is re-evaluated either way, so it is not lost when the
+    /// count-in disappears and not spoken twice when the count-in just ran.
+    fn apply_count_in_change(&mut self) {
+        let desired = self.prefs.count_in_enabled;
+        let installed = self.timeline.count_in_beats > 0.0;
+        // Toggling back while a change is waiting needs no work: the installed
+        // timeline already has the wanted state.
+        if self.pending_count_in.is_some() && desired == installed {
+            self.pending_count_in = None;
+            self.save_prefs();
+            return;
+        }
+
+        let old_count_in = self.timeline.count_in_beats;
+        let new_count_in = count_in_for(&self.prefs);
+        let beat = self.current_beat();
+        let plan = plan_count_in_change(self.audio.is_playing(), beat, old_count_in, new_count_in);
+        match plan {
+            CountInPlan::DeferUntilLoop => {
+                self.pending_count_in = Some(desired);
+                self.status = "The count-in will change when the dance starts".into();
+                self.save_prefs();
+            }
+            CountInPlan::ApplyNow { resume_beat } => {
+                self.pending_count_in = None;
+                self.rebuild_timeline_with_count_in(new_count_in);
+                // Pre-rendered rotation work used the old count-in.
+                self.render_generation = self.render_generation.wrapping_add(1);
+                self.rotation.prepared = None;
+                self.rotation.rx = None;
+                self.rotation.loading_generation = 0;
+                if self.started {
+                    let was_playing = self.audio.is_playing();
+                    let previous_spoken = self.last_spoken;
+                    let Some((buffer, arrangement)) = self.render_music() else {
+                        return;
+                    };
+                    // The old buffer played while this rendered, so sample its
+                    // position now; clamp it into the count-in the new buffer
+                    // actually has.
+                    let resume = if was_playing {
+                        count_in_resume_beat(self.audio.position_beat(), new_count_in)
+                    } else {
+                        resume_beat.unwrap_or(count_in_resume_beat(beat, new_count_in))
+                    };
+                    self.install_music(buffer, arrangement, Some(resume), false);
+                    if was_playing {
+                        // A re-render in the same run keeps what was already
+                        // said; only a new run may announce the first call.
+                        self.last_spoken = previous_spoken.or(self.last_spoken);
+                        self.audio.play();
+                        self.status = "Playing".into();
+                    } else {
+                        self.status = "Paused".into();
+                    }
+                    self.first_call_pending = should_announce_first_call(
+                        &self.timeline,
+                        self.current_beat(),
+                        self.last_spoken,
+                    );
+                } else {
+                    // Nothing is playing: the next Play renders the new
+                    // count-in. The timeline already agrees with the setting.
+                    self.needs_render = true;
+                    self.pending_audio = false;
+                }
+                self.save_prefs();
+            }
+        }
+    }
+
+    /// Rebuild the timeline with an explicit count-in.
+    ///
+    /// A failed build falls back to an empty timeline with the count-in the
+    /// caller asked for. Keeping the previous timeline would leave the UI
+    /// advertising a four-beat count-in the music no longer has.
+    fn rebuild_timeline_with_count_in(&mut self, count_in_beats: f64) {
+        match build_timeline_with_count_in(
+            &self.dance,
+            &self.prefs,
+            self.alias_seed,
+            count_in_beats,
+        ) {
             Ok(timeline) => {
                 self.timeline = timeline;
                 self.speech.prewarm(call_texts(&self.timeline));
@@ -1400,8 +1574,19 @@ impl ContraApp {
             }
             Err(error) => {
                 self.error = Some(error);
+                self.timeline = empty_timeline(count_in_beats);
+                self.first_call_pending = false;
             }
         }
+    }
+
+    /// Apply a deferred count-in change once the loop is reached.
+    fn resolve_pending_count_in(&mut self, beat: f64) {
+        if self.pending_count_in.is_none() || beat < 0.0 {
+            return;
+        }
+        self.pending_count_in = None;
+        self.apply_count_in_change();
     }
 
     /// Commit a custom role-term edit that was deferred while typing.
@@ -1492,11 +1677,7 @@ impl ContraApp {
             .check_dance_length(dance_beats)
             .err()
             .map(format_length_mismatch);
-        let settings = self.render_settings(if self.prefs.count_in_enabled {
-            COUNT_IN_BEATS
-        } else {
-            0.0
-        });
+        let settings = self.render_settings(self.timeline.count_in_beats);
         let soundfont = self.active_soundfont();
         match render(&settings.request(arrangement.clone()), soundfont.as_ref()) {
             Ok(buffer) => Some((buffer, arrangement)),
@@ -1900,6 +2081,13 @@ impl ContraApp {
     }
 
     fn restart(&mut self) {
+        // A restart is a new run: a count-in change that was waiting for the
+        // current count-in to finish applies now, so this run honours it.
+        if self.pending_count_in.is_some() {
+            self.pending_count_in = None;
+            self.rebuild_timeline_with_count_in(count_in_for(&self.prefs));
+            self.needs_render = true;
+        }
         self.ensure_ready();
         self.last_spoken = None;
         self.last_beat = 0.0;
@@ -1913,6 +2101,7 @@ impl ContraApp {
 
     fn use_dance(&mut self, dance: Dance) {
         self.error = None;
+        self.pending_count_in = None;
         self.download_dance(dance.clone());
         self.dance = dance;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
@@ -1936,6 +2125,7 @@ impl ContraApp {
 
     fn use_tune(&mut self, tune: Tune) {
         self.error = None;
+        self.pending_count_in = None;
         self.download_tune(tune.clone());
         self.tune = tune;
         self.length_warning = length_warning_for(&self.dance, &self.tune);
@@ -2178,7 +2368,13 @@ impl ContraApp {
 
         // The audio position is the only clock: speech is triggered from the
         // rendered timeline, never from wall-clock time.
-        let beat = self.current_beat();
+        let mut beat = self.current_beat();
+        if self.pending_count_in.is_some() {
+            // A count-in toggle that waited for the loop start applies both
+            // halves at the boundary, before this frame's call decision.
+            self.resolve_pending_count_in(beat);
+            beat = self.current_beat();
+        }
         self.update_speech(beat);
         self.poll_prepared_tune();
         self.tick_rotation(beat);
@@ -2223,6 +2419,7 @@ impl ContraApp {
         // Captured before any shortcut or widget runs, so the edit a frame makes
         // is compared against the state that came before it.
         let history_before = self.snapshot();
+        let previous_screen = self.screen;
 
         if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
@@ -2237,6 +2434,15 @@ impl ContraApp {
         }
         if header.preferences {
             self.screen = Screen::Preferences;
+        }
+        if !self.headless
+            && self.screen == Screen::Preferences
+            && previous_screen != Screen::Preferences
+        {
+            // Entering Preferences starts at the category list on a phone and
+            // at the first category on a desktop, never halfway down a page the
+            // user left earlier.
+            self.prefs_page = ui::preferences::PreferencesPage::Categories;
         }
 
         if let Some(error) = self.error.clone() {
@@ -2414,14 +2620,19 @@ struct SessionLayout {
     compact: bool,
     /// Scroll the whole session page instead of only the dance card.
     page_scroll: bool,
+    /// Wide layout: dance information and the beat meter on the left, the
+    /// dance card on the right, after the controls.
+    split: bool,
 }
 
 fn session_layout(width: f32, height: f32) -> SessionLayout {
     let compact = compact_layout(width);
+    let page_scroll =
+        (compact && height < SESSION_PAGE_SCROLL_HEIGHT) || height < SESSION_SHORT_HEIGHT;
     SessionLayout {
         compact,
-        page_scroll: (compact && height < SESSION_PAGE_SCROLL_HEIGHT)
-            || height < SESSION_SHORT_HEIGHT,
+        page_scroll,
+        split: !compact && !page_scroll,
     }
 }
 
@@ -2459,6 +2670,8 @@ struct HeaderResponse {
     screen: Option<Screen>,
     /// The Preferences gear was pressed.
     preferences: bool,
+    /// The Preferences button carries its text label, not just the gear.
+    preferences_label: bool,
     /// The rect the header panel occupies, including its margins.
     rect: egui::Rect,
     /// The rect the wordmark occupies, if it was drawn.
@@ -2471,6 +2684,9 @@ struct HeaderResponse {
     /// would allocate every frame.
     #[cfg(test)]
     tabs: Vec<egui::Rect>,
+    /// The Preferences button's rect. Test-only.
+    #[cfg(test)]
+    preferences_rect: Option<egui::Rect>,
 }
 
 impl Default for HeaderResponse {
@@ -2478,10 +2694,13 @@ impl Default for HeaderResponse {
         Self {
             screen: None,
             preferences: false,
+            preferences_label: false,
             rect: egui::Rect::NOTHING,
             heading: None,
             #[cfg(test)]
             tabs: Vec::new(),
+            #[cfg(test)]
+            preferences_rect: None,
         }
     }
 }
@@ -2502,6 +2721,43 @@ impl Default for HeaderResponse {
 /// still flow onto a second row, and the panel grows to fit both rows.
 fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) -> HeaderResponse {
     let mut header = HeaderResponse::default();
+    let available_width = (ui.available_width() - 24.0).max(0.0);
+    let spacing = ui.spacing().item_spacing.x;
+    let gear_side = ui.spacing().interact_size.y;
+    let heading_width = if compact {
+        0.0
+    } else {
+        let font = egui::TextStyle::Heading.resolve(ui.style());
+        ui.painter()
+            .layout_no_wrap(
+                "Contra Karaoke".to_owned(),
+                font,
+                egui::Color32::PLACEHOLDER,
+            )
+            .size()
+            .x
+            + 12.0
+    };
+    let tab_widths: Vec<f32> = TABS
+        .iter()
+        .map(|tab_def| {
+            let label = if compact {
+                tab_def.short_label
+            } else {
+                tab_def.label
+            };
+            tab_desired_size(ui, label, compact).x
+        })
+        .collect();
+    let label_extra = preferences_label_width(ui) + PREFERENCES_LABEL_PADDING;
+    let show_preferences_label = preferences_label_fits(
+        compact,
+        available_width,
+        header_content_width(heading_width, &tab_widths, gear_side, spacing),
+        label_extra,
+        spacing,
+    );
+    header.preferences_label = show_preferences_label;
     let panel = egui::Panel::top("tabs")
         .frame(
             egui::Frame::default()
@@ -2521,8 +2777,13 @@ fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) ->
             // The Preferences gear is pinned to the top-right corner and the
             // wordmark and tabs share the remaining width.
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                if preferences_gear(ui, active).clicked() {
+                let gear = preferences_gear(ui, active, show_preferences_label);
+                if gear.clicked() {
                     header.preferences = true;
+                }
+                #[cfg(test)]
+                {
+                    header.preferences_rect = Some(gear.rect);
                 }
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
                     ui.horizontal_wrapped(|ui| {
@@ -2564,6 +2825,58 @@ fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) ->
     header
 }
 
+/// The size a tab needs for `label`.
+///
+/// The header measures the row with this before laying it out, and `tab` uses
+/// it to allocate, so the decision to show the Preferences text and the drawn
+/// row cannot disagree.
+fn tab_desired_size(ui: &egui::Ui, label: &str, compact: bool) -> egui::Vec2 {
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let galley = ui
+        .painter()
+        .layout_no_wrap(label.to_owned(), font, egui::Color32::PLACEHOLDER);
+    // Narrower tabs leave room for the pinned Preferences gear on a phone.
+    let horizontal_padding = if compact { 16.0 } else { 24.0 };
+    egui::vec2(
+        galley.size().x + horizontal_padding,
+        (galley.size().y + 16.0).max(ui.spacing().interact_size.y),
+    )
+}
+
+/// The width of the header row without the Preferences button's text.
+fn header_content_width(wordmark: f32, tabs: &[f32], gear: f32, spacing: f32) -> f32 {
+    let gaps = tabs.len() + usize::from(wordmark > 0.0);
+    wordmark + tabs.iter().sum::<f32>() + gear + spacing * gaps as f32
+}
+
+/// Whether the "Preferences" text fits beside the tabs and wordmark.
+///
+/// The label is only added when the whole row still fits the panel: a wrapped
+/// header steals height from the session and, at 640 points, can push the tabs
+/// onto a second row. Compact widths keep the icon-only button.
+fn preferences_label_fits(
+    compact: bool,
+    available_width: f32,
+    content_without_label: f32,
+    label_extra: f32,
+    spacing: f32,
+) -> bool {
+    !compact && content_without_label + label_extra + spacing <= available_width
+}
+
+/// The word "Preferences" in the header button's font.
+fn preferences_label_width(ui: &egui::Ui) -> f32 {
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    ui.painter()
+        .layout_no_wrap(
+            PREFERENCES_LABEL.to_owned(),
+            font,
+            egui::Color32::PLACEHOLDER,
+        )
+        .size()
+        .x
+}
+
 /// A tab's click state and the rect it was drawn in.
 #[derive(Clone, Copy, Debug)]
 struct TabResponse {
@@ -2592,16 +2905,12 @@ fn tab(
 ) -> TabResponse {
     let ctx = ui.ctx().clone();
     let id = ui.make_persistent_id(("tab", hover));
-    let font = egui::TextStyle::Button.resolve(ui.style());
-    let galley = ui
-        .painter()
-        .layout_no_wrap(label.to_owned(), font, egui::Color32::PLACEHOLDER);
-    // Narrower tabs leave room for the pinned Preferences gear on a phone.
-    let horizontal_padding = if compact { 16.0 } else { 24.0 };
-    let desired = egui::vec2(
-        galley.size().x + horizontal_padding,
-        (galley.size().y + 16.0).max(ui.spacing().interact_size.y),
+    let galley = ui.painter().layout_no_wrap(
+        label.to_owned(),
+        egui::TextStyle::Button.resolve(ui.style()),
+        egui::Color32::PLACEHOLDER,
     );
+    let desired = tab_desired_size(ui, label, compact);
     let (rect, response) = ui.allocate_exact_size(desired, egui::Sense::click());
     let response = response.on_hover_text(format!(
         "{hover} ({shortcut}) · swipe or use ← → to change tabs"
@@ -2681,12 +2990,29 @@ fn tab(
 /// The button is one row high and square: 40 points on the desktop, and the
 /// full 44-point touch target because the phone header raises
 /// `interact_size.y`.
-fn preferences_gear(ui: &mut egui::Ui, active: Screen) -> egui::Response {
+/// Text shown in the header's Preferences button when it fits.
+const PREFERENCES_LABEL: &str = "Preferences";
+/// Space between the text and the gear, and the button's end padding.
+const PREFERENCES_LABEL_PADDING: f32 = 10.0;
+
+fn preferences_gear(ui: &mut egui::Ui, active: Screen, show_label: bool) -> egui::Response {
     // Square and one row high: 40 points on the desktop, and the full
     // 44-point touch target in the phone header, which raises
     // `interact_size.y`.
     let side = ui.spacing().interact_size.y;
-    let (rect, response) = ui.allocate_exact_size(egui::vec2(side, side), egui::Sense::click());
+    let label = show_label.then(|| {
+        ui.painter().layout_no_wrap(
+            PREFERENCES_LABEL.to_owned(),
+            egui::TextStyle::Button.resolve(ui.style()),
+            egui::Color32::PLACEHOLDER,
+        )
+    });
+    let label_width = label
+        .as_ref()
+        .map(|galley| galley.size().x + PREFERENCES_LABEL_PADDING)
+        .unwrap_or(0.0);
+    let (rect, response) =
+        ui.allocate_exact_size(egui::vec2(side + label_width, side), egui::Sense::click());
     let response = response.on_hover_text("Preferences (4)");
     // The gear has no tab that stays lit, so it shows the selected style for the
     // screen it owns: otherwise the header looks like nothing is current while
@@ -2705,9 +3031,21 @@ fn preferences_gear(ui: &mut egui::Ui, active: Screen) -> egui::Response {
         ui.painter().rect_filled(rect, 8, visuals.weak_bg_fill);
         ui.painter()
             .rect_stroke(rect, 8, visuals.bg_stroke, egui::StrokeKind::Inside);
+        let icon_rect = egui::Rect::from_min_size(
+            egui::pos2(rect.right() - side, rect.top()),
+            egui::vec2(side, side),
+        );
+        if let Some(galley) = label {
+            let text_pos = egui::pos2(
+                rect.left() + PREFERENCES_LABEL_PADDING / 2.0,
+                rect.center().y - galley.size().y / 2.0,
+            );
+            ui.painter()
+                .galley_with_override_text_color(text_pos, galley, visuals.fg_stroke.color);
+        }
         // A glyph would not do: the bundled monochrome emoji font has no
         // U+2699 GEAR, so a "⚙" label renders as an empty box everywhere.
-        paint_gear(ui, rect, visuals.fg_stroke.color);
+        paint_gear(ui, icon_rect, visuals.fg_stroke.color);
     }
     response.widget_info(|| {
         egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), showing, "Preferences")
@@ -2843,10 +3181,96 @@ fn call_to_speak(
     (call.is_calling(beat) && last_spoken != Some(call.start_beat)).then_some(call)
 }
 
+/// The count-in length the preferences ask for, in dance beats.
+fn count_in_for(prefs: &Preferences) -> f64 {
+    if prefs.count_in_enabled {
+        COUNT_IN_BEATS
+    } else {
+        0.0
+    }
+}
+
+/// How a count-in change is applied to a transport.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum CountInPlan {
+    /// Rebuild the timeline and re-render the music now, resuming at this beat.
+    ApplyNow {
+        /// Position to resume at, or `None` when the transport has no material
+        /// to re-render yet and the next Play will render it.
+        resume_beat: Option<f64>,
+    },
+    /// The old count-in is already running. Let it finish, then change both the
+    /// timeline and the music at the loop start instead of cutting it short or
+    /// starting the dance at beat 0 in the middle of the count.
+    DeferUntilLoop,
+}
+
+/// Decide how a count-in change meets the transport.
+///
+/// The only case that cannot be applied at once is shortening the count-in while
+/// its beats are already playing: seeking into a shorter (or absent) count-in
+/// clamps to the loop start, which would restart the dance mid-count. Waiting
+/// for the loop start applies both halves together and keeps what the dancers
+/// already heard.
+fn plan_count_in_change(
+    playing: bool,
+    beat: f64,
+    old_count_in: f64,
+    new_count_in: f64,
+) -> CountInPlan {
+    if playing && beat < 0.0 && new_count_in < old_count_in {
+        CountInPlan::DeferUntilLoop
+    } else {
+        CountInPlan::ApplyNow {
+            resume_beat: Some(count_in_resume_beat(beat, new_count_in)),
+        }
+    }
+}
+
+/// The nearest beat at which a buffer with `count_in_beats` can resume.
+///
+/// A loop position is preserved exactly. A pre-loop position is kept while the
+/// new count-in is long enough and otherwise moves forward to the loop start;
+/// it never rewinds to the beginning of a count-in.
+fn count_in_resume_beat(beat: f64, count_in_beats: f64) -> f64 {
+    if beat >= 0.0 {
+        beat
+    } else {
+        beat.max(-count_in_beats.max(0.0))
+    }
+}
+
+/// Whether a rebuilt timeline should announce the first call at `beat`.
+///
+/// A rebuild can move the first call's lead into the past or drop the count-in
+/// around it. Only the top of the run is eligible, and only while that call has
+/// not already been spoken, so the first move is neither lost nor repeated.
+fn should_announce_first_call(
+    timeline: &PracticeTimeline,
+    beat: f64,
+    last_spoken: Option<f64>,
+) -> bool {
+    beat <= 0.0
+        && timeline.starting_call(beat).is_some()
+        && timeline
+            .calls
+            .first()
+            .is_none_or(|call| last_spoken != Some(call.call_start_beat))
+}
+
 fn build_timeline(
     dance: &Dance,
     prefs: &Preferences,
     alias_seed: u64,
+) -> Result<PracticeTimeline, String> {
+    build_timeline_with_count_in(dance, prefs, alias_seed, count_in_for(prefs))
+}
+
+fn build_timeline_with_count_in(
+    dance: &Dance,
+    prefs: &Preferences,
+    alias_seed: u64,
+    count_in_beats: f64,
 ) -> Result<PracticeTimeline, String> {
     PracticeTimeline::build(
         dance,
@@ -2855,11 +3279,7 @@ fn build_timeline(
         &prefs.lead,
         prefs.tempo(),
         TimelineConfig {
-            count_in_beats: if prefs.count_in_enabled {
-                COUNT_IN_BEATS
-            } else {
-                0.0
-            },
+            count_in_beats,
             music_loop_beats: 64.0,
             shuffle_alternatives: prefs.shuffle_alternatives,
             alias_seed,
@@ -2868,13 +3288,17 @@ fn build_timeline(
     .map_err(|error| format!("Could not build the call timeline: {error}"))
 }
 
-fn empty_timeline() -> PracticeTimeline {
+/// A fallback timeline for a card that cannot produce calls.
+///
+/// The count-in comes from the caller's setting, never a hardcoded four beats:
+/// a failed build must not silently turn the count-in back on.
+fn empty_timeline(count_in_beats: f64) -> PracticeTimeline {
     PracticeTimeline {
         calls: Vec::new(),
         phrases: Vec::new(),
         total_beats: 64.0,
         music_loop_beats: 64.0,
-        count_in_beats: COUNT_IN_BEATS,
+        count_in_beats: count_in_beats.max(0.0),
     }
 }
 
@@ -3146,7 +3570,7 @@ mod tests {
         seen: &mut Option<egui::Response>,
     ) {
         let mut output = ctx.run_ui(ui_input(events), |ui| {
-            let response = preferences_gear(ui, *screen);
+            let response = preferences_gear(ui, *screen, false);
             if response.clicked() {
                 *screen = Screen::Preferences;
             }
@@ -3199,7 +3623,7 @@ mod tests {
         let mut output = ctx.run_ui(ui_input(Vec::new()), |ui| {
             // The compact header raises the row height before the gear draws.
             ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
-            size = preferences_gear(ui, screen).rect.size();
+            size = preferences_gear(ui, screen, false).rect.size();
         });
         output.textures_delta.clear();
         assert!(
@@ -3240,12 +3664,12 @@ mod tests {
         use crate::app::ui::preferences::{ABOUT_SECTION, SECTIONS};
         let last = SECTIONS.last().copied().expect("preferences sections");
         assert!(
-            std::ptr::fn_addr_eq(last, ABOUT_SECTION),
+            std::ptr::fn_addr_eq(last.draw, ABOUT_SECTION),
             "About must be the last Preferences section"
         );
         let occurrences = SECTIONS
             .iter()
-            .filter(|section| std::ptr::fn_addr_eq(**section, ABOUT_SECTION))
+            .filter(|section| std::ptr::fn_addr_eq(section.draw, ABOUT_SECTION))
             .count();
         assert_eq!(occurrences, 1, "About must be drawn exactly once");
     }
@@ -3349,35 +3773,40 @@ mod tests {
             session_layout(390.0, 900.0),
             SessionLayout {
                 compact: true,
-                page_scroll: false
+                page_scroll: false,
+                split: false
             }
         );
         assert_eq!(
             session_layout(639.0, 900.0),
             SessionLayout {
                 compact: true,
-                page_scroll: false
+                page_scroll: false,
+                split: false
             }
         );
         assert_eq!(
             session_layout(390.0, 768.0),
             SessionLayout {
                 compact: true,
-                page_scroll: true
+                page_scroll: true,
+                split: false
             }
         );
         assert_eq!(
             session_layout(640.0, 800.0),
             SessionLayout {
                 compact: false,
-                page_scroll: false
+                page_scroll: false,
+                split: true
             }
         );
         assert_eq!(
             session_layout(1280.0, 800.0),
             SessionLayout {
                 compact: false,
-                page_scroll: false
+                page_scroll: false,
+                split: true
             }
         );
     }
@@ -3387,11 +3816,217 @@ mod tests {
         let layout = session_layout(390.0, 560.0);
         assert!(layout.compact);
         assert!(layout.page_scroll);
+        assert!(!layout.split, "a short phone keeps one scrolling column");
         // A landscape phone keeps the wide control row, but its short height
         // still makes the whole page scroll so the dance card is reachable.
         let landscape = session_layout(844.0, 390.0);
         assert!(!landscape.compact);
         assert!(landscape.page_scroll);
+        assert!(!landscape.split, "a short wide window cannot split");
+    }
+
+    #[test]
+    fn wide_sessions_split_into_information_and_card_boxes() {
+        for width in [640.0, 1280.0, 1920.0] {
+            let layout = session_layout(width, 800.0);
+            assert!(!layout.compact, "{width}px is a desktop width");
+            assert!(!layout.page_scroll);
+            assert!(layout.split, "{width}px should use the two-box session");
+        }
+        // A tall phone stays stacked even though it does not need to scroll.
+        assert!(!session_layout(390.0, 900.0).split);
+    }
+
+    #[test]
+    fn a_shrinking_count_in_waits_for_the_loop_but_growing_it_does_not() {
+        // Turning the count-in off mid-count-in must not seek to the loop start
+        // (which would restart the dance two beats early): both changes wait for
+        // beat 0 instead.
+        assert_eq!(
+            plan_count_in_change(true, -2.0, 4.0, 0.0),
+            CountInPlan::DeferUntilLoop
+        );
+        // Turning it on mid-count-in keeps the full count-in.
+        assert_eq!(
+            plan_count_in_change(true, -2.0, 0.0, 4.0),
+            CountInPlan::ApplyNow {
+                resume_beat: Some(-2.0)
+            }
+        );
+        // Outside the count-in the loop position is preserved either way.
+        assert_eq!(
+            plan_count_in_change(true, 12.0, 4.0, 0.0),
+            CountInPlan::ApplyNow {
+                resume_beat: Some(12.0)
+            }
+        );
+        assert_eq!(
+            plan_count_in_change(true, 32.0, 0.0, 4.0),
+            CountInPlan::ApplyNow {
+                resume_beat: Some(32.0)
+            }
+        );
+        // A paused pre-loop transport has nothing to cut short; it applies now
+        // at the loop start rather than replaying part of the count-in.
+        assert_eq!(
+            plan_count_in_change(false, -2.0, 4.0, 0.0),
+            CountInPlan::ApplyNow {
+                resume_beat: Some(0.0)
+            }
+        );
+    }
+
+    #[test]
+    fn a_resume_beat_never_rewinds_into_a_count_in() {
+        assert_eq!(count_in_resume_beat(-2.0, 4.0), -2.0);
+        assert_eq!(count_in_resume_beat(-5.0, 2.0), -2.0);
+        assert_eq!(count_in_resume_beat(-2.0, 0.0), 0.0);
+        assert_eq!(count_in_resume_beat(7.0, 4.0), 7.0);
+        assert_eq!(count_in_resume_beat(7.0, 0.0), 7.0);
+    }
+
+    #[test]
+    fn the_count_in_setting_builds_the_timeline_and_the_fallback() {
+        let mut prefs = Preferences::default();
+        let dance = crate::defaults::default_dance();
+        assert_eq!(
+            build_timeline(&dance, &prefs, 0)
+                .expect("timeline")
+                .count_in_beats,
+            COUNT_IN_BEATS
+        );
+        prefs.count_in_enabled = false;
+        assert_eq!(
+            build_timeline(&dance, &prefs, 0)
+                .expect("timeline")
+                .count_in_beats,
+            0.0
+        );
+        // A failed build falls back with the caller's setting, not four beats.
+        assert_eq!(empty_timeline(count_in_for(&prefs)).count_in_beats, 0.0);
+        prefs.count_in_enabled = true;
+        assert_eq!(
+            empty_timeline(count_in_for(&prefs)).count_in_beats,
+            COUNT_IN_BEATS
+        );
+    }
+
+    #[test]
+    fn a_timeline_without_a_count_in_still_announces_the_first_call_once() {
+        let dance = crate::defaults::default_dance();
+        let prefs = Preferences {
+            count_in_enabled: false,
+            ..Preferences::default()
+        };
+        let timeline = build_timeline(&dance, &prefs, 0).expect("timeline");
+        let first = timeline.calls.first().expect("calls");
+        assert!(first.call_start_beat < 0.0);
+
+        // At the loop start the normal lead window is over, so the rebuild has
+        // to mark the first call pending or the dance opens without a call.
+        assert!(should_announce_first_call(&timeline, 0.0, None));
+        // Once it has been spoken, a second rebuild must not repeat it.
+        assert!(!should_announce_first_call(
+            &timeline,
+            0.0,
+            Some(first.call_start_beat)
+        ));
+        // The announcement belongs to the top of the run only.
+        assert!(!should_announce_first_call(&timeline, first.end_beat, None));
+    }
+
+    #[test]
+    fn a_failed_timeline_build_keeps_the_old_one() {
+        let mut dance = crate::defaults::default_dance();
+        dance.figures.clear();
+        let prefs = Preferences::default();
+        assert!(build_timeline(&dance, &prefs, 0).is_err());
+    }
+
+    #[test]
+    fn back_from_every_screen_and_preferences_page() {
+        let categories = ui::preferences::PreferencesPage::Categories;
+        let category = ui::preferences::PreferencesPage::Category(
+            ui::preferences::PreferencesCategory::Playback,
+        );
+
+        // A phone drills out of a category before it leaves Preferences.
+        assert_eq!(
+            back_action(Screen::Preferences, category, true),
+            Some(BackAction::PreferencesPage(categories))
+        );
+        assert_eq!(
+            back_action(Screen::Preferences, categories, true),
+            Some(BackAction::Screen(Screen::Session))
+        );
+        // A desktop has the category list on screen; Back leaves at once.
+        assert_eq!(
+            back_action(Screen::Preferences, category, false),
+            Some(BackAction::Screen(Screen::Session))
+        );
+        // Download screens return to their picker; the picker to the session.
+        assert_eq!(
+            back_action(Screen::DanceDownload, categories, true),
+            Some(BackAction::Screen(Screen::DancePicker))
+        );
+        assert_eq!(
+            back_action(Screen::DancePicker, categories, true),
+            Some(BackAction::Screen(Screen::Session))
+        );
+        assert_eq!(
+            back_action(Screen::TuneDownload, categories, true),
+            Some(BackAction::Screen(Screen::TunePicker))
+        );
+        assert_eq!(
+            back_action(Screen::Aliases, categories, true),
+            Some(BackAction::Screen(Screen::Preferences))
+        );
+        assert_eq!(back_action(Screen::Session, categories, true), None);
+    }
+
+    #[test]
+    fn the_preferences_text_only_joins_the_gear_when_the_header_fits() {
+        let spacing = 8.0;
+        let gear = 40.0;
+        let label = 78.0;
+        let tabs = [96.0, 118.0, 98.0];
+        let wordmark = 142.0;
+        let content = header_content_width(wordmark, &tabs, gear, spacing);
+
+        // 640 is the widest phone width and the first desktop width. A 640
+        // header without the label is the narrowest desktop case; the text is
+        // added only when the whole row still fits.
+        assert!(!preferences_label_fits(
+            true, 640.0, content, label, spacing
+        ));
+        assert!(!preferences_label_fits(
+            false,
+            content + label,
+            content,
+            label,
+            spacing
+        ));
+        assert!(preferences_label_fits(
+            false,
+            content + label + spacing,
+            content,
+            label,
+            spacing
+        ));
+
+        // The real row widths use the same helper as the drawn tabs.
+        let ctx = egui::Context::default();
+        theme::apply(&ctx, Theme::Dark, false);
+        let mut measured = Vec::new();
+        let mut output = ctx.run_ui(ui_input(Vec::new()), |ui| {
+            measured = TABS
+                .iter()
+                .map(|tab_def| tab_desired_size(ui, tab_def.label, false).x)
+                .collect();
+        });
+        output.textures_delta.clear();
+        assert_eq!(measured.len(), TABS.len());
+        assert!(measured.iter().all(|width| *width > 40.0));
     }
 
     #[test]
@@ -3745,6 +4380,57 @@ mod tests {
                     header.rect
                 );
             }
+            let gear = header
+                .preferences_rect
+                .expect("the Preferences button is drawn");
+            assert!(
+                header.rect.contains_rect(gear) && gear.right() <= width,
+                "{width}px: the Preferences button overflows: {gear:?} in {:?}",
+                header.rect
+            );
+            if width < COMPACT_WIDTH {
+                assert!(
+                    !header.preferences_label,
+                    "{width}px: a phone header keeps the icon-only button"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn wide_headers_show_the_preferences_text_without_wrapping() {
+        let ctx = egui::Context::default();
+        theme::apply(&ctx, Theme::Dark, false);
+
+        let wide = run_header(&ctx, egui::vec2(1280.0, 800.0), 3);
+        assert!(
+            wide[2].preferences_label,
+            "a 1280-point header has room for the word"
+        );
+        let gear = wide[2].preferences_rect.expect("Preferences button");
+        assert!(
+            gear.width() > gear.height(),
+            "the labeled button is wider than its height: {gear:?}"
+        );
+
+        let phone = run_header(&ctx, egui::vec2(390.0, 844.0), 3);
+        assert!(!phone[2].preferences_label);
+        let phone_gear = phone[2].preferences_rect.expect("Preferences button");
+        assert!(
+            phone_gear.width() <= theme::TOUCH_TARGET + 0.01,
+            "the phone button stays square: {phone_gear:?}"
+        );
+
+        // At every desktop width the row keeps one line: the header height is
+        // the same as a fresh launch at that width, and no item wraps.
+        for width in [640.0, 800.0, 1280.0, 1920.0] {
+            let frames = run_header(&ctx, egui::vec2(width, 800.0), 3);
+            let header = &frames[2];
+            assert!(
+                header.rect.height() <= 80.0,
+                "{width}px: the header wrapped to {:.0} points",
+                header.rect.height()
+            );
         }
     }
 
@@ -3767,6 +4453,158 @@ mod tests {
             40.0,
             "the phone header's row height leaked into the rest of the UI"
         );
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn turning_the_count_in_off_before_play_rebuilds_without_one() {
+        let ctx = egui::Context::default();
+        let cc = eframe::CreationContext::_new_kittest(ctx.clone());
+        let mut app = ContraApp::new_headless(&cc);
+        app.needs_render = false;
+
+        app.prefs.count_in_enabled = false;
+        app.apply_count_in_change();
+        assert_eq!(app.timeline.count_in_beats, 0.0);
+        assert!(
+            app.needs_render,
+            "the next Play must render the tune without a count-in"
+        );
+        // With no count-in the transport starts on the first execute beat, so
+        // the rebuilt timeline still has to announce the first call itself.
+        assert!(should_announce_first_call(&app.timeline, 0.0, None));
+
+        app.prefs.count_in_enabled = true;
+        app.apply_count_in_change();
+        assert_eq!(app.timeline.count_in_beats, COUNT_IN_BEATS);
+        assert!(
+            app.needs_render,
+            "turning it back on renders a count-in on the next run"
+        );
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn a_count_in_toggle_mid_count_in_keeps_timeline_and_music_together() {
+        let (mut app, _ctx) = hidden_app();
+        app.audio.pause();
+        app.audio.seek_beat(-2.0);
+
+        // Shortening a count-in that is already playing waits for the loop.
+        app.audio.play();
+        app.prefs.count_in_enabled = false;
+        app.apply_count_in_change();
+        assert_eq!(app.pending_count_in, Some(false));
+        assert_eq!(
+            app.timeline.count_in_beats, COUNT_IN_BEATS,
+            "the installed timeline keeps the running count-in"
+        );
+        assert!(
+            app.audio.position_beat() < 0.0,
+            "the running count-in is not rewound or restarted: {}",
+            app.audio.position_beat()
+        );
+        // An unrelated rebuild while waiting must not apply it early.
+        app.rebuild_timeline();
+        assert_eq!(app.timeline.count_in_beats, COUNT_IN_BEATS);
+
+        // At the loop start both the timeline and the music change together.
+        app.audio.stop();
+        app.started = false;
+        app.resolve_pending_count_in(0.0);
+        assert_eq!(app.pending_count_in, None);
+        assert_eq!(app.timeline.count_in_beats, 0.0);
+        assert!(app.needs_render);
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn a_failed_count_in_rebuild_falls_back_without_a_count_in() {
+        let ctx = egui::Context::default();
+        let cc = eframe::CreationContext::_new_kittest(ctx.clone());
+        let mut app = ContraApp::new_headless(&cc);
+        app.needs_render = false;
+        app.prefs.count_in_enabled = false;
+        // A card that cannot produce calls fails the build. The fallback must
+        // honour the setting instead of quietly restoring four beats.
+        app.dance.figures.clear();
+        app.rebuild_timeline_with_count_in(0.0);
+        assert!(app.error.is_some());
+        assert_eq!(app.timeline.count_in_beats, 0.0);
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn toggling_the_count_in_while_paused_keeps_timeline_and_audio_agreeing() {
+        let (mut app, _ctx) = hidden_app();
+        app.audio.pause();
+        app.audio.seek_beat(12.0);
+        app.prefs.count_in_enabled = false;
+        app.apply_count_in_change();
+        assert_eq!(app.timeline.count_in_beats, 0.0);
+        // The installed music has no count-in region: a negative position
+        // clamps to the loop start.
+        app.audio.seek_beat(-1.0);
+        assert_eq!(app.audio.position_beat(), 0.0);
+        assert!(!app.audio.is_playing(), "a paused session stays paused");
+
+        app.prefs.count_in_enabled = true;
+        app.apply_count_in_change();
+        assert_eq!(app.timeline.count_in_beats, COUNT_IN_BEATS);
+        // The re-rendered buffer has the count-in the timeline names.
+        app.audio.seek_beat(-1.0);
+        assert!((app.audio.position_beat() + 1.0).abs() < 1e-6);
+        assert!(!app.audio.is_playing());
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn switching_the_dance_source_clears_the_old_results() {
+        let ctx = egui::Context::default();
+        let cc = eframe::CreationContext::_new_kittest(ctx.clone());
+        let mut app = ContraApp::new_headless(&cc);
+        let other = contra_sources::dance_providers()
+            .iter()
+            .find(|provider| provider.id() != app.prefs.dance_source)
+            .map(|provider| provider.id().to_string())
+            .expect("a second dance provider is registered");
+        app.picker.dance_results = Some(DanceSearchPage {
+            total: 1,
+            page: 1,
+            page_size: 10,
+            dances: Vec::new(),
+        });
+        app.picker.dance_query.formation = Some("improper".into());
+        app.picker.search_loading = true;
+
+        app.set_dance_source(&other);
+
+        assert_eq!(app.prefs.dance_source, other);
+        assert!(app.picker.dance_results.is_none());
+        assert!(app.picker.dance_preview.is_none());
+        assert!(!app.picker.search_loading);
+        assert_eq!(app.picker.dance_query.page, 1);
+        assert!(app.picker.dance_query.formation.is_none());
     }
 
     /// A headless app with an empty history and nothing rendered yet.

@@ -64,7 +64,7 @@ stream reports an error, the app logs it and keeps the UI running.
 ## Browser-specific problems
 
 - **No online search:** deploy and configure the `proxy/` worker, then set the
-  URL and token under **Preferences → Web data proxy**. Defaults and cached
+  URL and token under **Preferences → Data & Storage**. Defaults and cached
   content still work without it.
 - **Preferences did not persist:** the browser build uses `localStorage`. Check
   that site data is not being cleared on exit.

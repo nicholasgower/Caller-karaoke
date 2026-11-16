@@ -500,6 +500,9 @@ pub(super) fn upcoming_move_card(
 pub(super) struct SessionControlChanges {
     timeline_dirty: bool,
     music_dirty: bool,
+    /// The count-in checkbox changed. Timeline, music, and transport apply
+    /// together through `ContraApp::apply_count_in_change`.
+    count_in_dirty: bool,
     rotation_dirty: bool,
     save: bool,
     action: Option<&'static str>,

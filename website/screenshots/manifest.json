@@ -48,14 +48,14 @@
     },
     {
       "id": "about-window",
-      "alt": "The About section at the bottom of the Preferences screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
-      "caption": "About sits at the bottom of Preferences, below the other settings.",
+      "alt": "The About category of the Preferences screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
+      "caption": "About is one of the Preferences categories, beside the settings list.",
       "status": "pending"
     },
     {
       "id": "dance-picker-open",
-      "alt": "The Download dance screen with Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields above an empty results area.",
-      "caption": "Download dance searches the dance source selected in Preferences and previews a card before saving it locally.",
+      "alt": "The Download dance screen with a Dance source menu above Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields, above an empty results area.",
+      "caption": "Download dance selects its source and searches it, then previews a card before saving it locally.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -184,8 +184,8 @@
     },
     {
       "id": "prefs-open",
-      "alt": "The Preferences screen opened from the gear button, with Role terms at the top, followed by the role preset controls and the Instruments section.",
-      "caption": "The gear in the header opens Preferences; playback settings apply without restarting, and role and alias changes rebuild the call timeline.",
+      "alt": "The Preferences screen with the Calling, Band & Sound, Playback, Appearance, Data & Storage, and About categories in a left column and the Calling settings, starting with Role terms, beside them.",
+      "caption": "The gear in the header opens Preferences; a category list keeps each group of settings in one place, and playback changes apply without restarting.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -208,8 +208,8 @@
     },
     {
       "id": "prefs-interface",
-      "alt": "The Preferences screen showing the Theme buttons and the Interface section with Smooth animations, the Undo and Redo buttons, and the keyboard shortcut reference.",
-      "caption": "Interface settings control the screen transitions, undo and redo the last change, and show the keyboard shortcuts.",
+      "alt": "The Appearance category of Preferences, showing the Theme buttons, the Interface section with Smooth animations, the Undo and Redo buttons, and the keyboard shortcut reference.",
+      "caption": "Appearance settings control theme, screen transitions, undo and redo, and the keyboard shortcuts.",
       "status": "ready",
       "width": 1280,
       "height": 1000
