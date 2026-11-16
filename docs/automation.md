@@ -136,7 +136,7 @@ succeeds. Then work in an observe → act → verify loop:
 | `wait_for` | Poll until matching widgets or frames appear. |
 | `batch` | Run several actions and observations in one round trip. |
 | `session_state` | Read the Session tab's transport state, beat, tempo, band volume, toggles, and (while Preferences is open) whether Undo and Redo are available. |
-| `session_action` | Press Play, Pause, Restart, End, or Cancel ending; `undo` and `redo` press the keyboard chords. |
+| `session_action` | Press the **Play/Pause** toggle, **Restart**, **End**, or **Cancel ending**; `undo` and `redo` press the keyboard chords. |
 | `session_set` | Set the tempo, band volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. The **Caller volume** slider carries an accessible name, so the generic widget tools can set it too. |
 | `session_wait` | Wait until the transport reaches a state or the beat crosses a bound. |
 
@@ -193,7 +193,7 @@ Work in the same observe → act → verify loop:
 //    "tempo_bpm":240.0,"volume":0.8,"loop_enabled":true,
 //    "count_in":true,"speak_calls":false, ...}
 
-// 2. Press the real Play button (renders pending music first).
+// 2. Press the real Play/Pause button (renders pending music first).
 { "name": "session_action", "arguments": { "action": "play" } }
 
 // 3. Wait for a known point in the dance instead of sleeping.
@@ -224,9 +224,11 @@ Details worth knowing:
   request. The returned state reports the value the app actually adopted; assert
   on that, not on the request.
 - `session_action` brings the Session tab to the front first, so it also works
-  after inspecting a picker. `end` presses **End tune**, or **Cancel ending**
-  when an ending is waiting; the ending itself starts at the tune's last bar, so
-  `transport` stays `playing` until then.
+  after inspecting a picker. `play` and `pause` share one toggle button whose
+  accessible name is the action it offers; asking for the state the session is
+  already in is a no-op, not a second press. `end` presses **End tune**, or
+  **Cancel ending** when an ending is waiting; the ending itself starts at the
+  tune's last bar, so `transport` stays `playing` until then.
 - `session_action` with `undo` or `redo` presses the app's Ctrl+Z and Ctrl+Y
   chords instead of clicking, so the front tab does not change. Open
   Preferences and read `undo_available`/`redo_available` to check the stack, or

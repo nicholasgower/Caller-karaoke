@@ -279,10 +279,12 @@ impl ContraServer {
     /// app-wide Ctrl/Cmd+Z and Ctrl/Cmd+Y chords instead.
     ///
     /// The session tab is brought to the front first, so this works from any
-    /// screen. Returns the state after the press. `play` renders pending music
-    /// synchronously, so the call may take a moment; `pause` stops both audio
-    /// and speech; `end` presses **End tune** (or **Cancel ending** when an
-    /// ending is already pending). `undo` and `redo` do not switch tabs.
+    /// screen. Returns the state after the press. `play` and `pause` press the
+    /// one Play/Pause toggle; asking for the state the session is already in
+    /// does nothing. `play` renders pending music synchronously, so the call
+    /// may take a moment; `pause` stops both audio and speech; `end` presses
+    /// **End tune** (or **Cancel ending** when an ending is already pending).
+    /// `undo` and `redo` do not switch tabs.
     #[tool(
         title = "Session transport",
         annotations(

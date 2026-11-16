@@ -123,8 +123,9 @@ The default is **240 BPM**, which gives a 0.5-second dance beat and a 32-second
     prepare-music message returns; press **Play** to rebuild.
   </Step>
   <Step shot="session-paused">
-    Press **Pause** to stop the music and any speech. Press **Play** to resume
-    from the same position.
+    Press the **Play/Pause** button while the music runs: it shows the pause
+    symbol and stops the music and any speech. Press it again to resume from the
+    same position.
   </Step>
   <Step shot="session-finished">
     With **Loop** off, the dance ends with **Dance complete**. Press **Restart**
@@ -139,8 +140,8 @@ reached in 0.1.0: the playhead resets at the loop boundary. Prefer cards whose
 preview total is 64 beats.
 
 Pausing is visible without sound: the progress bar names the transport state, so
-after **Pause** it reads `Paused · beat 12 / 64` and stays there until **Play**
-resumes from the same beat.
+after pausing it reads `Paused · beat 12 / 64` and stays there until the same
+button resumes from the same beat.
 
 ## What the call prompt means
 

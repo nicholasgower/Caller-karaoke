@@ -15,7 +15,7 @@
 //! | --- | --- |
 //! | Tempo slider | `Tempo` |
 //! | Volume slider | `Volume` |
-//! | Transport buttons | `Play`, `Pause`, `Restart`, `End tune`/`End`, `Cancel ending`/`Cancel` |
+//! | Transport buttons | `Play`/`Pause` (one toggle), `Restart`, `End tune`/`End`, `Cancel ending`/`Cancel` |
 //! | Toggles | `Loop`, `Cycle tunes`, `Count-in`, `Speak calls` |
 //! | Preferences gear | `Preferences` (a header button, not a tab) |
 //! | Transport readout | the progress bar text, e.g. `Playing · beat 12 / 64` |
@@ -370,6 +370,23 @@ impl SessionAction {
     }
 }
 
+/// Whether pressing the single Play/Pause button would move the transport.
+///
+/// Play and Pause share one toggle button whose accessible name follows the
+/// action it offers. A request for the state the session is already in must be
+/// a no-op rather than a press, which would flip the music.
+fn needs_toggle(action: SessionAction, transport: Option<TransportState>) -> bool {
+    let playing = matches!(
+        transport,
+        Some(TransportState::Playing | TransportState::CountIn | TransportState::Ending)
+    );
+    match action {
+        SessionAction::Play => !playing,
+        SessionAction::Pause => playing,
+        _ => true,
+    }
+}
+
 /// The slider a `session_set` request can move.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -481,6 +498,15 @@ impl SessionClient {
             return self.state().await;
         }
         self.ensure_session().await?;
+        // Play and Pause are one toggle button. Asking for the state the
+        // session is already in must not press it, or "pause" while paused
+        // would start the music.
+        if matches!(action, SessionAction::Play | SessionAction::Pause) {
+            let state = self.state().await?;
+            if !needs_toggle(action, state.transport) {
+                return Ok(state);
+            }
+        }
         let snap = self.bridge.fetch_tree().await?;
         let found = find(
             tree_of(&snap)?,
@@ -797,6 +823,51 @@ mod tests {
             SessionAction::CancelEnding.labels(),
             &["Cancel ending", "Cancel"]
         );
+    }
+
+    #[test]
+    fn play_and_pause_share_one_toggle_button() {
+        assert_eq!(SessionAction::Play.labels(), &["Play"]);
+        assert_eq!(SessionAction::Pause.labels(), &["Pause"]);
+        // The label names the action, and only a press that changes the state
+        // reaches the button.
+        assert!(needs_toggle(
+            SessionAction::Play,
+            Some(TransportState::Ready)
+        ));
+        assert!(needs_toggle(
+            SessionAction::Play,
+            Some(TransportState::Paused)
+        ));
+        assert!(needs_toggle(
+            SessionAction::Play,
+            Some(TransportState::Finished)
+        ));
+        assert!(!needs_toggle(
+            SessionAction::Play,
+            Some(TransportState::Playing)
+        ));
+        assert!(!needs_toggle(
+            SessionAction::Play,
+            Some(TransportState::CountIn)
+        ));
+        assert!(needs_toggle(
+            SessionAction::Pause,
+            Some(TransportState::CountIn)
+        ));
+        assert!(needs_toggle(
+            SessionAction::Pause,
+            Some(TransportState::Ending)
+        ));
+        assert!(!needs_toggle(
+            SessionAction::Pause,
+            Some(TransportState::Paused)
+        ));
+        // The other actions press their own dedicated buttons every time.
+        assert!(needs_toggle(
+            SessionAction::Restart,
+            Some(TransportState::Playing)
+        ));
     }
 
     #[test]
