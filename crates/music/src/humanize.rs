@@ -7,9 +7,11 @@
 //! - every voice (melody, accompaniment, countermelody) and every copy of a
 //!   voice has its own slow tempo deviation, bounded to
 //!   [`TEMPO_DEVIATION_LIMIT`] (0.35 %, under two milliseconds per beat at
-//!   240 BPM);
+//!   240 BPM) times the human timing amount;
 //! - a PID controller pulls each voice's accumulated timing error back to the
-//!   un-deviated beat grid, so a player never leaves a permanent offset;
+//!   un-deviated beat grid, so a player never leaves a permanent offset. Its
+//!   gains are the [`PidGains`] in the render request, so a caller can tune how
+//!   quickly a wandering player is pulled back;
 //! - notes that begin together as a chord are spread by a few milliseconds of
 //!   pitch-level asynchrony, while a melody note sounding alone is left alone.
 //!
@@ -25,38 +27,71 @@
 //! - MIDI export stays grid-exact (see [`crate::midi`]).
 //!
 //! Offsets are bounded twice: the tempo deviation bounds the rate, and
-//! [`ONSET_OFFSET_LIMIT_SECONDS`] bounds every individual onset. An offset is
-//! also clamped inside the 64-beat loop, so a note never crosses the loop
-//! boundary and the loop's sample count never changes.
+//! [`ONSET_OFFSET_LIMIT_SECONDS`] times the human timing amount bounds every
+//! individual onset. An offset is also clamped inside the 64-beat loop, so a
+//! note never crosses the loop boundary and the loop's sample count never
+//! changes.
 
 use std::f64::consts::TAU;
+
+use contra_core::{MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP};
 
 use crate::arrange::Arrangement;
 use crate::render::RenderRequest;
 use crate::score::NoteEvent;
 
-/// Largest slow tempo deviation, as a fraction of the user-set tempo.
+/// Largest slow tempo deviation at amount 1, as a fraction of the user-set
+/// tempo.
 ///
 /// 0.35 % is under two milliseconds per beat at 240 BPM. Without correction a
 /// whole 64-beat pass would drift by about 112 ms; the PID controller keeps
-/// each onset within a few milliseconds instead.
+/// each onset within a few milliseconds instead. The human timing amount
+/// scales the deviation.
 pub const TEMPO_DEVIATION_LIMIT: f64 = 0.0035;
 
-/// Absolute limit on one note's humanized onset, in seconds.
+/// Absolute limit on one note's humanized onset at amount 1, in seconds.
+///
+/// The limit scales with the human timing amount, so the setting stays linear
+/// up to [`MAX_HUMANIZE_AMOUNT`].
 pub const ONSET_OFFSET_LIMIT_SECONDS: f64 = 0.012;
 
-/// Largest asynchrony applied to one note of a chord, in seconds.
+/// Largest asynchrony applied to one note of a chord at amount 1, in seconds.
 pub const CHORD_ASYNCHRONY_LIMIT_SECONDS: f64 = 0.006;
 
 /// Control steps per dance beat for the deviation table.
 pub const STEPS_PER_BEAT: usize = 8;
 
-/// Proportional gain of the per-voice PID controller (dimensionless).
+/// Default proportional gain of the per-voice PID controller (dimensionless).
 pub const PID_KP: f64 = 0.5;
-/// Integral gain of the per-voice PID controller, per beat.
+/// Default integral gain of the per-voice PID controller, per beat.
 pub const PID_KI: f64 = 0.05;
-/// Derivative gain of the per-voice PID controller, in beats.
+/// Default derivative gain of the per-voice PID controller, in beats.
 pub const PID_KD: f64 = 0.02;
+
+/// The gains of a tempo controller, in beat units.
+///
+/// The request carries these so a caller can tune how quickly a wandering
+/// player is pulled back to the grid; the [`Default`] values are the calibrated
+/// response.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PidGains {
+    /// Proportional gain (dimensionless).
+    pub kp: f64,
+    /// Integral gain, per beat.
+    pub ki: f64,
+    /// Derivative gain, in beats.
+    pub kd: f64,
+}
+
+impl Default for PidGains {
+    fn default() -> Self {
+        Self {
+            kp: PID_KP,
+            ki: PID_KI,
+            kd: PID_KD,
+        }
+    }
+}
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
@@ -103,12 +138,21 @@ impl Voice {
 /// response is the same at every tempo.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TempoController {
+    gains: PidGains,
     error_beats: f64,
     integral: f64,
     previous_error: f64,
 }
 
 impl TempoController {
+    /// A controller with the given gains.
+    pub fn new(gains: PidGains) -> Self {
+        Self {
+            gains,
+            ..Self::default()
+        }
+    }
+
     /// Advance one control step and return the new offset in beats.
     ///
     /// `deviation` is the fractional tempo deviation for this step and
@@ -118,7 +162,9 @@ impl TempoController {
         let dt = dt_beats.max(1e-9);
         self.integral += self.error_beats * dt;
         let derivative = (self.error_beats - self.previous_error) / dt;
-        let correction = PID_KP * self.error_beats + PID_KI * self.integral + PID_KD * derivative;
+        let correction = self.gains.kp * self.error_beats
+            + self.gains.ki * self.integral
+            + self.gains.kd * derivative;
         self.previous_error = self.error_beats;
         // A runaway would mean the controller failed; the clamp keeps a bad
         // input from producing a non-finite or absurd onset.
@@ -143,23 +189,30 @@ pub struct Humanizer {
     tempo_drift: bool,
     chord_spread: bool,
     amount: f64,
+    gains: PidGains,
 }
 
 impl Humanizer {
     /// Build from a render request. The seed comes from the arrangement, so a
     /// tune keeps its feel across renders and voices.
     pub fn new(request: &RenderRequest) -> Self {
+        let options = &request.humanize_options;
         Self {
             seed: arrangement_seed(&request.arrangement),
             seconds_per_beat: (120.0 / request.bpm.max(1.0)).max(1e-6),
             loop_beats: request.arrangement.loop_beats.max(1.0),
             enabled: request.humanize_timing,
-            tempo_drift: request.humanize_options.tempo_drift,
-            chord_spread: request.humanize_options.chord_spread,
-            amount: if request.humanize_options.amount.is_finite() {
-                f64::from(request.humanize_options.amount.clamp(0.0, 1.0))
+            tempo_drift: options.tempo_drift,
+            chord_spread: options.chord_spread,
+            amount: if options.amount.is_finite() {
+                f64::from(options.amount.clamp(0.0, MAX_HUMANIZE_AMOUNT))
             } else {
                 0.0
+            },
+            gains: PidGains {
+                kp: gain(options.pid_kp, PID_KP, MAX_PID_KP),
+                ki: gain(options.pid_ki, PID_KI, MAX_PID_KI),
+                kd: gain(options.pid_kd, PID_KD, MAX_PID_KD),
             },
         }
     }
@@ -177,7 +230,13 @@ impl Humanizer {
         }
         let seed = voice_seed(self.seed, voice, copy);
         let offsets = if self.tempo_drift {
-            build_offsets(seed, self.seconds_per_beat, self.loop_beats, self.amount)
+            build_offsets(
+                seed,
+                self.seconds_per_beat,
+                self.loop_beats,
+                self.amount,
+                self.gains,
+            )
         } else {
             vec![0.0; ((self.loop_beats * STEPS_PER_BEAT as f64).ceil() as usize) + 1]
         };
@@ -188,6 +247,7 @@ impl Humanizer {
             seed,
             chord_spread: self.chord_spread,
             amount: self.amount,
+            offset_limit_seconds: ONSET_OFFSET_LIMIT_SECONDS * self.amount,
         })
     }
 }
@@ -202,6 +262,8 @@ pub struct VoiceTiming {
     seed: u64,
     chord_spread: bool,
     amount: f64,
+    /// Largest onset offset in seconds at this amount.
+    offset_limit_seconds: f64,
 }
 
 impl VoiceTiming {
@@ -210,7 +272,7 @@ impl VoiceTiming {
     /// `in_chord` adds the small pitch-level asynchrony; a note that sounds
     /// alone keeps the voice's timing without any extra smear. Notes before
     /// beat 0 (pickups) and non-finite positions get no offset. The result is
-    /// clamped so the onset stays inside the loop and within
+    /// clamped so the onset stays inside the loop and within the amount-scaled
     /// [`ONSET_OFFSET_LIMIT_SECONDS`].
     pub fn onset_offset_seconds(
         &self,
@@ -236,8 +298,7 @@ impl VoiceTiming {
         } else {
             beats = 0.0;
         }
-        (beats * self.seconds_per_beat)
-            .clamp(-ONSET_OFFSET_LIMIT_SECONDS, ONSET_OFFSET_LIMIT_SECONDS)
+        (beats * self.seconds_per_beat).clamp(-self.offset_limit_seconds, self.offset_limit_seconds)
     }
 
     /// The voice's slow offset at `start_beat`, before chord asynchrony.
@@ -290,16 +351,24 @@ pub fn chord_members(notes: &[NoteEvent]) -> Vec<bool> {
 }
 
 /// Build the per-voice offset table for one loop pass.
-fn build_offsets(seed: u64, seconds_per_beat: f64, loop_beats: f64, amount: f64) -> Vec<f64> {
+fn build_offsets(
+    seed: u64,
+    seconds_per_beat: f64,
+    loop_beats: f64,
+    amount: f64,
+    gains: PidGains,
+) -> Vec<f64> {
     let steps = ((loop_beats.max(1.0) * STEPS_PER_BEAT as f64).ceil() as usize) + 1;
     let dt = 1.0 / STEPS_PER_BEAT as f64;
     // Two slow, seeded sines per voice. Their periods are roughly 4 and 8
     // bars at 240 BPM, which is the timescale a player's tempo wanders on.
     let (first_phase, second_phase, first_rate, second_rate) = seeded_phases(seed);
-    let amount = amount.clamp(0.0, 1.0);
-    let mut controller = TempoController::default();
+    let amount = amount.clamp(0.0, f64::from(MAX_HUMANIZE_AMOUNT));
+    // The bounds scale with the amount, so the setting is linear all the way to
+    // its maximum instead of saturating at the amount-1 limit.
+    let limit_seconds = ONSET_OFFSET_LIMIT_SECONDS * amount;
+    let mut controller = TempoController::new(gains);
     let mut offsets = Vec::with_capacity(steps);
-    let limit_beats = ONSET_OFFSET_LIMIT_SECONDS / seconds_per_beat.max(1e-6);
     for step in 0..steps {
         let time = step as f64 * dt;
         let deviation = TEMPO_DEVIATION_LIMIT
@@ -307,9 +376,19 @@ fn build_offsets(seed: u64, seconds_per_beat: f64, loop_beats: f64, amount: f64)
             * (0.65 * (TAU * first_rate * time + first_phase).sin()
                 + 0.35 * (TAU * second_rate * time + second_phase).sin());
         let offset = controller.advance(deviation, dt);
-        offsets.push((offset * seconds_per_beat).clamp(-limit_beats, limit_beats));
+        offsets.push((offset * seconds_per_beat).clamp(-limit_seconds, limit_seconds));
     }
     offsets
+}
+
+/// A finite gain inside `0.0..=max`, or the default when the stored value is
+/// not finite.
+fn gain(value: f32, default: f64, max: f32) -> f64 {
+    if value.is_finite() {
+        f64::from(value.clamp(0.0, max))
+    } else {
+        default
+    }
 }
 
 /// Seeded phases and two slow rates, all deterministic.
@@ -383,6 +462,7 @@ mod tests {
             tempo_drift: true,
             chord_spread: true,
             amount: 1.0,
+            gains: PidGains::default(),
         }
     }
 
@@ -604,5 +684,70 @@ mod tests {
         assert!(timing.base_offset_seconds(8.0).abs() > 0.0);
         assert!(timing.base_offset_seconds(8.0).abs() <= ONSET_OFFSET_LIMIT_SECONDS);
         assert_eq!(humanizer.amount, 1.0);
+    }
+
+    #[test]
+    fn the_maximum_amount_stays_linear_past_the_calibrated_bound() {
+        let full = humanizer().voice(Voice::Melody, 0).expect("full");
+        let mut five_humanizer = humanizer();
+        five_humanizer.amount = f64::from(MAX_HUMANIZE_AMOUNT);
+        let five = five_humanizer.voice(Voice::Melody, 0).expect("five");
+        for beat in [0.0, 1.0, 8.0, 31.5, 63.0] {
+            let full_offset = full.base_offset_seconds(beat);
+            let five_offset = five.base_offset_seconds(beat);
+            assert!(
+                (five_offset - full_offset * 5.0).abs() < 1e-9,
+                "five times the amount should move five times as far at beat {beat}: \
+                 {five_offset} vs {full_offset}"
+            );
+        }
+        // The onset bound scales too, so a full five-times amount is not
+        // clipped back to the amount-1 limit somewhere in the pass.
+        let mut largest = 0.0_f64;
+        let mut beat = 0.0;
+        while beat < 64.0 {
+            largest = largest.max(five.onset_offset_seconds(beat, 0.5, 60, false).abs());
+            beat += 0.25;
+        }
+        assert!(
+            largest > ONSET_OFFSET_LIMIT_SECONDS,
+            "the amount-1 cap must not flatten the larger setting: {largest}"
+        );
+        assert!(
+            largest <= ONSET_OFFSET_LIMIT_SECONDS * 5.0 + 1e-9,
+            "the scaled cap should still bound the onset: {largest}"
+        );
+    }
+
+    #[test]
+    fn the_pid_gains_change_the_pull_back_to_the_grid() {
+        let dt = 1.0 / STEPS_PER_BEAT as f64;
+        let mut calibrated = TempoController::default();
+        let mut stiff = TempoController::new(PidGains {
+            kp: 2.0,
+            ki: 0.5,
+            kd: 0.5,
+        });
+        let mut soft = TempoController::new(PidGains {
+            kp: 0.0,
+            ki: 0.0,
+            kd: 0.0,
+        });
+        for _ in 0..(8 * STEPS_PER_BEAT) {
+            let deviation = TEMPO_DEVIATION_LIMIT;
+            calibrated.advance(deviation, dt);
+            stiff.advance(deviation, dt);
+            soft.advance(deviation, dt);
+        }
+        // With no correction the soft controller keeps accumulating the
+        // deviation, so its error is the largest; the stiff one resists most.
+        assert!(
+            soft.error_beats().abs() > calibrated.error_beats().abs(),
+            "zero gains should drift furthest"
+        );
+        assert!(
+            calibrated.error_beats().abs() > stiff.error_beats().abs(),
+            "stiffer gains should hold the grid more tightly"
+        );
     }
 }

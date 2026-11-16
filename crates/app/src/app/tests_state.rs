@@ -415,6 +415,18 @@ const CONTROLS: &[Control] = &[
             prefs.humanize_options.amount = (prefs.humanize_options.amount - 0.1).max(0.0)
         },
     },
+    Control {
+        name: "number: humanize pid proportional",
+        change: |prefs| prefs.humanize_options.pid_kp += 0.1,
+    },
+    Control {
+        name: "number: humanize pid integral",
+        change: |prefs| prefs.humanize_options.pid_ki += 0.01,
+    },
+    Control {
+        name: "number: humanize pid derivative",
+        change: |prefs| prefs.humanize_options.pid_kd += 0.01,
+    },
 ];
 
 /// A headless app in a stable, idle state.

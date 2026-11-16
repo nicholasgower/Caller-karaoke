@@ -788,10 +788,26 @@ impl VariationOptions {
     ];
 }
 
+/// Largest human timing amount the preferences expose.
+///
+/// One is the calibrated amount; five scales the drift and chord spread to five
+/// times that, and the per-onset bounds scale with it so the setting stays
+/// linear all the way to the top. The dance grid stays exact either way.
+pub const MAX_HUMANIZE_AMOUNT: f32 = 5.0;
+
+/// Largest proportional gain the tempo controller exposes.
+pub const MAX_PID_KP: f32 = 2.0;
+
+/// Largest integral gain the tempo controller exposes, per beat.
+pub const MAX_PID_KI: f32 = 0.5;
+
+/// Largest derivative gain the tempo controller exposes, in beats.
+pub const MAX_PID_KD: f32 = 0.5;
+
 /// How much human timing the band gets.
 ///
-/// The limits are deliberate and small: the dance grid stays exact, and every
-/// onset is bounded (see `contra_music::humanize`).
+/// The dance grid stays exact, and every onset is bounded (see
+/// `contra_music::humanize`); the bounds scale with [`Self::amount`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct HumanizeOptions {
@@ -799,8 +815,14 @@ pub struct HumanizeOptions {
     pub tempo_drift: bool,
     /// Spread notes that begin together as a chord by a few milliseconds.
     pub chord_spread: bool,
-    /// Scale for both effects, 0.0-1.0. One is the calibrated amount.
+    /// Scale for both effects, 0.0-5.0. One is the calibrated amount.
     pub amount: f32,
+    /// Proportional gain of the per-player tempo controller.
+    pub pid_kp: f32,
+    /// Integral gain of the per-player tempo controller, per beat.
+    pub pid_ki: f32,
+    /// Derivative gain of the per-player tempo controller, in beats.
+    pub pid_kd: f32,
 }
 
 impl Default for HumanizeOptions {
@@ -809,7 +831,32 @@ impl Default for HumanizeOptions {
             tempo_drift: true,
             chord_spread: true,
             amount: 1.0,
+            pid_kp: 0.5,
+            pid_ki: 0.05,
+            pid_kd: 0.02,
         }
+    }
+}
+
+impl HumanizeOptions {
+    /// Clamp the numeric fields to their exposed ranges and replace
+    /// non-finite values with the defaults, so a hand-edited file cannot make
+    /// the renderer produce NaN offsets.
+    fn validate(&mut self) {
+        self.amount = finite_clamped(self.amount, 1.0, MAX_HUMANIZE_AMOUNT);
+        self.pid_kp = finite_clamped(self.pid_kp, 0.5, MAX_PID_KP);
+        self.pid_ki = finite_clamped(self.pid_ki, 0.05, MAX_PID_KI);
+        self.pid_kd = finite_clamped(self.pid_kd, 0.02, MAX_PID_KD);
+    }
+}
+
+/// Clamp a non-negative setting to `0.0..=max`, falling back to `default` when
+/// the stored value is not finite.
+fn finite_clamped(value: f32, default: f32, max: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(0.0, max)
+    } else {
+        default
     }
 }
 
@@ -1714,7 +1761,7 @@ impl Preferences {
                 self.tempo_max_bpm = self.tempo_min_bpm + 1.0;
             }
         }
-        self.humanize_options.amount = self.humanize_options.amount.clamp(0.0, 1.0);
+        self.humanize_options.validate();
         self.dancer_sound_volume = self.dancer_sound_volume.clamp(0.0, 2.0);
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
         self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
@@ -2037,6 +2084,45 @@ mod tests {
         let prefs = Preferences::from_json(r#"{"schema_version": 11}"#).expect("deserialize");
         assert!(prefs.humanize_timing);
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn the_human_timing_amount_allows_five_and_clamps_beyond_it() {
+        let mut prefs = Preferences::default();
+        assert_eq!(prefs.humanize_options.amount, 1.0);
+        assert_eq!(prefs.humanize_options.pid_kp, 0.5);
+        assert_eq!(prefs.humanize_options.pid_ki, 0.05);
+        assert_eq!(prefs.humanize_options.pid_kd, 0.02);
+
+        prefs.humanize_options.amount = 5.0;
+        prefs.validate();
+        assert_eq!(prefs.humanize_options.amount, MAX_HUMANIZE_AMOUNT);
+
+        prefs.humanize_options.amount = 9.0;
+        prefs.validate();
+        assert_eq!(prefs.humanize_options.amount, MAX_HUMANIZE_AMOUNT);
+
+        prefs.humanize_options.amount = f32::NAN;
+        prefs.validate();
+        assert_eq!(prefs.humanize_options.amount, 1.0);
+    }
+
+    #[test]
+    fn the_pid_gains_are_clamped_and_default_when_absent() {
+        let prefs = Preferences::from_json(r#"{"schema_version": 11}"#).expect("deserialize");
+        let options = prefs.humanize_options;
+        assert_eq!(options.pid_kp, 0.5);
+        assert_eq!(options.pid_ki, 0.05);
+        assert_eq!(options.pid_kd, 0.02);
+
+        let mut prefs = Preferences::default();
+        prefs.humanize_options.pid_kp = 99.0;
+        prefs.humanize_options.pid_ki = -1.0;
+        prefs.humanize_options.pid_kd = 99.0;
+        prefs.validate();
+        assert_eq!(prefs.humanize_options.pid_kp, MAX_PID_KP);
+        assert_eq!(prefs.humanize_options.pid_ki, 0.0);
+        assert_eq!(prefs.humanize_options.pid_kd, MAX_PID_KD);
     }
 
     #[test]

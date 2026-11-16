@@ -277,7 +277,7 @@ separate gains, so turning the band down never hides a call.
 
 Playback can humanize the band slightly; the preference is
 `humanize_timing`, on by default. The separate options are a tempo-drift switch,
-a chord-spread switch, and an amount from 0 to 1 that scales both. MIDI export
+a chord-spread switch, and an amount from 0 to 5 that scales both. MIDI export
 is deliberately not humanized.
 
 - **Per-voice deviation.** Melody, accompaniment, and countermelody each get
@@ -286,12 +286,15 @@ is deliberately not humanized.
   of roughly four and eight bars), bounded to ±0.35 % of the user-set tempo.
 - **Per-voice PID.** A PID controller per player (`crates/music/src/humanize.rs`)
   treats the un-deviated beat grid as its setpoint. The accumulated timing
-  error is integrated on an eighth-of-a-beat control step with `Kp = 0.5`,
-  `Ki = 0.05` per beat, and `Kd = 0.02` beats, so a wandering player is pulled
-  back over about sixteen bars instead of leaving a permanent offset.
+  error is integrated on an eighth-of-a-beat control step. The three gains are
+  preferences (`pid_kp`, `pid_ki`, `pid_kd`) exposed as **Kp**, **Ki**, and
+  **Kd** in Preferences; the defaults are `Kp = 0.5`, `Ki = 0.05` per beat, and
+  `Kd = 0.02` beats, so a wandering player is pulled back over about sixteen
+  bars instead of leaving a permanent offset.
 - **Bounded onsets.** One note's total onset offset — deviation plus chord
-  asynchrony — is capped at 12 ms and clamped inside the pass, so a note can
-  never cross the loop boundary and the sample count does not change.
+  asynchrony — is capped at 12 ms at amount 1, scaled by the amount, and clamped
+  inside the pass, so a note can never cross the loop boundary and the sample
+  count does not change.
 - **Chord asynchrony.** Notes that start together within a section are spread
   by a deterministic ±6 ms pitch-level offset. A note that starts alone, such
   as a melody note, is left exactly on the voice's curve.

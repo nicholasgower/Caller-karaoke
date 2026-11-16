@@ -28,9 +28,10 @@ pub use library::{
 pub use prefs::{
     AccompanimentInstrument, AccompanimentRhythm, BandPart, BandSlot, BandVoice, CallTone,
     CardPadding, ChangeSet, Countermelody, DEFAULT_DANCE_SOURCE, DancerSound, DancerSoundEvent,
-    EndingOptions, HumanizeOptions, InstrumentCopies, MAX_TTS_RATE, MIN_TTS_RATE, MelodyInstrument,
-    OutputMode, Percussion, PercussionRhythm, Preferences, SoundFontSetting, TTS_RATE_SCALE, Theme,
-    TuneRotation, TuneSetSource, VariationOptions, default_band,
+    EndingOptions, HumanizeOptions, InstrumentCopies, MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI,
+    MAX_PID_KP, MAX_TTS_RATE, MIN_TTS_RATE, MelodyInstrument, OutputMode, Percussion,
+    PercussionRhythm, Preferences, SoundFontSetting, TTS_RATE_SCALE, Theme, TuneRotation,
+    TuneSetSource, VariationOptions, default_band,
 };
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};
