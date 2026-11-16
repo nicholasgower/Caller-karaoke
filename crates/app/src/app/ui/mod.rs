@@ -13,8 +13,8 @@ mod tune_picker;
 mod widgets;
 
 pub(in crate::app) use widgets::{
-    combo_option, empty_label, formation_label, row_button, row_menu_button, submit_text_edit,
-    submitted,
+    action_width, block_button, block_selectable, combo_option, empty_label, formation_label,
+    row_button, row_menu_button, submit_text_edit, submitted,
 };
 
 use crate::theme;
@@ -130,6 +130,41 @@ pub(super) fn responsive_combo<'a>(
     } else {
         combo
     }
+}
+
+/// Space the picker panes must leave below them for the pagination row and
+/// the gap above it.
+const PAGINATION_ROW_HEIGHT: f32 = 40.0;
+
+/// The smallest height a split desktop picker gives its list and preview.
+///
+/// Below this a forced box would show only a row or two, so the panes keep a
+/// usable floor and the window clips instead of collapsing the list.
+const MIN_PANE_HEIGHT: f32 = 120.0;
+
+/// Height left for a list or preview pane below the rows already drawn.
+///
+/// The panes take every point that is left, so on a tall window they end at
+/// the bottom edge instead of at an arbitrary fixed cap. A short window keeps
+/// a usable floor rather than shrinking the pane to nothing.
+fn remaining_pane_height(available_height: f32, reserved_below: f32) -> f32 {
+    (available_height - reserved_below).max(MIN_PANE_HEIGHT)
+}
+
+/// Height for a picker's list and preview panes, or `None` when the page
+/// itself scrolls.
+///
+/// A phone page already scrolls, so the stacked list and preview keep their
+/// natural content height and must not reserve a fixed empty box; that is what
+/// keeps a 360-point window usable. A desktop has no page scroll, so the panes
+/// consume the remaining viewport height and both columns end at the same
+/// bottom edge.
+pub(super) fn picker_pane_height(
+    compact: bool,
+    available_height: f32,
+    reserved_below: f32,
+) -> Option<f32> {
+    (!compact).then(|| remaining_pane_height(available_height, reserved_below))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -334,5 +369,56 @@ impl ContraApp {
                 self.picker.search_loading = true;
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn picker_panes_take_the_height_left_after_the_pagination_row() {
+        assert_eq!(
+            picker_pane_height(false, 700.0, PAGINATION_ROW_HEIGHT),
+            Some(660.0)
+        );
+        // Without a row below them (the saved-library panes), the panes reach
+        // the bottom of the viewport.
+        assert_eq!(picker_pane_height(false, 700.0, 0.0), Some(700.0));
+    }
+
+    #[test]
+    fn picker_panes_keep_a_usable_floor_on_short_windows() {
+        assert_eq!(
+            picker_pane_height(false, 90.0, PAGINATION_ROW_HEIGHT),
+            Some(MIN_PANE_HEIGHT)
+        );
+        assert_eq!(
+            picker_pane_height(false, 0.0, PAGINATION_ROW_HEIGHT),
+            Some(MIN_PANE_HEIGHT)
+        );
+        assert_eq!(
+            remaining_pane_height(20.0, PAGINATION_ROW_HEIGHT),
+            MIN_PANE_HEIGHT
+        );
+    }
+
+    #[test]
+    fn a_360_point_window_uses_natural_stacked_heights() {
+        // The phone page scrolls, so the picker must not force a fixed-height
+        // list or preview at the minimum window width.
+        assert_eq!(
+            picker_pane_height(compact_layout(360.0), 800.0, PAGINATION_ROW_HEIGHT),
+            None
+        );
+        assert_eq!(
+            picker_pane_height(compact_layout(390.0), 844.0, PAGINATION_ROW_HEIGHT),
+            None
+        );
+        // The narrowest desktop width still receives a derived pane height.
+        assert_eq!(
+            picker_pane_height(compact_layout(640.0), 800.0, PAGINATION_ROW_HEIGHT),
+            Some(760.0)
+        );
     }
 }

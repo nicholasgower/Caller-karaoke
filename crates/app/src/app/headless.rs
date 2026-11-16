@@ -915,6 +915,38 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     capture(harness, out, "dance-picker-360")?;
     {
         let app = harness.state_mut();
+        app.screen = Screen::DancePicker;
+        app.dance_library_query.clear();
+        app.dance_library_folder = FolderFilter::All;
+        app.picker.dance_preview = app
+            .dance_library
+            .get("contradb", "2409")
+            .map(|entry| entry.item.clone());
+        app.picker.dance_selected = None;
+    }
+    capture(harness, out, "dance-library-360")?;
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::TuneDownload;
+        app.picker.tune_results = Some(tune_results());
+        app.picker.tune_preview = None;
+    }
+    capture(harness, out, "tune-picker-360")?;
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::TunePicker;
+        app.tune_library_query.clear();
+        app.tune_library_folder = FolderFilter::All;
+        app.picker.tune_preview = app
+            .tune_library
+            .get("abcsessiontunes", "75815")
+            .map(|entry| entry.item.clone());
+        app.picker.tune_selected = None;
+        app.tune_sheet = None;
+    }
+    capture(harness, out, "tune-library-360")?;
+    {
+        let app = harness.state_mut();
         app.screen = Screen::Preferences;
         app.prefs.role_terms = contra_core::RoleTerms {
             left_singular: "port".into(),
