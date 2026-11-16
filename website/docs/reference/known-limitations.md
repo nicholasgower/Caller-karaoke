@@ -10,8 +10,10 @@ development release. These are the limitations to know before relying on it.
 ## Platforms
 
 - **Android** is configured and buildable with minSdk 26, but real-device audio
-  and TTS testing is incomplete. Nightly APKs use the debug keystore unless
-  release signing secrets are configured.
+  and TTS testing is incomplete. The APK includes the `rs.tts.Bridge` JNI class;
+  a bare `cargo apk build` does not, and will crash while loading the native
+  library. Nightly APKs use the debug keystore unless release signing secrets
+  are configured.
 - The **web build** needs the included proxy for online search and downloads.
   Without it, the bundled defaults and anything already in your saved library
   still work. The hosted copy on this site is rebuilt with the documentation

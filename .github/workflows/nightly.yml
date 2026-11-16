@@ -102,7 +102,6 @@ jobs:
 
   android:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -112,20 +111,24 @@ jobs:
       - uses: android-actions/setup-android@v3
       - name: Install SDK components
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
-      - uses: dtolnay/rust-toolchain@stable
+          sdkmanager "platform-tools" "platforms;android-35" \
+            "build-tools;35.0.0" "ndk;27.0.12077973"
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-apk
         run: cargo install cargo-apk --locked
       - name: Build APK
-        run: cargo apk build --release --lib -p contra-app
+        # The script uses the debug keystore unless
+        # CARGO_APK_RELEASE_KEYSTORE and CARGO_APK_RELEASE_KEYSTORE_PASSWORD
+        # are configured as CI secrets.
+        run: python3 packaging/android/build-apk.py
       - uses: actions/upload-artifact@v4
         with:
           name: android
-          path: target/release/apk/*.apk
-          if-no-files-found: warn
+          path: target/release/apk/contra-karaoke.apk
+          if-no-files-found: error
 
   release:
     needs: [windows, linux, web, android]
@@ -159,4 +162,4 @@ jobs:
           prerelease: true
           body_path: release-notes.md
           files: artifacts/**/*
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true

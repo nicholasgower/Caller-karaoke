@@ -202,9 +202,13 @@ is generated and not committed.
 Android (requires the Android SDK/NDK, cargo-apk, and minSdk 26):
 
 ```sh
-rustup target add aarch64-linux-android armv7-linux-androideabi
-cargo apk build --release --lib -p contra-app
+rustup target add --toolchain 1.100.0 \
+  aarch64-linux-android armv7-linux-androideabi
+python packaging/android/build-apk.py
 ```
+
+The script adds the `rs.tts.Bridge` class needed by the platform TTS backend and
+signs the APK. The output is `target/release/apk/contra-karaoke.apk`.
 
 Windows installer and portable archive are built from
 `packaging/windows/`; Linux `.deb`, AppImage, and Flatpak files live under

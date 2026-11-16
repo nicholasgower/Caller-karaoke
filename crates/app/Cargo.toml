@@ -41,7 +41,6 @@ contra-music = { version = "0.1.0", path = "../music" }
 contra-sources = { version = "0.1.0", path = "../sources" }
 cpal.workspace = true
 directories.workspace = true
-eframe.workspace = true
 egui_kittest = { workspace = true, optional = true }
 ehttp.workspace = true
 epaint_default_fonts.workspace = true
@@ -81,8 +80,15 @@ env_logger.workspace = true
 image.workspace = true
 rfd.workspace = true
 
+[target.'cfg(not(target_os = "android"))'.dependencies]
+# accesskit_winit does not support the native-activity backend, so Android
+# builds eframe without accessibility until the game-activity backend is used.
+eframe = { workspace = true, features = ["accesskit"] }
+
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.15"
+eframe.workspace = true
+log = "0.4"
 winit = "0.30"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -94,7 +100,25 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Document", "HtmlCanvasElement", "Storage", "Window"] }
 
 [package.metadata.android]
+package = "org.contrakaraoke.app"
+apk_name = "contra-karaoke"
 build_targets = ["armv7-linux-androideabi", "aarch64-linux-android"]
+resources = "../../packaging/android/res"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.INTERNET"
+
+[package.metadata.android.application]
+label = "Contra Karaoke"
+icon = "@mipmap/ic_launcher"
+# The tts crate's Android backend calls into rs.tts.Bridge, which is packaged
+# as classes.dex by packaging/android/build-apk.py.
+has_code = true
+
+[package.metadata.android.application.activity]
+# Load the native library from an app class so JNI_OnLoad's FindClass uses the
+# app class loader and can see rs.tts.Bridge.
+name = "org.contrakaraoke.app.MainActivity"
 
 [package.metadata.android.sdk]
 min_sdk_version = 26

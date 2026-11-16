@@ -81,9 +81,14 @@ The bundle is written to `dist/web`. It must be served over HTTP. See
 Android requires the SDK/NDK, `cargo-apk`, and the arm64/armv7 targets:
 
 ```sh
-rustup target add aarch64-linux-android armv7-linux-androideabi
-cargo apk build --release --lib -p contra-app
+rustup target add --toolchain 1.100.0 \
+  aarch64-linux-android armv7-linux-androideabi
+python packaging/android/build-apk.py
 ```
+
+The script wraps `cargo apk`, adds the `rs.tts.Bridge` class used by the Android
+TTS backend, aligns the archive, and signs it. The output is
+`target/release/apk/contra-karaoke.apk`.
 
 See [Install on Android](/docs/getting-started/install-android) for the device-testing status and
 limitations.

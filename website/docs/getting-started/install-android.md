@@ -22,20 +22,24 @@ Download the APK from the
 or build it yourself:
 
 <Steps>
-  <CommandStep command="rustup target add aarch64-linux-android armv7-linux-androideabi">
-    Install the Android Rust targets.
+  <CommandStep command="rustup target add --toolchain 1.100.0 aarch64-linux-android armv7-linux-androideabi">
+    Install the Android Rust targets for the pinned toolchain.
   </CommandStep>
   <CommandStep command="export ANDROID_HOME=... ANDROID_NDK_ROOT=...">
     Point the build at your Android SDK and NDK.
   </CommandStep>
-  <CommandStep command="cargo apk build --release --lib -p contra-app">
-    Build the APK. It is written under `target/release/apk/`.
+  <CommandStep command="python packaging/android/build-apk.py">
+    Build the APK, add the TTS Java bridge, and sign it. The result is
+    `target/release/apk/contra-karaoke.apk`.
   </CommandStep>
 </Steps>
 
-The package ID is `org.contrakaraoke.app`. Nightly CI signs with the debug
-keystore unless release signing secrets are configured, so treat the artifact as
-a test build.
+The package ID is `org.contrakaraoke.app`. The script signs with the debug
+keystore unless `CARGO_APK_RELEASE_KEYSTORE` and
+`CARGO_APK_RELEASE_KEYSTORE_PASSWORD` are set, so treat the default artifact as
+a test build. The platform TTS backend needs the `rs.tts.Bridge` class that the
+script packages as `classes.dex`; a bare `cargo apk build` omits it and the app
+crashes while loading the native library.
 
 ## Sideload the APK
 
