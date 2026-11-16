@@ -180,6 +180,7 @@ impl TuneProvider for AbcSessionTunes {
             key: response.key_signature,
             meter: response.meter,
             rhythm: response.rhythm,
+            original_abc: Some(response.abc_content.clone()),
             abc: response.abc_content,
             credits: credits.join(" · "),
         })

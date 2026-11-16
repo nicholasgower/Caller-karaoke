@@ -39,6 +39,7 @@ pub fn default_tune() -> Tune {
         meter: "4/4".into(),
         rhythm: "reel".into(),
         abc: DEFAULT_ABC.to_string(),
+        original_abc: Some(DEFAULT_ABC.to_string()),
         credits: "ABC transcription: Josh Larios · chords from Sarah Comer".into(),
     }
 }

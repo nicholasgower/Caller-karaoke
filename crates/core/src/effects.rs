@@ -128,9 +128,12 @@ impl ChorusPreset {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EchoPreset {
     /// No echo send.
-    #[default]
     Off,
     /// A short slapback that widens the tune without smearing the beat.
+    ///
+    /// This is the default: a little space around the band without smearing
+    /// the dance pulse. Users who want a dry session can turn it off.
+    #[default]
     Subtle,
     /// A longer echo for a spacious, programmatic sound.
     Strong,
@@ -197,12 +200,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_is_a_medium_room_with_no_chorus_or_echo() {
+    fn default_is_a_medium_room_with_a_subtle_echo() {
         let effects = AudioEffects::default();
         assert_eq!(effects.reverb, ReverbPreset::MediumRoom);
         assert_eq!(effects.chorus, ChorusPreset::Off);
-        assert_eq!(effects.echo, EchoPreset::Off);
-        assert_eq!(effects.sends(), [(91, 64), (93, 0), (94, 0)]);
+        assert_eq!(effects.echo, EchoPreset::Subtle);
+        assert_eq!(effects.sends(), [(91, 64), (93, 0), (94, 48)]);
         assert!(!effects.is_dry());
     }
 

@@ -1,4 +1,4 @@
-﻿//! Persisted application preferences.
+//! Persisted application preferences.
 
 use std::collections::BTreeSet;
 
@@ -373,6 +373,414 @@ impl AccompanimentRhythm {
     }
 }
 
+/// One part of the virtual band.
+///
+/// The band is a list of instrument groups (see [`BandSlot`]), not a fixed set
+/// of four roles, so a user can add two fiddles, a piano, a guitar, and a
+/// rhythm section without one replacing another.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BandPart {
+    /// The tune itself.
+    #[default]
+    Melody,
+    /// A second melodic line under the tune.
+    Countermelody,
+    /// Chords and bass.
+    Accompaniment,
+    /// Foot taps or a drum kit.
+    Percussion,
+}
+
+impl BandPart {
+    /// Every part, in display order.
+    pub const ALL: [Self; 4] = [
+        Self::Melody,
+        Self::Countermelody,
+        Self::Accompaniment,
+        Self::Percussion,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Melody => "Melody",
+            Self::Countermelody => "Countermelody",
+            Self::Accompaniment => "Accompaniment",
+            Self::Percussion => "Percussion",
+        }
+    }
+}
+
+/// An instrument a [`BandSlot`] can use.
+///
+/// This is a superset of [`MelodyInstrument`] and
+/// [`AccompanimentInstrument`], because a band list can put any voice on any
+/// part (a clarinet countermelody, two guitars, a fiddle playing chords).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BandVoice {
+    #[default]
+    Fiddle,
+    Accordion,
+    AltoSax,
+    TenorSax,
+    Clarinet,
+    Piano,
+    Guitar,
+    FootTaps,
+    Drumset,
+}
+
+impl BandVoice {
+    /// Every voice, in display order.
+    pub const ALL: [Self; 9] = [
+        Self::Fiddle,
+        Self::Accordion,
+        Self::AltoSax,
+        Self::TenorSax,
+        Self::Clarinet,
+        Self::Piano,
+        Self::Guitar,
+        Self::FootTaps,
+        Self::Drumset,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Fiddle => "Fiddle",
+            Self::Accordion => "Accordion",
+            Self::AltoSax => "Alto sax",
+            Self::TenorSax => "Tenor sax",
+            Self::Clarinet => "Clarinet",
+            Self::Piano => "Piano",
+            Self::Guitar => "Guitar",
+            Self::FootTaps => "Foot taps",
+            Self::Drumset => "Drumset",
+        }
+    }
+
+    /// General MIDI program for pitched voices.
+    ///
+    /// Percussion voices return `None`: they play on the GM drum channel and
+    /// carry no program change.
+    pub fn gm_program(self) -> Option<u8> {
+        match self {
+            Self::Fiddle => Some(40),    // Violin
+            Self::Accordion => Some(21), // Accordion
+            Self::AltoSax => Some(65),   // Alto Sax
+            Self::TenorSax => Some(66),  // Tenor Sax
+            Self::Clarinet => Some(71),  // Clarinet
+            Self::Piano => Some(0),      // Acoustic Grand Piano
+            Self::Guitar => Some(25),    // Acoustic Guitar (steel)
+            Self::FootTaps | Self::Drumset => None,
+        }
+    }
+
+    /// Whether this voice is a percussion layer rather than a pitched part.
+    pub fn is_percussion(self) -> bool {
+        matches!(self, Self::FootTaps | Self::Drumset)
+    }
+
+    /// The melody instrument closest to this voice, for code that still works
+    /// with the original three-role model.
+    pub fn melody_instrument(self) -> Option<MelodyInstrument> {
+        match self {
+            Self::Fiddle => Some(MelodyInstrument::Fiddle),
+            Self::Accordion => Some(MelodyInstrument::Accordion),
+            Self::AltoSax => Some(MelodyInstrument::AltoSax),
+            Self::TenorSax => Some(MelodyInstrument::TenorSax),
+            Self::Clarinet => Some(MelodyInstrument::Clarinet),
+            _ => None,
+        }
+    }
+}
+
+/// One line of the user's band: an instrument, how many players, and where it
+/// stands in the stereo or surround image.
+///
+/// A slot is not a copy switch: two slots can use the same voice for different
+/// parts (a fiddle melody and a fiddle countermelody), and a single slot can
+/// carry several players who are rendered as an ensemble with a small spread.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BandSlot {
+    pub part: BandPart,
+    pub voice: BandVoice,
+    /// Players in this group, 1-4 for pitched parts and 1-3 for percussion.
+    pub players: u8,
+    /// Mix level for this group, 0.0-2.0.
+    pub volume: f32,
+    /// Stereo/surround direction: -1 hard left, 0 centre, 1 hard right.
+    pub pan: f32,
+    /// Distance from the front of the room: 0 front, 1 rear. Used by the
+    /// surround layout; the stereo layout folds it into a slight level trim.
+    pub depth: f32,
+}
+
+impl Default for BandSlot {
+    fn default() -> Self {
+        Self {
+            part: BandPart::Melody,
+            voice: BandVoice::Fiddle,
+            players: 1,
+            volume: 0.75,
+            pan: 0.0,
+            depth: 0.0,
+        }
+    }
+}
+
+impl BandSlot {
+    /// Fewest players a group can have.
+    pub const MIN_PLAYERS: u8 = 1;
+    /// Most players a pitched group can have.
+    pub const MAX_PLAYERS: u8 = 4;
+    /// Most players a percussion group can have.
+    pub const MAX_PERCUSSION_PLAYERS: u8 = 3;
+
+    /// Clamp hand-edited values into the supported range.
+    pub fn validate(&mut self) {
+        if self.voice.is_percussion() {
+            self.part = BandPart::Percussion;
+        }
+        let max = if self.voice.is_percussion() {
+            Self::MAX_PERCUSSION_PLAYERS
+        } else {
+            Self::MAX_PLAYERS
+        };
+        self.players = self.players.clamp(Self::MIN_PLAYERS, max);
+        if !self.volume.is_finite() {
+            self.volume = 0.7;
+        }
+        self.volume = self.volume.clamp(0.0, 2.0);
+        if !self.pan.is_finite() {
+            self.pan = 0.0;
+        }
+        self.pan = self.pan.clamp(-1.0, 1.0);
+        if !self.depth.is_finite() {
+            self.depth = 0.0;
+        }
+        self.depth = self.depth.clamp(0.0, 1.0);
+    }
+
+    /// Players clamped for a renderer.
+    pub fn player_count(&self) -> usize {
+        usize::from(self.players.clamp(
+            Self::MIN_PLAYERS,
+            if self.voice.is_percussion() {
+                Self::MAX_PERCUSSION_PLAYERS
+            } else {
+                Self::MAX_PLAYERS
+            },
+        ))
+    }
+}
+
+/// The band the user hears: two fiddles, a piano, a second fiddle line, and
+/// foot taps by default.
+pub fn default_band() -> Vec<BandSlot> {
+    vec![
+        BandSlot {
+            part: BandPart::Melody,
+            voice: BandVoice::Fiddle,
+            players: 2,
+            volume: 0.75,
+            pan: -0.15,
+            depth: 0.0,
+        },
+        BandSlot {
+            part: BandPart::Accompaniment,
+            voice: BandVoice::Piano,
+            players: 1,
+            volume: 0.65,
+            pan: 0.10,
+            depth: 0.10,
+        },
+        BandSlot {
+            part: BandPart::Countermelody,
+            voice: BandVoice::Fiddle,
+            players: 2,
+            volume: 0.60,
+            pan: 0.30,
+            depth: 0.05,
+        },
+        BandSlot {
+            part: BandPart::Percussion,
+            voice: BandVoice::FootTaps,
+            players: 3,
+            volume: 0.50,
+            pan: 0.0,
+            depth: 0.20,
+        },
+    ]
+}
+
+/// How many channels the music is mixed to.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OutputMode {
+    /// One channel, folded down.
+    Mono,
+    /// Two channels; the default and what every device supports.
+    #[default]
+    Stereo,
+    /// A five-channel front/rear image (left, right, centre, rear left, rear
+    /// right), downmixed by the audio engine when the device is stereo.
+    Surround,
+}
+
+impl OutputMode {
+    pub const ALL: [Self; 3] = [Self::Mono, Self::Stereo, Self::Surround];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Mono => "Mono",
+            Self::Stereo => "Stereo",
+            Self::Surround => "Surround",
+        }
+    }
+
+    pub fn channels(self) -> u16 {
+        match self {
+            Self::Mono => 1,
+            Self::Stereo => 2,
+            Self::Surround => 5,
+        }
+    }
+}
+
+/// Which loop-to-loop variations are allowed.
+///
+/// The four rendered passes each draw from these choices.
+/// Turning one off removes that kind of variation everywhere without changing
+/// the 64-beat grid or the plain first pass.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct VariationOptions {
+    /// Shorten long notes on alternate passes (a more detached bowing).
+    pub articulation: bool,
+    /// Double a melody note with the chord tone below it.
+    pub double_stops: bool,
+    /// Add a short grace note before some longer notes.
+    pub grace_notes: bool,
+    /// Lift a held note an octave on later passes.
+    pub octave_lift: bool,
+    /// Add short chord stabs between the beats.
+    pub chord_stabs: bool,
+    /// Rarely leave one bar to the melody, resting the accompaniment.
+    pub melody_alone_bar: bool,
+}
+
+impl Default for VariationOptions {
+    fn default() -> Self {
+        Self {
+            articulation: true,
+            double_stops: true,
+            grace_notes: true,
+            octave_lift: true,
+            chord_stabs: true,
+            melody_alone_bar: true,
+        }
+    }
+}
+
+impl VariationOptions {
+    /// Names for the preferences checkboxes, in display order.
+    pub const LABELS: [(&'static str, &'static str); 6] = [
+        ("articulation", "Vary note lengths"),
+        ("double_stops", "Add chord-tone double stops"),
+        ("grace_notes", "Add grace notes"),
+        ("octave_lift", "Lift held notes an octave"),
+        ("chord_stabs", "Add chord stabs"),
+        ("melody_alone_bar", "Let the melody play a bar alone"),
+    ];
+}
+
+/// How much human timing the band gets.
+///
+/// The limits are deliberate and small: the dance grid stays exact, and every
+/// onset is bounded (see `contra_music::humanize`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HumanizeOptions {
+    /// Give each voice an independent slow tempo drift.
+    pub tempo_drift: bool,
+    /// Spread notes that begin together as a chord by a few milliseconds.
+    pub chord_spread: bool,
+    /// Scale for both effects, 0.0-1.0. One is the calibrated amount.
+    pub amount: f32,
+}
+
+impl Default for HumanizeOptions {
+    fn default() -> Self {
+        Self {
+            tempo_drift: true,
+            chord_spread: true,
+            amount: 1.0,
+        }
+    }
+}
+
+/// How the once-only ending is shaped.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct EndingOptions {
+    /// Reveal the ending gradually over the last four beats instead of jumping
+    /// into a stretched final bar.
+    pub gradual: bool,
+    /// Resolve the final chord a perfect fifth below the written final chord.
+    pub final_chord_down_fifth: bool,
+}
+
+impl Default for EndingOptions {
+    fn default() -> Self {
+        Self {
+            gradual: true,
+            final_chord_down_fifth: true,
+        }
+    }
+}
+
+/// Which saved tunes the rotation plays.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TuneSetSource {
+    /// The explicit list in [`TuneRotation::tunes`].
+    #[default]
+    List,
+    /// Every saved tune in one folder, in library order. The folder is looked
+    /// up by name; a deleted folder falls back to the list.
+    Folder(String),
+}
+
+impl TuneSetSource {
+    pub fn label(&self) -> &str {
+        match self {
+            Self::List => "Chosen tunes",
+            Self::Folder(name) => name,
+        }
+    }
+}
+
+/// A sound the dancers make during a figure.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DancerSound {
+    /// A foot stomp on the floor.
+    Stomp,
+    /// A hand clap.
+    Clap,
+}
+
+/// One dancer sound placed on the dance grid.
+///
+/// The app derives these from the dance card (a petronella or a long line has a
+/// stomp, a balance has a clap) and the renderer mixes them under the band, so
+/// the music follows the dance rather than a fixed pattern.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DancerSoundEvent {
+    /// Dance beat where the sound starts. May repeat every pass.
+    pub beat: f64,
+    pub sound: DancerSound,
+    /// Relative level, 0.0-1.0.
+    pub gain: f32,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Theme {
     #[default]
@@ -469,6 +877,8 @@ pub struct TuneRotation {
     /// Saved tunes in play order, by source. Resolved against the saved-tune
     /// library at runtime; a stale entry is skipped.
     pub tunes: Vec<SourceRef>,
+    /// Whether the set is the explicit list or the contents of a folder.
+    pub source: TuneSetSource,
 }
 
 impl Default for TuneRotation {
@@ -477,6 +887,7 @@ impl Default for TuneRotation {
             enabled: false,
             passes_per_tune: 8,
             tunes: Vec::new(),
+            source: TuneSetSource::List,
         }
     }
 }
@@ -559,8 +970,23 @@ pub struct Preferences {
     /// files keep loading.
     pub second_accompaniment: Countermelody,
     /// Players per part of the virtual band; see [`InstrumentCopies`].
+    ///
+    /// This is the pre-band-list model. It stays for older files and for code
+    /// that still describes the three-role band; [`Self::band`] supersedes it
+    /// once it is set.
     #[serde(default)]
     pub instrument_copies: InstrumentCopies,
+    /// The instruments the user added to the band; see [`BandSlot`].
+    ///
+    /// Files written before this setting existed are migrated to an explicit
+    /// list by `band-instruments-v12`.
+    #[serde(default = "default_band")]
+    pub band: Vec<BandSlot>,
+    /// Mono, stereo, or surround output; see [`OutputMode`].
+    #[serde(default)]
+    pub output_mode: OutputMode,
+    /// Level of the spoken calls, independent of the band mix.
+    pub caller_volume: f32,
     /// Optional percussion layer; see [`Percussion`].
     pub percussion: Percussion,
     /// Rhythm used to place the percussion layer; see [`PercussionRhythm`].
@@ -588,12 +1014,26 @@ pub struct Preferences {
     /// later loop passes (ornaments, emphasis notes; now and then one bar of
     /// melody alone).
     pub accompaniment_variations: bool,
+    /// Which variation kinds are allowed; see [`VariationOptions`].
+    pub variation_options: VariationOptions,
     /// Give each player a tiny independent tempo drift, with a controller that
     /// settles it back on the user's tempo, and spread chord notes by a few
     /// milliseconds. Audio only; the count-in, the 64-beat grid, the calls, and
     /// MIDI export stay exact.
     #[serde(default = "default_humanize_timing")]
     pub humanize_timing: bool,
+    /// Which human timing effects are allowed; see [`HumanizeOptions`].
+    pub humanize_options: HumanizeOptions,
+    /// Shape of the once-only ending; see [`EndingOptions`].
+    pub ending_options: EndingOptions,
+    /// Include stomps and claps from the dancers on figures that call for them.
+    pub dancer_sounds: bool,
+    /// Level of the dancer sound layer.
+    pub dancer_sound_volume: f32,
+    /// Slider floor for the session tempo.
+    pub tempo_min_bpm: f64,
+    /// Slider ceiling for the session tempo.
+    pub tempo_max_bpm: f64,
     pub show_original: bool,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
@@ -633,7 +1073,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 11;
+pub const CURRENT_SCHEMA_VERSION: u32 = 12;
 
 /// The dance source a new or older preference file downloads from.
 ///
@@ -719,6 +1159,21 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "role-preset-v11",
         version: 11,
         apply: migrate_v10_role_preset,
+    },
+    Migration {
+        tag: "echo-subtle-v12",
+        version: 12,
+        apply: migrate_v11_echo_subtle,
+    },
+    Migration {
+        tag: "band-instruments-v12",
+        version: 12,
+        apply: migrate_v11_band_instruments,
+    },
+    Migration {
+        tag: "dancer-sounds-v12",
+        version: 12,
+        apply: migrate_v11_dancer_sounds,
     },
 ];
 
@@ -816,6 +1271,46 @@ fn migrate_v10_role_preset(prefs: &mut Preferences) {
     prefs.role_preset = RolePreset::detect(&prefs.role_terms);
 }
 
+fn migrate_v11_echo_subtle(prefs: &mut Preferences) {
+    // v12 makes a subtle echo the default. Files written with the old dry
+    // default get the new room sound; a user who had already chosen an echo
+    // keeps it. As with the earlier default-change migrations, this cannot
+    // distinguish an explicit Off from the old default, so Off moves to
+    // Subtle.
+    if prefs.effects.echo == crate::effects::EchoPreset::Off {
+        prefs.effects.echo = crate::effects::EchoPreset::Subtle;
+    }
+}
+
+fn migrate_v11_band_instruments(prefs: &mut Preferences) {
+    // v12 replaces the fixed three-role band with a list. A file that never
+    // customised the old roles gets the new default band (two melody fiddles,
+    // piano, two countermelody fiddles, three foot taps). A customised file
+    // keeps its choices as one slot per role so nothing it heard changes.
+    //
+    // A file already written by v12 carries the list, and `serde` supplies the
+    // new default for a missing one, so only older files are translated.
+    if prefs.schema_version >= 12 {
+        return;
+    }
+    let untouched = prefs.melody == MelodyInstrument::Fiddle
+        && prefs.accompaniment == AccompanimentInstrument::Piano
+        && prefs.second_accompaniment == Countermelody::Accordion
+        && prefs.percussion == Percussion::Off
+        && prefs.instrument_copies == InstrumentCopies::default();
+    prefs.band = if untouched {
+        default_band()
+    } else {
+        prefs.legacy_band()
+    };
+}
+
+fn migrate_v11_dancer_sounds(_prefs: &mut Preferences) {
+    // v12 adds the dancer sound layer. `serde` supplies the enabled default,
+    // which is the requested behaviour for existing sessions, so there is
+    // nothing to adjust.
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -869,6 +1364,9 @@ impl Default for Preferences {
             accompaniment_rhythm: AccompanimentRhythm::default(),
             second_accompaniment: Countermelody::default(),
             instrument_copies: InstrumentCopies::default(),
+            band: default_band(),
+            output_mode: OutputMode::default(),
+            caller_volume: 1.0,
             percussion: Percussion::default(),
             percussion_rhythm: PercussionRhythm::default(),
             theme: Theme::default(),
@@ -883,7 +1381,14 @@ impl Default for Preferences {
             loop_enabled: true,
             count_in_enabled: true,
             accompaniment_variations: true,
+            variation_options: VariationOptions::default(),
             humanize_timing: default_humanize_timing(),
+            humanize_options: HumanizeOptions::default(),
+            ending_options: EndingOptions::default(),
+            dancer_sounds: true,
+            dancer_sound_volume: 0.35,
+            tempo_min_bpm: 200.0,
+            tempo_max_bpm: 300.0,
             show_original: false,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
@@ -905,6 +1410,81 @@ impl Default for Preferences {
 impl Preferences {
     pub fn tempo(&self) -> Tempo {
         Tempo::new(self.tempo_bpm)
+    }
+
+    /// The band to render, validated for the renderer.
+    pub fn band_slots(&self) -> Vec<BandSlot> {
+        self.band.clone()
+    }
+
+    /// Mutable access to the band list.
+    pub fn band_mut(&mut self) -> &mut Vec<BandSlot> {
+        &mut self.band
+    }
+
+    /// The one-slot-per-role band implied by the original settings.
+    fn legacy_band(&self) -> Vec<BandSlot> {
+        let mut band = Vec::new();
+        band.push(BandSlot {
+            part: BandPart::Melody,
+            voice: match self.melody {
+                MelodyInstrument::Fiddle => BandVoice::Fiddle,
+                MelodyInstrument::Accordion => BandVoice::Accordion,
+                MelodyInstrument::AltoSax => BandVoice::AltoSax,
+                MelodyInstrument::TenorSax => BandVoice::TenorSax,
+                MelodyInstrument::Clarinet => BandVoice::Clarinet,
+            },
+            players: self.instrument_copies.melody,
+            volume: self.melody_volume,
+            pan: -0.15,
+            depth: 0.0,
+        });
+        band.push(BandSlot {
+            part: BandPart::Accompaniment,
+            voice: match self.accompaniment {
+                AccompanimentInstrument::Piano => BandVoice::Piano,
+                AccompanimentInstrument::Guitar => BandVoice::Guitar,
+                AccompanimentInstrument::Accordion => BandVoice::Accordion,
+            },
+            players: self.instrument_copies.accompaniment,
+            volume: self.accompaniment_volume,
+            pan: 0.10,
+            depth: 0.10,
+        });
+        if let Some(instrument) = self.second_accompaniment.instrument() {
+            band.push(BandSlot {
+                part: BandPart::Countermelody,
+                voice: match instrument {
+                    MelodyInstrument::Fiddle => BandVoice::Fiddle,
+                    MelodyInstrument::Accordion => BandVoice::Accordion,
+                    MelodyInstrument::AltoSax => BandVoice::AltoSax,
+                    MelodyInstrument::TenorSax => BandVoice::TenorSax,
+                    MelodyInstrument::Clarinet => BandVoice::Clarinet,
+                },
+                players: self.instrument_copies.countermelody,
+                volume: self.accompaniment_volume * 0.8,
+                pan: 0.30,
+                depth: 0.05,
+            });
+        }
+        if let Some(voice) = match self.percussion {
+            Percussion::Off => None,
+            Percussion::FootTaps => Some(BandVoice::FootTaps),
+            Percussion::Drumset => Some(BandVoice::Drumset),
+        } {
+            band.push(BandSlot {
+                part: BandPart::Percussion,
+                voice,
+                players: self.instrument_copies.percussion,
+                volume: self.percussion_volume,
+                pan: 0.0,
+                depth: 0.20,
+            });
+        }
+        for slot in &mut band {
+            slot.validate();
+        }
+        band
     }
 
     /// Select a role preset.
@@ -941,6 +1521,23 @@ impl Preferences {
         self.tune_rotation.validate();
         self.tts_rate = self.tts_rate.clamp(MIN_TTS_RATE, MAX_TTS_RATE);
         self.instrument_copies.validate();
+        for slot in self.band.iter_mut() {
+            slot.validate();
+        }
+        self.caller_volume = self.caller_volume.clamp(0.0, 2.0);
+        if !self.tempo_min_bpm.is_finite() {
+            self.tempo_min_bpm = 200.0;
+        }
+        if !self.tempo_max_bpm.is_finite() {
+            self.tempo_max_bpm = 300.0;
+        }
+        self.tempo_min_bpm = self.tempo_min_bpm.clamp(Tempo::MIN_BPM, Tempo::MAX_BPM);
+        self.tempo_max_bpm = self.tempo_max_bpm.clamp(Tempo::MIN_BPM, Tempo::MAX_BPM);
+        if self.tempo_min_bpm > self.tempo_max_bpm {
+            std::mem::swap(&mut self.tempo_min_bpm, &mut self.tempo_max_bpm);
+        }
+        self.humanize_options.amount = self.humanize_options.amount.clamp(0.0, 1.0);
+        self.dancer_sound_volume = self.dancer_sound_volume.clamp(0.0, 2.0);
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
         self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
         self.percussion_volume = self.percussion_volume.clamp(0.0, 2.0);
@@ -1014,12 +1611,19 @@ impl Preferences {
             audio: self.tempo_bpm != old.tempo_bpm
                 || self.count_in_enabled != old.count_in_enabled
                 || self.accompaniment_variations != old.accompaniment_variations
+                || self.variation_options != old.variation_options
                 || self.humanize_timing != old.humanize_timing
+                || self.humanize_options != old.humanize_options
+                || self.ending_options != old.ending_options
+                || self.dancer_sounds != old.dancer_sounds
+                || self.dancer_sound_volume != old.dancer_sound_volume
                 || self.melody != old.melody
                 || self.accompaniment != old.accompaniment
                 || self.accompaniment_rhythm != old.accompaniment_rhythm
                 || self.second_accompaniment != old.second_accompaniment
                 || self.instrument_copies != old.instrument_copies
+                || self.band != old.band
+                || self.output_mode != old.output_mode
                 || self.percussion != old.percussion
                 || self.percussion_rhythm != old.percussion_rhythm
                 || self.melody_volume != old.melody_volume
@@ -1079,6 +1683,124 @@ mod tests {
         assert!(!prefs.shuffle_alternatives);
         assert!(!prefs.tune_rotation.enabled);
         assert_eq!(prefs.tune_rotation.passes_per_tune, 8);
+    }
+
+    #[test]
+    fn the_default_band_is_the_requested_lineup() {
+        let prefs = Preferences::default();
+        let band = prefs.band_slots();
+        assert_eq!(band.len(), 4);
+        assert_eq!(
+            (band[0].part, band[0].voice, band[0].players),
+            (BandPart::Melody, BandVoice::Fiddle, 2)
+        );
+        assert_eq!(
+            (band[1].part, band[1].voice, band[1].players),
+            (BandPart::Accompaniment, BandVoice::Piano, 1)
+        );
+        assert_eq!(
+            (band[2].part, band[2].voice, band[2].players),
+            (BandPart::Countermelody, BandVoice::Fiddle, 2)
+        );
+        assert_eq!(
+            (band[3].part, band[3].voice, band[3].players),
+            (BandPart::Percussion, BandVoice::FootTaps, 3)
+        );
+        assert!(prefs.dancer_sounds, "dancer sounds are on by default");
+        assert_eq!(prefs.caller_volume, 1.0);
+        assert_eq!(prefs.output_mode, OutputMode::Stereo);
+        assert_eq!((prefs.tempo_min_bpm, prefs.tempo_max_bpm), (200.0, 300.0));
+    }
+
+    #[test]
+    fn older_files_get_the_new_band_and_subtle_echo() {
+        let prefs = Preferences::from_json(r#"{"schema_version":11}"#).expect("deserialize");
+        assert_eq!(prefs.band, default_band());
+        assert_eq!(prefs.effects.echo, crate::effects::EchoPreset::Subtle);
+        assert!(prefs.dancer_sounds);
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn a_customised_old_band_keeps_its_own_choices() {
+        let json = r#"{
+            "schema_version": 11,
+            "melody": "Clarinet",
+            "accompaniment": "Guitar",
+            "second_accompaniment": "Off",
+            "percussion": "Drumset",
+            "instrument_copies": {"melody": 3, "accompaniment": 2, "countermelody": 1, "percussion": 2}
+        }"#;
+        let prefs = Preferences::from_json(json).expect("deserialize");
+        let band = prefs.band_slots();
+        assert_eq!(band.len(), 3, "a duo plus a drum kit has three slots");
+        assert_eq!(band[0].voice, BandVoice::Clarinet);
+        assert_eq!(band[0].players, 3);
+        assert_eq!(band[1].voice, BandVoice::Guitar);
+        assert_eq!(band[1].players, 2);
+        assert_eq!(band[2].voice, BandVoice::Drumset);
+        assert_eq!(band[2].players, 2);
+    }
+
+    #[test]
+    fn the_band_list_is_clamped_and_round_trips() {
+        let mut prefs = Preferences::default();
+        prefs.band_mut().push(BandSlot {
+            part: BandPart::Accompaniment,
+            voice: BandVoice::Guitar,
+            players: 99,
+            volume: 9.0,
+            pan: -9.0,
+            depth: 9.0,
+        });
+        prefs.band_mut()[0].players = 0;
+        prefs.validate();
+        let band = prefs.band_slots();
+        assert_eq!(band.len(), 5);
+        assert_eq!(band[0].players, 1);
+        assert_eq!(band[4].players, BandSlot::MAX_PLAYERS);
+        assert_eq!(band[4].volume, 2.0);
+        assert_eq!(band[4].pan, -1.0);
+        assert_eq!(band[4].depth, 1.0);
+
+        let restored =
+            Preferences::from_json(&prefs.to_json().expect("serialize")).expect("deserialize");
+        assert_eq!(restored.band_slots(), band);
+    }
+
+    #[test]
+    fn a_tune_set_can_be_a_folder() {
+        let prefs = Preferences {
+            tune_rotation: TuneRotation {
+                enabled: true,
+                source: TuneSetSource::Folder("Warmups".into()),
+                ..TuneRotation::default()
+            },
+            ..Preferences::default()
+        };
+        let restored =
+            Preferences::from_json(&prefs.to_json().expect("serialize")).expect("deserialize");
+        assert_eq!(
+            restored.tune_rotation.source,
+            TuneSetSource::Folder("Warmups".into())
+        );
+    }
+
+    #[test]
+    fn older_files_keep_the_explicit_tune_list() {
+        let prefs = Preferences::from_json(r#"{"schema_version":11}"#).expect("deserialize");
+        assert_eq!(prefs.tune_rotation.source, TuneSetSource::List);
+    }
+
+    #[test]
+    fn the_tempo_slider_range_is_validated() {
+        let mut prefs = Preferences {
+            tempo_min_bpm: 320.0,
+            tempo_max_bpm: 120.0,
+            ..Preferences::default()
+        };
+        prefs.validate();
+        assert_eq!((prefs.tempo_min_bpm, prefs.tempo_max_bpm), (120.0, 320.0));
     }
 
     #[test]
@@ -1561,6 +2283,7 @@ mod tests {
                     SourceRef::new("abcsessiontunes", "1", "https://example.invalid/1"),
                     SourceRef::new("abcsessiontunes", "2", "https://example.invalid/2"),
                 ],
+                source: TuneSetSource::List,
             },
             ..Preferences::default()
         };

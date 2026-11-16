@@ -23,10 +23,11 @@ pub use library::{
     FolderError, FolderFilter, LIBRARY_SCHEMA_VERSION, Library, LibraryEntry, LibraryItem,
 };
 pub use prefs::{
-    AccompanimentInstrument, AccompanimentRhythm, CallTone, ChangeSet, Countermelody,
-    DEFAULT_DANCE_SOURCE, InstrumentCopies, MAX_TTS_RATE, MIN_TTS_RATE, MelodyInstrument,
+    AccompanimentInstrument, AccompanimentRhythm, BandPart, BandSlot, BandVoice, CallTone,
+    ChangeSet, Countermelody, DEFAULT_DANCE_SOURCE, DancerSound, DancerSoundEvent, EndingOptions,
+    HumanizeOptions, InstrumentCopies, MAX_TTS_RATE, MIN_TTS_RATE, MelodyInstrument, OutputMode,
     Percussion, PercussionRhythm, Preferences, SoundFontSetting, TTS_RATE_SCALE, Theme,
-    TuneRotation,
+    TuneRotation, TuneSetSource, VariationOptions, default_band,
 };
 pub use roles::{RolePreset, RoleSide, RoleTerms};
 pub use time::{Beats, Samples, Seconds, Tempo};

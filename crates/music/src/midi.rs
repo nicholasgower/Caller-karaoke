@@ -946,7 +946,7 @@ mod tests {
 
         assert_eq!(controller_values(&smf, 91), vec![64, 64]);
         assert_eq!(controller_values(&smf, 93), vec![0, 0]);
-        assert_eq!(controller_values(&smf, 94), vec![0, 0]);
+        assert_eq!(controller_values(&smf, 94), vec![48, 48]);
         assert!(has_gm2_reverb_type(&smf, 0x01));
     }
 

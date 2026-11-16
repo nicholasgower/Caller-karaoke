@@ -14,6 +14,11 @@ pub struct Tune {
     pub meter: String,
     pub rhythm: String,
     pub abc: String,
+    /// The ABC text as downloaded, kept so an edit made in the built-in editor
+    /// can be reversed. `None` for a tune that was never downloaded (the
+    /// bundled default) or written by an older version.
+    #[serde(default)]
+    pub original_abc: Option<String>,
     /// Transcription credit or source note from the provider.
     pub credits: String,
 }
@@ -58,6 +63,7 @@ mod tests {
             meter: String::new(),
             rhythm: String::new(),
             abc: "X:1\nK:D\n".into(),
+            original_abc: None,
             credits: String::new(),
         };
         assert_eq!(tune.display_key(), "unknown key");

@@ -300,6 +300,23 @@ impl<T: LibraryItem> Library<T> {
         true
     }
 
+    /// Move a folder to a new position in the displayed order.
+    ///
+    /// `to` is clamped to the last index, so dropping a folder past the end
+    /// (or onto itself) is harmless. Returns true when the order changed.
+    pub fn move_folder(&mut self, from: usize, to: usize) -> bool {
+        if from >= self.folders.len() {
+            return false;
+        }
+        let to = to.min(self.folders.len() - 1);
+        if from == to {
+            return false;
+        }
+        let folder = self.folders.remove(from);
+        self.folders.insert(to, folder);
+        true
+    }
+
     /// Entries matching every whitespace-separated search term in the selected
     /// folder, in insertion order.
     pub fn search(&self, query: &str, filter: &FolderFilter) -> Vec<&LibraryEntry<T>> {
@@ -425,6 +442,7 @@ mod tests {
             meter: "4/4".into(),
             rhythm: "reel".into(),
             abc: "X:1\nK:D\n".into(),
+            original_abc: None,
             credits: String::new(),
         }
     }

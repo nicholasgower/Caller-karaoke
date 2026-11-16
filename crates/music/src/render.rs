@@ -3,8 +3,9 @@
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, Countermelody, InstrumentCopies,
-    MelodyInstrument, Percussion, PercussionRhythm,
+    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, BandSlot, Countermelody,
+    DancerSoundEvent, EndingOptions, HumanizeOptions, InstrumentCopies, MelodyInstrument,
+    OutputMode, Percussion, PercussionRhythm, VariationOptions,
 };
 use rustysynth::SoundFont;
 
@@ -20,10 +21,30 @@ pub struct RenderRequest {
     /// The countermelody voice that completes the trio; [`Countermelody::Off`]
     /// renders a duo.
     pub second_accompaniment: Countermelody,
+    /// The instruments the user added to the band. One entry per instrument
+    /// group, with its own players, level, and position.
+    pub band: Vec<BandSlot>,
+    /// Mono, stereo, or surround output.
+    pub output: OutputMode,
     /// Players per part. One is the single-player default; extra copies are
     /// rendered as separate players with their own pan and micro-timing. See
     /// [`crate::copies`].
+    ///
+    /// Kept for callers that still describe the three-role band; [`Self::band`]
+    /// is the list the renderer uses.
     pub copies: InstrumentCopies,
+    /// Which loop-to-loop variations are allowed.
+    pub variations: VariationOptions,
+    /// Which human timing effects are allowed.
+    pub humanize_options: HumanizeOptions,
+    /// Shape of the once-only ending.
+    pub ending_options: EndingOptions,
+    /// Include stomps and claps from the dancers.
+    pub dancer_sounds: bool,
+    /// Level of the dancer sound layer.
+    pub dancer_sound_volume: f32,
+    /// Dancer sounds placed on the dance grid.
+    pub dancer_sound_events: Vec<DancerSoundEvent>,
     /// Optional percussion layer; [`Percussion::Off`] renders no percussion.
     pub percussion: Percussion,
     /// Rhythm used to place the percussion layer.
