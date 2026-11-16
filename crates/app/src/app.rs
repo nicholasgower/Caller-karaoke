@@ -1720,8 +1720,8 @@ impl ContraApp {
     }
 }
 
-impl eframe::App for ContraApp {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+impl ContraApp {
+    fn ui_contents(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         if !self.headless {
             self.launch_focus.update(&ctx);
@@ -1843,10 +1843,90 @@ impl eframe::App for ContraApp {
         }
     }
 
-    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+    fn shutdown(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.speech.stop();
         self.save_prefs();
     }
+}
+
+impl eframe::App for ContraApp {
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        #[cfg(target_os = "android")]
+        {
+            let [left, top, right, bottom] = crate::android_insets::system_bar_insets();
+            let pixels_per_point = ctx.pixels_per_point().max(1.0);
+            let viewport = raw_input
+                .screen_rect
+                .or(raw_input.viewport().inner_rect)
+                .unwrap_or_else(|| ctx.viewport_rect());
+            let screen = egui::vec2(
+                viewport.width() * pixels_per_point,
+                viewport.height() * pixels_per_point,
+            );
+            raw_input.safe_area_insets = Some(android_safe_area(
+                left,
+                top,
+                right,
+                bottom,
+                screen,
+                pixels_per_point,
+            ));
+        }
+
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = (ctx, raw_input);
+        }
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        // Android draws edge-to-edge. Keep the whole UI inside the window's
+        // content rectangle instead of letting the status and navigation bars
+        // cover the tab row and the bottom of the card. egui gets the same
+        // insets through `raw_input_hook`, so popups and hit-testing agree.
+        #[cfg(target_os = "android")]
+        {
+            let content = ui.ctx().content_rect();
+            ui.scope_builder(egui::UiBuilder::new().max_rect(content), |ui| {
+                self.ui_contents(ui, frame);
+            });
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            self.ui_contents(ui, frame);
+        }
+    }
+
+    fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
+        self.shutdown(gl);
+    }
+}
+
+/// Convert Android's system-bar insets from physical pixels to egui points.
+#[cfg(any(target_os = "android", test))]
+fn android_safe_area(
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+    screen: egui::Vec2,
+    pixels_per_point: f32,
+) -> egui::SafeAreaInsets {
+    use egui::epaint::MarginF32;
+
+    if screen.x <= 0.0 || screen.y <= 0.0 {
+        return egui::SafeAreaInsets::default();
+    }
+
+    let pixels_per_point = pixels_per_point.max(1.0);
+    let width = screen.x / pixels_per_point;
+    let height = screen.y / pixels_per_point;
+    egui::SafeAreaInsets(MarginF32 {
+        left: (left.max(0) as f32 / pixels_per_point).min(width),
+        top: (top.max(0) as f32 / pixels_per_point).min(height),
+        right: (right.max(0) as f32 / pixels_per_point).min(width),
+        bottom: (bottom.max(0) as f32 / pixels_per_point).min(height),
+    })
 }
 
 /// Duration of the fade/slide when the active screen changes.
@@ -2128,6 +2208,32 @@ fn safe_filename(title: &str) -> String {
 mod tests {
     use super::*;
     use crate::app::ui::{CallPhase, CardMode, CardTone, card_state, card_tone};
+
+    #[test]
+    fn android_safe_area_removes_system_bars_in_points() {
+        // Portrait on the test device: 1080x2400 at 2.5x, with the status bar
+        // occupying the top 110 px and the navigation bar the bottom 120 px.
+        let insets = android_safe_area(0, 110, 0, 120, egui::vec2(1080.0, 2400.0), 2.5);
+        assert_eq!(insets.0.left, 0.0);
+        assert_eq!(insets.0.top, 44.0);
+        assert_eq!(insets.0.right, 0.0);
+        assert_eq!(insets.0.bottom, 48.0);
+
+        // Landscape moves the bars to the sides.
+        let insets = android_safe_area(120, 0, 110, 0, egui::vec2(2400.0, 1080.0), 2.5);
+        assert_eq!(insets.0.left, 48.0);
+        assert_eq!(insets.0.top, 0.0);
+        assert_eq!(insets.0.right, 44.0);
+        assert_eq!(insets.0.bottom, 0.0);
+    }
+
+    #[test]
+    fn android_safe_area_ignores_zero_insets() {
+        assert_eq!(
+            android_safe_area(0, 0, 0, 0, egui::vec2(1080.0, 2400.0), 2.5),
+            egui::SafeAreaInsets::default()
+        );
+    }
 
     #[test]
     fn bundled_defaults_pass_the_length_check() {
