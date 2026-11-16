@@ -799,6 +799,17 @@ mod tests {
         }
     }
 
+    /// RMS of the loop region, which excludes the count-in and the ending.
+    fn loop_rms(buffer: &AudioBuffer) -> f64 {
+        let start = buffer.loop_start_sample as usize * buffer.channels as usize;
+        let end = buffer.loop_end_sample as usize * buffer.channels as usize;
+        let sum: f64 = buffer.samples[start..end]
+            .iter()
+            .map(|sample| f64::from(*sample) * f64::from(*sample))
+            .sum();
+        (sum / (end - start) as f64).sqrt()
+    }
+
     #[test]
     fn renders_count_in_and_loop() {
         let buffer = render_builtin(&request());
@@ -918,6 +929,45 @@ mod tests {
         );
         assert!(thicker.samples.iter().all(|sample| sample.is_finite()));
         assert!(thicker.samples.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn copy_count_keeps_the_rendered_level() {
+        for humanize in [false, true] {
+            let mut single = request();
+            single.humanize_timing = humanize;
+            let reference = loop_rms(&render_builtin(&single));
+
+            for count in 2..=contra_core::InstrumentCopies::MAX {
+                let mut melody_only = request();
+                melody_only.humanize_timing = humanize;
+                melody_only.copies.melody = count;
+
+                let mut band = request();
+                band.humanize_timing = humanize;
+                band.copies = contra_core::InstrumentCopies {
+                    melody: count,
+                    accompaniment: count,
+                    countermelody: count,
+                    percussion: count.min(contra_core::InstrumentCopies::MAX_PERCUSSION),
+                };
+
+                for (label, request) in [("melody", melody_only), ("band", band)] {
+                    let level = loop_rms(&render_builtin(&request));
+                    let decibels = 20.0 * (level / reference).log10();
+                    // Human timing decorrelates the copies, so their power sum
+                    // lands on the single player. Without it, fixed latencies can
+                    // still reinforce coherently, and a little over 1 dB of
+                    // variation is expected.
+                    let tolerance = if humanize { 0.5 } else { 1.5 };
+                    assert!(
+                        decibels.abs() < tolerance,
+                        "{label} with {count} copies (humanize {humanize}) moved the level by \
+                         {decibels:.2} dB"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

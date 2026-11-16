@@ -261,8 +261,11 @@ pub fn render_soundfont(
 /// Set a part's program, level, and pan on every copy channel.
 ///
 /// The level goes through controller 7 rather than a gain applied to samples,
-/// so the sampled voice keeps its own velocity response. The per-copy gain
-/// from the section plan is folded into that controller value.
+/// so the sampled voice keeps its own velocity response. General MIDI squares
+/// the channel volume, so the section plan's linear gain is square-rooted
+/// before it enters the controller; without that a section would fall away
+/// faster than its power sum. Quantising the controller to an integer leaves
+/// at most a fraction of a decibel of error.
 fn configure_part(
     synth: &mut Synthesizer,
     part: Part,
@@ -277,7 +280,7 @@ fn configure_part(
     {
         let channel = part.channel(copy);
         synth.process_midi_message(channel, 0xC0, i32::from(program), 0);
-        let level = (volume.clamp(0.0, 1.0) * 110.0 * voice.gain).clamp(0.0, 127.0) as i32;
+        let level = (volume.clamp(0.0, 1.0) * 110.0 * voice.gain.sqrt()).clamp(0.0, 127.0) as i32;
         synth.process_midi_message(channel, 0xB0, 7, level);
         synth.process_midi_message(channel, 0xB0, 10, crate::copies::pan_cc(voice.pan));
     }

@@ -191,6 +191,15 @@ fn bundled_font_renders_a_section_of_every_copy() {
         peak > one_peak * 0.25,
         "a section of four players should stay audible next to one ({peak} vs {one_peak})"
     );
+
+    // Adding players must not change the part's loudness. General MIDI squares
+    // the channel volume, so this also guards the square-root the renderer
+    // applies before writing controller 7.
+    let decibels = 20.0 * (loop_rms(&section) / loop_rms(&one)).log10();
+    assert!(
+        decibels.abs() < 1.0,
+        "a four-player section moved the level by {decibels:.2} dB"
+    );
     let difference = section
         .samples
         .iter()
@@ -206,6 +215,17 @@ fn request_loop_pass_samples(request: &RenderRequest) -> u64 {
     let beat_seconds = 120.0 / request.bpm;
     let samples_per_beat = beat_seconds * f64::from(request.sample_rate.max(16_000));
     (request.arrangement.loop_beats * samples_per_beat).round() as u64
+}
+
+/// RMS of the loop region, which excludes the count-in.
+fn loop_rms(buffer: &contra_music::AudioBuffer) -> f64 {
+    let start = buffer.loop_start_sample as usize * buffer.channels as usize;
+    let end = buffer.loop_end_sample as usize * buffer.channels as usize;
+    let sum: f64 = buffer.samples[start..end]
+        .iter()
+        .map(|sample| f64::from(*sample) * f64::from(*sample))
+        .sum();
+    (sum / (end - start) as f64).sqrt()
 }
 
 #[test]

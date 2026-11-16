@@ -53,8 +53,8 @@ position, a few milliseconds of constant latency, and a small tuning or velocity
 difference, so a two-fiddle section sounds wider and thicker instead of merely
 louder. All copies still play on the same dance-beat grid: the latency is a fixed
 offset of at most a dozen milliseconds, never drift. The section is levelled so
-that four players do not quadruple the mix, and the renderer still removes any
-peak above its headroom.
+that adding players thickens the part without changing how loud it is, and the
+renderer still removes any peak above its headroom.
 
 Copy counts are saved with the other preferences. Changing one re-renders the
 loop without restarting playback, like an instrument change.
