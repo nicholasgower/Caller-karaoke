@@ -1,5 +1,32 @@
 use eframe::egui;
 
+/// A row action button: touch sized on a phone, dense on a desktop.
+///
+/// Every button that shares a row in a saved-item list must go through this
+/// helper (or [`row_menu_button`]), otherwise egui mixes a small button with a
+/// normal one and the row has two different heights.
+pub(in crate::app) fn row_button(ui: &mut egui::Ui, compact: bool, label: &str) -> egui::Response {
+    if compact {
+        ui.button(label)
+    } else {
+        ui.small_button(label)
+    }
+}
+
+/// A menu button that matches [`row_button`] so the actions in one row line up.
+pub(in crate::app) fn row_menu_button(
+    ui: &mut egui::Ui,
+    compact: bool,
+    label: impl Into<egui::WidgetText>,
+    add_contents: impl FnOnce(&mut egui::Ui),
+) -> egui::Response {
+    let button = egui::Button::new(label);
+    let button = if compact { button } else { button.small() };
+    egui::containers::menu::MenuButton::from_button(button)
+        .ui(ui, add_contents)
+        .0
+}
+
 /// Whether a text field lost focus because Enter was pressed.
 pub(in crate::app) fn submitted(ui: &egui::Ui, response: &egui::Response) -> bool {
     response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter))

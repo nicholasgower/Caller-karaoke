@@ -13,7 +13,8 @@ mod tune_picker;
 mod widgets;
 
 pub(in crate::app) use widgets::{
-    combo_option, empty_label, formation_label, submit_text_edit, submitted,
+    combo_option, empty_label, formation_label, row_button, row_menu_button, submit_text_edit,
+    submitted,
 };
 
 use crate::theme;
