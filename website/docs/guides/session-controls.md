@@ -205,8 +205,8 @@ abruptly.
 Contra bands usually stay on one tune for several minutes and change at a
 repeat. **Cycle tunes** does the same with your saved tunes:
 
-1. Open **Select tune** and add each tune with **Add to set** (or **Add to
-   tune set** in the preview).
+1. Open **Select tune** and add each tune with **Add to tune set** in the
+   preview, or select a folder and use **Use this folder as the tune set**.
 2. Turn on **Cycle tunes** in the session controls.
 3. Set **Change tune every** to the number of 64-beat times through. The default
    is eight, about four minutes at 240 BPM; the session line shows the actual

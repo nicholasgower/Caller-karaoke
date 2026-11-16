@@ -36,12 +36,13 @@ The first **Play** renders the arrangement and starts the count-in.
 ## 2. Choose a dance
 
 **Select dance** lists the dances saved on this device. The bundled default is
-already there, and the current dance is not replaced until you choose **Use**.
+already there, and the current dance is not replaced until you choose
+**Use this dance**.
 
 <Steps>
   <Step shot="dance-library">
     Select **Select dance** in the top tab row. Search saved content, select a
-    card to preview it, and press **Use** to load it.
+    card to preview it, and press **Use this dance** in the preview to load it.
   </Step>
   <Step shot="dance-picker-open">
     To add another dance, select **Download dance**. This opens the ContraDB
@@ -52,7 +53,7 @@ already there, and the current dance is not replaced until you choose **Use**.
     results are ten per page; use **Next** and **Previous** to page.
   </Step>
   <Step shot="dance-picker-preview">
-    Select **Preview** on a result, read the figure list and beat total, then
+    Select a result row to preview it, read the figure list and beat total, then
     select **Download dance** to keep it or **Use this dance** to download and
     load it immediately.
   </Step>
@@ -78,8 +79,8 @@ panel work like the dance library.
   </Step>
   <Step shot="tune-picker-preview">
     Search by title or composer, optionally filter by **Key**, **Meter**, or
-    **Genre**, then select **Preview**. **Download tune** saves the tune and
-    **Use this tune** saves and loads it.
+    **Genre**, then select a result row to preview it. **Download tune** saves
+    the tune and **Use this tune** saves and loads it.
   </Step>
 </Steps>
 

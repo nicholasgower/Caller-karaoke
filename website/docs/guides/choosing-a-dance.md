@@ -8,7 +8,7 @@ sidebar_position: 1
 available offline; they are not the same as the temporary source cache. The
 bundled default, *Another Last Dance*, is in the list from first launch.
 
-The current dance is not replaced until you press **Use** or **Use this dance**.
+The current dance is not replaced until you press **Use this dance**.
 Press **Esc** to return to the session without changing the loaded dance.
 
 ## Find a saved dance
@@ -23,14 +23,19 @@ Type into **Search saved** to filter the list. The search is local and matches:
 - and the words of the figures on the card.
 
 Every word you type must match, so `belle ralph` finds Belle of the Ball but
-`belle erik` does not. Select a saved card to read its figures, beat total, and
-source link on the right. Select **Use** to load it.
+`belle erik` does not. The chip at the top right of the list names the current
+grouping and its saved count: **All dances** when nothing is filtered, or the
+folder you selected. Select a saved card to read its figures, beat total, and
+source link on the right.
 
 The saved list and the card preview fill the height below the search field and
 scroll inside their own panes, so a long card or a long folder list never pushes
-the search field off screen. The **Use** and **Folder:** actions on a card, and
-the **Use this dance** and **Remove from saved dances** actions in the preview,
-span their row; on a phone they stack as full-width buttons.
+the search field off screen. Each saved row is one click target: clicking it
+previews the card, and the row itself has no buttons. **Use this dance**,
+**Delete dance**, and **Move to folder** live in the preview. On a desktop,
+drag the divider between the list and the preview, or between the folder panel
+and the list, to resize them. **Reset panes** in the folder panel restores the
+default widths; the phone layout stays stacked and does not resize.
 
 <Shot id="dance-library-search" />
 
@@ -50,17 +55,26 @@ The folder panel on the left filters the list:
     appears in the panel, ready for cards to be moved into it.
   </Step>
   <Step shot="dance-library">
-    Open the **Folder:** menu on a saved card and choose a folder, or choose
-    **Unfiled**. The card moves immediately and the counts update.
+    Select a saved card and use **Move to folder** in its preview to choose
+    **Unfiled** or a folder. On a desktop you can also right-click a card (or
+    press and hold it on a touch screen) and pick the folder from the menu. The
+    card moves immediately and the counts update.
   </Step>
 </Steps>
+
+Folders can be reordered. Drag the grip on a folder row to a new position: a
+line shows where it will land and the moved row stays lifted until you release
+it. On a touch screen, press and hold the folder first (a quick tap still
+selects it); the row shows a hold-progress line and lifts when it is ready to
+move. **Move up** and **Move down** in the folder controls reorder the selected
+folder without a pointer.
 
 Folder names are case-insensitive, so you cannot create both `Warmups` and
 `warmups`. Select a folder in the panel to reveal **Rename folder** and
 **Delete folder**. Renaming keeps the folder's dances with it. Deleting a folder
-does not delete the dances; they become unfiled. **Remove from saved dances**
-on a card deletes that saved copy only; it does not unload a dance that is
-already in the session.
+does not delete the dances; they become unfiled. **Delete dance** in a card's
+preview deletes that saved copy only; it does not unload a dance that is already
+in the session.
 
 ## Download another dance
 
@@ -92,13 +106,14 @@ fields, and every figure, so the file can be read back by this app or inspected
 by another tool. The desktop build uses a save dialog, the browser downloads the
 file, and Android saves it in the app's export folder and offers **Share**.
 
-The screen searches the dance source chosen at the top of the **Download dance**
-screen: ContraDB (the default) or The Caller's Box. The same menu used to live in
-**Preferences → Data & sources**; that page now only shows the current source and
-a link to it. Saved dances keep their own source, and the preview's **Open on …**
-link always returns to that source. The form shows only the filters the selected
-source understands. Changing the source clears the old results, preview, and
-source-specific filters so a search never mixes two sites.
+The screen searches the dance source selected at the top of **Download dance**:
+ContraDB (the default) or The Caller's Box. The same menu used to live in
+**Preferences → Data sources**; that page now only names the current source and
+links to it. The selector shows the source's address and result limit; changing
+it clears the current results because the filters and pages belong to the old
+site. Saved dances keep their own source, and the preview's **Open on …** link
+always returns to that source. The form shows only the filters the selected
+source understands.
 
 The search form stays at the top, the **Previous** and **Next** row stays at the
 bottom, and the result list and preview share the height in between. On a phone
@@ -157,7 +172,7 @@ a dance is loaded.
 
 <Steps>
   <Step shot="dance-picker-preview">
-    Select **Preview** on a result. The right column shows the title,
+    Select a result row to preview it. The right column shows the title,
     choreographer, formation, figure count, beat total, each figure with its
     phrase label and beats, and an **Open on …** link to the card's own source.
     Select **Download dance** to add the card to your saved dances, or
@@ -189,7 +204,7 @@ still not fully reached because the transport has one 64-beat loop.
 
 ## Load the dance
 
-Select **Use this dance** in the download preview or **Use** on a saved card.
+Select **Use this dance** in the download preview or in the saved-card preview.
 The app returns to **Session**, replaces the card, rebuilds the call timeline,
 and marks the music for a rebuild. Press **Play** to render and start the new
 arrangement.

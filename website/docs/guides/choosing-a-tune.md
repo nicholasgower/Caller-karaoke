@@ -9,15 +9,23 @@ offline; they are not the same as the temporary source cache. The bundled
 default, *Sandy Boys*, is in the list from first launch.
 
 Unless **Cycle tunes** is on, the current tune stays loaded until you press
-**Use** or **Use this tune**.
+**Use this tune**.
 
 ## Build a tune set for a long session
 
 For a real dance the music usually changes every few minutes. Add tunes to the
-**tune set** with **Add to tune set** on a saved tune (or **Add to set** on its
-list row), then turn on **Cycle tunes** in the session controls. Each saved tune
-can be in the set once; **In set** marks the ones that are already included, and
-selecting the button again removes a tune.
+**tune set** with **Add to tune set** in a saved tune's preview, then turn on
+**Cycle tunes** in the session controls. Each saved tune can be in the chosen
+set once; **Remove from tune set** takes it out again.
+
+A folder can be the tune set instead. Select the folder in the panel and choose
+**Use this folder as the tune set**; the tune set line then names the folder and
+its count. The set follows the folder's contents as it changes: a tune saved
+into the folder joins the set immediately, and moving a tune out removes it.
+If the folder is deleted, the set falls back to the chosen tunes and the screen
+shows a status line; **Use the chosen tunes** switches back on purpose. The
+chosen list is kept while a folder is active, so switching back loses nothing.
+**Cycle tunes** works the same either way.
 
 The session line shows the current position and the next tune, and **Change
 tune every** sets how many 64-beat times through each tune stays. The default is
@@ -32,13 +40,17 @@ eight, about four minutes at 240 BPM. Cyclic playback needs **Loop** on.
 Type into **Search saved** to filter the list. The search is local and matches
 the tune title, composer, key, meter, genre, and credits. Every word you type
 must match. Select a saved tune to read its metadata and engraved sheet music on
-the right, or **Use** to load the tune.
+the right. The chip at the top right names the current grouping and its saved
+count: **All tunes**, **Unfiled**, or the selected folder.
 
 The saved list and the sheet-music preview fill the height below the search field
 and scroll inside their own panes, so a long tune or a long folder list never
-pushes the search field off screen. The **Use**, **Add to set** / **In set**, and
-**Folder:** actions on a row, and the preview actions, span their row; on a phone
-they stack as full-width buttons.
+pushes the search field off screen. Each saved row is one click target: clicking
+it previews the tune, and the row has no buttons. **Use this tune**,
+**Add to tune set** / **Remove from tune set**, **Delete tune**, and
+**Move to folder** live in the preview. On a desktop, drag the divider between
+the list and the preview, or between the folder panel and the list, to resize
+them; **Reset panes** restores the defaults. The phone layout stays stacked.
 
 <Shot id="tune-library-search" />
 
@@ -52,15 +64,21 @@ The folder panel works exactly as it does for dances:
 
 ## Organise saved tunes into folders
 
-Create a folder with **New folder** and **Create folder**, then open the
-**Folder:** menu on a saved tune to move it. The counts beside **All tunes**,
-**Unfiled**, and each folder update immediately.
+Create a folder with **New folder** and **Create folder**, then select a saved
+tune and use **Move to folder** in its preview. On a desktop you can also
+right-click the row (or press and hold it on a touch screen) and choose
+**Unfiled** or a folder there. The counts beside **All tunes**, **Unfiled**, and
+each folder update immediately.
 
 Folder names are case-insensitive. Select a folder to reveal **Rename folder**
 and **Delete folder**. Renaming keeps the folder's tunes with it. Deleting a
-folder keeps its tunes and moves them to **Unfiled**. **Remove from saved
-tunes** deletes that saved copy only; a tune already loaded in the session keeps
-playing.
+folder keeps its tunes and moves them to **Unfiled**; if it was the tune set,
+the set returns to the chosen tunes. **Delete tune** in the preview deletes that
+saved copy only; a tune already loaded in the session keeps playing.
+
+Folders can be reordered like dance folders: drag a folder row, or use
+**Move up** and **Move down** in the folder controls. On touch, hold the folder
+until it lifts, then drag; a quick tap still selects it.
 
 ## Download another tune
 
@@ -150,11 +168,11 @@ Results are ten per page; **Previous** and **Next** sit below the columns.
 
 <Steps>
   <Step shot="tune-picker-preview">
-    Select **Preview** on a result. The right column shows the title, composer,
-    key, meter, credits, the rendered sheet music, and an **Open on ABC Session
-    Tunes** link. **Download tune** saves the tune for offline use; **Use this
-    tune** saves and loads it. **Show ABC** switches between the staff and the
-    source text.
+    Select a result row to preview it. The right column shows the title,
+    composer, key, meter, credits, the rendered sheet music, and an **Open on
+    ABC Session Tunes** link. **Download tune** saves the tune for offline use;
+    **Use this tune** saves and loads it. **Show ABC** switches between the
+    staff and the source text.
   </Step>
 </Steps>
 

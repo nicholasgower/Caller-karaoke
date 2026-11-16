@@ -75,9 +75,13 @@ The search and download screens use the same phone layout. Form labels sit
 beside their controls, each field takes the remaining width, and the results and
 preview stack into one scrolling column instead of two narrow columns. Saved
 folders collapse behind a **Folders** summary row so the saved cards start on
-screen. Every button keeps the 44-pixel touch target, including **Preview**,
-**Use**, and the alias reset controls, and a saved card's body is itself one
-full-width target that previews that dance or tune.
+screen. Every button keeps the 44-pixel touch target, including the preview
+actions and the alias reset controls, and a saved card's body is itself one
+full-width target that previews that dance or tune. Folder rows are also touch
+targets: a tap selects the folder, while a press-and-hold lifts it for
+reordering and **Move up** / **Move down** offer the same change without a
+pointer. A desktop secondary click and a touch long press both open the same
+folder/delete menu for a saved item.
 
 ## Keyboard
 

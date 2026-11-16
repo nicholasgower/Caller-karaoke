@@ -147,6 +147,15 @@ impl ContraApp {
             }
         });
 
+        if !compact
+            && ui
+                .small_button("Reset panes")
+                .on_hover_text("Restore the results and preview widths")
+                .clicked()
+        {
+            self.panes.tune_picker_list = PaneWidths::default().tune_picker_list;
+        }
+
         ui.add_space(6.0);
         match picker_pane_height(compact, ui.available_height(), PAGINATION_ROW_HEIGHT) {
             None => {
@@ -159,17 +168,50 @@ impl ContraApp {
                 self.tune_preview_panel(ui, true);
             }
             Some(height) => {
-                ui.columns(2, |columns| {
-                    egui::ScrollArea::vertical()
-                        .id_salt("tune-results")
-                        .max_height(height)
-                        .auto_shrink([false, false])
-                        .show(&mut columns[0], |ui| self.tune_results_list(ui, false));
-                    egui::ScrollArea::vertical()
-                        .id_salt("tune-preview")
-                        .max_height(height)
-                        .auto_shrink([false, false])
-                        .show(&mut columns[1], |ui| self.tune_preview_panel(ui, false));
+                let available = ui.available_width();
+                let list_width = clamp_pane_width(self.panes.tune_picker_list, available);
+                ui.horizontal_top(|ui| {
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(list_width, height),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            ui.set_width(list_width);
+                            ui.set_min_height(height);
+                            ui.set_max_height(height);
+                            egui::ScrollArea::vertical()
+                                .id_salt("tune-results")
+                                .max_height(height)
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| self.tune_results_list(ui, false));
+                        },
+                    );
+                    let splitter = pane_splitter(
+                        ui,
+                        "tune-results-splitter",
+                        height,
+                        "Resize the tune search results",
+                    );
+                    if splitter.dragged() {
+                        self.panes.tune_picker_list = clamp_pane_width(
+                            self.panes.tune_picker_list + splitter.drag_delta().x,
+                            available,
+                        );
+                    }
+                    let preview_width = ui.available_width();
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(preview_width, height),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            ui.set_width(preview_width);
+                            ui.set_min_height(height);
+                            ui.set_max_height(height);
+                            egui::ScrollArea::vertical()
+                                .id_salt("tune-preview")
+                                .max_height(height)
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| self.tune_preview_panel(ui, false));
+                        },
+                    );
                 });
             }
         }
@@ -190,30 +232,42 @@ impl ContraApp {
             let selected_t =
                 animate_amount(ui.ctx(), ("tune-selected", &tune.id), selected, animate);
             let downloaded = self.tune_library.contains("abcsessiontunes", &tune.id);
-            let mut preview = false;
-            egui::Frame::group(ui.style())
+            let mut prepared = egui::Frame::group(ui.style())
                 .fill(lerp_color(
                     theme::call_upcoming_bg(ui),
                     theme::call_active_bg(ui),
                     selected_t,
                 ))
                 .inner_margin(egui::Margin::same(8))
-                .show(ui, |ui| {
-                    if compact {
-                        ui.set_width(ui.available_width());
-                        tune_summary(ui, &tune, downloaded);
-                        if ui.button("Preview").clicked() {
-                            preview = true;
+                .begin(ui);
+            let (preview, focused) = {
+                let ui = &mut prepared.content_ui;
+                ui.set_width(ui.available_width());
+                let body = ui
+                    .vertical(|ui| {
+                        if compact {
+                            ui.set_min_height(theme::TOUCH_TARGET);
                         }
-                    } else {
-                        ui.horizontal(|ui| {
-                            ui.vertical(|ui| tune_summary(ui, &tune, downloaded));
-                            if ui.small_button("Preview").clicked() {
-                                preview = true;
-                            }
-                        });
-                    }
-                });
+                        tune_summary(ui, &tune, downloaded);
+                    })
+                    .response;
+                let response = ui
+                    .interact(
+                        body.rect,
+                        ui.scope_id().with(("preview-result-tune", &tune.id)),
+                        egui::Sense::click(),
+                    )
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .on_hover_text("Preview this tune");
+                let label = format!("Preview {}", tune.title);
+                response
+                    .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
+                (row_activated(ui, &response), response.has_focus())
+            };
+            if focused {
+                prepared.frame.stroke = ui.visuals().selection.stroke;
+            }
+            prepared.end(ui);
             if preview {
                 self.picker.tune_selected = Some(tune.clone());
                 self.source.load_tune(tune.id.clone());
@@ -256,6 +310,10 @@ impl ContraApp {
                 .tune_library
                 .contains(&tune.source.provider, &tune.source.id);
             let in_rotation = self.tune_in_rotation(&tune);
+            let folder_set = matches!(
+                self.prefs.tune_rotation.source,
+                contra_core::TuneSetSource::Folder(_)
+            );
             // The preview actions share the column on a desktop and stack at
             // full width on a phone, so every row is a 44-point target.
             let width = action_width(
@@ -289,7 +347,18 @@ impl ContraApp {
                 {
                     self.use_tune(tune.clone());
                 }
-                if ui
+                if folder_set {
+                    if ui
+                        .add_sized(
+                            [width, theme::TOUCH_TARGET],
+                            egui::Button::new("Use chosen tunes").wrap(),
+                        )
+                        .on_hover_text("Switch the tune set from the folder to the chosen tunes")
+                        .clicked()
+                    {
+                        self.set_tune_set_source(contra_core::TuneSetSource::List);
+                    }
+                } else if ui
                     .add_sized(
                         [width, theme::TOUCH_TARGET],
                         egui::Button::new(if in_rotation {

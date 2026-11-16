@@ -34,28 +34,6 @@ impl ContraApp {
             }
             ui.heading("Download dance");
         });
-        let mut chosen = None;
-        inline_field(ui, compact, "Dance source", |ui| {
-            let current = self.dance_source();
-            let combo = egui::ComboBox::from_id_salt("dance_download_source");
-            responsive_combo(combo, ui, compact)
-                .selected_text(current.display_name())
-                .show_ui(ui, |ui| {
-                    for option in contra_sources::dance_providers() {
-                        if ui
-                            .selectable_label(option.id() == current.id(), option.display_name())
-                            .clicked()
-                        {
-                            chosen = Some(option.id());
-                        }
-                    }
-                });
-        });
-        if let Some(id) = chosen {
-            // A new source invalidates the filters, results, and preview; see
-            // `set_dance_source`.
-            self.set_dance_source(id);
-        }
         let provider = self.dance_source();
         let display_name = provider.display_name();
         ui.label(
@@ -65,6 +43,72 @@ impl ContraApp {
             ))
             .color(theme::muted(ui)),
         );
+        // The source belongs beside the search it controls: a saved dance keeps
+        // the source it came from, so this only chooses where the next download
+        // comes from.
+        let mut chosen = None;
+        let current = self.dance_source();
+        if compact {
+            ui.label(
+                egui::RichText::new("Dance source")
+                    .small()
+                    .color(theme::muted(ui)),
+            );
+            let combo = egui::ComboBox::from_id_salt("download-dance-source");
+            responsive_combo(combo, ui, true)
+                .selected_text(current.display_name())
+                .show_ui(ui, |ui| {
+                    for provider in contra_sources::dance_providers() {
+                        if ui
+                            .selectable_label(
+                                provider.id() == current.id(),
+                                provider.display_name(),
+                            )
+                            .clicked()
+                        {
+                            chosen = Some(provider.id());
+                        }
+                    }
+                });
+        } else {
+            ui.horizontal(|ui| {
+                ui.label("Dance source");
+                let combo = egui::ComboBox::from_id_salt("download-dance-source");
+                combo
+                    .selected_text(current.display_name())
+                    .show_ui(ui, |ui| {
+                        for provider in contra_sources::dance_providers() {
+                            if ui
+                                .selectable_label(
+                                    provider.id() == current.id(),
+                                    provider.display_name(),
+                                )
+                                .clicked()
+                            {
+                                chosen = Some(provider.id());
+                            }
+                        }
+                    });
+            });
+        }
+        if let Some(id) = chosen {
+            self.set_dance_source(id);
+        }
+        let provider = self.dance_source();
+        let display_name = provider.display_name();
+        let mut description = format!("{} — {}", display_name, provider.base_url());
+        match provider.result_limit() {
+            Some(limit) => description.push_str(&format!(
+                ". Returns up to {limit} matches per search; narrow the search for a large result."
+            )),
+            None => description.push('.'),
+        }
+        ui.label(
+            egui::RichText::new(description)
+                .small()
+                .color(theme::muted(ui)),
+        );
+        ui.hyperlink_to("Open the source site", provider.base_url());
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
         }
@@ -207,6 +251,14 @@ impl ContraApp {
                 .color(theme::muted(ui)),
             );
         }
+        if !compact
+            && ui
+                .small_button("Reset panes")
+                .on_hover_text("Restore the results and preview widths")
+                .clicked()
+        {
+            self.panes.dance_picker_list = PaneWidths::default().dance_picker_list;
+        }
 
         ui.add_space(6.0);
         match picker_pane_height(compact, ui.available_height(), PAGINATION_ROW_HEIGHT) {
@@ -220,17 +272,50 @@ impl ContraApp {
                 self.dance_preview_panel(ui, true);
             }
             Some(height) => {
-                ui.columns(2, |columns| {
-                    egui::ScrollArea::vertical()
-                        .id_salt("dance-results")
-                        .max_height(height)
-                        .auto_shrink([false, false])
-                        .show(&mut columns[0], |ui| self.dance_results_list(ui, false));
-                    egui::ScrollArea::vertical()
-                        .id_salt("dance-preview")
-                        .max_height(height)
-                        .auto_shrink([false, false])
-                        .show(&mut columns[1], |ui| self.dance_preview_panel(ui, false));
+                let available = ui.available_width();
+                let list_width = clamp_pane_width(self.panes.dance_picker_list, available);
+                ui.horizontal_top(|ui| {
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(list_width, height),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            ui.set_width(list_width);
+                            ui.set_min_height(height);
+                            ui.set_max_height(height);
+                            egui::ScrollArea::vertical()
+                                .id_salt("dance-results")
+                                .max_height(height)
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| self.dance_results_list(ui, false));
+                        },
+                    );
+                    let splitter = pane_splitter(
+                        ui,
+                        "dance-results-splitter",
+                        height,
+                        "Resize the dance search results",
+                    );
+                    if splitter.dragged() {
+                        self.panes.dance_picker_list = clamp_pane_width(
+                            self.panes.dance_picker_list + splitter.drag_delta().x,
+                            available,
+                        );
+                    }
+                    let preview_width = ui.available_width();
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(preview_width, height),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            ui.set_width(preview_width);
+                            ui.set_min_height(height);
+                            ui.set_max_height(height);
+                            egui::ScrollArea::vertical()
+                                .id_salt("dance-preview")
+                                .max_height(height)
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| self.dance_preview_panel(ui, false));
+                        },
+                    );
                 });
             }
         }
@@ -253,30 +338,42 @@ impl ContraApp {
             let downloaded = self
                 .dance_library
                 .contains(&self.picker.dance_provider, &dance.id);
-            let mut preview = false;
-            egui::Frame::group(ui.style())
+            let mut prepared = egui::Frame::group(ui.style())
                 .fill(lerp_color(
                     theme::call_upcoming_bg(ui),
                     theme::call_active_bg(ui),
                     selected_t,
                 ))
                 .inner_margin(egui::Margin::same(8))
-                .show(ui, |ui| {
-                    if compact {
-                        ui.set_width(ui.available_width());
-                        dance_summary(ui, &dance, downloaded);
-                        if ui.button("Preview").clicked() {
-                            preview = true;
+                .begin(ui);
+            let (preview, focused) = {
+                let ui = &mut prepared.content_ui;
+                ui.set_width(ui.available_width());
+                let body = ui
+                    .vertical(|ui| {
+                        if compact {
+                            ui.set_min_height(theme::TOUCH_TARGET);
                         }
-                    } else {
-                        ui.horizontal(|ui| {
-                            ui.vertical(|ui| dance_summary(ui, &dance, downloaded));
-                            if ui.small_button("Preview").clicked() {
-                                preview = true;
-                            }
-                        });
-                    }
-                });
+                        dance_summary(ui, &dance, downloaded);
+                    })
+                    .response;
+                let response = ui
+                    .interact(
+                        body.rect,
+                        ui.scope_id().with(("preview-result-dance", &dance.id)),
+                        egui::Sense::click(),
+                    )
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .on_hover_text("Preview this dance");
+                let label = format!("Preview {}", dance.title);
+                response
+                    .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
+                (row_activated(ui, &response), response.has_focus())
+            };
+            if focused {
+                prepared.frame.stroke = ui.visuals().selection.stroke;
+            }
+            prepared.end(ui);
             if preview {
                 self.picker.dance_selected = Some(dance.clone());
                 self.source
