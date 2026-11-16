@@ -41,6 +41,9 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 - The dance area scrolls; the current call stays visible. On short windows
   (under about 800 px of session height, including a landscape phone) the whole
   session page scrolls so the card stays reachable.
+- The call prompt is the first panel under the tab row on the Session tab;
+  controls, the tune summary, the progress bar, and the dance card follow below
+  it, so a caller always reads the prompt in the same place.
 - The pickers become full-screen sheets on mobile and dialogs on desktop.
 - Picker and Preferences forms stay dense on a phone: labels sit beside their
   controls, and every field takes the remaining width. Search results and the

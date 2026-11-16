@@ -20,8 +20,8 @@ first, then shows how to replace them.
 ## 1. Look at the starting screen
 
 The app opens on **Session** with **Another Last Dance** and **Sandy Boys**
-loaded. The dance card and tune summary are already populated. The prompt says
-**READY**, and the line above it says
+loaded. The dance card and tune summary are already populated. The prompt at
+the top of the session says **READY**, and the line below the controls says
 `Press Play to prepare the music with these settings.`
 
 <Steps>
@@ -111,9 +111,10 @@ The default is **240 BPM**, which gives a 0.5-second dance beat and a 32-second
     panel shows **CALL NOW** and the call text.
   </Step>
   <Step shot="session-call-now">
-    Follow the large call prompt. It changes from **CALL NOW** to **DANCING**
-    as the figure executes; the sub-line reads **figure in progress** and the
-    next call is previewed below it.
+    Follow the call prompt at the top of the session. It turns green for
+    **CALL NOW**, then red for **UPCOMING MOVE** as the figure executes and it
+    previews the next call. The **Next:** line below it previews the following
+    call.
   </Step>
   <Step shot="session-changes-pending">
     Change a setting such as tempo or an instrument. The music stops and the
@@ -146,7 +147,8 @@ resumes from the same beat.
 | `READY` | Nothing has started yet. Press **Play**. |
 | `COUNT-IN` | The four accompaniment beats before beat 0. If a call is already due, the panel shows **CALL NOW** and its text. |
 | `CALL NOW` | Say the displayed words now; the dancers execute shortly. |
-| `DANCING` | The figure is executing; the prompt is muted and the sub-line reads **figure in progress**. |
+| `UPCOMING MOVE` | The figure is executing; the prompt turns red and shows the call to say next. |
+| `DANCING` | The figure is executing and there is no following call; the prompt is muted. |
 | `Dance complete` | The music reached the end with looping off. |
 
 The **executes in N beats** line counts down to the figure's execute beat. It is

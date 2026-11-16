@@ -55,8 +55,8 @@ background. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 ## The call prompt
 
-The large panel above the card is the karaoke prompt. It moves through these
-states:
+The large panel at the top of the session, directly under the tab row, is the
+karaoke prompt. It moves through these states:
 
 | State | Display | What to do |
 | --- | --- | --- |
@@ -96,10 +96,10 @@ the count-in, the panel shows **CALL NOW** and the call text instead of
 
 ## The tune summary and dance card
 
-Above the prompt, the tune line shows the tune title, key, rhythm, melody,
+Below the prompt, the tune line shows the tune title, key, rhythm, melody,
 accompaniment, second accompaniment, and any enabled percussion. The dance card
-below the prompt shows every figure with its phrase label and beat count. The
-active figure row is highlighted as the music moves.
+at the bottom of the session shows every figure with its phrase label and beat
+count. The active figure row is highlighted as the music moves.
 
 <Shot id="transport-summary" />
 
@@ -199,11 +199,11 @@ span the screen with their value boxes, and **Play**, **Pause**,
 spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch
 target.
 
-When the window is too short to show the controls, prompt, progress, and dance
-card together, the whole session page scrolls instead of squeezing the card.
-On a taller phone the prompt stays put and only the dance card scrolls. The
-saved-content and download screens use a single scrolling column at phone
-width, with full-width fields and the preview below the results.
+When the window is too short to show the prompt, controls, progress, and dance
+card together, the whole session page scrolls; the prompt stays at the top of
+that page. On a taller phone the prompt stays put and only the dance card
+scrolls. The saved-content and download screens use a single scrolling column
+at phone width, with full-width fields and the preview below the results.
 
 <Shot id="session-mobile-controls" />
 

@@ -33,7 +33,7 @@ like a band on first launch without any downloads.
   </Step>
 </Steps>
 
-The session's tune summary shows the selected parts above the call prompt.
+The session's tune summary shows the selected parts below the call prompt.
 
 ## The second accompaniment
 

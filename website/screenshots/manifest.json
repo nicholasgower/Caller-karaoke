@@ -556,7 +556,7 @@
     },
     {
       "id": "transport-summary",
-      "alt": "The tune and instrument summary above the call prompt, showing the tune title, key, rhythm, melody, accompaniment, second accompaniment, and percussion with its rhythm.",
+      "alt": "The tune and instrument summary below the call prompt, showing the tune title, key, rhythm, melody, accompaniment, second accompaniment, and percussion with its rhythm.",
       "caption": "The summary confirms what will play before you start.",
       "status": "ready",
       "width": 1280,
