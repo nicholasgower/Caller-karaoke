@@ -116,7 +116,7 @@ Rendering uses `rustysynth` (MIT) with one of two voice sets:
    - ~15 MB. The subset keeps the selected presets' generators, modulators and
      sample data unchanged, so it renders identically to the full 141 MB bank
      for those programs (`crates/music/tests/bundled_soundfont.rs`).
-   - Attribution lives in `CREDITS.md` and the About window.
+   - Attribution lives in `CREDITS.md` and the About section of Preferences.
 2. **User-supplied SoundFont (`.sf2`):**
    - Loaded from Preferences; overrides the bundled subset for the session.
    - The user is responsible for the file and its license.

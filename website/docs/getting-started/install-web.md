@@ -103,8 +103,8 @@ content. Online search will fail.
 ## Keyboard shortcuts
 
 **Space** plays or pauses, **R** restarts, **Esc** returns to the session
-from a picker or Preferences, **1–4** switch tabs, and **Enter** submits a
-search or adds a custom alias. Shortcuts are ignored while a text field has
-focus. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
+from a picker or Preferences, **1–3** switch tabs, **4** opens Preferences, and
+**Enter** submits a search or adds a custom alias. Shortcuts are ignored while a
+text field has focus. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 Next: [Your first session](/docs/getting-started/first-session).

@@ -12,7 +12,8 @@ dance card and the rendered calls.
 
 <Steps>
   <Step shot="prefs-open">
-    Select **Preferences** in the top tab row.
+    Select the gear button in the top-right corner of the header to open
+    **Preferences**.
   </Step>
   <Step shot="prefs-roles-presets">
     Find the **Role terms** section. The current preset is selected; the italic

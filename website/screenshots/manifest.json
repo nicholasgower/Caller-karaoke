@@ -48,8 +48,8 @@
     },
     {
       "id": "about-window",
-      "alt": "The About window over the session screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
-      "caption": "About shows the program version, its author, and the project links.",
+      "alt": "The About section at the bottom of the Preferences screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
+      "caption": "About sits at the bottom of Preferences, below the other settings.",
       "status": "pending"
     },
     {
@@ -184,8 +184,8 @@
     },
     {
       "id": "prefs-open",
-      "alt": "The Preferences screen with Role terms at the top, followed by role preset controls and the Instruments section.",
-      "caption": "Playback settings apply without restarting; role and alias changes rebuild the call timeline.",
+      "alt": "The Preferences screen opened from the gear button, with Role terms at the top, followed by the role preset controls and the Instruments section.",
+      "caption": "The gear in the header opens Preferences; playback settings apply without restarting, and role and alias changes rebuild the call timeline.",
       "status": "ready",
       "width": 1280,
       "height": 800

@@ -1,13 +1,16 @@
 //! Screen implementations for the app shell.
 //!
 //! Each screen owns one file; shared card helpers stay here so the session
-//! screen and the state-machine tests see the same definitions.
+//! screen and the state-machine tests see the same definitions. Preferences
+//! keeps its sections in `preferences.rs`, with the About section in
+//! `about.rs` as the last of them.
 
 mod about;
 mod aliases;
 mod dance_picker;
 mod library;
-mod preferences;
+// The shell tests read the section list to assert where About is drawn.
+pub(in crate::app) mod preferences;
 mod session;
 mod tune_picker;
 mod widgets;

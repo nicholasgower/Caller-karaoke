@@ -14,8 +14,8 @@ count-in, dancing, and completion. The label text still says **CALL NOW** or
 
 <Steps>
   <Step shot="prefs-theme-light">
-    Open **Preferences → Theme** and select **Light** or **Dark**. Dark is the
-    default.
+    Open **Preferences** with the gear button in the top-right corner, find
+    **Theme**, and select **Light** or **Dark**. Dark is the default.
   </Step>
   <Step shot="main-light">
     Return to **Session** to see the chosen theme on the call screen.
@@ -36,8 +36,9 @@ and projectors.
 
 <Steps>
   <Step shot="prefs-interface">
-    Open **Preferences → Interface** to turn **Smooth animations** on or off.
-    The keyboard reference sits below the checkbox.
+    Open **Preferences** with the gear button and find **Interface** to turn
+    **Smooth animations** on or off. The keyboard reference sits below the
+    checkbox.
   </Step>
 </Steps>
 
@@ -50,10 +51,11 @@ immediately. The docs site also respects `prefers-reduced-motion`.
 Every control in the phone session layout — tab, slider, transport button, and
 toggle — uses a 44-pixel interaction height, and the app window has a minimum
 size of 360×560. Below about 640 pixels wide the **Session** tab switches to
-that phone layout: the wordmark and long tab labels give way to four short tabs
-beside the pinned **About** button, the tempo and volume sliders use the full
-width, and the transport buttons split the row evenly. On a short window the
-whole session page scrolls so the dance card is never pushed out of reach.
+that phone layout: the wordmark and long tab labels give way to three short tabs
+beside the pinned Preferences gear, which keeps the same 44-pixel target, the
+tempo and volume sliders use the full width, and the transport buttons split the
+row evenly. On a short window the whole session page scrolls so the dance card is
+never pushed out of reach.
 
 <Shot id="main-mobile" />
 
@@ -69,9 +71,8 @@ full-width target that previews that dance or tune.
 
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
-- **Esc** closes the **About** window or returns to **Session** from a picker,
-  Preferences, or the alias editor.
-- **1–4** switch tabs.
+- **Esc** returns to **Session** from a picker, Preferences, or the alias editor.
+- **1–3** switch tabs; **4** opens Preferences.
 - **Enter** submits a search or adds a custom alias.
 
 Shortcuts are ignored while a text field has focus. The keyboard's play/pause

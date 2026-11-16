@@ -42,6 +42,5 @@
 - Offline start and cached content.
 - Soundfont load/remove/fallback.
 - Tab and screen animations, including with **Smooth animations** turned off.
-- About window: opens from the top-right button, shows the author and project
-  links, closes on Close/Esc/backdrop click, and suspends transport shortcuts
-  while open.
+- About section: sits at the bottom of Preferences, shows the author and
+  project links, and neither blocks focus nor suspends transport shortcuts.

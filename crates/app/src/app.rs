@@ -102,7 +102,7 @@ impl TabDef {
     }
 }
 
-const TABS: [TabDef; 4] = [
+const TABS: [TabDef; 3] = [
     TabDef {
         screens: &[Screen::Session],
         label: "Session",
@@ -127,15 +127,13 @@ const TABS: [TabDef; 4] = [
         shortcut: "3",
         key: egui::Key::Num3,
     },
-    TabDef {
-        screens: &[Screen::Preferences],
-        label: "Preferences",
-        short_label: "Prefs",
-        hover: "Preferences",
-        shortcut: "4",
-        key: egui::Key::Num4,
-    },
 ];
+
+/// The number key that opens Preferences.
+///
+/// Preferences is a header button rather than a tab, but the key it had as the
+/// fourth tab keeps working so an established shortcut does not disappear.
+const PREFERENCES_KEY: egui::Key = egui::Key::Num4;
 
 /// One screen: how to draw it and where Escape leads from it.
 struct ScreenDef {
@@ -206,28 +204,33 @@ fn draw_aliases(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
     app.aliases_ui(ui);
 }
 
-/// Project links shown in the About window.
+/// Project links shown in the About section of Preferences.
 ///
 /// The pages may not be live yet; the addresses are the ones the documentation
 /// and packaging use so they start working as soon as the site is published.
 const REPOSITORY_URL: &str = "https://github.com/storytold/Contra-karaoke";
 const DOCUMENTATION_URL: &str = "https://storytold.github.io/Contra-karaoke/";
 
-/// Map the number-key tab shortcuts to screens.
-fn screen_for_tab_key(key: egui::Key) -> Option<Screen> {
+/// Map the number-key shortcuts to screens.
+fn screen_for_number_key(key: egui::Key) -> Option<Screen> {
     TABS.iter()
         .find(|tab| tab.key == key)
         .map(|tab| tab.landing())
+        .or_else(|| (key == PREFERENCES_KEY).then_some(Screen::Preferences))
 }
 
-/// The screen selected by a tab shortcut pressed this frame, if any.
+/// The screen selected by a number-key shortcut pressed this frame, if any.
 ///
 /// The key must actually have been pressed: resolving the first tab's
 /// shortcut regardless of input would pin the app to the session screen every
 /// frame and undo any click on another tab.
-fn tab_shortcut(input: &egui::InputState) -> Option<Screen> {
-    let pressed = TABS.iter().find(|tab| input.key_pressed(tab.key))?;
-    screen_for_tab_key(pressed.key)
+fn number_key_shortcut(input: &egui::InputState) -> Option<Screen> {
+    let key = TABS
+        .iter()
+        .map(|tab| tab.key)
+        .chain(std::iter::once(PREFERENCES_KEY))
+        .find(|key| input.key_pressed(*key))?;
+    screen_for_number_key(key)
 }
 
 pub struct ContraApp {
@@ -258,8 +261,10 @@ pub struct ContraApp {
     /// The OS media session, so hardware play/pause keys work while the
     /// window is in the background.
     media_keys: Option<crate::media_keys::MediaKeys>,
-    /// The About window is open. It is a modal over every screen.
-    about_open: bool,
+    /// Scroll the About section at the bottom of Preferences into view on the
+    /// next frame. Set by the headless renderer so a documentation shot can
+    /// show the section without rendering the whole scrolling page.
+    about_reveal: bool,
     dance: Dance,
     tune: Tune,
     timeline: PracticeTimeline,
@@ -577,7 +582,7 @@ impl ContraApp {
             scale_guard: crate::window::ScaleGuard::default(),
             launch_focus: crate::window::LaunchFocus::default(),
             media_keys: crate::media_keys::MediaKeys::new(cc),
-            about_open: false,
+            about_reveal: false,
             dance,
             tune,
             timeline,
@@ -671,17 +676,12 @@ impl ContraApp {
     /// Only called while no widget has keyboard focus, so typing in a text
     /// field never triggers play, restart, or a tab change.
     fn handle_shortcuts(&mut self, ui: &egui::Ui) {
-        // The About window is modal: let it handle Escape and ignore the
-        // transport and tab shortcuts until it closes.
-        if self.about_open {
-            return;
-        }
         let (space, restart, escape, tab) = ui.input(|input| {
             (
                 input.key_pressed(egui::Key::Space),
                 input.key_pressed(egui::Key::R),
                 input.key_pressed(egui::Key::Escape),
-                tab_shortcut(input),
+                number_key_shortcut(input),
             )
         });
 
@@ -915,7 +915,7 @@ impl ContraApp {
             scale_guard: crate::window::ScaleGuard::default(),
             launch_focus: crate::window::LaunchFocus::default(),
             media_keys: None,
-            about_open: false,
+            about_reveal: false,
             dance,
             tune,
             timeline,
@@ -1810,31 +1810,26 @@ impl ContraApp {
             )
             .show(ui, |ui| {
                 let animate = self.prefs.animations_enabled;
-                // The About button is pinned to the top-right corner; the
+                // The Preferences gear is pinned to the top-right corner; the
                 // heading and tabs share the remaining width. Center the row:
                 // an egui button inherits the surrounding layout's alignment
-                // for its label, so a top-aligned row lifts "About" a few
+                // for its label, so a top-aligned row lifts the gear a few
                 // points above the tab labels.
                 if compact {
-                    // Keep the phone header at the 44 pt touch minimum and
-                    // narrow the About button so four short tabs fit beside it.
+                    // Keep the phone header at the 44 pt touch minimum; the
+                    // three short tabs and the gear then fit one row.
                     ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
                     ui.spacing_mut().button_padding.x = 8.0;
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui
-                        .button("About")
-                        .on_hover_text("About Contra Karaoke")
-                        .clicked()
-                    {
-                        self.about_open = true;
-                    }
+                    preferences_gear(ui, &mut self.screen);
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
                         ui.horizontal_wrapped(|ui| {
-                            // At phone width the four tabs, not the wordmark, are
-                            // the useful part of the header. Dropping the heading
-                            // and the long tab labels keeps the navigation to one
-                            // row and leaves that height for the prompt and card.
+                            // At phone width the three tabs, not the wordmark,
+                            // are the useful part of the header. Dropping the
+                            // heading and the long tab labels keeps the
+                            // navigation to one row and leaves that height for
+                            // the prompt and card.
                             if !compact {
                                 ui.heading("Contra Karaoke");
                                 ui.add_space(12.0);
@@ -1898,8 +1893,6 @@ impl ContraApp {
         if self.screen != Screen::Preferences {
             self.commit_role_terms();
         }
-
-        self.about_ui(&ctx);
     }
 
     fn shutdown(&mut self, _gl: Option<&eframe::glow::Context>) {
@@ -2087,7 +2080,7 @@ fn tab(
     let galley = ui
         .painter()
         .layout_no_wrap(label.to_owned(), font, egui::Color32::PLACEHOLDER);
-    // Narrower tabs leave room for the pinned About button on a phone.
+    // Narrower tabs leave room for the pinned Preferences gear on a phone.
     let horizontal_padding = if compact { 16.0 } else { 24.0 };
     let desired = egui::vec2(
         galley.size().x + horizontal_padding,
@@ -2153,6 +2146,95 @@ fn tab(
         ctx.set_cursor_icon(egui::CursorIcon::PointingHand);
     }
     response.clicked()
+}
+
+/// The Preferences gear pinned to the top-right corner of the header.
+///
+/// The accessibility node is named "Preferences" rather than carrying the
+/// icon: a screen reader would otherwise announce only a shape, and the MCP
+/// tools find the button by its accessible name. A click opens Preferences
+/// from any screen, which is why this also owns the screen change rather than
+/// returning a bare flag.
+///
+/// The button is one row high and square: 40 points on the desktop, and the
+/// full 44-point touch target because the phone header raises
+/// `interact_size.y`.
+fn preferences_gear(ui: &mut egui::Ui, screen: &mut Screen) -> egui::Response {
+    // Square and one row high: 40 points on the desktop, and the full
+    // 44-point touch target in the phone header, which raises
+    // `interact_size.y`.
+    let side = ui.spacing().interact_size.y;
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(side, side), egui::Sense::click());
+    let response = response.on_hover_text("Preferences (4)");
+    // The gear has no tab that stays lit, so it shows the selected style for the
+    // screen it owns: otherwise the header looks like nothing is current while
+    // Preferences (or the alias editor) is in front. The same flag reaches the
+    // accessibility node, where the MCP session tools look for the active tab.
+    let showing = matches!(*screen, Screen::Preferences | Screen::Aliases);
+    if ui.is_rect_visible(rect) {
+        // Painted by hand rather than by `egui::Button` so the selected fill
+        // matches the tab row and the accessibility node can carry the
+        // "Preferences" name instead of an empty text label.
+        let mut visuals = *ui.style().interact(&response);
+        if showing {
+            visuals.weak_bg_fill = ui.visuals().selection.bg_fill;
+            visuals.bg_stroke = ui.visuals().selection.stroke;
+        }
+        ui.painter().rect_filled(rect, 8, visuals.weak_bg_fill);
+        ui.painter()
+            .rect_stroke(rect, 8, visuals.bg_stroke, egui::StrokeKind::Inside);
+        // A glyph would not do: the bundled monochrome emoji font has no
+        // U+2699 GEAR, so a "⚙" label renders as an empty box everywhere.
+        paint_gear(ui, rect, visuals.fg_stroke.color);
+    }
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), showing, "Preferences")
+    });
+    if response.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    if response.clicked() {
+        *screen = Screen::Preferences;
+    }
+    response
+}
+
+/// Number of teeth on the painted gear.
+const GEAR_TEETH: usize = 8;
+
+/// The shapes of a gear icon centered in `rect`.
+///
+/// A stroked ring plus short radial teeth reads as a cog at any size and needs
+/// no glyph, which keeps the header identical on desktop, web, and Android.
+/// Every point stays inside `rect`, so the icon never paints over the header.
+fn gear_shapes(rect: egui::Rect, color: egui::Color32) -> Vec<egui::Shape> {
+    let center = rect.center();
+    // The teeth reach about 70% of the button, leaving the padding a text
+    // label would have had.
+    let icon = rect.width().min(rect.height()) * 0.36;
+    let mut shapes = vec![egui::Shape::circle_stroke(
+        center,
+        icon * 0.56,
+        egui::Stroke::new(icon * 0.30, color),
+    )];
+    for tooth in 0..GEAR_TEETH {
+        let angle = std::f32::consts::TAU * tooth as f32 / GEAR_TEETH as f32;
+        let (sin, cos) = angle.sin_cos();
+        let inner = icon * 0.60;
+        let outer = icon * 0.98;
+        shapes.push(egui::Shape::line_segment(
+            [
+                center + egui::vec2(cos, sin) * inner,
+                center + egui::vec2(cos, sin) * outer,
+            ],
+            egui::Stroke::new(icon * 0.24, color),
+        ));
+    }
+    shapes
+}
+
+fn paint_gear(ui: &egui::Ui, rect: egui::Rect, color: egui::Color32) {
+    ui.painter().extend(gear_shapes(rect, color));
 }
 
 fn load_prefs(path: &Path) -> Option<Preferences> {
@@ -2381,7 +2463,7 @@ mod tests {
     }
 
     /// Every screen must be registered exactly once, or it becomes unreachable
-    /// from the tab row or the dispatcher.
+    /// from the tab row, the gear button, or the dispatcher.
     #[test]
     fn every_screen_is_registered_once() {
         const ALL: [Screen; 7] = [
@@ -2402,35 +2484,54 @@ mod tests {
             for screen in tab.screens {
                 assert!(ALL.contains(screen), "{screen:?} is not a screen");
             }
-            assert_eq!(screen_for_tab_key(tab.key), Some(tab.landing()));
+            assert_eq!(screen_for_number_key(tab.key), Some(tab.landing()));
         }
+    }
+
+    /// Preferences moved to a header button, so the top row must stay at three
+    /// tabs: a fourth one would put it back where it does not belong and leave
+    /// the gear pointing at a screen that is already on screen.
+    #[test]
+    fn preferences_is_a_header_button_not_a_top_tab() {
+        assert_eq!(TABS.len(), 3, "the top row is Session, dance, and tune");
+        for tab in &TABS {
+            assert!(
+                !tab.is_active(Screen::Preferences),
+                "{} must not cover Preferences",
+                tab.label
+            );
+        }
+        assert_eq!(
+            screen_for_number_key(PREFERENCES_KEY),
+            Some(Screen::Preferences)
+        );
     }
 
     #[test]
     fn number_keys_select_top_tabs() {
-        assert_eq!(screen_for_tab_key(egui::Key::Num1), Some(Screen::Session));
         assert_eq!(
-            screen_for_tab_key(egui::Key::Num2),
+            screen_for_number_key(egui::Key::Num1),
+            Some(Screen::Session)
+        );
+        assert_eq!(
+            screen_for_number_key(egui::Key::Num2),
             Some(Screen::DancePicker)
         );
         assert_eq!(
-            screen_for_tab_key(egui::Key::Num3),
+            screen_for_number_key(egui::Key::Num3),
             Some(Screen::TunePicker)
         );
-        assert_eq!(
-            screen_for_tab_key(egui::Key::Num4),
-            Some(Screen::Preferences)
-        );
-        assert_eq!(screen_for_tab_key(egui::Key::Num5), None);
-        assert_eq!(screen_for_tab_key(egui::Key::Space), None);
+        assert_eq!(screen_for_number_key(egui::Key::Num5), None);
+        assert_eq!(screen_for_number_key(egui::Key::Space), None);
     }
 
-    /// Run one egui frame with `raw_input` and read the tab shortcut it saw.
-    fn tab_shortcut_for(raw_input: egui::RawInput) -> Option<Screen> {
+    /// Run one egui frame with `raw_input` and read the number-key shortcut it
+    /// saw.
+    fn number_shortcut_for(raw_input: egui::RawInput) -> Option<Screen> {
         let ctx = egui::Context::default();
         let mut screen = None;
         let mut output = ctx.run_ui(raw_input, |ui| {
-            screen = ui.input(tab_shortcut);
+            screen = ui.input(number_key_shortcut);
         });
         output.textures_delta.clear();
         screen
@@ -2450,19 +2551,139 @@ mod tests {
     }
 
     #[test]
-    fn tab_shortcuts_only_fire_for_a_pressed_key() {
+    fn number_shortcuts_only_fire_for_a_pressed_key() {
         // No input must not select a tab; otherwise the screen snaps back to
         // the session on the next frame and tab clicks appear to do nothing.
-        assert_eq!(tab_shortcut_for(egui::RawInput::default()), None);
+        assert_eq!(number_shortcut_for(egui::RawInput::default()), None);
         assert_eq!(
-            tab_shortcut_for(key_press(egui::Key::Num2)),
+            number_shortcut_for(key_press(egui::Key::Num2)),
             Some(Screen::DancePicker)
         );
         assert_eq!(
-            tab_shortcut_for(key_press(egui::Key::Num4)),
+            number_shortcut_for(key_press(egui::Key::Num4)),
             Some(Screen::Preferences)
         );
-        assert_eq!(tab_shortcut_for(key_press(egui::Key::Num5)), None);
+        assert_eq!(number_shortcut_for(key_press(egui::Key::Num5)), None);
+    }
+
+    /// Raw input with a fixed viewport, so a simulated click lands on the
+    /// widget the layout put there.
+    fn ui_input(events: Vec<egui::Event>) -> egui::RawInput {
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 600.0),
+            )),
+            events,
+            ..Default::default()
+        }
+    }
+
+    fn run_header_frame(
+        ctx: &egui::Context,
+        events: Vec<egui::Event>,
+        screen: &mut Screen,
+        seen: &mut Option<egui::Response>,
+    ) {
+        let mut output = ctx.run_ui(ui_input(events), |ui| {
+            *seen = Some(preferences_gear(ui, screen));
+        });
+        output.textures_delta.clear();
+    }
+
+    /// The gear is the only way to Preferences from another screen, so a real
+    /// pointer click on it has to select that screen.
+    #[test]
+    fn the_gear_button_opens_preferences() {
+        let ctx = egui::Context::default();
+        let mut screen = Screen::Session;
+        let mut seen = None;
+        run_header_frame(&ctx, Vec::new(), &mut screen, &mut seen);
+        let rect = seen.as_ref().expect("the header gear").rect;
+        assert_eq!(
+            screen,
+            Screen::Session,
+            "laying the button out must not open Preferences"
+        );
+
+        // Move onto the button, press, release: one click, exactly as a person
+        // using the top-right corner of the header.
+        let pos = rect.center();
+        let button = |pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        for events in [
+            vec![egui::Event::PointerMoved(pos)],
+            vec![button(true)],
+            vec![button(false)],
+        ] {
+            run_header_frame(&ctx, events, &mut screen, &mut seen);
+        }
+        assert_eq!(screen, Screen::Preferences);
+    }
+
+    /// On a phone the gear is the only header control that is not a tab, so it
+    /// has to carry the 44-point touch target by itself.
+    #[test]
+    fn the_gear_is_a_touch_target_at_phone_size() {
+        let ctx = egui::Context::default();
+        let mut screen = Screen::Session;
+        let mut size = egui::Vec2::ZERO;
+        let mut output = ctx.run_ui(ui_input(Vec::new()), |ui| {
+            // The compact header raises the row height before the gear draws.
+            ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
+            size = preferences_gear(ui, &mut screen).rect.size();
+        });
+        output.textures_delta.clear();
+        assert!(
+            size.x >= theme::TOUCH_TARGET && size.y >= theme::TOUCH_TARGET,
+            "gear is {size:?}, want at least {} points",
+            theme::TOUCH_TARGET
+        );
+    }
+
+    /// The gear is painted because the bundled fonts have no gear glyph; the
+    /// painted icon must still fit inside the button and look like a cog.
+    #[test]
+    fn the_painted_gear_fits_inside_its_button() {
+        for side in [theme::TOUCH_TARGET, 40.0] {
+            let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(side, side));
+            let shapes = gear_shapes(rect, egui::Color32::WHITE);
+            assert_eq!(
+                shapes.len(),
+                GEAR_TEETH + 1,
+                "a ring and one shape per tooth"
+            );
+            for shape in &shapes {
+                let bounds = shape.visual_bounding_rect();
+                assert!(
+                    rect.contains_rect(bounds),
+                    "{bounds:?} escapes a {side}-point button"
+                );
+            }
+        }
+    }
+
+    /// About is a section at the bottom of Preferences, not a window over every
+    /// screen. It is drawn only from this list, so a regression that removes it
+    /// makes the version, author, and project links unreachable; a regression
+    /// that moves it buries a setting below the credits.
+    #[test]
+    fn about_is_the_last_preferences_section() {
+        use crate::app::ui::preferences::{ABOUT_SECTION, SECTIONS};
+        let last = SECTIONS.last().copied().expect("preferences sections");
+        assert!(
+            std::ptr::fn_addr_eq(last, ABOUT_SECTION),
+            "About must be the last Preferences section"
+        );
+        let occurrences = SECTIONS
+            .iter()
+            .filter(|section| std::ptr::fn_addr_eq(**section, ABOUT_SECTION))
+            .count();
+        assert_eq!(occurrences, 1, "About must be drawn exactly once");
     }
 
     #[test]

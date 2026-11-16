@@ -15,7 +15,7 @@ rendered words, so a longer alias is automatically moved earlier.
 
 <Steps>
   <Step shot="prefs-open">
-    Select **Preferences**.
+    Open **Preferences** with the gear button in the top-right corner.
   </Step>
   <Step shot="prefs-alias-list">
     Select **Edit dance move aliases…** under **Role terms**.
