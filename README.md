@@ -196,8 +196,9 @@ cd crates/web && trunk build --release
 
 The documentation site hosts a copy of this build at
 <https://storytold.github.io/Contra-karaoke/play/>. The docs workflow stages it
-under `website/static/app/` with `npm run build:app` in `website/`; that folder
-is generated and not committed.
+under `website/static/app/` with `npm run build:app` in `website/`, which
+`npm start` also runs. The staged build is generated and not committed; a small
+fallback page is tracked so `/play` explains itself when the app is absent.
 
 Android (requires the Android SDK/NDK, cargo-apk, and minSdk 26):
 

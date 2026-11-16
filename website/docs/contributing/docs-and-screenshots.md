@@ -66,15 +66,14 @@ only usable in a wider window.
 ## Hosted browser app
 
 The `/play` page embeds the WASM build that the docs workflow stages under
-`website/static/app/`. That folder is generated, so a local `npm run build`
-without Rust produces a site whose `/play` frame returns 404. To view the
-hosted app locally, build and stage it first:
+`website/static/app/`. `npm start` builds and stages it automatically; that
+needs Rust, the `wasm32-unknown-unknown` target, and Trunk. If one is missing,
+the build stops and prints the commands that install it.
 
-```sh
-cd website
-npm run build:app  # needs Rust, the wasm32 target, and Trunk
-npm start
-```
+For docs-only work, `npm run start:docs` skips the build. A tracked
+`website/static/app/index.html` placeholder explains how to build the app, so
+`/play` shows that explanation instead of a bare 404 when the build is absent.
+`npm run build:app` replaces the placeholder; do not commit the staged build.
 
 The app is built with the public URL `/Contra-karaoke/app/`; keep that in step
 with `baseUrl` in `docusaurus.config.ts` or set `CONTRA_WEB_PUBLIC_URL`.
