@@ -596,6 +596,75 @@ fn profile_screen_frames(
     );
 }
 
+/// The touch-only tab swipe added in the touch-swipe change.
+///
+/// A finger press on empty content followed by a sideways move must change
+/// tabs in one frame. The gesture is timed as the frame that acts on the move;
+/// its unit tests cover the mouse and control-ownership cases.
+fn profile_touch_tab_swipe(report: &mut Report) {
+    fn touch(phase: egui::TouchPhase, pos: egui::Pos2) -> egui::Event {
+        egui::Event::Touch {
+            device_id: egui::TouchDeviceId(1),
+            id: egui::TouchId(2),
+            phase,
+            pos,
+            force: None,
+        }
+    }
+    fn pointer_button(pos: egui::Pos2, pressed: bool) -> egui::Event {
+        egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        }
+    }
+
+    let mut harness = harness();
+    harness.set_size(DESKTOP);
+    {
+        let app = harness.state_mut();
+        idle(app);
+        // `tab_swipe` deliberately ignores the headless screenshot renderer;
+        // this measurement needs the real interaction path.
+        app.headless = false;
+        app.screen = Screen::Session;
+    }
+    harness.run_steps(3);
+    let start = egui::pos2(640.0, 400.0);
+    let end = egui::pos2(340.0, 400.0);
+    harness
+        .input_mut()
+        .events
+        .push(touch(egui::TouchPhase::Start, start));
+    harness.input_mut().events.push(pointer_button(start, true));
+    harness.run_steps(1);
+    harness
+        .input_mut()
+        .events
+        .push(touch(egui::TouchPhase::Move, end));
+    harness
+        .input_mut()
+        .events
+        .push(egui::Event::PointerMoved(end));
+    let started = Instant::now();
+    harness.run_steps(1);
+    let elapsed = started.elapsed().as_secs_f64() * 1000.0;
+    assert_eq!(
+        harness.state().screen,
+        Screen::DancePicker,
+        "the synthetic finger drag should change tabs"
+    );
+    report.record(
+        "frame · touch",
+        "Session · touch tab swipe",
+        "ContraApp::ui → tab_swipe → touch_started + swipe_target",
+        FRAME_BUDGET_MS,
+        vec![elapsed],
+        "one frame that acts on the finger move from Session to Select dance",
+    );
+}
+
 /// The tap-to-unlock slider guard added in the touch-slider change.
 ///
 /// A finger event marks every slider locked; the frame draws the padlocked
@@ -1755,6 +1824,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     harness.run_steps(3);
 
     profile_screen_frames(&mut harness, &mut report, samples);
+    profile_touch_tab_swipe(&mut report);
     profile_touch_slider_guard(&mut report, samples);
     profile_phone_frames(&mut harness, &mut report, samples);
     profile_actions(&mut harness, &mut report, samples);
