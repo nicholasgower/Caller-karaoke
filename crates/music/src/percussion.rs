@@ -744,6 +744,7 @@ mod tests {
             sample_rate: 24_000,
             variation_passes: 1,
             ending: false,
+            humanize_timing: true,
         };
         let buffer = crate::render::render(&request, None).expect("render taps");
         let peak = buffer
@@ -783,6 +784,7 @@ mod tests {
             sample_rate: 24_000,
             variation_passes: 1,
             ending: false,
+            humanize_timing: true,
         };
         let with = crate::render::render(&request, None).expect("render trio");
         request.percussion = Percussion::Off;
@@ -823,6 +825,7 @@ mod tests {
             sample_rate: 24_000,
             variation_passes: 1,
             ending: false,
+            humanize_timing: true,
         };
         let mut single = request.clone();
         single.copies.percussion = 1;

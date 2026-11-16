@@ -207,3 +207,34 @@ Soundfont file selection:
 - The notes must match what the synth plays. The reverb, chorus, and echo
   settings are shared with playback, where the same chain is applied to the
   rendered buffer; in the file they become General MIDI sends.
+
+### 6.10 Human timing
+
+Playback can humanize the band slightly; the preference is
+`humanize_timing`, on by default. MIDI export is deliberately not humanized.
+
+- **Per-voice deviation.** Melody, accompaniment, and countermelody each get
+  their own slow tempo deviation, and every copy of a part gets its own
+  independent curve. The deviation is a seeded sum of two slow sines (periods
+  of roughly four and eight bars), bounded to ±0.35 % of the user-set tempo.
+- **Per-voice PID.** A PID controller per player (`crates/music/src/humanize.rs`)
+  treats the un-deviated beat grid as its setpoint. The accumulated timing
+  error is integrated on an eighth-of-a-beat control step with `Kp = 0.5`,
+  `Ki = 0.05` per beat, and `Kd = 0.02` beats, so a wandering player is pulled
+  back over about sixteen bars instead of leaving a permanent offset.
+- **Bounded onsets.** One note's total onset offset — deviation plus chord
+  asynchrony — is capped at 12 ms and clamped inside the pass, so a note can
+  never cross the loop boundary and the sample count does not change.
+- **Chord asynchrony.** Notes that start together within a section are spread
+  by a deterministic ±6 ms pitch-level offset. A note that starts alone, such
+  as a melody note, is left exactly on the voice's curve.
+- **Reproducible seed.** The seed is derived from the arrangement (meter, key,
+  melody, chords) plus the voice and copy index, so two identical renders are
+  bit-identical and a tune keeps its feel between renders.
+- **Excluded.** The count-in stays exactly four beats so the potatoes state the
+  tempo; percussion stays grid-exact because it is the audible grid; the
+  once-only slow ending keeps its written ritardando. MIDI export writes the
+  un-deviated grid.
+- **Both renderers.** The built-in synth and the sampled soundfont renderer
+  apply the same curves. A note's offset shifts its note-on and note-off
+  together, so note durations stay sensible.

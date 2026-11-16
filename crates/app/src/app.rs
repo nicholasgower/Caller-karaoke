@@ -425,6 +425,7 @@ struct RenderSettings {
     count_in_beats: f64,
     sample_rate: u32,
     variation_passes: u32,
+    humanize_timing: bool,
 }
 
 impl RenderSettings {
@@ -447,6 +448,7 @@ impl RenderSettings {
             sample_rate: self.sample_rate,
             variation_passes: self.variation_passes,
             ending: true,
+            humanize_timing: self.humanize_timing,
         }
     }
 }
@@ -1147,6 +1149,7 @@ impl ContraApp {
             } else {
                 1
             },
+            humanize_timing: self.prefs.humanize_timing,
         }
     }
 

@@ -12,6 +12,7 @@ use rustysynth::{SoundFont, Synthesizer, SynthesizerSettings};
 
 use crate::arrange::EndingNote;
 use crate::copies::Part;
+use crate::humanize::{Humanizer, Voice, chord_members};
 use crate::render::{AudioBuffer, RenderError, RenderRequest};
 use crate::score::NoteEvent;
 
@@ -107,6 +108,7 @@ pub fn render_soundfont(
     }
 
     let mut scheduled = Vec::new();
+    let humanizer = Humanizer::new(request);
     for pass in 0..passes {
         let offset = count_in_samples + pass as u64 * pass_samples;
         let melody = request.arrangement.melody_notes_for_pass(pass);
@@ -118,6 +120,7 @@ pub fn render_soundfont(
             offset,
             samples_per_beat,
             sample_rate,
+            &humanizer,
         );
         if pass == 0 {
             schedule_part(
@@ -128,6 +131,7 @@ pub fn render_soundfont(
                 offset,
                 samples_per_beat,
                 sample_rate,
+                &humanizer,
             );
         }
         let accompaniment = request
@@ -145,6 +149,7 @@ pub fn render_soundfont(
             offset,
             samples_per_beat,
             sample_rate,
+            &humanizer,
         );
 
         if request.second_accompaniment.instrument().is_some() {
@@ -157,6 +162,7 @@ pub fn render_soundfont(
                 offset,
                 samples_per_beat,
                 sample_rate,
+                &humanizer,
             );
         }
     }
@@ -278,6 +284,10 @@ fn configure_part(
 }
 
 /// Schedule one part's notes once per copy, each on its own channel.
+///
+/// Human timing follows the same per-copy curves as the built-in synth. A
+/// note's offset shifts both its note-on and note-off by the same amount, so
+/// its duration and the loop's sample count do not change.
 #[allow(clippy::too_many_arguments)]
 fn schedule_part(
     scheduled: &mut Vec<Scheduled>,
@@ -287,15 +297,29 @@ fn schedule_part(
     offset_samples: u64,
     samples_per_beat: f64,
     sample_rate: u32,
+    humanizer: &Humanizer,
 ) {
-    for (copy, voice) in crate::copies::voices(0.0, copies, sample_rate)
+    let chord = chord_members(notes);
+    let voice = Voice::of(part);
+    for (copy, player) in crate::copies::voices(0.0, copies, sample_rate)
         .into_iter()
         .enumerate()
     {
         let channel = part.channel(copy);
-        let start_offset = offset_samples + voice.delay_samples;
-        for note in notes {
-            let start = start_offset as i64 + (note.start_beat * samples_per_beat).round() as i64;
+        let start_offset = offset_samples + player.delay_samples;
+        let timing = humanizer.voice(voice, copy);
+        for (index, note) in notes.iter().enumerate() {
+            let humanized = timing.as_ref().map_or(0.0, |timing| {
+                timing.onset_offset_seconds(
+                    note.start_beat,
+                    note.duration_beats,
+                    note.midi,
+                    chord.get(index).copied().unwrap_or(false),
+                )
+            });
+            let start = start_offset as i64
+                + (note.start_beat * samples_per_beat).round() as i64
+                + (humanized * f64::from(sample_rate)).round() as i64;
             if start < 0 {
                 continue;
             }
@@ -307,7 +331,7 @@ fn schedule_part(
                 kind: ScheduledKind::NoteOn {
                     channel,
                     key: note.midi as i32,
-                    velocity: (i32::from(note.velocity) + voice.velocity_offset).clamp(1, 127),
+                    velocity: (i32::from(note.velocity) + player.velocity_offset).clamp(1, 127),
                 },
             });
             scheduled.push(Scheduled {

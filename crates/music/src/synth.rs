@@ -10,6 +10,7 @@ use std::f32::consts::TAU;
 use contra_core::{AccompanimentInstrument, MelodyInstrument};
 
 use crate::arrange::EndingNote;
+use crate::humanize::{Humanizer, Voice, VoiceTiming, chord_members};
 use crate::render::{AudioBuffer, RenderRequest};
 use crate::score::NoteEvent;
 
@@ -59,6 +60,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
     let melody_voice = melody_timbre(request.melody);
     let accompaniment_timbre = accompaniment_timbre(request.accompaniment);
     let copies = request.copies;
+    let humanizer = Humanizer::new(request);
     for pass in 0..passes {
         let offset = count_in_samples as i64 + pass as i64 * pass_samples as i64;
         if pass == 0 {
@@ -72,6 +74,8 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 sample_rate,
                 -0.10,
                 copies.melody_count(),
+                Voice::Melody,
+                &humanizer,
             );
         }
         let melody = request.arrangement.melody_notes_for_pass(pass);
@@ -85,6 +89,8 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             sample_rate,
             -0.10,
             copies.melody_count(),
+            Voice::Melody,
+            &humanizer,
         );
 
         let accompaniment = request
@@ -104,6 +110,8 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             sample_rate,
             0.10,
             copies.accompaniment_count(),
+            Voice::Accompaniment,
+            &humanizer,
         );
 
         // Countermelody: a countermelody on a melody instrument, mixed a little
@@ -120,6 +128,8 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 sample_rate,
                 0.30,
                 copies.countermelody_count(),
+                Voice::Countermelody,
+                &humanizer,
             );
         }
     }
@@ -240,7 +250,9 @@ fn melody_timbre(instrument: MelodyInstrument) -> Timbre {
 /// Render one part's notes once per copy.
 ///
 /// A single copy goes through the same code as before copies existed, with
-/// unity gain, the part's base pan, and no latency or detune.
+/// unity gain, the part's base pan, and no latency or detune. Human timing is
+/// per copy: each player's curve is seeded from the tune, the voice, and the
+/// copy index.
 #[allow(clippy::too_many_arguments)]
 fn render_section(
     samples: &mut [f32],
@@ -252,18 +264,27 @@ fn render_section(
     sample_rate: u32,
     base_pan: f32,
     copies: usize,
+    voice: Voice,
+    humanizer: &Humanizer,
 ) {
-    for voice in crate::copies::voices(base_pan, copies, sample_rate) {
+    let chord = chord_members(notes);
+    for (copy, player) in crate::copies::voices(base_pan, copies, sample_rate)
+        .into_iter()
+        .enumerate()
+    {
+        let timing = humanizer.voice(voice, copy);
         render_notes(
             samples,
             notes,
             timbre,
-            volume * voice.gain,
-            offset + voice.delay_samples as i64,
+            volume * player.gain,
+            offset + player.delay_samples as i64,
             samples_per_beat,
             sample_rate,
-            voice.pan,
-            voice.detune,
+            player.pan,
+            player.detune,
+            timing.as_ref(),
+            &chord,
         );
     }
 }
@@ -279,9 +300,21 @@ fn render_notes(
     sample_rate: u32,
     pan: f32,
     detune: f32,
+    timing: Option<&VoiceTiming>,
+    chord: &[bool],
 ) {
-    for note in notes {
-        let start = offset + (note.start_beat * samples_per_beat).round() as i64;
+    for (index, note) in notes.iter().enumerate() {
+        let humanized = timing.map_or(0.0, |timing| {
+            timing.onset_offset_seconds(
+                note.start_beat,
+                note.duration_beats,
+                note.midi,
+                chord.get(index).copied().unwrap_or(false),
+            )
+        });
+        let start = offset
+            + (note.start_beat * samples_per_beat).round() as i64
+            + (humanized * f64::from(sample_rate)).round() as i64;
         let duration = (note.duration_beats * samples_per_beat).round().max(1.0) as usize;
         if start < 0 {
             continue;
@@ -762,6 +795,7 @@ mod tests {
             sample_rate: 24_000,
             variation_passes: 1,
             ending: false,
+            humanize_timing: true,
         }
     }
 
@@ -884,6 +918,36 @@ mod tests {
         );
         assert!(thicker.samples.iter().all(|sample| sample.is_finite()));
         assert!(thicker.samples.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn humanized_renders_are_reproducible_and_keep_the_grid() {
+        let mut grid_exact = request();
+        grid_exact.humanize_timing = false;
+        let plain = render_builtin(&grid_exact);
+        let humanized = render_builtin(&request());
+        let again = render_builtin(&request());
+
+        assert_eq!(plain.frames(), humanized.frames());
+        assert_eq!(plain.loop_pass_samples, humanized.loop_pass_samples);
+        assert_eq!(plain.loop_start_sample, humanized.loop_start_sample);
+        assert_eq!(plain.loop_end_sample, humanized.loop_end_sample);
+        assert_eq!(
+            humanized.samples, again.samples,
+            "the same request must render bit-identically"
+        );
+        assert!(humanized.samples.iter().all(|sample| sample.is_finite()));
+        assert!(humanized.samples.iter().all(|sample| sample.abs() <= 1.0));
+
+        let difference = plain
+            .samples
+            .iter()
+            .zip(&humanized.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-4,
+            "human timing should change the mix, not {difference}"
+        );
     }
 
     #[test]
