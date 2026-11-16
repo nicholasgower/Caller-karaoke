@@ -37,14 +37,20 @@ and projectors.
 <Steps>
   <Step shot="prefs-interface">
     Open **Preferences** with the gear button and find **Interface** to turn
-    **Smooth animations** on or off. The keyboard reference sits below the
-    checkbox.
+    **Smooth animations** on or off. The **Undo** and **Redo** buttons and the
+    keyboard reference sit below the checkbox.
   </Step>
 </Steps>
 
 Smooth animations fade and slide between screens and animate tab and highlight
 changes. Turn them off to reduce motion; the app then switches screens
 immediately. The docs site also respects `prefers-reduced-motion`.
+
+**Undo** and **Redo** undo the last preference or dance/tune change and are
+disabled while there is nothing to undo or redo. They are full touch targets at
+phone width, and the same actions are on **Ctrl+Z** and **Ctrl+Y**
+(**Ctrl+Shift+Z** also redoes). Each action leaves a short status message under
+the buttons.
 
 ## Touch and narrow windows
 
@@ -81,9 +87,11 @@ full-width target that previews that dance or tune.
 - **1-3** switch tabs; **4** opens Preferences.
 - **← / →** move to the previous or next tab.
 - **Enter** submits a search or adds a custom alias.
+- **Ctrl+Z** undoes the last change; **Ctrl+Y** or **Ctrl+Shift+Z** redoes it.
 
 Shortcuts are ignored while a text field has focus, and the arrow keys stay with
-a focused slider or list. On Windows, Linux, and Android, the operating system's
+a focused slider or list. A focused text field keeps its own **Ctrl+Z** for
+undoing typing. On Windows, Linux, and Android, the operating system's
 media controls (the keyboard's play/pause key, the desktop media widget, or
 Android's lock screen and headset buttons) work even when another window or app
 is in front. See

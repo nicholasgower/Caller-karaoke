@@ -208,8 +208,8 @@
     },
     {
       "id": "prefs-interface",
-      "alt": "The Preferences screen showing the Theme buttons and the Interface section with Smooth animations and the keyboard shortcut reference.",
-      "caption": "Interface settings control the screen transitions and show the keyboard shortcuts.",
+      "alt": "The Preferences screen showing the Theme buttons and the Interface section with Smooth animations, the Undo and Redo buttons, and the keyboard shortcut reference.",
+      "caption": "Interface settings control the screen transitions, undo and redo the last change, and show the keyboard shortcuts.",
       "status": "ready",
       "width": 1280,
       "height": 1000

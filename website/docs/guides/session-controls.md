@@ -39,6 +39,12 @@ Press **Play** to render and start. The app renders synchronously on that press;
 there is no separate “preparing music” screen in 0.1.0. Role, alias, and lead
 changes rebuild the call timeline without re-rendering the music.
 
+**Undo** and **Redo** (Ctrl+Z and Ctrl+Y) put a setting or a dance/tune choice
+back. A running session keeps its beat when only playback settings changed: the
+loop is re-rendered and playback resumes where it was. Undoing a dance or tune
+selection stops the old music and speech and leaves the restored tune ready for
+the next **Play**, exactly as choosing it from a picker would.
+
 ## Background playback
 
 Minimizing the window, covering it, or switching to another app leaves the audio
@@ -64,6 +70,9 @@ the background stops with it.
 - **← / →** switch to the previous or next tab, wrapping at the ends.
 - **Enter** starts a search from a search field, creates a folder, or adds a
   custom alias.
+- **Ctrl+Z** undoes the last preference or dance/tune change; **Ctrl+Y** or
+  **Ctrl+Shift+Z** redoes it. The same actions are buttons in **Preferences →
+  Interface**.
 
 Shortcuts are ignored while a text field has focus, and the arrow keys are left
 to a focused slider or list. On desktop, the keyboard's play/pause media key
