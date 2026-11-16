@@ -179,6 +179,7 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         let app = harness.state_mut();
         app.prefs.role_terms =
             contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
+        app.prefs.role_preset = contra_core::RolePreset::LadiesGentlemen;
         app.prefs.aliases.set_override(
             contra_core::MoveKind::BalanceAndSwing,
             "partners balance and swing with your partner",
@@ -200,6 +201,7 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         let app = harness.state_mut();
         app.prefs.aliases = contra_core::AliasTable::default();
         app.prefs.role_terms = contra_core::RoleTerms::default();
+        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
         app.prefs.loop_enabled = false;
         app.prefs.tts_enabled = false;
         app.audio.set_looping(false);
@@ -479,8 +481,8 @@ fn preference_shots(
     capture(harness, out, "prefs-open")?;
     {
         let app = harness.state_mut();
-        app.prefs.role_terms =
-            contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
+        app.prefs.role_terms = contra_core::RoleTerms::default();
+        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
     }
     capture(harness, out, "prefs-roles-presets")?;
     {
@@ -493,6 +495,7 @@ fn preference_shots(
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
+        app.prefs.role_preset = contra_core::RolePreset::Custom;
     }
     capture(harness, out, "prefs-roles-custom")?;
     {
@@ -851,6 +854,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
         app.prefs.role_terms = contra_core::RoleTerms::default();
+        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
         app.prefs.theme = contra_core::Theme::Dark;
     }
     capture(harness, out, "preferences")?;
@@ -862,6 +866,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
+        app.prefs.role_preset = contra_core::RolePreset::Custom;
     }
     capture(harness, out, "preferences-custom-roles")?;
     harness.set_size(Vec2::new(390.0, 3600.0));
@@ -917,6 +922,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
+        app.prefs.role_preset = contra_core::RolePreset::Custom;
     }
     capture(harness, out, "preferences-360")?;
     {

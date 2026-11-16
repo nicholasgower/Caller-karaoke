@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::alias::AliasTable;
 use crate::dance::SourceRef;
 use crate::effects::AudioEffects;
-use crate::roles::RoleTerms;
+use crate::roles::{RolePreset, RoleTerms};
 use crate::time::Tempo;
 use crate::timing::LeadSettings;
 
@@ -438,6 +438,13 @@ impl TuneRotation {
 #[serde(default)]
 pub struct Preferences {
     pub schema_version: u32,
+    /// The role preset the user explicitly selected.
+    ///
+    /// Stored instead of inferred every frame: a custom vocabulary can happen
+    /// to equal a named preset, and choosing Custom must stay Custom until the
+    /// user picks something else. Older files have no field; the
+    /// `role-preset-v11` migration infers it from [`Self::role_terms`].
+    pub role_preset: RolePreset,
     pub role_terms: RoleTerms,
     pub aliases: AliasTable,
     pub melody: MelodyInstrument,
@@ -507,7 +514,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 10;
+pub const CURRENT_SCHEMA_VERSION: u32 = 11;
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -582,6 +589,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "audio-effects-v10",
         version: 10,
         apply: migrate_v9_audio_effects,
+    },
+    Migration {
+        tag: "role-preset-v11",
+        version: 11,
+        apply: migrate_v10_role_preset,
     },
 ];
 
@@ -670,6 +682,14 @@ fn migrate_v9_audio_effects(_prefs: &mut Preferences) {
     // the new room sound without changing anything else.
 }
 
+fn migrate_v10_role_preset(prefs: &mut Preferences) {
+    // v11 stores the explicit role preset. Files written before it carry only
+    // the four terms, so infer the preset from them: a custom vocabulary (or
+    // terms that no preset defines) becomes Custom instead of showing the
+    // wrong selection.
+    prefs.role_preset = RolePreset::detect(&prefs.role_terms);
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -705,6 +725,7 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             schema_version: CURRENT_SCHEMA_VERSION,
+            role_preset: RolePreset::LarksRobins,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
@@ -745,6 +766,19 @@ impl Default for Preferences {
 impl Preferences {
     pub fn tempo(&self) -> Tempo {
         Tempo::new(self.tempo_bpm)
+    }
+
+    /// Select a role preset.
+    ///
+    /// A named preset replaces all four terms. Custom keeps the current words
+    /// as the starting point for editing and stays selected: the selection is
+    /// stored in [`Self::role_preset`], not re-detected from the terms, so a
+    /// vocabulary that happens to match a named preset does not snap back.
+    pub fn select_role_preset(&mut self, preset: RolePreset) {
+        self.role_preset = preset;
+        if preset != RolePreset::Custom {
+            self.role_terms = RoleTerms::preset(preset);
+        }
     }
 
     /// The rate handed to the speech engine.
@@ -861,6 +895,7 @@ mod tests {
     #[test]
     fn defaults_match_product_spec() {
         let prefs = Preferences::default();
+        assert_eq!(prefs.role_preset, RolePreset::LarksRobins);
         assert_eq!(prefs.role_terms.left_plural, "larks");
         assert_eq!(prefs.role_terms.right_plural, "robins");
         assert_eq!(prefs.melody, MelodyInstrument::Fiddle);
@@ -961,6 +996,81 @@ mod tests {
     fn missing_fields_use_defaults() {
         let prefs = Preferences::from_json("{}").expect("deserialize");
         assert_eq!(prefs, Preferences::default());
+    }
+
+    #[test]
+    fn role_presets_round_trip_through_preferences() {
+        for preset in RolePreset::ALL {
+            let mut prefs = Preferences::default();
+            prefs.select_role_preset(preset);
+            let json = prefs.to_json().expect("serialize");
+            let restored = Preferences::from_json(&json).expect("deserialize");
+            assert_eq!(restored.role_preset, preset);
+            if preset != RolePreset::Custom {
+                assert_eq!(restored.role_terms, RoleTerms::preset(preset));
+            }
+        }
+    }
+
+    #[test]
+    fn custom_role_terms_survive_a_preferences_round_trip() {
+        let mut prefs = Preferences::default();
+        prefs.select_role_preset(RolePreset::Custom);
+        prefs.role_terms = RoleTerms {
+            left_singular: "port".into(),
+            left_plural: "ports".into(),
+            right_singular: "starboard".into(),
+            right_plural: "starboards".into(),
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.role_preset, RolePreset::Custom);
+        assert_eq!(restored.role_terms, prefs.role_terms);
+    }
+
+    /// The stored selection is the source of truth. A custom vocabulary may
+    /// match a named preset, but the menu must stay on Custom until the user
+    /// chooses another preset.
+    #[test]
+    fn a_stored_custom_selection_is_not_redetected() {
+        let mut prefs = Preferences::default();
+        prefs.select_role_preset(RolePreset::Custom);
+        prefs.role_terms = RoleTerms::preset(RolePreset::LarksRobins);
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.role_preset, RolePreset::Custom);
+        assert_eq!(
+            restored.role_terms,
+            RoleTerms::preset(RolePreset::LarksRobins)
+        );
+    }
+
+    #[test]
+    fn older_files_infer_the_role_preset_from_their_terms() {
+        let custom = r#"{
+            "schema_version": 10,
+            "role_terms": {
+                "left_singular": "port",
+                "left_plural": "ports",
+                "right_singular": "starboard",
+                "right_plural": "starboards"
+            }
+        }"#;
+        let prefs = Preferences::from_json(custom).expect("deserialize");
+        assert_eq!(prefs.role_preset, RolePreset::Custom);
+        assert_eq!(prefs.role_terms.left_plural, "ports");
+
+        let presets = r#"{
+            "schema_version": 10,
+            "role_terms": {
+                "left_singular": "lady",
+                "left_plural": "ladies",
+                "right_singular": "gentleman",
+                "right_plural": "gentlemen"
+            }
+        }"#;
+        let prefs = Preferences::from_json(presets).expect("deserialize");
+        assert_eq!(prefs.role_preset, RolePreset::LadiesGentlemen);
     }
 
     #[test]
