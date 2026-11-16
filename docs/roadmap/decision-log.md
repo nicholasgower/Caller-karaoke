@@ -19,3 +19,4 @@
 | 2026-11-15 | Defer the dance model and everything that depends on it | Who/where and positional calling need a real choreography model; roadmap only until it is designed and accepted |
 | 2026-11-15 | Commanding caller tone by default, via a pitch shift and clear-speech phoneme/EQ pass | Kokoro has no emotion input and drops punctuation; holding stressed vowels and lifting presence makes diction carry without changing the syllable-based lead |
 | 2026-11-15 | Omit the word “once” and connect “and a half” in calls | Callers do not say a one-count; the connected tail removes the four-word pause without changing the card |
+| 2026-11-15 | Replace the Nicole TTS voice with Sarah, and add Onyx | Nicole’s soft, whispery delivery did not carry over dance music; Sarah is a clear US female voice and Onyx adds a resonant US male option. Stored Nicole preferences migrate to Sarah |

@@ -65,8 +65,9 @@ See the `egui`/`epaint` source for the exact font files and notices.
 ## Voice model and runtime
 
 - **Kokoro-82M** — <https://huggingface.co/hexgrad/Kokoro-82M>. Model weights and
-  the voice styles (Heart, Bella, Nicole, Michael, Fenrir) are Apache-2.0. The
-  desktop app downloads `model_quantized.onnx`, the selected voice `.bin`, and
+  the voice styles (Heart, Bella, Sarah, Michael, Fenrir, Onyx) are Apache-2.0.
+  The desktop app downloads `model_quantized.onnx`, the selected voice `.bin`,
+  and
   `config.json` from
   <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX> on first use and
   caches them locally. They are not stored in this repository or in the source

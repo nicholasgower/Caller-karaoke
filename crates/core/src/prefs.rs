@@ -563,6 +563,11 @@ pub const MIGRATIONS: &[Migration] = &[
         version: 9,
         apply: migrate_v8_percussion_rhythm,
     },
+    Migration {
+        tag: "tts-voice-nicole-v9",
+        version: 9,
+        apply: migrate_v8_tts_voice_nicole,
+    },
 ];
 
 fn migrate_v1_lead_calibration(prefs: &mut Preferences) {
@@ -621,6 +626,16 @@ fn migrate_v6_tts_tone(_prefs: &mut Preferences) {
     // v7 adds the caller tone. `serde` supplies the Commanding default for
     // older files, which is the requested change, so there is nothing else to
     // adjust.
+}
+
+fn migrate_v8_tts_voice_nicole(prefs: &mut Preferences) {
+    // v9 retires Nicole, whose soft delivery was too quiet to call a dance.
+    // Sarah is the replacement US female voice, so a stored Nicole preference
+    // moves there instead of falling back to the default. Every other voice is
+    // left alone, and the app still treats an unknown ID as the default.
+    if prefs.tts_voice == "af_nicole" {
+        prefs.tts_voice = "af_sarah".to_string();
+    }
 }
 
 fn migrate_v7_percussion(_prefs: &mut Preferences) {
@@ -990,6 +1005,24 @@ mod tests {
         assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(migrated.tts_tone, CallTone::Commanding);
         assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn v7_preferences_move_nicole_to_sarah() {
+        let json = r#"{"schema_version":7,"tts_voice":"af_nicole"}"#;
+        let migrated = Preferences::from_json(json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(migrated.tts_voice, "af_sarah");
+    }
+
+    #[test]
+    fn the_nicole_migration_leaves_other_voices_alone() {
+        for voice in ["af_heart", "am_michael", "am_onyx"] {
+            let json = format!(r#"{{"schema_version":7,"tts_voice":"{voice}"}}"#);
+            let migrated = Preferences::from_json(&json).expect("deserialize");
+            assert_eq!(migrated.tts_voice, voice);
+        }
     }
 
     #[test]
