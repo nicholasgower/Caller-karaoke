@@ -174,7 +174,7 @@ fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64, rhythm: PercussionRhyt
             // group per dance beat, so the pattern stays light under the tune.
             let mut beat = 0.0;
             while beat < loop_beats - 1e-9 {
-                for (index, offset) in [0.0, 0.25, 0.375].into_iter().enumerate() {
+                for (index, offset) in [0.0, 0.50, 0.75].into_iter().enumerate() {
                     push(
                         notes,
                         beat + offset,
