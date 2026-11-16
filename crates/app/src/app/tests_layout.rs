@@ -367,15 +367,22 @@ fn hovering_a_dance_card_term_shows_its_glossary_definition() {
         .query_all_by_label("balance and swing")
         .next()
         .expect("the dance card links the balance and swing figure");
-    harness.hover_at(term.rect().center());
+    let term_center = term.rect().center();
+    harness.hover_at(term_center);
     harness.run_steps(3);
 
+    let definition = harness
+        .query_all_by_label("Balance first, then swing the same partner or neighbor.")
+        .next()
+        .expect("hovering a linked term should show its glossary definition");
+    let tooltip = definition.rect();
     assert!(
-        harness
-            .query_all_by_label("Balance first, then swing the same partner or neighbor.")
-            .next()
-            .is_some(),
-        "hovering a linked term should show its glossary definition"
+        tooltip.top() > 100.0,
+        "the desktop tooltip should sit near the pointer, not at the top of the screen: {tooltip:?}"
+    );
+    assert!(
+        (tooltip.center().x - term_center.x).abs() < 420.0,
+        "the desktop tooltip should stay beside the hovered term: {tooltip:?} vs {term_center:?}"
     );
 }
 

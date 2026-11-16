@@ -60,7 +60,7 @@
     },
     {
       "id": "glossary-tooltip",
-      "alt": "The session screen with a definition card above it naming Balance and swing and explaining the balance-then-swing figure.",
+      "alt": "The session screen with a definition tooltip beside the pointer over the Balance and swing term, naming the term and explaining the balance-then-swing figure.",
       "caption": "Hovering a linked term on a desktop, or resting a finger on it on a phone, shows its short definition.",
       "status": "pending"
     },

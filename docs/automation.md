@@ -158,8 +158,8 @@ Useful checks for this app:
 - Glossary terms are clickable labels named with the term itself; the
   **Glossary** button beside the Dance card heading has the same accessible
   name. The **Filter terms** field narrows the reference list. Hover a linked
-  term to read its definition tooltip; the phone long press shows the same
-  definition in a card at the top of the screen.
+  term to read its definition tooltip beside the pointer; the phone long press
+  shows the same definition in a card at the top of the screen.
 - Media keys are not MCP inputs: the operating system's media session sits
   outside the app's widget tree, so no tool can press a hardware key.
   `session_action` (`play`, `pause`, `restart`) drives the same app path the

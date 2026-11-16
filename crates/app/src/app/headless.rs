@@ -11,6 +11,7 @@ use contra_core::{Dance, FolderFilter, Library, LibraryEntry, SourceRef, Tune};
 use contra_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary};
 use eframe::egui::{self, Vec2};
 use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable;
 
 use super::ui::preferences::{PreferencesCategory, PreferencesPage};
 use super::{ContraApp, Screen};
@@ -834,7 +835,7 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     }
     capture(harness, out, "glossary")?;
 
-    // A definition card above an active session, as a touch long press shows it.
+    // A desktop definition tooltip follows the pointer over a linked term.
     {
         let app = harness.state_mut();
         app.screen = Screen::Session;
@@ -843,8 +844,13 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
         app.audio.play();
         app.audio.seek_beat(4.0);
     }
+    harness.ctx.style_mut_of(egui::Theme::Dark, |style| {
+        style.interaction.tooltip_delay = 0.0
+    });
     harness.run_steps(2);
-    super::ui::show_tooltip_preview(&harness.ctx, "Balance and swing");
+    if let Some(term) = harness.query_all_by_label("balance and swing").next() {
+        harness.hover_at(term.rect().center());
+    }
     capture(harness, out, "glossary-tooltip")?;
 
     Ok(())

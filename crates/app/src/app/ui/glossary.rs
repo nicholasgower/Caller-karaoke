@@ -152,7 +152,9 @@ pub(in crate::app) fn glossary_text(
             let response = if touch {
                 response
             } else {
-                response.on_hover_ui(|ui| {
+                // A desktop tooltip belongs at the pointer, like any other
+                // hover tooltip, not in the phone card at the top of the screen.
+                response.on_hover_ui_at_pointer(|ui| {
                     ui.set_max_width(300.0);
                     definition_body(ui, found.entry);
                 })
