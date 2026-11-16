@@ -47,5 +47,29 @@ Rules:
 - `mcp` is a development/QA tool. It drives a development build through the
   `inspection` feature (off by default) and is not part of a release artifact.
 
+## Platform detection
+
+The desktop, web, and Android builds share one UI, so some differences are
+decided at runtime. `contra_app::platform()` (in `crates/app/src/platform.rs`)
+returns the target as a lowercase string: `"web"` for the
+`wasm32-unknown-unknown` browser build, otherwise the target OS (`"windows"`,
+`"linux"`, `"android"`, `"macos"`, and so on). It is a `const fn`, so a gate
+costs nothing.
+
+Use it when both branches compile on every target:
+
+```rust
+if contra_app::platform() == "android" {
+    // Show the share sheet.
+}
+
+let neural_voice = !matches!(contra_app::platform(), "web" | "android");
+```
+
+Keep `#[cfg]` for code that cannot compile elsewhere: file dialogs, `std::fs`,
+`cpal`, the Android insets module, the TTS bridge. The helper decides behavior;
+`cfg` decides what exists. The helper lives in `app`, so `core`, `music`, and
+`sources` stay platform-free.
+
 See `AGENTS.md` for the full dependency and coding rules, and
 `docs/automation.md` for the MCP workflow.
