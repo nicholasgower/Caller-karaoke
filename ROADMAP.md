@@ -816,7 +816,7 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 | Windows x64 | `cargo build --release` + Inno Setup | `ContraKaraoke-<version>-x64-setup.exe`, `...-portable.zip` |
 | Linux x86_64 | `cargo build --release` | `.deb` via `cargo-deb`, `.AppImage`, `.flatpak` |
 | Web | `trunk build --release` + `wasm-opt` | `contra-karaoke-web.zip`, optional GitHub Pages deploy |
-| Android | `cargo apk build --release` | universal APK (arm64 + armv7), minSdk 26 |
+| Android | `python packaging/android/build-apk.py` (wraps `cargo apk`) | universal APK (arm64 + armv7), minSdk 26 |
 
 Notes:
 

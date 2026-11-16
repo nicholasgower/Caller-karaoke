@@ -171,25 +171,42 @@ pub struct ContraApp {
 
 impl ContraApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        Self::new_with_data_dir(cc, None)
+    }
+
+    /// Android entry point: use the app's private files directory for
+    /// preferences, libraries, and the source cache. `directories` has no
+    /// Android-aware location, and `std::env::temp_dir()` is not writable in
+    /// the app sandbox.
+    #[cfg(target_os = "android")]
+    pub fn new_android(cc: &eframe::CreationContext<'_>, data_dir: Option<PathBuf>) -> Self {
+        Self::new_with_data_dir(cc, data_dir)
+    }
+
+    fn new_with_data_dir(cc: &eframe::CreationContext<'_>, data_dir: Option<PathBuf>) -> Self {
         let (source_tx, source_rx): (Sender<SourceEvent>, Receiver<SourceEvent>) = channel();
-        let project = directories::ProjectDirs::from("org", "contrakaraoke", "ContraKaraoke");
-        let (config_dir, cache_dir) = if let Some(project) = project {
-            (
-                project.config_dir().to_path_buf(),
-                project.cache_dir().to_path_buf(),
-            )
+        let (config_dir, cache_dir) = if let Some(base) = data_dir {
+            (base.join("config"), base.join("cache"))
         } else {
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                let base = std::env::temp_dir().join("contra-karaoke");
-                (base.join("config"), base.join("cache"))
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
+            let project = directories::ProjectDirs::from("org", "contrakaraoke", "ContraKaraoke");
+            if let Some(project) = project {
                 (
-                    PathBuf::from("contra-karaoke-config"),
-                    PathBuf::from("contra-karaoke-cache"),
+                    project.config_dir().to_path_buf(),
+                    project.cache_dir().to_path_buf(),
                 )
+            } else {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let base = std::env::temp_dir().join("contra-karaoke");
+                    (base.join("config"), base.join("cache"))
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    (
+                        PathBuf::from("contra-karaoke-config"),
+                        PathBuf::from("contra-karaoke-cache"),
+                    )
+                }
             }
         };
         let _ = std::fs::create_dir_all(&config_dir);

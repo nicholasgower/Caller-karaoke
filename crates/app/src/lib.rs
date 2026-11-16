@@ -40,6 +40,10 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
     android_logger::init_once(
         android_logger::Config::default().with_max_level(log::LevelFilter::Info),
     );
+    // `directories` and `std::env::temp_dir()` do not point at app-private
+    // storage on Android, so keep preferences and caches in the app's files
+    // directory.
+    let data_dir = app.internal_data_path();
     let options = eframe::NativeOptions {
         android_app: Some(app),
         ..Default::default()
@@ -47,7 +51,7 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
     let _ = eframe::run_native(
         "Contra Karaoke",
         options,
-        Box::new(|cc| Ok(Box::new(ContraApp::new(cc)))),
+        Box::new(move |cc| Ok(Box::new(ContraApp::new_android(cc, data_dir.clone())))),
     );
 }
 

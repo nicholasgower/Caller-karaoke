@@ -181,9 +181,14 @@ trunk build --release
 Android:
 
 ```sh
-rustup target add aarch64-linux-android armv7-linux-androideabi
-cargo apk build --release -p contra-app --lib
+rustup target add --toolchain 1.100.0 \
+  aarch64-linux-android armv7-linux-androideabi
+python packaging/android/build-apk.py
 ```
+
+The script wraps `cargo apk`, adds the `rs.tts.Bridge` class needed by the
+`tts` crate as `classes.dex`, and signs the result. Bare `cargo apk build`
+produces an APK that crashes while loading the native TTS bridge.
 
 Dependency hygiene:
 

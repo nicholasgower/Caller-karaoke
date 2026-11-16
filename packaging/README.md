@@ -4,7 +4,8 @@
 - `linux/` — `.desktop` file and AppImage build script; `.deb` metadata lives in
   `crates/app/Cargo.toml`.
 - `flatpak/` — Flatpak manifest and source-generation notes.
-- `android/` — placeholder for the Android packaging steps.
+- `android/` — `cargo-apk` build script, TTS Java bridge, and launcher icons in
+  `android/res/mipmap-*`.
 - `web/` — placeholder for the Trunk web build.
 
 CI and nightly workflows consume these files. See `ROADMAP.md` §9.
