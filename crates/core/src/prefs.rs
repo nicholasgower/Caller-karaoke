@@ -566,6 +566,12 @@ pub struct Preferences {
     /// later loop passes (ornaments, emphasis notes; now and then one bar of
     /// melody alone).
     pub accompaniment_variations: bool,
+    /// Give each player a tiny independent tempo drift, with a controller that
+    /// settles it back on the user's tempo, and spread chord notes by a few
+    /// milliseconds. Audio only; the count-in, the 64-beat grid, the calls, and
+    /// MIDI export stay exact.
+    #[serde(default = "default_humanize_timing")]
+    pub humanize_timing: bool,
     pub show_original: bool,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
@@ -806,6 +812,12 @@ fn default_tts_voice() -> String {
     "af_heart".to_string()
 }
 
+/// Human timing is on by default; it is part of the band's sound, not an
+/// effect the user has to discover.
+fn default_humanize_timing() -> bool {
+    true
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
@@ -832,6 +844,7 @@ impl Default for Preferences {
             loop_enabled: true,
             count_in_enabled: true,
             accompaniment_variations: true,
+            humanize_timing: default_humanize_timing(),
             show_original: false,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
@@ -958,6 +971,7 @@ impl Preferences {
             audio: self.tempo_bpm != old.tempo_bpm
                 || self.count_in_enabled != old.count_in_enabled
                 || self.accompaniment_variations != old.accompaniment_variations
+                || self.humanize_timing != old.humanize_timing
                 || self.melody != old.melody
                 || self.accompaniment != old.accompaniment
                 || self.accompaniment_rhythm != old.accompaniment_rhythm
@@ -1012,6 +1026,7 @@ mod tests {
         assert!(prefs.loop_enabled);
         assert!(prefs.count_in_enabled);
         assert!(prefs.accompaniment_variations);
+        assert!(prefs.humanize_timing);
         assert!(!prefs.tts_enabled);
         assert_eq!(prefs.tts_rate, 1.0);
         assert!((prefs.speech_rate() - 1.2).abs() < 1e-6);
@@ -1021,6 +1036,31 @@ mod tests {
         assert!(!prefs.shuffle_alternatives);
         assert!(!prefs.tune_rotation.enabled);
         assert_eq!(prefs.tune_rotation.passes_per_tune, 8);
+    }
+
+    #[test]
+    fn humanize_timing_is_on_by_default_and_marks_the_music_for_render() {
+        let old = Preferences::default();
+        assert!(old.humanize_timing);
+
+        let changed = Preferences {
+            humanize_timing: false,
+            ..old.clone()
+        };
+        let changes = changed.changes_since(&old);
+        assert!(changes.audio, "a humanize change must re-render the music");
+        assert!(!changes.timeline, "it must not rebuild the call timeline");
+
+        let json = changed.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(!restored.humanize_timing);
+    }
+
+    #[test]
+    fn older_files_get_human_timing_by_default() {
+        let prefs = Preferences::from_json(r#"{"schema_version": 11}"#).expect("deserialize");
+        assert!(prefs.humanize_timing);
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]

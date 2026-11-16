@@ -684,6 +684,16 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
         .color(theme::muted(ui)),
     );
     ui.checkbox(&mut app.prefs.show_original, "Show original card text");
+    ui.checkbox(&mut app.prefs.humanize_timing, "Humanize timing");
+    ui.label(
+        egui::RichText::new(
+            "Each player drifts by a fraction of a percent and a controller gently settles it back on \
+             the tempo; chord notes start a few milliseconds apart. The count-in, the 64-beat grid, \
+             and the calls stay exact.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     ui.separator();
 }
 

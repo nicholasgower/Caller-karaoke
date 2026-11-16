@@ -27,8 +27,8 @@ volume settings.
 
 Changing tempo, count-in, an instrument, countermelody, or percussion
 choice, a percussion rhythm, an accompaniment rhythm, a copy count,
-melody/accompaniment/percussion volume, or a SoundFont marks the music for
-a rebuild. Playback settings apply without
+melody/accompaniment/percussion volume, a SoundFont, or **Humanize timing**
+marks the music for a rebuild. Playback settings apply without
 restarting the music: release the control and the app re-renders the loop and
 keeps the current beat. The session master **Volume** applies immediately. If
 the session is not playing, it shows:

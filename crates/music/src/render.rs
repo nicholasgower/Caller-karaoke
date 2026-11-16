@@ -48,6 +48,10 @@ pub struct RenderRequest {
     /// The transport can splice into it on request; when it is not requested,
     /// the ending region is never played.
     pub ending: bool,
+    /// Give every voice a tiny independent tempo drift and spread chord notes
+    /// by a few milliseconds; see [`crate::humanize`]. The 64-beat grid, the
+    /// count-in, and the loop length are unaffected.
+    pub humanize_timing: bool,
 }
 
 #[derive(Clone, Debug)]

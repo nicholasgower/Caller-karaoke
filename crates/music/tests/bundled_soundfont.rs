@@ -49,6 +49,7 @@ fn request() -> RenderRequest {
         sample_rate: 24_000,
         variation_passes: 1,
         ending: false,
+        humanize_timing: true,
     }
 }
 

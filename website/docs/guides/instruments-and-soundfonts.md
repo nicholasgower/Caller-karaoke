@@ -174,6 +174,32 @@ given tune and arrangement; it keeps the selected rhythm and does not change
 the dance timing or the 64-beat loop length. On a melody-alone bar the
 countermelody rests too.
 
+## Human timing
+
+**Preferences → Playback → Humanize timing** is on by default. A contra band
+does not play to a click, so each player is allowed to drift a little against
+the beat:
+
+- every voice — melody, accompaniment, and countermelody, including each copy —
+  has its own slow tempo deviation, never more than 0.35 % of the chosen tempo;
+- a PID controller, one per player, pulls the accumulated timing error back to
+  the user-set tempo over about sixteen bars, so a player can wander but never
+  settles into a permanent offset;
+- notes that begin together as a chord are spread by up to six milliseconds of
+  pitch-level asynchrony. A melody note sounding on its own is not smeared.
+
+The drift is deliberately tiny — under two milliseconds per beat at 240 BPM,
+and never more than a few milliseconds for a single onset. It makes a
+repeated loop feel played rather than sequenced without moving the dance: the
+count-in stays exactly four beats, the 64-beat grid and loop length are
+unchanged, the calls do not move, and an exported MIDI file stays grid-exact.
+Percussion is not humanized because it is the audible grid the band plays
+against.
+
+Turning the setting off re-renders the loop with every note exactly on the
+grid. The human timing is deterministic for a given tune, so the same tune
+sounds the same each time it is rendered.
+
 ## Apply the change
 
 Instrument, rhythm, copy-count, volume, effect, and music-variation changes

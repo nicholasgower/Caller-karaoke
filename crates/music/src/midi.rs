@@ -71,6 +71,10 @@ pub fn export_midi(
 /// channel with a pan controller so a section is visible in a DAW. The
 /// percussion layer stays one track at every copy count; General MIDI has one
 /// drum channel.
+///
+/// The export is grid-exact. The playback-only human timing (see
+/// [`crate::humanize`]) is deliberately not written, so the file lines up with
+/// the dance and can be edited on the beat.
 #[allow(clippy::too_many_arguments)]
 pub fn export_midi_with_passes(
     arrangement: &Arrangement,
