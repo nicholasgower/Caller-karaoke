@@ -1,0 +1,16 @@
+# GM programs kept in assets/defaults/fluid-r3-gm-subset.sf2.
+#
+# One zero-based General MIDI program number (bank 0) per line. Everything after
+# a `#` is a comment. This is the single list to edit when the preferences gain
+# an instrument: `scripts/rebuild-soundfont.py` reads it, and
+# `crates/music/tests/bundled_soundfont.rs` fails if it drifts from the
+# MelodyInstrument / AccompanimentInstrument / Countermelody enums.
+#
+# The bundled font is a derived work of Fluid R3 GM (MIT); see CREDITS.md.
+0   # Acoustic Grand Piano   - accompaniment
+21  # Accordion              - melody, accompaniment, countermelody
+25  # Acoustic Guitar (steel) - accompaniment
+40  # Violin                 - melody (fiddle), countermelody
+65  # Alto Sax               - melody
+66  # Tenor Sax              - melody
+71  # Clarinet               - melody

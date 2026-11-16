@@ -64,9 +64,47 @@ gesture is a normal app interaction, not a browser restriction.
 If audio or TTS misbehaves, include the device model, Android version, and
 whether a SoundFont was loaded in the issue report.
 
+## Media controls
+
+Android delivers headset buttons, Bluetooth controls, the lock screen, and the
+system media player to the app's media session. The session shows the loaded
+dance as the title, the tune as the artist, and *Contra Karaoke* as the album,
+with a Play/Pause control.
+
+- **Play** starts or resumes the session; **Pause** pauses it and keeps the beat
+  so the next Play resumes from the same place.
+- **Stop** pauses. **Next** and **Previous** are ignored.
+- Headset and Bluetooth buttons, the lock screen, and the playback notification
+  all take the same path as the app's own Play and Pause buttons.
+
+On Android 13 and newer the app asks for notification permission so the playback
+notification can appear. Denying it only hides the notification: headset,
+Bluetooth, lock-screen, and system media controls still work.
+
+The notification is a media-style notification, not a foreground service. If
+Android stops the app in the background, playback stops with it.
+
+## Touch controls
+
+- **Tap a tab** at the top to switch between Session, Dance, Tune, and Prefs.
+- **Swipe left or right** across the content to move to the next or previous
+  tab. The tab row wraps, so swiping right from Session opens Prefs and swiping
+  left from Prefs returns to Session. A swipe needs roughly 60 points of
+  mostly horizontal travel and changes the tab once per gesture.
+- **Drag a slider sideways** to change its value. A mostly vertical swipe that
+  starts on a slider scrolls the page instead, so scrolling past the volume or
+  tempo control does not knock it off its setting. A short tap on the rail still
+  jumps to that position.
+- Swipe tab changes are ignored while a text field has focus, while a drop-down
+  is open, and while the **About** window is showing, so they cannot interrupt
+  typing, a menu, or a dialog.
+- With a hardware keyboard, **←** and **→** also move between tabs.
+
 ## Current Android limitations
 
 - Real-device audio and TTS testing is incomplete.
+- Playback stops when Android ends the app in the background; there is no
+  foreground service or background-playback mode yet.
 - Loading a SoundFont from a file is not available in this build yet; the
   bundled Fluid R3 GM subset is used instead.
 - MIDI export is not available in this build yet.

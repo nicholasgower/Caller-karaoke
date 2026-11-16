@@ -14,17 +14,21 @@ count-in, dancing, and completion. The label text still says **CALL NOW** or
 
 <Steps>
   <Step shot="prefs-theme-light">
-    Open **Preferences → Theme** and select **Light** or **Dark**. Dark is the
-    default.
+    Open **Preferences** with the gear button in the top-right corner, find
+    **Theme**, and select **Light** or **Dark**. Dark is the default.
   </Step>
   <Step shot="main-light">
     Return to **Session** to see the chosen theme on the call screen.
   </Step>
 </Steps>
 
-The light theme uses the same structure with its own light card and text palette:
-a light grey page, near-black text, and muted secondary text. It is intended for
-bright rooms and projectors.
+The light theme uses the same structure with its own warm cream palette: a
+paper-toned page (`#ece7d6`), near-black text (`#26241c`), muted brown-grey
+secondary text, and off-white call cards. It follows the ContraDB site's cream
+background rather than pure white, which glares under stage lights. Every light
+surface keeps body and muted text at 4.5:1 or better, including the **Contra
+Karaoke** wordmark and tab labels in the header. It is intended for bright rooms
+and projectors.
 
 <Shot id="main-light" />
 
@@ -32,8 +36,9 @@ bright rooms and projectors.
 
 <Steps>
   <Step shot="prefs-interface">
-    Open **Preferences → Interface** to turn **Smooth animations** on or off.
-    The keyboard reference sits below the checkbox.
+    Open **Preferences** with the gear button and find **Interface** to turn
+    **Smooth animations** on or off. The **Undo** and **Redo** buttons and the
+    keyboard reference sit below the checkbox.
   </Step>
 </Steps>
 
@@ -41,15 +46,28 @@ Smooth animations fade and slide between screens and animate tab and highlight
 changes. Turn them off to reduce motion; the app then switches screens
 immediately. The docs site also respects `prefers-reduced-motion`.
 
+**Undo** and **Redo** undo the last preference or dance/tune change and are
+disabled while there is nothing to undo or redo. They are full touch targets at
+phone width, and the same actions are on **Ctrl+Z** and **Ctrl+Y**
+(**Ctrl+Shift+Z** also redoes). Each action leaves a short status message under
+the buttons.
+
 ## Touch and narrow windows
 
 Every control in the phone session layout — tab, slider, transport button, and
 toggle — uses a 44-pixel interaction height, and the app window has a minimum
 size of 360×560. Below about 640 pixels wide the **Session** tab switches to
-that phone layout: the wordmark and long tab labels give way to four short tabs
-beside the pinned **About** button, the tempo and volume sliders use the full
-width, and the transport buttons split the row evenly. On a short window the
-whole session page scrolls so the dance card is never pushed out of reach.
+that phone layout: the wordmark and long tab labels give way to three short tabs
+beside the pinned Preferences gear, which keeps the same 44-pixel target, the
+tempo and volume sliders use the full width, and the transport buttons split the
+row evenly. On a short window the whole session page scrolls so the dance card is
+never pushed out of reach.
+
+Swipe left or right across the content to change tabs on a touch screen, or use
+the **←** and **→** keys with a hardware keyboard. A vertical swipe that starts
+on a slider scrolls the page instead of changing the value; drag the slider
+sideways to adjust it. Tab swipes are suspended while a text field has focus, a
+drop-down is open, or the **About** window is showing.
 
 <Shot id="main-mobile" />
 
@@ -65,13 +83,18 @@ full-width target that previews that dance or tune.
 
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
-- **Esc** closes the **About** window or returns to **Session** from a picker,
-  Preferences, or the alias editor.
-- **1–4** switch tabs.
+- **Esc** returns to **Session** from a picker, Preferences, or the alias editor.
+- **1-3** switch tabs; **4** opens Preferences.
+- **← / →** move to the previous or next tab.
 - **Enter** submits a search or adds a custom alias.
+- **Ctrl+Z** undoes the last change; **Ctrl+Y** or **Ctrl+Shift+Z** redoes it.
 
-Shortcuts are ignored while a text field has focus. The keyboard's play/pause
-media key works even when another window is in front. See
+Shortcuts are ignored while a text field has focus, and the arrow keys stay with
+a focused slider or list. A focused text field keeps its own **Ctrl+Z** for
+undoing typing. On Windows, Linux, and Android, the operating system's
+media controls (the keyboard's play/pause key, the desktop media widget, or
+Android's lock screen and headset buttons) work even when another window or app
+is in front. See
 [Keyboard shortcuts](/docs/reference/keyboard-shortcuts) for details.
 
 ## Screen readers and labels

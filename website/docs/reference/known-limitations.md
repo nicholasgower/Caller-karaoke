@@ -34,7 +34,9 @@ development release. These are the limitations to know before relying on it.
   voice are downloaded on first use and then cached; a first run without a
   network connection falls back to the platform voice. Web and Android always
   use the platform voice. Visual calls continue if no voice is available.
-- **Page size** is fixed at ten results; there is no page-size selector.
+- ContraDB **page size** is fixed at ten results; there is no page-size selector.
+  The Caller's Box has no paging at all: one search returns at most 50 matches,
+  and a larger result must be narrowed by title, author, or figure text.
 - Folders are a flat list. There are no nested folders and no sync between
   devices.
 - There is no offline “using cached search results” banner; stale cache is used
@@ -43,6 +45,10 @@ development release. These are the limitations to know before relying on it.
   clearing the cache and downloading an item again are the maintenance actions.
 - The first **Play** renders the music synchronously. There is no progress bar
   or cancel control while it runs.
+- A **minimized window** keeps playing and calling, but the desktop throttles a
+  hidden window's frames to about one every 100 ms, so a call can begin up to a
+  tenth of a second after its beat. The lead's safety padding covers that
+  delay; no call is skipped and the order never changes.
 - **Cycle tunes** renders the next tune during the current tune's last time
   through on desktop and Android. The web build has no render worker and
   prepares the next tune at the change, which can pause briefly.
@@ -59,11 +65,18 @@ does not rescale either one. Prefer 64-beat cards.
 
 ## Accessibility
 
-The app is keyboard-operable for Space, R, Esc, 1–4, and Enter, and responds to
-the keyboard's play/pause media key from any window on desktop. The
+The app is keyboard-operable for Space, R, Esc, 1-3 (the tabs), 4 (Preferences),
+the Left/Right arrows, and Enter, and responds to the system media controls from
+any window on Windows and Linux and from the lock screen, headset, and Bluetooth
+buttons on Android. On a touch screen, swipe left or right across the content to
+change tabs. The
 accessibility tree is still being audited. Several search, alias, and slider
 controls are visually labelled without a formal accessible-name association.
 Screen-reader support is incomplete.
+
+Android does not run a foreground service, so the media session controls a
+session that is still running; Android may stop the app, and the music with it,
+when it needs the memory.
 
 ## Data and privacy
 

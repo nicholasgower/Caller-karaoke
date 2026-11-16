@@ -1,4 +1,4 @@
-//! Grey theme for Contra Karaoke.
+//! Themes for Contra Karaoke: dark grey (the default) and a warm light cream.
 
 use contra_core::Theme;
 use eframe::egui;
@@ -17,6 +17,12 @@ pub const TOUCH_TARGET: f32 = 44.0;
 /// blocks on a light background, and dark-theme text would disappear on them.
 #[derive(Clone, Copy, Debug)]
 pub struct Palette {
+    /// Fill behind the tab row and the wordmark.
+    ///
+    /// The header is a panel outside the central panel, so it only shows what
+    /// it paints itself; without a fill it exposed the window's clear colour
+    /// (near-black), which left the dark wordmark unreadable on a black strip.
+    pub header_bg: egui::Color32,
     /// Background of the now-playing call card and selected results.
     pub call_active_bg: egui::Color32,
     /// Background of an upcoming figure card.
@@ -40,6 +46,9 @@ pub struct Palette {
 }
 
 const DARK: Palette = Palette {
+    // Matches the window clear colour the transparent header used to expose, so
+    // the dark header keeps the look it has always had.
+    header_bg: egui::Color32::from_rgb(12, 12, 12),
     call_active_bg: egui::Color32::from_rgb(58, 58, 58),
     call_upcoming_bg: egui::Color32::from_rgb(38, 38, 38),
     call_now_bg: egui::Color32::from_rgb(30, 74, 46),
@@ -52,17 +61,25 @@ const DARK: Palette = Palette {
     error: egui::Color32::from_rgb(220, 120, 120),
 };
 
+/// The light theme is the warm cream of the ContraDB site (`#faf7e0` page,
+/// `#f0f0ea` navigation) rather than white or a cold grey: stage lights make
+/// pure white glare, and a warm paper tone keeps the black text calm. The page,
+/// cards, and fields are a shade deeper than ContraDB's own page so the tab row
+/// and the call cards still separate from the background.
 const LIGHT: Palette = Palette {
-    call_active_bg: egui::Color32::from_rgb(214, 214, 214),
-    call_upcoming_bg: egui::Color32::from_rgb(230, 230, 230),
-    call_now_bg: egui::Color32::from_rgb(203, 232, 210),
-    upcoming_move_bg: egui::Color32::from_rgb(244, 208, 208),
-    muted: egui::Color32::from_rgb(92, 92, 92),
-    on_card: egui::Color32::from_rgb(24, 24, 24),
-    executing: egui::Color32::from_gray(96),
-    subtle: egui::Color32::from_gray(104),
-    warning: egui::Color32::from_rgb(120, 94, 46),
-    error: egui::Color32::from_rgb(160, 40, 40),
+    // The header shares the page fill; buttons and the separator carry the
+    // structure. A darker header band made the inactive buttons look disabled.
+    header_bg: egui::Color32::from_rgb(236, 231, 214),
+    call_active_bg: egui::Color32::from_rgb(211, 204, 180),
+    call_upcoming_bg: egui::Color32::from_rgb(246, 243, 230),
+    call_now_bg: egui::Color32::from_rgb(198, 228, 203),
+    upcoming_move_bg: egui::Color32::from_rgb(239, 211, 201),
+    muted: egui::Color32::from_rgb(86, 81, 68),
+    on_card: egui::Color32::from_rgb(33, 31, 24),
+    executing: egui::Color32::from_rgb(88, 81, 66),
+    subtle: egui::Color32::from_rgb(105, 98, 81),
+    warning: egui::Color32::from_rgb(122, 90, 32),
+    error: egui::Color32::from_rgb(159, 44, 44),
 };
 
 /// The palette that matches `dark_mode`.
@@ -72,6 +89,11 @@ pub fn palette(dark_mode: bool) -> &'static Palette {
 
 fn palette_for(ui: &egui::Ui) -> &'static Palette {
     palette(ui.visuals().dark_mode)
+}
+
+/// Fill behind the tab row, including the wordmark and the Preferences gear.
+pub fn header_bg(ui: &egui::Ui) -> egui::Color32 {
+    palette_for(ui).header_bg
 }
 
 pub fn call_active_bg(ui: &egui::Ui) -> egui::Color32 {
@@ -168,14 +190,16 @@ fn visuals_for(dark_mode: bool) -> egui::Visuals {
         )
     } else {
         (
-            egui::Color32::from_rgb(230, 230, 230),
-            egui::Color32::from_rgb(242, 242, 242),
-            egui::Color32::from_rgb(214, 214, 214),
-            egui::Color32::from_rgb(200, 200, 200),
-            egui::Color32::from_rgb(184, 184, 184),
-            egui::Color32::from_rgb(28, 28, 28),
-            egui::Color32::from_rgb(92, 92, 92),
-            egui::Color32::from_rgb(188, 188, 188),
+            // Fields sit a shade lighter than the page, like the white tables
+            // on ContraDB's cream background.
+            egui::Color32::from_rgb(248, 244, 231),
+            egui::Color32::from_rgb(236, 231, 214),
+            egui::Color32::from_rgb(217, 211, 189),
+            egui::Color32::from_rgb(205, 198, 175),
+            egui::Color32::from_rgb(190, 183, 157),
+            egui::Color32::from_rgb(38, 36, 28),
+            egui::Color32::from_rgb(86, 81, 68),
+            egui::Color32::from_rgb(174, 165, 139),
         )
     };
 
@@ -186,7 +210,7 @@ fn visuals_for(dark_mode: bool) -> egui::Visuals {
     visuals.faint_bg_color = if dark_mode {
         egui::Color32::from_rgb(28, 28, 28)
     } else {
-        egui::Color32::from_rgb(224, 224, 224)
+        egui::Color32::from_rgb(228, 223, 205)
     };
     visuals.code_bg_color = bg;
     visuals.hyperlink_color = text;
@@ -319,6 +343,104 @@ mod tests {
                     "dark_mode={dark_mode} foreground={foreground:?} ratio={ratio}"
                 );
             }
+        }
+    }
+
+    /// The light page follows ContraDB's warm cream, not white: a pure white
+    /// page glares under stage lighting and leaves cards and fields nowhere to
+    /// sit. A warm tone also keeps the page from looking like a blank sheet on
+    /// a projector.
+    #[test]
+    fn light_surfaces_are_warm_cream_not_white() {
+        let visuals = visuals_for(false);
+        for (name, surface) in [
+            ("panel", visuals.panel_fill),
+            ("field", visuals.extreme_bg_color),
+            ("faint", visuals.faint_bg_color),
+        ] {
+            assert_ne!(surface, egui::Color32::WHITE, "{name} is pure white");
+            assert!(
+                surface.r() >= surface.g() && surface.g() >= surface.b(),
+                "{name}={surface:?} is not a warm neutral"
+            );
+            let lum = luminance(surface);
+            assert!(
+                (0.5..0.97).contains(&lum),
+                "{name}={surface:?} luminance={lum} is outside the light cream range"
+            );
+        }
+        // Fields read as paper on the page, mirroring the dark theme where the
+        // extreme background is darker than the panel.
+        assert!(
+            luminance(visuals.extreme_bg_color) > luminance(visuals.panel_fill),
+            "light fields should be lighter than the panel"
+        );
+        assert!(
+            luminance(visuals.panel_fill) < luminance(egui::Color32::from_gray(242)),
+            "the light page should be calmer than the old near-white panel"
+        );
+    }
+
+    /// Every surface that carries text has to reach 4.5:1 for body text; muted
+    /// text is allowed to fall to 3:1 only on pressed controls, where it is a
+    /// border and not a label.
+    #[test]
+    fn light_text_contrasts_with_every_light_surface() {
+        let visuals = visuals_for(false);
+        let palette = palette(false);
+        let text = visuals
+            .override_text_color
+            .expect("the theme sets an explicit text colour");
+        let strong = visuals.strong_text_color();
+        let surfaces = [
+            ("page", visuals.panel_fill, 4.5),
+            ("field", visuals.extreme_bg_color, 4.5),
+            ("header", palette.header_bg, 4.5),
+            ("call card", palette.call_active_bg, 4.5),
+            ("upcoming card", palette.call_upcoming_bg, 4.5),
+            ("button", visuals.widgets.inactive.bg_fill, 3.0),
+            ("button hover", visuals.widgets.hovered.bg_fill, 3.0),
+            ("button active", visuals.widgets.active.bg_fill, 3.0),
+        ];
+        for (name, background, muted_min) in surfaces {
+            for (role, foreground, min) in [
+                ("text", text, 4.5),
+                // The wordmark is a heading, which egui draws in `strong`.
+                ("strong text", strong, 4.5),
+                ("muted", palette.muted, muted_min),
+            ] {
+                let ratio = contrast(background, foreground);
+                assert!(
+                    ratio >= min,
+                    "{name} {role} {foreground:?} on {background:?} ratio={ratio}, want {min}"
+                );
+            }
+        }
+    }
+
+    /// The tab row once painted nothing, so the light theme showed the window's
+    /// near-black clear colour behind the wordmark. The header fill must be a
+    /// light surface in the light theme and keep the dark header as it was.
+    #[test]
+    fn header_fill_carries_the_wordmark_in_both_themes() {
+        let light = palette(false).header_bg;
+        let dark = palette(true).header_bg;
+        assert!(
+            luminance(light) > 0.5,
+            "light header={light:?} would swallow the dark wordmark"
+        );
+        assert!(
+            luminance(dark) < 0.1,
+            "dark header={dark:?} changed the dark theme's header"
+        );
+        for dark_mode in [true, false] {
+            let visuals = visuals_for(dark_mode);
+            let header = palette(dark_mode).header_bg;
+            let ratio = contrast(header, visuals.strong_text_color());
+            assert!(
+                ratio >= 4.5,
+                "dark_mode={dark_mode} header text ratio={ratio}"
+            );
         }
     }
 }

@@ -69,17 +69,6 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
     }
     capture(harness, out, "main-idle")?;
 
-    // About window over the session.
-    {
-        let app = harness.state_mut();
-        app.about_open = true;
-    }
-    capture(harness, out, "about-window")?;
-    {
-        let app = harness.state_mut();
-        app.about_open = false;
-    }
-
     {
         let app = harness.state_mut();
         app.needs_render = false;
@@ -97,7 +86,13 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         app.prefs.tempo_bpm = 240.0;
         app.prefs.melody = contra_core::MelodyInstrument::Accordion;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Fiddle;
+        app.prefs.instrument_copies = contra_core::InstrumentCopies {
+            melody: 2,
+            accompaniment: 2,
+            countermelody: 2,
+            percussion: 2,
+        };
         app.prefs.percussion = contra_core::Percussion::Drumset;
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
     }
@@ -106,7 +101,8 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         let app = harness.state_mut();
         app.prefs.melody = contra_core::MelodyInstrument::Fiddle;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Piano;
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Accordion;
+        app.prefs.instrument_copies = contra_core::InstrumentCopies::default();
         app.prefs.percussion = contra_core::Percussion::Off;
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Auto;
         app.prefs.master_volume = 0.5;
@@ -179,6 +175,7 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         let app = harness.state_mut();
         app.prefs.role_terms =
             contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
+        app.prefs.role_preset = contra_core::RolePreset::LadiesGentlemen;
         app.prefs.aliases.set_override(
             contra_core::MoveKind::BalanceAndSwing,
             "partners balance and swing with your partner",
@@ -200,6 +197,7 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         let app = harness.state_mut();
         app.prefs.aliases = contra_core::AliasTable::default();
         app.prefs.role_terms = contra_core::RoleTerms::default();
+        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
         app.prefs.loop_enabled = false;
         app.prefs.tts_enabled = false;
         app.audio.set_looping(false);
@@ -479,8 +477,8 @@ fn preference_shots(
     capture(harness, out, "prefs-open")?;
     {
         let app = harness.state_mut();
-        app.prefs.role_terms =
-            contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
+        app.prefs.role_terms = contra_core::RoleTerms::default();
+        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
     }
     capture(harness, out, "prefs-roles-presets")?;
     {
@@ -493,6 +491,7 @@ fn preference_shots(
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
+        app.prefs.role_preset = contra_core::RolePreset::Custom;
     }
     capture(harness, out, "prefs-roles-custom")?;
     {
@@ -551,28 +550,36 @@ fn preference_shots(
         app.status = "Ready".into();
         app.prefs.web_proxy_url = None;
         app.prefs.web_proxy_token = None;
+        // Show a section in the first instrument shot; the shots after it add
+        // the other parts, and the mix shot returns to the single-player
+        // default.
+        app.prefs.instrument_copies.melody = 2;
     }
     capture(harness, out, "prefs-instrument-melody")?;
     {
         let app = harness.state_mut();
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
         app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::BoomChuck;
+        app.prefs.instrument_copies.accompaniment = 2;
     }
     capture(harness, out, "prefs-instrument-accompaniment")?;
     {
         let app = harness.state_mut();
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Fiddle;
+        app.prefs.instrument_copies.countermelody = 2;
     }
     capture(harness, out, "prefs-instrument-second")?;
     {
         let app = harness.state_mut();
         app.prefs.percussion = contra_core::Percussion::FootTaps;
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Gallop;
+        app.prefs.instrument_copies.percussion = 2;
     }
     capture(harness, out, "prefs-instrument-percussion")?;
     {
         let app = harness.state_mut();
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Accordion;
+        app.prefs.instrument_copies = contra_core::InstrumentCopies::default();
         app.prefs.melody_volume = 0.5;
         app.prefs.accompaniment_volume = 0.5;
         app.prefs.percussion_volume = 0.5;
@@ -755,6 +762,21 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     }
     capture(harness, out, "session-mobile-controls")?;
 
+    // About is the last section of Preferences. This shot scrolls that page,
+    // so it comes after every other Preferences shot in the run: the scroll
+    // position is remembered and would move a later screenshot.
+    harness.set_size(DESKTOP);
+    {
+        let app = harness.state_mut();
+        app.audio.stop();
+        app.started = false;
+        app.prefs.web_proxy_url = None;
+        app.prefs.web_proxy_token = None;
+        app.screen = Screen::Preferences;
+        app.about_reveal = true;
+    }
+    capture(harness, out, "about-window")?;
+
     Ok(())
 }
 
@@ -770,7 +792,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         app.screen = Screen::Session;
         app.started = false;
         app.needs_render = true;
-        app.about_open = false;
+        app.about_reveal = false;
     }
     capture(harness, out, "main-idle")?;
 
@@ -851,6 +873,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
         app.prefs.role_terms = contra_core::RoleTerms::default();
+        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
         app.prefs.theme = contra_core::Theme::Dark;
     }
     capture(harness, out, "preferences")?;
@@ -862,6 +885,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
+        app.prefs.role_preset = contra_core::RolePreset::Custom;
     }
     capture(harness, out, "preferences-custom-roles")?;
     harness.set_size(Vec2::new(390.0, 3600.0));
@@ -883,15 +907,6 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     {
         let app = harness.state_mut();
         app.alias_filter.clear();
-        app.screen = Screen::Session;
-        app.started = false;
-        app.needs_render = false;
-        app.about_open = true;
-    }
-    capture(harness, out, "about-window")?;
-    {
-        let app = harness.state_mut();
-        app.about_open = false;
         app.screen = Screen::DanceDownload;
         app.error = Some("HTTP 500 Internal Server Error".into());
     }
@@ -910,6 +925,38 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     capture(harness, out, "dance-picker-360")?;
     {
         let app = harness.state_mut();
+        app.screen = Screen::DancePicker;
+        app.dance_library_query.clear();
+        app.dance_library_folder = FolderFilter::All;
+        app.picker.dance_preview = app
+            .dance_library
+            .get("contradb", "2409")
+            .map(|entry| entry.item.clone());
+        app.picker.dance_selected = None;
+    }
+    capture(harness, out, "dance-library-360")?;
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::TuneDownload;
+        app.picker.tune_results = Some(tune_results());
+        app.picker.tune_preview = None;
+    }
+    capture(harness, out, "tune-picker-360")?;
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::TunePicker;
+        app.tune_library_query.clear();
+        app.tune_library_folder = FolderFilter::All;
+        app.picker.tune_preview = app
+            .tune_library
+            .get("abcsessiontunes", "75815")
+            .map(|entry| entry.item.clone());
+        app.picker.tune_selected = None;
+        app.tune_sheet = None;
+    }
+    capture(harness, out, "tune-library-360")?;
+    {
+        let app = harness.state_mut();
         app.screen = Screen::Preferences;
         app.prefs.role_terms = contra_core::RoleTerms {
             left_singular: "port".into(),
@@ -917,6 +964,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
+        app.prefs.role_preset = contra_core::RolePreset::Custom;
     }
     capture(harness, out, "preferences-360")?;
     {
@@ -926,6 +974,17 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         app.needs_render = false;
     }
     capture(harness, out, "main-360")?;
+
+    // About is the last section of Preferences. This shot scrolls that page,
+    // so it comes last: the scroll position is remembered per screen and would
+    // otherwise move a later Preferences screenshot.
+    harness.set_size(MOBILE);
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::Preferences;
+        app.about_reveal = true;
+    }
+    capture(harness, out, "about-window")?;
 
     Ok(())
 }

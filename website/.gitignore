@@ -3,4 +3,8 @@ build/
 .docusaurus/
 .cache-loader/
 screenshots/raw/
-static/app/
+# `npm run build:app` stages the hosted browser app here. The build output is
+# generated; only the hand-written fallback page is tracked so `/play` can
+# explain itself when the app has not been built.
+static/app/*
+!static/app/index.html

@@ -17,6 +17,7 @@
 //! | Volume slider | `Volume` |
 //! | Transport buttons | `Play`, `Pause`, `Restart`, `End tune`/`End`, `Cancel ending`/`Cancel` |
 //! | Toggles | `Loop`, `Cycle tunes`, `Count-in`, `Speak calls` |
+//! | Preferences gear | `Preferences` (a header button, not a tab) |
 //! | Transport readout | the progress bar text, e.g. `Playing · beat 12 / 64` |
 
 use std::time::Duration;
@@ -95,6 +96,14 @@ pub struct SessionState {
 
     /// The **Speak calls** toggle.
     pub speak_calls: Option<bool>,
+
+    /// The **Undo** button's enabled state. Present only while Preferences is
+    /// open, because that is where the buttons live.
+    pub undo_available: Option<bool>,
+
+    /// The **Redo** button's enabled state. Present only while Preferences is
+    /// open.
+    pub redo_available: Option<bool>,
 }
 
 impl SessionState {
@@ -135,6 +144,11 @@ impl SessionState {
                     _ => {}
                 },
                 Role::Button => {
+                    match label.as_str() {
+                        "Undo" => state.undo_available = Some(!node.is_disabled()),
+                        "Redo" => state.redo_available = Some(!node.is_disabled()),
+                        _ => {}
+                    }
                     if is_on(&node) == Some(true)
                         && let Some(screen) = screen_for_tab(&label)
                     {
@@ -311,6 +325,8 @@ pub enum SessionAction {
     Restart,
     End,
     CancelEnding,
+    Undo,
+    Redo,
 }
 
 impl SessionAction {
@@ -323,6 +339,8 @@ impl SessionAction {
             // Ending… (disabled) while the ending plays.
             Self::End => &["End tune", "End", "Cancel ending", "Cancel", "Ending…"],
             Self::CancelEnding => &["Cancel ending", "Cancel"],
+            Self::Undo => &["Undo"],
+            Self::Redo => &["Redo"],
         }
     }
 
@@ -333,6 +351,21 @@ impl SessionAction {
             Self::Restart => "the Restart button",
             Self::End => "the End tune button",
             Self::CancelEnding => "the Cancel ending button (no ending is pending)",
+            Self::Undo => "the Undo button",
+            Self::Redo => "the Redo button",
+        }
+    }
+
+    /// Undo and redo are app-wide keyboard shortcuts rather than transport
+    /// buttons, so they are pressed on the keyboard and work from any screen.
+    ///
+    /// `Modifiers::COMMAND` is Cmd on macOS and Ctrl elsewhere, the same chord
+    /// a user presses. `None` means the action clicks its button.
+    fn shortcut(self) -> Option<(egui::Key, Modifiers)> {
+        match self {
+            Self::Undo => Some((egui::Key::Z, Modifiers::COMMAND)),
+            Self::Redo => Some((egui::Key::Y, Modifiers::COMMAND)),
+            _ => None,
         }
     }
 }
@@ -441,6 +474,12 @@ impl SessionClient {
 
     /// Click a transport button and return the state it produced.
     pub async fn action(&self, action: SessionAction) -> Result<SessionState, String> {
+        // Undo and redo are keyboard shortcuts, not session-tab buttons: they
+        // work from whichever screen is in front, so do not switch tabs first.
+        if let Some((key, modifiers)) = action.shortcut() {
+            self.press_shortcut(key, modifiers).await?;
+            return self.state().await;
+        }
         self.ensure_session().await?;
         let snap = self.bridge.fetch_tree().await?;
         let found = find(
@@ -459,6 +498,19 @@ impl SessionClient {
         }
         self.click(found.center).await?;
         self.state().await
+    }
+
+    /// Press a chord the way a user does: hold the modifiers, tap the key, and
+    /// release.
+    async fn press_shortcut(&self, key: egui::Key, modifiers: Modifiers) -> Result<(), String> {
+        self.bridge
+            .apply_events(vec![
+                Event::ModifiersChanged(modifiers),
+                key_event(key, modifiers, true),
+                key_event(key, modifiers, false),
+                Event::ModifiersChanged(Modifiers::NONE),
+            ])
+            .await
     }
 
     /// Apply tempo, volume, and toggle changes, then report the resulting state.
@@ -642,6 +694,16 @@ fn pointer_button(pos: Pos2, pressed: bool) -> Event {
     }
 }
 
+fn key_event(key: egui::Key, modifiers: Modifiers, pressed: bool) -> Event {
+    Event::Key {
+        key,
+        physical_key: None,
+        pressed,
+        repeat: false,
+        modifiers,
+    }
+}
+
 fn tree_of(snap: &egui_mcp::TreeSnapshot) -> Result<&Tree, String> {
     snap.tree
         .as_ref()
@@ -734,6 +796,28 @@ mod tests {
         assert_eq!(
             SessionAction::CancelEnding.labels(),
             &["Cancel ending", "Cancel"]
+        );
+    }
+
+    #[test]
+    fn undo_and_redo_are_keyboard_shortcuts() {
+        assert_eq!(
+            SessionAction::Undo.shortcut(),
+            Some((egui::Key::Z, Modifiers::COMMAND))
+        );
+        assert_eq!(
+            SessionAction::Redo.shortcut(),
+            Some((egui::Key::Y, Modifiers::COMMAND))
+        );
+        assert_eq!(SessionAction::Play.shortcut(), None);
+        // Both are named in the tool schema as actions.
+        assert_eq!(
+            serde_json::from_str::<SessionAction>(r#""undo""#).expect("deserialize"),
+            SessionAction::Undo
+        );
+        assert_eq!(
+            serde_json::from_str::<SessionAction>(r#""redo""#).expect("deserialize"),
+            SessionAction::Redo
         );
     }
 }

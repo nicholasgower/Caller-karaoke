@@ -110,19 +110,23 @@ Rendering uses `rustysynth` (MIT) with one of two voice sets:
 
 1. **Bundled Fluid R3 GM subset (default):**
    - `assets/defaults/fluid-r3-gm-subset.sf2` — FluidR3_GM by Frank Wen, MIT.
-   - Trimmed with `scripts/soundfont-subset.py` to the programs the
-     preferences offer: Violin (GM 40), Accordion (GM 21), Acoustic Grand
-     Piano (GM 0) and Acoustic Guitar steel (GM 25).
-   - ~15 MB. The subset keeps the selected presets' generators, modulators and
+   - Regenerated with `scripts/rebuild-soundfont.py` from the pinned official
+     bank, keeping the keep-list in `scripts/soundfont-keep.txt`: Acoustic Grand
+     Piano (GM 0), Accordion (GM 21), Acoustic Guitar steel (GM 25), Violin
+     (GM 40), Alto Sax (GM 65), Tenor Sax (GM 66) and Clarinet (GM 71).
+   - ~22 MB. The subset keeps the selected presets' generators, modulators and
      sample data unchanged, so it renders identically to the full 141 MB bank
      for those programs (`crates/music/tests/bundled_soundfont.rs`).
-   - Attribution lives in `CREDITS.md` and the About window.
+   - Attribution lives in `CREDITS.md` and the About section of Preferences.
 2. **User-supplied SoundFont (`.sf2`):**
    - Loaded from Preferences; overrides the bundled subset for the session.
    - The user is responsible for the file and its license.
 3. **Built-in procedural synth (fallback):**
    - Fiddle: band-limited bowed saw, vibrato, body filter, bowed envelope.
    - Accordion: detuned reeds, tremolo, fast attack.
+   - Sax (alto/tenor): square wave through a one-pole lowpass with vibrato and an
+     octave edge.
+   - Clarinet: hollow odd-harmonic square wave behind a darker lowpass.
    - Piano: additive partials, inharmonicity, exponential decay, hammer noise.
    - Guitar: Karplus-Strong pluck and strum.
    - Used when neither font is available, so the app still plays.
@@ -188,8 +192,10 @@ Soundfont file selection:
 
 - Export the arranged loop as a Standard MIDI File using `midly`.
 - The once-only slow ending is a live transport action and is not exported.
-- Melody and accompaniment tracks, plus a countermelody track when the second
-  accompaniment is on.
+- Melody and accompaniment tracks, plus a countermelody track when the
+  countermelody is on.
+- One track per copy of a melodic part, each on its own General MIDI channel
+  with a pan controller; percussion stays one drum track.
 - A percussion track on the General MIDI drum channel when percussion is on.
 - Include tempo, meter, key, and program changes.
 - Write the same variation passes as playback: one plain 64-beat pass when
@@ -201,3 +207,34 @@ Soundfont file selection:
 - The notes must match what the synth plays. The reverb, chorus, and echo
   settings are shared with playback, where the same chain is applied to the
   rendered buffer; in the file they become General MIDI sends.
+
+### 6.10 Human timing
+
+Playback can humanize the band slightly; the preference is
+`humanize_timing`, on by default. MIDI export is deliberately not humanized.
+
+- **Per-voice deviation.** Melody, accompaniment, and countermelody each get
+  their own slow tempo deviation, and every copy of a part gets its own
+  independent curve. The deviation is a seeded sum of two slow sines (periods
+  of roughly four and eight bars), bounded to ±0.35 % of the user-set tempo.
+- **Per-voice PID.** A PID controller per player (`crates/music/src/humanize.rs`)
+  treats the un-deviated beat grid as its setpoint. The accumulated timing
+  error is integrated on an eighth-of-a-beat control step with `Kp = 0.5`,
+  `Ki = 0.05` per beat, and `Kd = 0.02` beats, so a wandering player is pulled
+  back over about sixteen bars instead of leaving a permanent offset.
+- **Bounded onsets.** One note's total onset offset — deviation plus chord
+  asynchrony — is capped at 12 ms and clamped inside the pass, so a note can
+  never cross the loop boundary and the sample count does not change.
+- **Chord asynchrony.** Notes that start together within a section are spread
+  by a deterministic ±6 ms pitch-level offset. A note that starts alone, such
+  as a melody note, is left exactly on the voice's curve.
+- **Reproducible seed.** The seed is derived from the arrangement (meter, key,
+  melody, chords) plus the voice and copy index, so two identical renders are
+  bit-identical and a tune keeps its feel between renders.
+- **Excluded.** The count-in stays exactly four beats so the potatoes state the
+  tempo; percussion stays grid-exact because it is the audible grid; the
+  once-only slow ending keeps its written ritardando. MIDI export writes the
+  un-deviated grid.
+- **Both renderers.** The built-in synth and the sampled soundfont renderer
+  apply the same curves. A note's offset shifts its note-on and note-off
+  together, so note durations stay sensible.

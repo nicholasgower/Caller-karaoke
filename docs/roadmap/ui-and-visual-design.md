@@ -18,9 +18,40 @@ Dark (default):
 | Upcoming-move prompt card | `#602424` (red fill, white text) |
 | Borders | `#3a3a3a` |
 
-Light theme uses the same neutral structure with inverted values. No accent
-colours; the active call is distinguished by contrast, weight, and a border.
-All colours live in a theme module; do not hard-code colours in widgets.
+Light:
+
+| Token | Value |
+| --- | --- |
+| Page and field background | `#f8f4e7` |
+| Panel and window | `#ece7d6` |
+| Header (tab row) | `#ece7d6` |
+| Button | `#d9d3bd` |
+| Button hover | `#cdc6af` |
+| Button active / selection | `#beb79d` |
+| Primary text | `#26241c` |
+| Muted text | `#565144` |
+| Active call | `#211f18` on `#d3ccb4` |
+| Upcoming call card | `#f6f3e6` |
+| Call-now prompt card | `#c6e4cb` (green fill, near-black text) |
+| Upcoming-move prompt card | `#efd3c9` (red fill, near-black text) |
+| Borders | `#aea58b` |
+
+The light theme keeps the same neutral structure in a warm cream family taken
+from the ContraDB site (page `#faf7e0`, navigation `#f0f0ea`). The page and cards
+sit a shade deeper than ContraDB's own page so the tab row, fields, and call
+cards still separate without turning white: pure white glares under stage
+lights, and a warm paper tone keeps the near-black text calm. Text on the page
+and cards is at least 4.5:1 (muted text included); `#26241c` on `#ece7d6` is
+about 13:1.
+
+Both the tab row and the error panel paint their own background. A panel that
+paints nothing shows the window clear colour, which is near-black, and leaves
+the dark wordmark invisible in the light theme, so the header always uses the
+header fill above (the dark header keeps the near-black clear colour it has
+always had).
+
+No accent colours; the active call is distinguished by contrast, weight, and a
+border. All colours live in a theme module; do not hard-code colours in widgets.
 
 The one deliberate exception is the large prompt card: it is green while the
 caller must speak the shown call ("CALL NOW") and red while it looks ahead to
@@ -59,9 +90,9 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 
 ### 8.3 Accessibility
 
-- Keyboard: Space = play/pause, R = restart, Esc = back, 1–4 = switch tabs,
-  Enter = submit a search or add an alias. Shortcuts are suspended while a text
-  field has focus.
+- Keyboard: Space = play/pause, R = restart, Esc = back, 1–3 = switch tabs,
+  4 = Preferences, Enter = submit a search or add an alias. Shortcuts are
+  suspended while a text field has focus.
 - Every control has a text label or accessibility label.
 - Text contrast meets WCAG AA against the chosen background.
 - TTS is optional and never the only way to receive a call.

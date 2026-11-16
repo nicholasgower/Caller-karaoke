@@ -1,20 +1,29 @@
 //! Standard MIDI File export.
 //!
 //! The exported file is the arranged 64-beat loop (not the count-in), with a
-//! melody track, an accompaniment track, and — when the second accompaniment
-//! is on — a countermelody track. When variations are enabled the file contains
-//! the same passes as playback, so the melody is accented and varied instead of
-//! repeated identically.
+//! melody track, an accompaniment track, and — when the countermelody is on —
+//! a countermelody track. A part with more than one copy gets one track per
+//! copy, on its own channel, so the section is explicit in a DAW.
+//!
+//! Copies are musically identical to the single player: the same notes on the
+//! same beats. The pan position of each copy is written as controller 10, but
+//! the few milliseconds of latency playback uses as a section effect are not,
+//! so the file stays grid-exact and deterministic. The percussion layer keeps
+//! one track at every copy count because General MIDI has a single drum
+//! channel. When variations are enabled the file contains the same passes as
+//! playback, so the melody is accented and varied instead of repeated
+//! identically.
 
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, MelodyInstrument, Percussion,
-    PercussionRhythm, SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, AudioEffects, Countermelody, InstrumentCopies,
+    MelodyInstrument, Percussion, PercussionRhythm,
 };
 
 use crate::arrange::Arrangement;
+use crate::copies::Part;
 use crate::score::NoteEvent;
 
 pub const TICKS_PER_QUARTER: u16 = 480;
@@ -27,11 +36,12 @@ pub fn export_midi(
     melody: MelodyInstrument,
     accompaniment: AccompanimentInstrument,
     accompaniment_rhythm: AccompanimentRhythm,
-    second_accompaniment: SecondAccompaniment,
+    second_accompaniment: Countermelody,
     percussion: Percussion,
     percussion_rhythm: PercussionRhythm,
     bpm: f64,
     effects: AudioEffects,
+    copies: InstrumentCopies,
 ) -> Vec<u8> {
     export_midi_with_passes(
         arrangement,
@@ -44,6 +54,7 @@ pub fn export_midi(
         bpm,
         crate::VARIATION_PASSES,
         effects,
+        copies,
     )
 }
 
@@ -55,18 +66,28 @@ pub fn export_midi(
 ///
 /// `effects` becomes the General MIDI effect sends at the start of every
 /// channel track; see [`apply_effects`].
+///
+/// `copies` writes one track per copy of each melodic part, each on its own
+/// channel with a pan controller so a section is visible in a DAW. The
+/// percussion layer stays one track at every copy count; General MIDI has one
+/// drum channel.
+///
+/// The export is grid-exact. The playback-only human timing (see
+/// [`crate::humanize`]) is deliberately not written, so the file lines up with
+/// the dance and can be edited on the beat.
 #[allow(clippy::too_many_arguments)]
 pub fn export_midi_with_passes(
     arrangement: &Arrangement,
     melody: MelodyInstrument,
     accompaniment: AccompanimentInstrument,
     accompaniment_rhythm: AccompanimentRhythm,
-    second_accompaniment: SecondAccompaniment,
+    second_accompaniment: Countermelody,
     percussion: Percussion,
     percussion_rhythm: PercussionRhythm,
     bpm: f64,
     variation_passes: u32,
     effects: AudioEffects,
+    copies: InstrumentCopies,
 ) -> Vec<u8> {
     let passes = variation_passes.max(1);
     let mut melody_notes = Vec::new();
@@ -110,39 +131,44 @@ pub fn export_midi_with_passes(
     }
     let end_beats = arrangement.loop_beats * passes as f64;
 
-    let mut tracks = vec![
-        build_track(
-            0,
-            melody.gm_program(),
-            "Melody",
-            &melody_notes,
-            true,
-            bpm,
-            arrangement,
-            end_beats,
-        ),
-        build_track(
-            1,
-            accompaniment.gm_program(),
-            "Accompaniment",
-            &accompaniment_notes,
-            false,
-            bpm,
-            arrangement,
-            end_beats,
-        ),
-    ];
+    let mut tracks = Vec::new();
+    push_part_tracks(
+        &mut tracks,
+        Part::Melody,
+        melody.gm_program(),
+        &MELODY_TRACK_NAMES,
+        &melody_notes,
+        copies.melody_count(),
+        true,
+        bpm,
+        arrangement,
+        end_beats,
+    );
+    push_part_tracks(
+        &mut tracks,
+        Part::Accompaniment,
+        accompaniment.gm_program(),
+        &ACCOMPANIMENT_TRACK_NAMES,
+        &accompaniment_notes,
+        copies.accompaniment_count(),
+        false,
+        bpm,
+        arrangement,
+        end_beats,
+    );
     if let Some(instrument) = second_accompaniment.instrument() {
-        tracks.push(build_track(
-            2,
+        push_part_tracks(
+            &mut tracks,
+            Part::Countermelody,
             instrument.gm_program(),
-            "Second accompaniment",
+            &COUNTERMELODY_TRACK_NAMES,
             &countermelody_notes,
+            copies.countermelody_count(),
             false,
             bpm,
             arrangement,
             end_beats,
-        ));
+        );
     }
     if percussion.is_enabled() {
         tracks.push(build_track(
@@ -154,6 +180,7 @@ pub fn export_midi_with_passes(
             bpm,
             arrangement,
             end_beats,
+            None,
         ));
     }
 
@@ -275,6 +302,67 @@ const GM2_REVERB_TYPES: [[u8; 12]; 4] = [
     gm2_reverb_type(0x04),
 ];
 
+/// Track names for a part's copies.
+///
+/// Index 0 is the plain single-player name; index 1 onwards is the numbered
+/// name for copy 0, 1, ... of a section, so a two-fiddle part reads
+/// "Melody 1" and "Melody 2".
+const MELODY_TRACK_NAMES: [&str; 5] = ["Melody", "Melody 1", "Melody 2", "Melody 3", "Melody 4"];
+const ACCOMPANIMENT_TRACK_NAMES: [&str; 5] = [
+    "Accompaniment",
+    "Accompaniment 1",
+    "Accompaniment 2",
+    "Accompaniment 3",
+    "Accompaniment 4",
+];
+const COUNTERMELODY_TRACK_NAMES: [&str; 5] = [
+    "Countermelody",
+    "Countermelody 1",
+    "Countermelody 2",
+    "Countermelody 3",
+    "Countermelody 4",
+];
+
+fn copy_track_name(names: &[&'static str; 5], copies: usize, copy: usize) -> &'static str {
+    if copies <= 1 {
+        names[0]
+    } else {
+        names[(copy + 1).min(4)]
+    }
+}
+
+/// Append one track per copy of a part.
+#[allow(clippy::too_many_arguments)]
+fn push_part_tracks(
+    tracks: &mut Vec<Vec<TrackEvent<'static>>>,
+    part: Part,
+    program: u8,
+    names: &[&'static str; 5],
+    notes: &[NoteEvent],
+    copies: usize,
+    include_metadata: bool,
+    bpm: f64,
+    arrangement: &Arrangement,
+    end_beats: f64,
+) {
+    for (copy, voice) in crate::copies::voices(0.0, copies, 1)
+        .into_iter()
+        .enumerate()
+    {
+        tracks.push(build_track(
+            part.channel(copy) as u8,
+            program,
+            copy_track_name(names, copies, copy),
+            notes,
+            include_metadata && copy == 0,
+            bpm,
+            arrangement,
+            end_beats,
+            (copies > 1).then(|| crate::copies::pan_cc(voice.pan) as u8),
+        ));
+    }
+}
+
 fn shifted(mut note: NoteEvent, offset_beats: f64) -> NoteEvent {
     note.start_beat += offset_beats;
     note
@@ -292,6 +380,7 @@ fn build_track(
     bpm: f64,
     arrangement: &Arrangement,
     end_beats: f64,
+    pan: Option<u8>,
 ) -> Vec<TrackEvent<'static>> {
     let mut events: Vec<(u64, u8, TrackEventKind<'static>)> = Vec::new();
     let channel = u4::new(channel);
@@ -343,6 +432,22 @@ fn build_track(
             },
         },
     ));
+
+    // A section puts each copy on its own channel with its own pan. A single
+    // player writes no pan controller, exactly as before copies existed.
+    if let Some(pan) = pan {
+        events.push((
+            0,
+            0,
+            TrackEventKind::Midi {
+                channel,
+                message: MidiMessage::Controller {
+                    controller: u7::new(10),
+                    value: u7::new(pan),
+                },
+            },
+        ));
+    }
 
     for note in notes {
         let start = (note.start_beat * TICKS_PER_DANCE_BEAT as f64).round() as u64;
@@ -421,11 +526,12 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         assert!(bytes.starts_with(b"MThd"));
         let smf = Smf::parse(&bytes).expect("parse midi");
@@ -460,6 +566,18 @@ mod tests {
             .collect()
     }
 
+    fn track_names<'a>(smf: &'a Smf<'_>) -> Vec<&'a str> {
+        smf.tracks
+            .iter()
+            .filter_map(|track| match track.first().map(|event| &event.kind) {
+                Some(TrackEventKind::Meta(MetaMessage::TrackName(name))) => {
+                    std::str::from_utf8(name).ok()
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     fn track_end_tick(smf: &Smf, track: usize) -> u64 {
         smf.tracks[track]
             .iter()
@@ -476,12 +594,13 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             1,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
         let melody = note_velocities(&smf, 0);
@@ -508,24 +627,26 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             1,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let varied = export_midi_with_passes(
             &arrangement,
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             4,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let plain = Smf::parse(&plain).expect("parse midi");
         let varied = Smf::parse(&varied).expect("parse midi");
@@ -548,22 +669,24 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Block,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let sustained = export_midi(
             &arrangement,
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Sustained,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         assert_ne!(
             block, sustained,
@@ -580,28 +703,30 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Accordion,
+            Countermelody::Accordion,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let second = export_midi(
             &arrangement,
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Accordion,
+            Countermelody::Accordion,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         assert_eq!(first, second);
     }
 
     #[test]
-    fn trio_exports_a_second_accompaniment_track() {
+    fn trio_exports_a_countermelody_track() {
         let score = parse_abc(TUNE).expect("parse");
         let arrangement = Arrangement::from_score(&score, 64.0);
         let trio = export_midi(
@@ -609,14 +734,16 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Accordion,
+            Countermelody::Accordion,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let smf = Smf::parse(&trio).expect("parse midi");
         assert_eq!(smf.tracks.len(), 3);
+        let counter_channel = Part::Countermelody.channel(0) as u8;
         let counter_notes = smf.tracks[2]
             .iter()
             .filter(|event| {
@@ -625,11 +752,110 @@ mod tests {
                     TrackEventKind::Midi {
                         channel,
                         message: MidiMessage::NoteOn { vel, .. },
-                    } if channel.as_int() == 2 && vel.as_int() > 0
+                    } if channel.as_int() == counter_channel && vel.as_int() > 0
                 )
             })
             .count();
-        assert!(counter_notes > 0, "the second accompaniment must sound");
+        assert!(counter_notes > 0, "the countermelody must sound");
+    }
+
+    #[test]
+    fn copies_export_one_track_and_channel_per_player() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let copies = InstrumentCopies {
+            melody: 2,
+            accompaniment: 2,
+            countermelody: 2,
+            percussion: 2,
+        };
+        let bytes = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            Countermelody::Accordion,
+            Percussion::Drumset,
+            PercussionRhythm::Auto,
+            240.0,
+            AudioEffects::default(),
+            copies,
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+        // Two copies of each melodic part plus one drum track: General MIDI has
+        // a single drum channel, so percussion never doubles in the file.
+        assert_eq!(smf.tracks.len(), 7);
+        assert_eq!(
+            track_names(&smf),
+            vec![
+                "Melody 1",
+                "Melody 2",
+                "Accompaniment 1",
+                "Accompaniment 2",
+                "Countermelody 1",
+                "Countermelody 2",
+                "Percussion",
+            ]
+        );
+
+        // Every copy plays the same notes on the same beats.
+        assert_eq!(
+            note_velocities(&smf, 0).len(),
+            note_velocities(&smf, 1).len()
+        );
+        assert_eq!(
+            note_velocities(&smf, 2).len(),
+            note_velocities(&smf, 3).len()
+        );
+        assert_eq!(
+            track_end_tick(&smf, 1),
+            64 * TICKS_PER_DANCE_BEAT * u64::from(crate::VARIATION_PASSES)
+        );
+
+        // The copies are spread in the stereo field and use distinct channels.
+        let pans = controller_values(&smf, 10);
+        assert!(
+            pans.iter().any(|value| *value != 64),
+            "copies need pan spread"
+        );
+        let mut channels: Vec<u8> = smf
+            .tracks
+            .iter()
+            .filter_map(|track| {
+                track.iter().find_map(|event| match event.kind {
+                    TrackEventKind::Midi { channel, .. } => Some(channel.as_int()),
+                    _ => None,
+                })
+            })
+            .collect();
+        channels.sort_unstable();
+        channels.dedup();
+        assert_eq!(channels, vec![0, 1, 4, 5, 8, 9, 10]);
+        assert!(channels.iter().all(|channel| *channel < 16));
+    }
+
+    #[test]
+    fn one_copy_writes_no_pan_controller() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let bytes = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            Countermelody::Accordion,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            AudioEffects::default(),
+            InstrumentCopies::default(),
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+        assert!(controller_values(&smf, 10).is_empty());
+        assert_eq!(
+            track_names(&smf),
+            vec!["Melody", "Accompaniment", "Countermelody"]
+        );
     }
 
     #[test]
@@ -641,11 +867,12 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Accordion,
+            Countermelody::Accordion,
             Percussion::Drumset,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
         assert_eq!(smf.tracks.len(), 4);
@@ -708,11 +935,12 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
 
@@ -736,11 +964,12 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             effects,
+            InstrumentCopies::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
 
@@ -759,11 +988,12 @@ mod tests {
             MelodyInstrument::Fiddle,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
-            SecondAccompaniment::Off,
+            Countermelody::Off,
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
             AudioEffects::default(),
+            InstrumentCopies::default(),
         );
         let mut smf = Smf::parse(&bytes).expect("parse midi");
         apply_effects(

@@ -111,7 +111,11 @@ succeeds. Then work in an observe → act → verify loop:
 
 1. `widget_tree` — list widgets, roles, labels, values, and ids.
 2. `get_widget` — get full text and logical-point `bounds` for one widget.
-3. `click`, `hover`, `scroll`, `drag`, `type_text`, or `press_key` — act.
+3. `click`, `hover`, `scroll`, `drag`, `type_text`, or `press_key` — act. The
+   generic input tools also cover the touch gestures: a horizontal `drag`
+   across the content emulates a tab swipe, and `press_key` with `ArrowLeft` or
+   `ArrowRight` moves to the previous or next tab. `session_state` reports the
+   tab now in front.
 4. `screenshot` — look at the result (or pass `save_path`).
 5. `wait_for` — wait for async UI such as search results or a re-render.
 
@@ -125,13 +129,13 @@ succeeds. Then work in an observe → act → verify loop:
 | `screenshot` | PNG of the frame; returns an image content block. |
 | `click` / `hover` | Click or hover a widget or raw `{x, y}` point. |
 | `type_text` | Type into the focused widget or a targeted one. |
-| `press_key` | Press a key such as `Space`, `R`, or `Escape`. |
+| `press_key` | Press a key such as `Space`, `R`, or `Escape`, optionally with modifiers (`command: true` is Ctrl on Windows/Linux and Cmd on macOS). |
 | `scroll` / `drag` | Scroll a target or drag from one target to another. |
 | `resize` | Change the viewport size in logical points. |
 | `wait_for` | Poll until matching widgets or frames appear. |
 | `batch` | Run several actions and observations in one round trip. |
-| `session_state` | Read the Session tab's transport state, beat, tempo, volume, and toggles. |
-| `session_action` | Press Play, Pause, Restart, End, or Cancel ending. |
+| `session_state` | Read the Session tab's transport state, beat, tempo, volume, toggles, and (while Preferences is open) whether Undo and Redo are available. |
+| `session_action` | Press Play, Pause, Restart, End, or Cancel ending; `undo` and `redo` press the keyboard chords. |
 | `session_set` | Set the tempo, volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. |
 | `session_wait` | Wait until the transport reaches a state or the beat crosses a bound. |
 
@@ -149,8 +153,16 @@ Useful checks for this app:
   overflow.
 - `press_key` with `Space` toggles play/pause; `R` restarts; `Escape` leaves a
   picker or preferences screen (the alias editor returns to preferences).
-- Number keys `1`–`4` switch tabs, and `Enter` in a search field starts the
-  search or adds a custom or alternative alias.
+- Media keys are not MCP inputs: the operating system's media session sits
+  outside the app's widget tree, so no tool can press a hardware key.
+  `session_action` (`play`, `pause`, `restart`) drives the same app path the
+  session uses; use it when changing the media integration. The Android
+  session is a device feature and is not reachable from `contra-mcp`.
+- Number keys `1`-`3` switch tabs, `4` opens Preferences, and `Enter` in a
+  search field starts the search or adds a custom or alternative alias.
+- Preferences is not a tab: click the header gear, whose accessible name is
+  `Preferences`. Its accessible node reports the selected state while
+  Preferences or the alias editor is in front.
 - After selecting a dance or tune, use `wait_for` on the result text before
   asserting the session screen changed.
 - The screenshot is useful for theme and layout checks; `widget_tree` is better
@@ -207,6 +219,12 @@ Details worth knowing:
   after inspecting a picker. `end` presses **End tune**, or **Cancel ending**
   when an ending is waiting; the ending itself starts at the tune's last bar, so
   `transport` stays `playing` until then.
+- `session_action` with `undo` or `redo` presses the app's Ctrl+Z and Ctrl+Y
+  chords instead of clicking, so the front tab does not change. Open
+  Preferences and read `undo_available`/`redo_available` to check the stack, or
+  use the generic `press_key` with `{"key": "Z", "modifiers": {"command": true}}`
+  for the same shortcut. Undoing a dance or tune selection stops the old music
+  and speech and leaves the session ready to play the restored tune.
 - Controls are located by accessible name, so the desktop and phone layouts both
   work: `resize` to `390 × 844` and repeat the same calls to check the compact
   layout. The generic tools still cover anything the session tools do not, such
@@ -230,7 +248,8 @@ more detail.
 - **`attach` connects but tools fail** — check `status`; an app restart drops
   the connection, so call `attach` again.
 - **Screenshots time out** — the window is minimized or occluded; bring it to
-  the foreground.
+  the foreground. The session itself keeps running while the window is hidden, so
+  only the pixels need a visible window.
 - **Port already in use** — another app or an earlier run owns `5719`; choose a
   different port in `EGUI_INSPECTION` and in `attach`'s `port`.
 - **`widget_tree` is hard to search** — use `content_contains`, then narrow with

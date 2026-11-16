@@ -1,8 +1,10 @@
 //! Regression tests for the bundled Fluid R3 GM subset.
 //!
 //! The app ships a trimmed FluidR3_GM (MIT) so the default playback uses
-//! sampled instruments. `scripts/soundfont-subset.py` produces the file; these
-//! tests fail if it is regenerated without the programs the preferences offer.
+//! sampled instruments. `scripts/rebuild-soundfont.py` produces the file from
+//! the keep-list in `scripts/soundfont-keep.txt`; these tests fail if it is
+//! regenerated without the programs the preferences offer, or if the keep-list
+//! and the instrument enums drift apart.
 //!
 //! `bundled_font_matches_the_reference` is ignored because it needs the full
 //! 141 MB source bank. Run it after regenerating the subset:
@@ -12,11 +14,12 @@
 //!     cargo test -p contra-music --test bundled_soundfont -- --ignored
 //! ```
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, COUNT_IN_BEATS, MelodyInstrument,
-    SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, COUNT_IN_BEATS, Countermelody, InstrumentCopies,
+    MelodyInstrument,
 };
 use contra_music::soundfont::{load_soundfont, render_soundfont};
 use contra_music::{Arrangement, RenderRequest, parse_abc};
@@ -24,10 +27,42 @@ use rustysynth::SoundFont;
 
 const FONT: &[u8] = include_bytes!("../../../assets/defaults/fluid-r3-gm-subset.sf2");
 
-/// Programs the preferences can select, as (bank, program).
-const REQUIRED_PROGRAMS: [(i32, i32); 4] = [(0, 0), (0, 21), (0, 25), (0, 40)];
+/// The keep-list that `scripts/rebuild-soundfont.py` regenerates the font from.
+const KEEP_LIST: &str = include_str!("../../../scripts/soundfont-keep.txt");
 
 const TUNE: &str = "X:1\nT:Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n";
+
+/// Programs the preferences can select, sorted and deduplicated.
+fn required_programs() -> BTreeSet<i32> {
+    MelodyInstrument::ALL
+        .iter()
+        .map(|instrument| i32::from(instrument.gm_program()))
+        .chain(
+            AccompanimentInstrument::ALL
+                .iter()
+                .map(|instrument| i32::from(instrument.gm_program())),
+        )
+        .chain(
+            Countermelody::ALL
+                .iter()
+                .filter_map(|instrument| instrument.gm_program())
+                .map(i32::from),
+        )
+        .collect()
+}
+
+/// Numbers in `scripts/soundfont-keep.txt`, ignoring comments and blank lines.
+fn keep_list_programs() -> BTreeSet<i32> {
+    KEEP_LIST
+        .lines()
+        .map(|line| line.split('#').next().unwrap_or_default().trim())
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            line.parse::<i32>()
+                .unwrap_or_else(|_| panic!("soundfont-keep.txt has a bad entry: {line:?}"))
+        })
+        .collect()
+}
 
 fn request() -> RenderRequest {
     let score = parse_abc(TUNE).expect("test tune parses");
@@ -37,7 +72,8 @@ fn request() -> RenderRequest {
         melody: MelodyInstrument::Fiddle,
         accompaniment: AccompanimentInstrument::Piano,
         accompaniment_rhythm: AccompanimentRhythm::Auto,
-        second_accompaniment: SecondAccompaniment::Accordion,
+        second_accompaniment: Countermelody::Accordion,
+        copies: InstrumentCopies::default(),
         percussion: contra_core::Percussion::Off,
         percussion_rhythm: contra_core::PercussionRhythm::Auto,
         melody_volume: 0.75,
@@ -48,6 +84,7 @@ fn request() -> RenderRequest {
         sample_rate: 24_000,
         variation_passes: 1,
         ending: false,
+        humanize_timing: true,
     }
 }
 
@@ -58,16 +95,29 @@ fn bundled() -> Arc<SoundFont> {
 #[test]
 fn bundled_font_has_the_programs_the_preferences_offer() {
     let font = bundled();
-    for (bank, program) in REQUIRED_PROGRAMS {
+    for program in required_programs() {
         let found = font
             .get_presets()
             .iter()
-            .any(|preset| preset.get_bank_number() == bank && preset.get_patch_number() == program);
+            .any(|preset| preset.get_bank_number() == 0 && preset.get_patch_number() == program);
         assert!(
             found,
-            "bundled font is missing bank {bank} program {program}"
+            "bundled font is missing bank 0 program {program}; \
+             regenerate it with `python scripts/rebuild-soundfont.py`"
         );
     }
+}
+
+/// The keep-list is the one place that says which programs the bundled font
+/// carries. If the preferences gain an instrument without that list (or the
+/// other way round), the font and the picker drift apart.
+#[test]
+fn keep_list_matches_the_instrument_enums() {
+    assert_eq!(
+        keep_list_programs(),
+        required_programs(),
+        "scripts/soundfont-keep.txt no longer matches the instrument enums"
+    );
 }
 
 #[test]
@@ -82,9 +132,9 @@ fn bundled_font_is_small() {
 }
 
 #[test]
-fn every_second_accompaniment_choice_is_audible() {
+fn every_countermelody_choice_is_audible() {
     let font = bundled();
-    for second in SecondAccompaniment::ALL {
+    for second in Countermelody::ALL {
         let mut request = request();
         request.second_accompaniment = second;
         let buffer =
@@ -95,6 +145,67 @@ fn every_second_accompaniment_choice_is_audible() {
             .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
         assert!(peak > 0.05, "{second:?} rendered at peak {peak}");
     }
+}
+
+/// A full section uses twelve of the fifteen non-drum General MIDI channels.
+/// This is the renderer's test that the channel plan fits a real SoundFont.
+#[test]
+fn bundled_font_renders_a_section_of_every_copy() {
+    let font = bundled();
+    let mut request = request();
+    request.copies = InstrumentCopies {
+        melody: 4,
+        accompaniment: 4,
+        countermelody: 4,
+        percussion: 3,
+    };
+    request.percussion = contra_core::Percussion::Drumset;
+    let section = render_soundfont(&request, &font).expect("renders the full section");
+    let peak = section
+        .samples
+        .iter()
+        .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+    assert!(peak > 0.005, "the section rendered at peak {peak}");
+    assert!(section.samples.iter().all(|sample| sample.is_finite()));
+    assert!(section.samples.iter().all(|sample| sample.abs() <= 1.0));
+    assert_eq!(
+        section.loop_pass_samples,
+        request_loop_pass_samples(&request)
+    );
+    assert_eq!(
+        section.loop_end_sample - section.loop_start_sample,
+        section.loop_pass_samples
+    );
+
+    // The copies are separate players, so the section is not the single-player
+    // render at a higher level.
+    let mut single = request.clone();
+    single.copies = InstrumentCopies::default();
+    let one = render_soundfont(&single, &font).expect("renders one player");
+    assert_eq!(section.frames(), one.frames());
+    let one_peak = one
+        .samples
+        .iter()
+        .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+    assert!(
+        peak > one_peak * 0.25,
+        "a section of four players should stay audible next to one ({peak} vs {one_peak})"
+    );
+    let difference = section
+        .samples
+        .iter()
+        .zip(&one.samples)
+        .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+    assert!(
+        difference > 1e-3,
+        "the copy plan must change the sampled render, not {difference}"
+    );
+}
+
+fn request_loop_pass_samples(request: &RenderRequest) -> u64 {
+    let beat_seconds = 120.0 / request.bpm;
+    let samples_per_beat = beat_seconds * f64::from(request.sample_rate.max(16_000));
+    (request.arrangement.loop_beats * samples_per_beat).round() as u64
 }
 
 #[test]

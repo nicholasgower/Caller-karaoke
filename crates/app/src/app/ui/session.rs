@@ -6,6 +6,54 @@ use crate::tts::Speech;
 use contra_core::{COUNT_IN_BEATS, Preferences};
 use eframe::egui;
 
+/// The instrument line under the tune.
+///
+/// Copy counts appear only when a part has more than one player, so the
+/// default trio line keeps its old length. `×2` reads as two players on that
+/// part, which is how a band describes a section.
+fn instrument_summary(prefs: &Preferences) -> String {
+    let copies = prefs.instrument_copies;
+    let mut parts = vec![
+        part_summary("Melody", prefs.melody.label(), copies.melody_count()),
+        part_summary(
+            "Accompaniment",
+            prefs.accompaniment.label(),
+            copies.accompaniment_count(),
+        ),
+    ];
+    if let Some(countermelody) = prefs.second_accompaniment.instrument() {
+        parts.push(part_summary(
+            "Countermelody",
+            countermelody.label(),
+            copies.countermelody_count(),
+        ));
+    }
+    if prefs.percussion.is_enabled() {
+        let mut percussion = part_summary(
+            "Percussion",
+            prefs.percussion.label(),
+            copies.percussion_count(),
+        );
+        if prefs.percussion_rhythm != PercussionRhythm::Auto {
+            percussion.push_str(&format!(" ({})", prefs.percussion_rhythm.label()));
+        }
+        parts.push(percussion);
+    }
+    parts.join(" · ")
+}
+
+fn part_summary(part: &str, instrument: &str, copies: usize) -> String {
+    format!("{part}: {}", part_copy_label(instrument, copies))
+}
+
+fn part_copy_label(instrument: &str, copies: usize) -> String {
+    if copies > 1 {
+        format!("{instrument} ×{copies}")
+    } else {
+        instrument.to_string()
+    }
+}
+
 /// The tempo, transport, loop/count-in/speech, and volume controls.
 ///
 /// On a phone the controls are stacked so each row owns the full width: a
@@ -26,11 +74,13 @@ fn session_controls(
             ui.label("Tempo");
             // Leave room for the value box and the " BPM" suffix.
             ui.spacing_mut().slider_width = (ui.available_width() - 100.0).max(96.0);
-            let response = ui.add(
-                egui::Slider::new(&mut prefs.tempo_bpm, 120.0..=320.0)
-                    .fixed_decimals(0)
-                    .suffix(" BPM"),
-            );
+            let response = scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
+                ui.add(
+                    egui::Slider::new(tempo, 120.0..=320.0)
+                        .fixed_decimals(0)
+                        .suffix(" BPM"),
+                )
+            });
             // A stable accessible name, so the slider can be found by name in
             // every layout (and by the MCP session tools).
             let response = response.accessible_name("Tempo");
@@ -115,8 +165,9 @@ fn session_controls(
         ui.horizontal(|ui| {
             ui.label("Volume");
             ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
-            let response =
-                ui.add(egui::Slider::new(&mut prefs.master_volume, 0.0..=1.0).max_decimals(2));
+            let response = scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
+                ui.add(egui::Slider::new(volume, 0.0..=1.0).max_decimals(2))
+            });
             let response = response.accessible_name("Volume");
             if response.changed() {
                 audio.set_volume(prefs.master_volume);
@@ -126,14 +177,15 @@ fn session_controls(
     } else {
         ui.horizontal_wrapped(|ui| {
             ui.label("Tempo");
-            if ui
-                .add(
-                    egui::Slider::new(&mut prefs.tempo_bpm, 120.0..=320.0)
+            if scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
+                ui.add(
+                    egui::Slider::new(tempo, 120.0..=320.0)
                         .text("BPM")
                         .fixed_decimals(0),
                 )
-                .accessible_name("Tempo")
-                .changed()
+            })
+            .accessible_name("Tempo")
+            .changed()
             {
                 changes.timeline_dirty = true;
                 changes.music_dirty = true;
@@ -195,10 +247,11 @@ fn session_controls(
                 changes.save = true;
             }
             ui.label("Volume");
-            if ui
-                .add(egui::Slider::new(&mut prefs.master_volume, 0.0..=1.0))
-                .accessible_name("Volume")
-                .changed()
+            if scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
+                ui.add(egui::Slider::new(volume, 0.0..=1.0))
+            })
+            .accessible_name("Volume")
+            .changed()
             {
                 audio.set_volume(prefs.master_volume);
                 changes.save = true;
@@ -274,6 +327,21 @@ fn count_in_beats_left(beat: f64) -> u32 {
     ((-beat).ceil().max(1.0) as u32).min(COUNT_IN_BEATS as u32)
 }
 
+/// Width for the music progress bar: exactly the space the panel offers.
+///
+/// `egui::ProgressBar` rounds the outer rect it paints. An infinite desired
+/// width puts that rect's right edge (and its rounded cap) at infinity: only
+/// the left cap is drawn, and the oversized rect widens the scroll content so
+/// the rows below it also run past the panel edge. A measured, finite width
+/// keeps both caps on screen and the bar inside the panel.
+fn progress_bar_width(available_width: f32) -> f32 {
+    if available_width.is_finite() {
+        available_width.max(0.0)
+    } else {
+        0.0
+    }
+}
+
 /// The progress bar text: the explicit transport state plus the position.
 fn progress_text(state: TransportState, beat: f64, loop_beats: f64) -> String {
     match state {
@@ -293,6 +361,103 @@ fn progress_text(state: TransportState, beat: f64, loop_beats: f64) -> String {
             loop_beats
         ),
     }
+}
+
+/// Lines of call text the prompt card reserves, even for a one-line call.
+///
+/// A longer call wraps and grows the card: the budget is a minimum, never a
+/// clip. It is deliberately not measured from the text, because CALL NOW and
+/// UPCOMING MOVE show different calls and must still be the same height.
+const PROMPT_CARD_CALL_LINES: f32 = 2.0;
+
+/// The text rows the prompt card reserves, counted in rows rather than points.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct CardRows {
+    /// Lines of call text, at the call font size.
+    call: f32,
+    /// Rows of small text: the state label above the call.
+    label: f32,
+    /// Rows of body text: the timing detail and the next-call footer.
+    body: f32,
+}
+
+impl CardMode {
+    /// The rows the card reserves for this mode.
+    ///
+    /// All three modes reserve identical rows. CALL NOW fills the footer with
+    /// the following call; UPCOMING MOVE already names that call in its main
+    /// line and leaves the footer blank; the last figure has nothing to
+    /// preview. Reserving the row in every mode is what stops the panel — and
+    /// the controls below it — from resizing when the mode changes.
+    fn card_rows(self) -> CardRows {
+        CardRows {
+            call: PROMPT_CARD_CALL_LINES,
+            label: 1.0,
+            body: 2.0,
+        }
+    }
+}
+
+/// The smallest body height the prompt card may take, in points.
+///
+/// `call_row`, `small_row`, and `body_row` are the measured heights of the text
+/// the card draws, and `row_gap` the spacing between its widgets, so the
+/// reservation matches the current font settings instead of assuming a ratio.
+/// Every mode passes the same rows, which is what makes CALL NOW and UPCOMING
+/// MOVE the same height.
+fn prompt_card_min_height(
+    call_row: f32,
+    small_row: f32,
+    body_row: f32,
+    row_gap: f32,
+    rows: CardRows,
+) -> f32 {
+    // The call is one widget however many lines it wraps to, so the gaps are
+    // between widgets, not between text lines.
+    let widgets = rows.label + rows.body + 1.0;
+    let text_rows = rows.label * small_row + rows.body * body_row + rows.call * call_row;
+    let gaps = (widgets - 1.0).max(0.0) * row_gap;
+    text_rows + gaps
+}
+
+/// The call previewed in the prompt card's footer.
+///
+/// UPCOMING MOVE already names its call in the main line, so its footer stays
+/// empty instead of repeating the words; when no call follows the card, the
+/// footer stays empty too and never echoes the call already on the card.
+fn card_footer(
+    mode: CardMode,
+    next: Option<&contra_core::ScheduledCall>,
+) -> Option<&contra_core::ScheduledCall> {
+    if mode == CardMode::UpcomingMove {
+        return None;
+    }
+    next
+}
+
+/// Draw the card footer: the call to say after the one above it, with the beat
+/// it executes and the beat its own call starts.
+fn prompt_card_footer(ui: &mut egui::Ui, next: &contra_core::ScheduledCall, compact: bool) {
+    let timing = if compact {
+        format!(
+            "beat {:.0} · call {:.1}",
+            next.execute_beat, next.start_beat
+        )
+    } else {
+        format!(
+            "at beat {:.0} (call at {:.1})",
+            next.execute_beat, next.start_beat
+        )
+    };
+    ui.horizontal_wrapped(|ui| {
+        ui.label(egui::RichText::new("NEXT:").small().color(theme::muted(ui)));
+        ui.label(
+            egui::RichText::new(&next.call.text)
+                .strong()
+                .color(theme::on_card(ui)),
+        );
+        ui.label(egui::RichText::new(timing).small().color(theme::muted(ui)));
+    });
 }
 
 impl ContraApp {
@@ -418,20 +583,7 @@ impl ContraApp {
             ))
             .color(theme::muted(ui)),
         );
-        let mut instruments = format!(
-            "Melody: {} · Accompaniment: {}",
-            self.prefs.melody.label(),
-            self.prefs.accompaniment.label()
-        );
-        if let Some(second) = self.prefs.second_accompaniment.instrument() {
-            instruments.push_str(&format!(" · Second: {}", second.label()));
-        }
-        if self.prefs.percussion.is_enabled() {
-            instruments.push_str(&format!(" · Percussion: {}", self.prefs.percussion.label()));
-            if self.prefs.percussion_rhythm != PercussionRhythm::Auto {
-                instruments.push_str(&format!(" ({})", self.prefs.percussion_rhythm.label()));
-            }
-        }
+        let instruments = instrument_summary(&self.prefs);
         if compact {
             // Two deliberate lines instead of one wrapped line, so the tune
             // and the instrument summary never break mid-phrase at phone width.
@@ -496,16 +648,22 @@ impl ContraApp {
             if tunes.len() >= 2 {
                 // On a phone the label goes above the rail: a one-row label,
                 // slider, value, and "times through" is wider than 360 points.
-                let response = slider_row(ui, compact, "Change tune every", |ui| {
-                    ui.add(
-                        egui::Slider::new(
-                            &mut self.prefs.tune_rotation.passes_per_tune,
-                            contra_core::TuneRotation::MIN_PASSES
-                                ..=contra_core::TuneRotation::MAX_PASSES,
+                let response = slider_row(
+                    ui,
+                    compact,
+                    "Change tune every",
+                    &mut self.prefs.tune_rotation.passes_per_tune,
+                    |ui, passes| {
+                        ui.add(
+                            egui::Slider::new(
+                                passes,
+                                contra_core::TuneRotation::MIN_PASSES
+                                    ..=contra_core::TuneRotation::MAX_PASSES,
+                            )
+                            .text("times through"),
                         )
-                        .text("times through"),
-                    )
-                });
+                    },
+                );
                 if response.changed() {
                     rotation_changed = true;
                 }
@@ -529,10 +687,11 @@ impl ContraApp {
             beat,
         );
         let progress_text = progress_text(transport, beat, self.timeline.music_loop_beats);
+        let progress_width = progress_bar_width(ui.available_width());
         ui.add(
             egui::ProgressBar::new(progress as f32)
                 .text(progress_text)
-                .desired_width(f32::INFINITY),
+                .desired_width(progress_width),
         );
 
         ui.add_space(8.0);
@@ -570,11 +729,18 @@ impl ContraApp {
         }
     }
 
-    /// The large call prompt and the **Next:** line that follows it.
+    /// The large call prompt, including the in-card preview of the next call.
     ///
     /// It sits at the top of the session, directly under the tab row, because
     /// it is the one panel a caller reads while the dance is running. The
     /// controls, tune summary, progress bar, and dance card follow below it.
+    ///
+    /// The next call is a footer row inside the same card rather than a line
+    /// under it: a row that appears only while a call is being spoken moves
+    /// every control below it, and mid-dance the caller is watching the card.
+    /// Every state reserves the same rows (see [`prompt_card_min_height`]) so
+    /// switching between CALL NOW, UPCOMING MOVE, and the final figure never
+    /// resizes the panel.
     fn prompt_card(&self, ui: &mut egui::Ui, beat: f64, compact: bool) {
         let active = if self.started {
             self.timeline
@@ -603,6 +769,35 @@ impl ContraApp {
         } else {
             "no count-in".to_string()
         };
+        // Only a card that is naming a call previews the one after it; the
+        // ready, count-in-without-a-call, ending, and finished cards have
+        // nothing to look ahead to.
+        let footer = if active.is_some() {
+            card_footer(card_mode, next.as_ref())
+        } else {
+            None
+        };
+        // While a run is live the card reserves the same rows in every state,
+        // so the count-in, CALL NOW, UPCOMING MOVE, and the slow ending all keep
+        // the controls below in place. The idle READY card and the completed
+        // card are left content-sized: reserving two call lines there would be
+        // half an empty box, and nothing is moving.
+        let min_height = if self.started && !self.audio.is_finished() {
+            let call_row = ui
+                .ctx()
+                .fonts_mut(|fonts| fonts.row_height(&egui::FontId::proportional(call_size)));
+            let small_row = ui.text_style_height(&egui::TextStyle::Small);
+            let body_row = ui.text_style_height(&egui::TextStyle::Body);
+            Some(prompt_card_min_height(
+                call_row,
+                small_row,
+                body_row,
+                ui.spacing().item_spacing.y,
+                card_mode.card_rows(),
+            ))
+        } else {
+            None
+        };
         egui::Frame::group(ui.style())
             .fill(card_fill)
             .inner_margin(egui::Margin::same(if compact { 10 } else { 12 }))
@@ -612,6 +807,14 @@ impl ContraApp {
                     // background on a phone; use the full width for the text.
                     ui.set_width(ui.available_width());
                 }
+                // A minimum, never a clip: a call that wraps past the reserved
+                // rows grows the card instead of cutting the words off.
+                let content_top = ui.cursor().top();
+                // The card holds text only. Undo egui's assumption that a
+                // horizontal row is a 40 pt (or 44 pt touch) control: on a
+                // text row that padding spreads the label, the call, and the
+                // footer far apart and inflates the reserved height.
+                ui.spacing_mut().interact_size.y = 0.0;
                 if !self.started {
                     ui.label(egui::RichText::new("READY").small().color(theme::muted(ui)));
                     ui.label(
@@ -792,28 +995,23 @@ impl ContraApp {
                         .color(theme::muted(ui)),
                     );
                 }
+                // The last row of the same card: the call to say after this
+                // one. When there is no following call the row stays empty,
+                // and the reserved height keeps the card from shrinking.
+                if let Some(next) = footer {
+                    prompt_card_footer(ui, next, compact);
+                }
+                // Pad inside the card instead of setting a minimum on the
+                // content ui: the blank space belongs under the last row, not
+                // between the rows, and short content still leaves the card at
+                // its reserved height while long content grows it.
+                let used = ui.cursor().top() - content_top;
+                if let Some(min_height) = min_height
+                    && used < min_height
+                {
+                    ui.add_space(min_height - used);
+                }
             });
-
-        if let Some(next) = &next
-            && card_mode != CardMode::UpcomingMove
-        {
-            let timing = if compact {
-                format!(
-                    "beat {:.0} · call {:.1}",
-                    next.execute_beat, next.start_beat
-                )
-            } else {
-                format!(
-                    "at beat {:.0} (call at {:.1})",
-                    next.execute_beat, next.start_beat
-                )
-            };
-            ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("Next:").color(theme::muted(ui)));
-                ui.label(egui::RichText::new(&next.call.text).strong());
-                ui.label(egui::RichText::new(timing).small().color(theme::muted(ui)));
-            });
-        }
     }
 
     /// The dance card figures with their call text and beat counts.
@@ -902,6 +1100,145 @@ impl ContraApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use contra_core::{Countermelody, InstrumentCopies, Percussion, PercussionRhythm};
+
+    #[test]
+    fn the_tune_summary_names_every_player_and_the_copy_counts() {
+        let prefs = Preferences::default();
+        assert_eq!(
+            instrument_summary(&prefs),
+            "Melody: Fiddle · Accompaniment: Piano · Countermelody: Accordion"
+        );
+
+        let mut prefs = prefs;
+        prefs.instrument_copies = InstrumentCopies {
+            melody: 2,
+            accompaniment: 3,
+            countermelody: 2,
+            percussion: 2,
+        };
+        prefs.percussion = Percussion::Drumset;
+        prefs.percussion_rhythm = PercussionRhythm::Shuffle;
+        assert_eq!(
+            instrument_summary(&prefs),
+            "Melody: Fiddle ×2 · Accompaniment: Piano ×3 · Countermelody: Accordion ×2 · \
+             Percussion: Drumset ×2 (Shuffle)"
+        );
+
+        // Turning the countermelody off leaves the duo line, without a count.
+        prefs.second_accompaniment = Countermelody::Off;
+        prefs.percussion = Percussion::Off;
+        assert_eq!(
+            instrument_summary(&prefs),
+            "Melody: Fiddle ×2 · Accompaniment: Piano ×3"
+        );
+    }
+
+    /// One scheduled call, for the card-footer tests.
+    fn scheduled(
+        index: usize,
+        text: &str,
+        start_beat: f64,
+        execute_beat: f64,
+    ) -> contra_core::ScheduledCall {
+        contra_core::ScheduledCall {
+            index,
+            call: contra_core::CallEvent {
+                figure_index: index,
+                phrase: None,
+                call_start_beat: start_beat,
+                execute_beat,
+                end_beat: execute_beat + 8.0,
+                text: text.to_string(),
+                original_text: text.to_string(),
+                syllables: text.split_whitespace().count(),
+                words: text.split_whitespace().count(),
+            },
+            start_beat,
+            execute_beat,
+            end_beat: execute_beat + 8.0,
+            wrapped: false,
+        }
+    }
+
+    #[test]
+    fn call_now_and_upcoming_move_reserve_the_same_card_height() {
+        // Both cards show a different call, but the reserved rows come from the
+        // font and the fixed row budget, so the panel cannot resize when the
+        // mode changes.
+        let (call_row, small_row, body_row, gap) = (40.0, 15.0, 19.0, 8.0);
+        let call_now = prompt_card_min_height(
+            call_row,
+            small_row,
+            body_row,
+            gap,
+            CardMode::CurrentCall.card_rows(),
+        );
+        let upcoming_move = prompt_card_min_height(
+            call_row,
+            small_row,
+            body_row,
+            gap,
+            CardMode::UpcomingMove.card_rows(),
+        );
+        assert_eq!(call_now, upcoming_move);
+        // The last figure reserves the same rows too, so the end of the dance
+        // does not resize the session either.
+        assert_eq!(
+            call_now,
+            prompt_card_min_height(
+                call_row,
+                small_row,
+                body_row,
+                gap,
+                CardMode::FinalMove.card_rows(),
+            )
+        );
+    }
+
+    #[test]
+    fn the_card_height_is_built_from_the_font_and_the_row_budget() {
+        let rows = CardMode::CurrentCall.card_rows();
+        let height = prompt_card_min_height(40.0, 15.0, 19.0, 8.0, rows);
+        // One label row, two body rows (detail and footer), two call lines, and
+        // the three gaps between those four widgets.
+        assert_eq!(height, 15.0 + 2.0 * 19.0 + 2.0 * 40.0 + 3.0 * 8.0);
+        // A bigger call font reserves more height, and never a negative one.
+        assert!(prompt_card_min_height(56.0, 15.0, 19.0, 8.0, rows) > height);
+        assert!(prompt_card_min_height(0.0, 0.0, 0.0, 0.0, rows) >= 0.0);
+    }
+
+    #[test]
+    fn the_reserved_height_leaves_room_for_a_wrapping_call() {
+        // The reservation must cover a second line: a call that wraps would
+        // otherwise resize the card, which is the jump this fixes.
+        let rows = CardMode::CurrentCall.card_rows();
+        let one_line = prompt_card_min_height(40.0, 15.0, 19.0, 8.0, rows);
+        let single_line_budget = prompt_card_min_height(
+            40.0,
+            15.0,
+            19.0,
+            8.0,
+            CardRows {
+                call: 1.0,
+                label: 1.0,
+                body: 2.0,
+            },
+        );
+        assert!(one_line >= single_line_budget + 40.0);
+    }
+
+    #[test]
+    fn the_card_footer_never_repeats_the_call_on_the_card() {
+        let next = scheduled(1, "swing", 3.0, 6.0);
+        // CALL NOW fills the footer with the following call.
+        assert!(card_footer(CardMode::CurrentCall, Some(&next)).is_some());
+        // UPCOMING MOVE already names that call in its main line.
+        assert!(card_footer(CardMode::UpcomingMove, Some(&next)).is_none());
+        // No following call: no footer, not an echo of the current one.
+        assert!(card_footer(CardMode::CurrentCall, None).is_none());
+        assert!(card_footer(CardMode::FinalMove, None).is_none());
+    }
 
     #[test]
     fn transport_state_names_every_session_state() {
@@ -944,6 +1281,21 @@ mod tests {
             transport_state(true, false, true, true, 64.0),
             TransportState::Finished
         );
+    }
+
+    #[test]
+    fn progress_bar_width_fills_the_panel_and_is_always_finite() {
+        // The bar must end exactly at the content edge, so both rounded caps
+        // are drawn inside the panel at any width.
+        assert_eq!(progress_bar_width(366.0), 366.0);
+        assert_eq!(progress_bar_width(336.0), 336.0);
+        // An infinite or NaN available width must not reach
+        // `ProgressBar::desired_width`: that is what put the right cap
+        // off-screen and widened the scroll content.
+        assert_eq!(progress_bar_width(f32::INFINITY), 0.0);
+        assert_eq!(progress_bar_width(f32::NEG_INFINITY), 0.0);
+        assert_eq!(progress_bar_width(f32::NAN), 0.0);
+        assert_eq!(progress_bar_width(-24.0), 0.0);
     }
 
     #[test]

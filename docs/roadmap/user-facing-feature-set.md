@@ -2,7 +2,8 @@
 
 ### 3.1 Main session screen
 
-- Top tab row: **Select dance**, **Select tune**, **Preferences**.
+- Top tab row: **Select dance**, **Select tune**, with the Preferences gear
+  button at the top right and About at the bottom of Preferences.
 - Session controls directly below the tabs:
   - Tempo (default 240 BPM), with stepper and slider.
   - Play/pause, restart, loop toggle, and **End tune** (a slow, held final
@@ -27,16 +28,18 @@ The saved-dance library, available offline:
 - Local search over title, choreographer, formation, and figure text.
 - Flat user folders: create, rename, delete, and move cards; deleting a folder
   keeps its cards as unfiled.
-- A **Download dance** submenu opens the ContraDB search screen:
-  - Text filters: title, choreographer, user, hook.
-  - Verified filter.
-  - Formation filter: improper, becket, proper, everything else.
-  - Figure filter: a move selector plus a "figure contains words" search.
-  - Sorting and pagination.
+- A **Download dance** submenu opens the search screen for the source selected
+  in Preferences → Data sources (ContraDB by default, or The Caller's Box):
+  - Text filters follow the source's `FilterSpec`: title and choreographer on
+    both; user and hook on ContraDB only.
+  - ContraDB adds a verified filter, formation presets, a move selector, and
+    sorting with pagination. The Caller's Box offers its own formation list and
+    a figure-phrase search over the first 50 matches.
   - Results show title, choreographer, formation, and hook, plus a downloaded
     marker.
   - Selecting a result opens a preview of its parsed figures, a **Download
-    dance** action, and a **Use this dance** action that saves and loads.
+    dance** action, and a **Use this dance** action that saves and loads. The
+    preview's **Open on …** link follows the card's own source.
 - The default dance is downloaded on first run and remains usable offline.
 - Downloads are stored separately from the HTTP source cache; clearing the
   cache keeps them.
@@ -77,19 +80,23 @@ Listed in this order:
    alias templates, live previews, reset-to-default, and custom aliases for
    unmatched figures.
 3. **Instrument preferences**
-   - Melody: Fiddle (default), Accordion.
+   - Melody: Fiddle (default), Accordion, Alto sax, Tenor sax, Clarinet.
    - Accompaniment: Piano (default), Guitar, Accordion.
    - Accompaniment rhythm: match instrument (default), block chords,
      boom-chuck, offbeat stabs, arpeggio, shuffle, strum, sustained.
-   - Second accompaniment: Accordion countermelody (default), Fiddle
-     countermelody, or Off for a duo. Melody plus both accompaniments is the
+   - Countermelody: Accordion countermelody (default), Fiddle
+     countermelody, or Off for a duo. Melody plus the accompaniment is the
      default trio.
+   - Copies: 1-4 players on the melody, accompaniment, and countermelody, and
+     1-3 on percussion. Each copy is a separate player with its own pan, a few
+     milliseconds of spread, and a slight detune or velocity difference; one
+     is the previous single instrument.
    - Percussion: Off (default), Foot taps on each dance beat, or Drumset.
    - Percussion rhythm: match style (default), basic, on the beat, offbeats,
      half time, double time, shuffle, gallop, triplet, or train beat. Match
      style gives foot taps a gallop: one group per dance beat, an eighth note
      followed by two sixteenths.
-   - Melody/accompaniment volume; the second accompaniment follows the
+   - Melody/accompaniment volume; the countermelody follows the
      accompaniment volume. Percussion has its own volume.
    - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.

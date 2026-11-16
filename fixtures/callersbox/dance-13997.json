@@ -1,0 +1,45 @@
+{
+  "request": "http://www.ibiblio.org/contradance/thecallersbox/dance.php?id=13997&format=JSON",
+  "download_date": "2026-11-16T05:40:33+00:00",
+  "ID": "13997",
+  "Name": "And Another Thing",
+  "Authors": ["Chris Page"],
+  "InterpretedBy": [],
+  "Permission": "full",
+  "Status": "",
+  "BasedOn": [],
+  "FormationBase": "Duple Minor - Becket",
+  "FormationDetail": "",
+  "Progression": "Single",
+  "Direction": "CW",
+  "Mixer?": "",
+  "Virtual?": "",
+  "PhraseStructure": "",
+  "Music": [],
+  "Tunes": [],
+  "phrases": [
+    {
+      "name": "A1",
+      "figures": ["(8) Men allemande left 1 & 1/2", "(8) Hey 1/2 (NR;WL;PR;ML)"]
+    },
+    {
+      "name": "A2",
+      "figures": ["(8) Neighbor right shoulder round", "(8) Neighbor swing"]
+    },
+    {
+      "name": "B1",
+      "figures": ["(8) On right diagonal, ladies chain to shadow", "(8) Circle right 1 [with N2, shadow]"]
+    },
+    {
+      "name": "B2",
+      "figures": ["(6) N2 neighbor poussette clockwise 1/2 [around partner]", "(10) Partner swing"]
+    }
+  ],
+  "CallingNotes": [],
+  "Appearances": [{"source": "website Page", "lo": "dlist2.htm#and-another-thing"}],
+  "OtherNames": [],
+  "Videos": ["http://www.youtube.com/watch?v=-_MvoywO8GE"],
+  "VirtualVideos": [],
+  "VariantVideos": [],
+  "VariantVirtualVideos": []
+}

@@ -188,6 +188,28 @@ pub trait DanceProvider: Send + Sync {
     fn detail(&self, id: &str) -> HttpRequest;
     fn parse_dance(&self, body: &[u8], id: &str) -> Result<Dance, SourceError>;
     fn parse_url(&self, url: &str) -> Option<String>;
+
+    /// Whether a second page of results can be requested.
+    ///
+    /// A source whose search returns one capped list (no offset parameter)
+    /// answers `false`; the picker then hides **Previous**/**Next** and
+    /// explains the cap instead of repeating the first page.
+    fn supports_pagination(&self) -> bool {
+        true
+    }
+
+    /// Whether the search has a sort control.
+    fn supports_sort(&self) -> bool {
+        true
+    }
+
+    /// Most rows one search can return when it cannot be paged.
+    ///
+    /// `None` means the source pages normally. A source with a capped list
+    /// returns the cap so the screen can explain why some matches are missing.
+    fn result_limit(&self) -> Option<usize> {
+        None
+    }
 }
 
 pub trait TuneProvider: Send + Sync {
@@ -202,7 +224,8 @@ pub trait TuneProvider: Send + Sync {
     fn parse_url(&self, url: &str) -> Option<String>;
 }
 
-static DANCE_PROVIDERS: [&dyn DanceProvider; 1] = [&crate::contradb::CONTRADB];
+static DANCE_PROVIDERS: [&dyn DanceProvider; 2] =
+    [&crate::contradb::CONTRADB, &crate::callersbox::CALLERS_BOX];
 static TUNE_PROVIDERS: [&dyn TuneProvider; 1] = [&crate::abcsessiontunes::ABC_SESSION_TUNES];
 
 /// The providers compiled into this build.
@@ -226,4 +249,38 @@ pub fn tune_provider(id: &str) -> Option<&'static dyn TuneProvider> {
         .iter()
         .copied()
         .find(|provider| provider.id() == id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registers_both_dance_sources() {
+        let ids: Vec<&str> = dance_providers()
+            .iter()
+            .map(|provider| provider.id())
+            .collect();
+        assert_eq!(ids, ["contradb", "callersbox"]);
+
+        let callers_box = dance_provider("callersbox").expect("registered");
+        assert_eq!(callers_box.display_name(), "The Caller's Box");
+        assert!(
+            callers_box
+                .base_url()
+                .starts_with("https://www.ibiblio.org/")
+        );
+        assert!(!callers_box.supports_pagination());
+        assert!(!callers_box.supports_sort());
+
+        let contradb = dance_provider("contradb").expect("registered");
+        assert!(contradb.supports_pagination());
+        assert!(contradb.supports_sort());
+    }
+
+    #[test]
+    fn unknown_providers_are_not_registered() {
+        assert!(dance_provider("").is_none());
+        assert!(dance_provider("example").is_none());
+    }
 }

@@ -11,6 +11,8 @@ use std::sync::Arc;
 use rustysynth::{SoundFont, Synthesizer, SynthesizerSettings};
 
 use crate::arrange::EndingNote;
+use crate::copies::Part;
+use crate::humanize::{Humanizer, Voice, chord_members};
 use crate::render::{AudioBuffer, RenderError, RenderRequest};
 use crate::score::NoteEvent;
 
@@ -73,43 +75,63 @@ pub fn render_soundfont(
     let mut synth = Synthesizer::new(soundfont, &settings)
         .map_err(|error| RenderError::SoundFont(error.to_string()))?;
 
-    synth.process_midi_message(0, 0xC0, request.melody.gm_program() as i32, 0);
-    synth.process_midi_message(1, 0xC0, request.accompaniment.gm_program() as i32, 0);
-    synth.process_midi_message(
-        0,
-        0xB0,
-        7,
-        (request.melody_volume.clamp(0.0, 1.0) * 110.0) as i32,
+    // One MIDI channel per copy, so every player keeps its own pan, velocity,
+    // and note lifetime. Fifteen channels are available besides the drum
+    // channel; the three melodic parts use at most twelve of them.
+    configure_part(
+        &mut synth,
+        Part::Melody,
+        request.melody.gm_program(),
+        request.melody_volume,
+        0.0,
+        request.copies.melody_count(),
     );
-    synth.process_midi_message(
-        1,
-        0xB0,
-        7,
-        (request.accompaniment_volume.clamp(0.0, 1.0) * 110.0) as i32,
+    configure_part(
+        &mut synth,
+        Part::Accompaniment,
+        request.accompaniment.gm_program(),
+        request.accompaniment_volume,
+        0.0,
+        request.copies.accompaniment_count(),
     );
     if let Some(program) = request.second_accompaniment.gm_program() {
-        synth.process_midi_message(2, 0xC0, program as i32, 0);
-        synth.process_midi_message(
-            2,
-            0xB0,
-            7,
-            (request.accompaniment_volume.clamp(0.0, 1.0) * 88.0) as i32,
+        // The old single countermelody channel sat at controller 80, which is
+        // pan 0.26; keeping that base makes one copy sound as it always did.
+        configure_part(
+            &mut synth,
+            Part::Countermelody,
+            program,
+            request.accompaniment_volume * 0.8,
+            0.26,
+            request.copies.countermelody_count(),
         );
-        synth.process_midi_message(2, 0xB0, 10, 80); // a little right of centre
     }
 
     let mut scheduled = Vec::new();
+    let humanizer = Humanizer::new(request);
     for pass in 0..passes {
         let offset = count_in_samples + pass as u64 * pass_samples;
         let melody = request.arrangement.melody_notes_for_pass(pass);
-        schedule_notes(&mut scheduled, &melody, 0, offset, samples_per_beat);
+        schedule_part(
+            &mut scheduled,
+            &melody,
+            Part::Melody,
+            request.copies.melody_count(),
+            offset,
+            samples_per_beat,
+            sample_rate,
+            &humanizer,
+        );
         if pass == 0 {
-            schedule_notes(
+            schedule_part(
                 &mut scheduled,
                 &request.arrangement.pickup,
-                0,
+                Part::Melody,
+                request.copies.melody_count(),
                 offset,
                 samples_per_beat,
+                sample_rate,
+                &humanizer,
             );
         }
         let accompaniment = request
@@ -119,21 +141,53 @@ pub fn render_soundfont(
                 request.accompaniment_rhythm,
                 pass,
             );
-        schedule_notes(&mut scheduled, &accompaniment, 1, offset, samples_per_beat);
+        schedule_part(
+            &mut scheduled,
+            &accompaniment,
+            Part::Accompaniment,
+            request.copies.accompaniment_count(),
+            offset,
+            samples_per_beat,
+            sample_rate,
+            &humanizer,
+        );
 
         if request.second_accompaniment.instrument().is_some() {
             let countermelody = request.arrangement.countermelody_notes_for_pass(pass);
-            schedule_notes(&mut scheduled, &countermelody, 2, offset, samples_per_beat);
+            schedule_part(
+                &mut scheduled,
+                &countermelody,
+                Part::Countermelody,
+                request.copies.countermelody_count(),
+                offset,
+                samples_per_beat,
+                sample_rate,
+                &humanizer,
+            );
         }
     }
-    schedule_count_in(&mut scheduled, request, samples_per_beat, count_in_samples);
+    schedule_count_in(
+        &mut scheduled,
+        request,
+        samples_per_beat,
+        count_in_samples,
+        sample_rate,
+    );
     if let Some(ending) = &ending {
         let offset = count_in_samples + loop_samples;
-        schedule_ending_notes(&mut scheduled, &ending.melody, 0, offset, sample_rate);
-        schedule_ending_notes(
+        schedule_ending_part(
+            &mut scheduled,
+            &ending.melody,
+            Part::Melody,
+            request.copies.melody_count(),
+            offset,
+            sample_rate,
+        );
+        schedule_ending_part(
             &mut scheduled,
             &ending.accompaniment,
-            1,
+            Part::Accompaniment,
+            request.copies.accompaniment_count(),
             offset,
             sample_rate,
         );
@@ -204,75 +258,138 @@ pub fn render_soundfont(
     })
 }
 
-fn schedule_notes(
-    scheduled: &mut Vec<Scheduled>,
-    notes: &[NoteEvent],
-    channel: i32,
-    offset_samples: u64,
-    samples_per_beat: f64,
+/// Set a part's program, level, and pan on every copy channel.
+///
+/// The level goes through controller 7 rather than a gain applied to samples,
+/// so the sampled voice keeps its own velocity response. The per-copy gain
+/// from the section plan is folded into that controller value.
+fn configure_part(
+    synth: &mut Synthesizer,
+    part: Part,
+    program: u8,
+    volume: f32,
+    base_pan: f32,
+    copies: usize,
 ) {
-    for note in notes {
-        let start = offset_samples as i64 + (note.start_beat * samples_per_beat).round() as i64;
-        if start < 0 {
-            continue;
-        }
-        let start = start as u64;
-        let duration = (note.duration_beats * samples_per_beat).round().max(1.0) as u64;
-        scheduled.push(Scheduled {
-            sample: start,
-            order: 1,
-            kind: ScheduledKind::NoteOn {
-                channel,
-                key: note.midi as i32,
-                velocity: note.velocity.clamp(1, 127) as i32,
-            },
-        });
-        scheduled.push(Scheduled {
-            sample: start + duration,
-            order: 0,
-            kind: ScheduledKind::NoteOff {
-                channel,
-                key: note.midi as i32,
-            },
-        });
+    for (copy, voice) in crate::copies::voices(base_pan, copies, 1)
+        .into_iter()
+        .enumerate()
+    {
+        let channel = part.channel(copy);
+        synth.process_midi_message(channel, 0xC0, i32::from(program), 0);
+        let level = (volume.clamp(0.0, 1.0) * 110.0 * voice.gain).clamp(0.0, 127.0) as i32;
+        synth.process_midi_message(channel, 0xB0, 7, level);
+        synth.process_midi_message(channel, 0xB0, 10, crate::copies::pan_cc(voice.pan));
     }
 }
 
-/// Schedule ending notes, which are timed in seconds rather than dance beats.
-fn schedule_ending_notes(
+/// Schedule one part's notes once per copy, each on its own channel.
+///
+/// Human timing follows the same per-copy curves as the built-in synth. A
+/// note's offset shifts both its note-on and note-off by the same amount, so
+/// its duration and the loop's sample count do not change.
+#[allow(clippy::too_many_arguments)]
+fn schedule_part(
+    scheduled: &mut Vec<Scheduled>,
+    notes: &[NoteEvent],
+    part: Part,
+    copies: usize,
+    offset_samples: u64,
+    samples_per_beat: f64,
+    sample_rate: u32,
+    humanizer: &Humanizer,
+) {
+    let chord = chord_members(notes);
+    let voice = Voice::of(part);
+    for (copy, player) in crate::copies::voices(0.0, copies, sample_rate)
+        .into_iter()
+        .enumerate()
+    {
+        let channel = part.channel(copy);
+        let start_offset = offset_samples + player.delay_samples;
+        let timing = humanizer.voice(voice, copy);
+        for (index, note) in notes.iter().enumerate() {
+            let humanized = timing.as_ref().map_or(0.0, |timing| {
+                timing.onset_offset_seconds(
+                    note.start_beat,
+                    note.duration_beats,
+                    note.midi,
+                    chord.get(index).copied().unwrap_or(false),
+                )
+            });
+            let start = start_offset as i64
+                + (note.start_beat * samples_per_beat).round() as i64
+                + (humanized * f64::from(sample_rate)).round() as i64;
+            if start < 0 {
+                continue;
+            }
+            let start = start as u64;
+            let duration = (note.duration_beats * samples_per_beat).round().max(1.0) as u64;
+            scheduled.push(Scheduled {
+                sample: start,
+                order: 1,
+                kind: ScheduledKind::NoteOn {
+                    channel,
+                    key: note.midi as i32,
+                    velocity: (i32::from(note.velocity) + player.velocity_offset).clamp(1, 127),
+                },
+            });
+            scheduled.push(Scheduled {
+                sample: start + duration,
+                order: 0,
+                kind: ScheduledKind::NoteOff {
+                    channel,
+                    key: note.midi as i32,
+                },
+            });
+        }
+    }
+}
+
+/// Schedule ending notes once per copy, which are timed in seconds rather than
+/// dance beats.
+fn schedule_ending_part(
     scheduled: &mut Vec<Scheduled>,
     notes: &[EndingNote],
-    channel: i32,
+    part: Part,
+    copies: usize,
     offset_samples: u64,
     sample_rate: u32,
 ) {
-    for note in notes {
-        let start =
-            offset_samples as i64 + (note.start_seconds * sample_rate as f64).round() as i64;
-        if start < 0 {
-            continue;
+    for (copy, voice) in crate::copies::voices(0.0, copies, sample_rate)
+        .into_iter()
+        .enumerate()
+    {
+        let channel = part.channel(copy);
+        let start_offset = offset_samples + voice.delay_samples;
+        for note in notes {
+            let start =
+                start_offset as i64 + (note.start_seconds * sample_rate as f64).round() as i64;
+            if start < 0 {
+                continue;
+            }
+            let start = start as u64;
+            let duration = (note.duration_seconds * sample_rate as f64)
+                .round()
+                .max(1.0) as u64;
+            scheduled.push(Scheduled {
+                sample: start,
+                order: 1,
+                kind: ScheduledKind::NoteOn {
+                    channel,
+                    key: note.midi as i32,
+                    velocity: (i32::from(note.velocity) + voice.velocity_offset).clamp(1, 127),
+                },
+            });
+            scheduled.push(Scheduled {
+                sample: start + duration,
+                order: 0,
+                kind: ScheduledKind::NoteOff {
+                    channel,
+                    key: note.midi as i32,
+                },
+            });
         }
-        let start = start as u64;
-        let duration = (note.duration_seconds * sample_rate as f64)
-            .round()
-            .max(1.0) as u64;
-        scheduled.push(Scheduled {
-            sample: start,
-            order: 1,
-            kind: ScheduledKind::NoteOn {
-                channel,
-                key: note.midi as i32,
-                velocity: note.velocity.clamp(1, 127) as i32,
-            },
-        });
-        scheduled.push(Scheduled {
-            sample: start + duration,
-            order: 0,
-            kind: ScheduledKind::NoteOff {
-                channel,
-                key: note.midi as i32,
-            },
-        });
     }
 }
 
@@ -281,6 +398,7 @@ fn schedule_count_in(
     request: &RenderRequest,
     samples_per_beat: f64,
     count_in_samples: u64,
+    sample_rate: u32,
 ) {
     if count_in_samples == 0 {
         return;
@@ -288,28 +406,36 @@ fn schedule_count_in(
     let chord = request.arrangement.count_in_chord();
     let duration = (0.4 * samples_per_beat).round().max(1.0) as u64;
     let count = request.count_in_beats.round().clamp(0.0, 4.0) as usize;
-    for beat in 0..count {
-        let start = (beat as f64 * samples_per_beat).round() as u64;
-        let mut notes = chord.voicing(55);
-        notes.push(chord.bass_midi());
-        for midi in notes {
-            scheduled.push(Scheduled {
-                sample: start,
-                order: 1,
-                kind: ScheduledKind::NoteOn {
-                    channel: 1,
-                    key: midi as i32,
-                    velocity: 62,
-                },
-            });
-            scheduled.push(Scheduled {
-                sample: start + duration,
-                order: 0,
-                kind: ScheduledKind::NoteOff {
-                    channel: 1,
-                    key: midi as i32,
-                },
-            });
+    // The count-in is accompaniment, so every accompaniment copy counts in.
+    for (copy, voice) in
+        crate::copies::voices(0.0, request.copies.accompaniment_count(), sample_rate)
+            .into_iter()
+            .enumerate()
+    {
+        let channel = Part::Accompaniment.channel(copy);
+        for beat in 0..count {
+            let start = (beat as f64 * samples_per_beat).round() as u64 + voice.delay_samples;
+            let mut notes = chord.voicing(55);
+            notes.push(chord.bass_midi());
+            for midi in notes {
+                scheduled.push(Scheduled {
+                    sample: start,
+                    order: 1,
+                    kind: ScheduledKind::NoteOn {
+                        channel,
+                        key: midi as i32,
+                        velocity: (62 + voice.velocity_offset).clamp(1, 127),
+                    },
+                });
+                scheduled.push(Scheduled {
+                    sample: start + duration,
+                    order: 0,
+                    kind: ScheduledKind::NoteOff {
+                        channel,
+                        key: midi as i32,
+                    },
+                });
+            }
         }
     }
 }

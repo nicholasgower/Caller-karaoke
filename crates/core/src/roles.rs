@@ -39,6 +39,12 @@ impl RoleTerms {
                 right_singular: "robin".into(),
                 right_plural: "robins".into(),
             },
+            RolePreset::LarksRavens => Self {
+                left_singular: "lark".into(),
+                left_plural: "larks".into(),
+                right_singular: "raven".into(),
+                right_plural: "ravens".into(),
+            },
             RolePreset::LadiesGentlemen => Self {
                 left_singular: "lady".into(),
                 left_plural: "ladies".into(),
@@ -116,6 +122,7 @@ impl RoleTerms {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RolePreset {
     LarksRobins,
+    LarksRavens,
     LadiesGentlemen,
     WomenMen,
     LeadsFollows,
@@ -124,8 +131,9 @@ pub enum RolePreset {
 }
 
 impl RolePreset {
-    pub const ALL: [RolePreset; 6] = [
+    pub const ALL: [RolePreset; 7] = [
         RolePreset::LarksRobins,
+        RolePreset::LarksRavens,
         RolePreset::LadiesGentlemen,
         RolePreset::WomenMen,
         RolePreset::LeadsFollows,
@@ -133,9 +141,16 @@ impl RolePreset {
         RolePreset::Custom,
     ];
 
+    /// The menu label, always in left-then-right order.
+    ///
+    /// The model is [`RoleSide::Left`] and [`RoleSide::Right`], and every
+    /// label names the left-side term first ("Larks / Robins", "Ladies /
+    /// Gentlemen"). A dance card may write its pair in either order, but the
+    /// preset menu must not mix the two; a new preset follows the same rule.
     pub fn label(self) -> &'static str {
         match self {
             RolePreset::LarksRobins => "Larks / Robins",
+            RolePreset::LarksRavens => "Larks / Ravens",
             RolePreset::LadiesGentlemen => "Ladies / Gentlemen",
             RolePreset::WomenMen => "Women / Men",
             RolePreset::LeadsFollows => "Leads / Follows",
@@ -145,6 +160,10 @@ impl RolePreset {
     }
 
     /// Infer the preset that matches a pair of terms, if any.
+    ///
+    /// This is only an inference, used to upgrade older preference files: the
+    /// UI reads the stored selection, because custom words can equal a named
+    /// preset and must not snap the menu back.
     pub fn detect(terms: &RoleTerms) -> Self {
         RolePreset::ALL
             .into_iter()
@@ -163,7 +182,7 @@ struct RoleWord {
 /// Longest forms come first so that "gentlespoons" is not partially matched.
 static ROLE_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"(?i)\b(gentlespoons|gentlespoon|gentlemen|gentleman|gentles|gents|gent|ladles|ladle|ladies|lady|larks|lark|leads|lead|lefts|women|woman|robins|robin|follows|follow|rights|men|man|gals|gal|guys|guy|belles|belle|beaus|beau)\b",
+        r"(?i)\b(gentlespoons|gentlespoon|gentlemen|gentleman|gentles|gents|gent|ladles|ladle|ladies|lady|larks|lark|leads|lead|lefts|women|woman|ravens|raven|robins|robin|follows|follow|rights|men|man|gals|gal|guys|guy|belles|belle|beaus|beau)\b",
     )
     .expect("role regex is valid")
 });
@@ -178,7 +197,7 @@ fn role_word(word: &str) -> Option<RoleWord> {
         "larks" | "lark" => (RoleSide::Left, lower.ends_with('s')),
         "leads" | "lead" | "lefts" => (RoleSide::Left, lower.ends_with('s')),
         "women" | "woman" => (RoleSide::Left, lower == "women"),
-        "robins" | "robin" => (RoleSide::Right, lower.ends_with('s')),
+        "robins" | "robin" | "ravens" | "raven" => (RoleSide::Right, lower.ends_with('s')),
         "follows" | "follow" | "rights" => (RoleSide::Right, lower.ends_with('s')),
         "men" | "man" => (RoleSide::Right, lower == "men"),
         "gals" | "gal" => (RoleSide::Left, lower.ends_with('s')),
@@ -251,6 +270,96 @@ mod tests {
             }
             let terms = RoleTerms::preset(preset);
             assert_eq!(RolePreset::detect(&terms), preset);
+        }
+    }
+
+    #[test]
+    fn every_preset_label_reads_left_then_right() {
+        for preset in RolePreset::ALL {
+            if preset == RolePreset::Custom {
+                assert_eq!(preset.label(), "Custom");
+                continue;
+            }
+            let terms = RoleTerms::preset(preset);
+            let left = capitalise(&terms.left_plural);
+            let right = capitalise(&terms.right_plural);
+            assert_eq!(
+                preset.label(),
+                format!("{left} / {right}"),
+                "{} must name the left side first",
+                preset.label()
+            );
+        }
+    }
+
+    fn capitalise(word: &str) -> String {
+        let mut chars = word.chars();
+        match chars.next() {
+            Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            None => String::new(),
+        }
+    }
+
+    #[test]
+    fn larks_and_ravens_map_left_and_right() {
+        let terms = RoleTerms::preset(RolePreset::LarksRavens);
+        assert_eq!(terms.left_plural, "larks");
+        assert_eq!(terms.right_plural, "ravens");
+        assert_eq!(
+            terms.apply("ladles allemande left 1½"),
+            "larks allemande left 1½"
+        );
+        assert_eq!(terms.apply("gentlespoons chain"), "ravens chain");
+        assert_eq!(RolePreset::detect(&terms), RolePreset::LarksRavens);
+    }
+
+    #[test]
+    fn ravens_are_a_right_side_role_word() {
+        assert_eq!(RoleTerms::default().apply("ravens chain"), "robins chain");
+        assert_eq!(RoleTerms::default().apply("Raven swing"), "Robin swing");
+    }
+
+    #[test]
+    fn custom_terms_apply_to_card_and_call_phrases() {
+        let terms = RoleTerms {
+            left_singular: "port".into(),
+            left_plural: "ports".into(),
+            right_singular: "starboard".into(),
+            right_plural: "starboards".into(),
+        };
+        // A dance-card phrase and a spoken call phrase.
+        assert_eq!(
+            terms.apply("ladles allemande left 1½"),
+            "ports allemande left 1½"
+        );
+        assert_eq!(terms.apply("gentlespoons chain"), "starboards chain");
+        assert_eq!(terms.apply("swing your ladle"), "swing your port");
+        assert_eq!(terms.apply("gentlespoon do si do"), "starboard do si do");
+    }
+
+    #[test]
+    fn leaves_shadow_neighbor_partner_and_directions_alone() {
+        for preset in [
+            RolePreset::LarksRobins,
+            RolePreset::LarksRavens,
+            RolePreset::LadiesGentlemen,
+            RolePreset::LeftsRights,
+        ] {
+            let terms = RoleTerms::preset(preset);
+            for text in [
+                "shadow",
+                "neighbor",
+                "partners balance & swing",
+                "circle left 3 places",
+                "right hand",
+            ] {
+                assert_eq!(
+                    terms.apply(text),
+                    text,
+                    "{} at {preset:?}",
+                    terms.apply(text)
+                );
+            }
         }
     }
 

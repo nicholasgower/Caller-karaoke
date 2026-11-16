@@ -6,18 +6,13 @@ impl ContraApp {
     pub(in crate::app) fn dance_library_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
+        let download_hint = format!(
+            "Search {} and add a card to your saved dances",
+            self.dance_source().display_name()
+        );
         let mut open_download = false;
         if compact {
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
-                ui.heading("Select dance");
-            });
+            ui.heading("Select dance");
             // At phone width the heading and the action do not fit on one row.
             let width = ui.available_width();
             if ui
@@ -25,25 +20,18 @@ impl ContraApp {
                     [width, theme::TOUCH_TARGET],
                     egui::Button::new("Download dance"),
                 )
-                .on_hover_text("Search ContraDB and add a card to your saved dances")
+                .on_hover_text(&download_hint)
                 .clicked()
             {
                 open_download = true;
             }
         } else {
             ui.horizontal(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
                 ui.heading("Select dance");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .button("Download dance")
-                        .on_hover_text("Search ContraDB and add a card to your saved dances")
+                        .on_hover_text(&download_hint)
                         .clicked()
                     {
                         open_download = true;
@@ -57,10 +45,11 @@ impl ContraApp {
             self.screen = Screen::DanceDownload;
         }
         ui.label(
-            egui::RichText::new(
+            egui::RichText::new(format!(
                 "Your saved dances, available offline. Search them here, or use Download dance \
-                 to fetch another card from ContraDB.",
-            )
+                 to fetch another card from {}.",
+                self.dance_source().display_name()
+            ))
             .color(theme::muted(ui)),
         );
         ui.add_space(4.0);
@@ -132,10 +121,17 @@ impl ContraApp {
         let mut command = None;
 
         if wide {
+            // The folder panel and both saved-list columns share one height so
+            // they end at the same bottom edge as the window.
+            let pane_height = remaining_pane_height(ui.available_height(), 0.0);
             ui.horizontal_top(|ui| {
                 egui::ScrollArea::vertical()
                     .id_salt("dance-folder-panel")
-                    .max_height(480.0)
+                    .max_height(pane_height)
+                    // Shrink horizontally to the 230-point panel so the list
+                    // and preview keep the rest of the row; fill vertically so
+                    // the panel ends at the same bottom edge as the columns.
+                    .auto_shrink([true, false])
                     .show(ui, |ui| {
                         ui.vertical(|ui| {
                             ui.set_width(230.0);
@@ -208,41 +204,52 @@ impl ContraApp {
             .collect();
         entries.sort_by_key(|entry| entry.item.title.to_lowercase());
         let folders = self.dance_library.folders.clone();
-        let selected_id = self
+        let selected = self
             .picker
             .dance_preview
             .as_ref()
-            .map(|dance| dance.source.id.clone())
-            .filter(|id| self.dance_library.contains("contradb", id));
-        let preview = selected_id.as_deref().and_then(|id| {
+            .filter(|dance| {
+                self.dance_library
+                    .contains(&dance.source.provider, &dance.source.id)
+            })
+            .map(|dance| (dance.source.provider.clone(), dance.source.id.clone()));
+        let preview = selected.as_ref().and_then(|(provider, id)| {
             entries
                 .iter()
-                .find(|entry| entry.item.source.id == id)
+                .find(|entry| {
+                    entry.item.source.provider == *provider && entry.item.source.id == *id
+                })
                 .map(|entry| entry.item.clone())
         });
+        let selected_ref = selected
+            .as_ref()
+            .map(|(provider, id)| (provider.as_str(), id.as_str()));
         let empty_message = if self.dance_library.is_empty() {
-            "No saved dances yet. Use Download dance to fetch one from ContraDB."
+            format!(
+                "No saved dances yet. Use Download dance to fetch one from {}.",
+                self.dance_source().display_name()
+            )
         } else if entries.is_empty() {
-            "No saved dances match this search and folder."
+            "No saved dances match this search and folder.".to_string()
         } else {
-            ""
+            String::new()
         };
         let mut action = None;
 
         if compact {
             if !empty_message.is_empty() {
-                ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+                ui.label(egui::RichText::new(&empty_message).color(theme::muted(ui)));
             }
             for entry in &entries {
                 if let Some(next) =
-                    saved_dance_row(ui, entry, selected_id.as_deref(), &folders, animate, true)
+                    saved_dance_row(ui, entry, selected_ref, &folders, animate, true)
                 {
                     action = Some(next);
                 }
             }
             ui.separator();
             if let Some(dance) = &preview {
-                if let Some(next) = saved_dance_preview(ui, dance) {
+                if let Some(next) = saved_dance_preview(ui, dance, true) {
                     action = Some(next);
                 }
             } else {
@@ -251,82 +258,94 @@ impl ContraApp {
                         .color(theme::muted(ui)),
                 );
             }
-        } else if ui.available_width() >= 560.0 {
-            ui.columns(2, |columns| {
-                egui::ScrollArea::vertical()
-                    .id_salt("saved-dance-list")
-                    .max_height(480.0)
-                    .show(&mut columns[0], |ui| {
-                        if !empty_message.is_empty() {
-                            ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
-                        }
-                        for entry in &entries {
-                            if let Some(next) = saved_dance_row(
-                                ui,
-                                entry,
-                                selected_id.as_deref(),
-                                &folders,
-                                animate,
-                                false,
-                            ) {
-                                action = Some(next);
-                            }
-                        }
-                    });
-                egui::ScrollArea::vertical()
-                    .id_salt("saved-dance-preview")
-                    .max_height(480.0)
-                    .show(&mut columns[1], |ui| {
-                        if let Some(dance) = &preview {
-                            if let Some(next) = saved_dance_preview(ui, dance) {
-                                action = Some(next);
-                            }
-                        } else {
-                            ui.label(
-                                egui::RichText::new("Select a saved dance to see its card.")
-                                    .color(theme::muted(ui)),
-                            );
-                        }
-                    });
-            });
         } else {
-            let mut draw_list = |ui: &mut egui::Ui| {
-                if !empty_message.is_empty() {
-                    ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
-                }
-                for entry in &entries {
-                    if let Some(next) = saved_dance_row(
-                        ui,
-                        entry,
-                        selected_id.as_deref(),
-                        &folders,
-                        animate,
-                        compact,
-                    ) {
-                        action = Some(next);
-                    }
-                }
-            };
-            if compact {
-                // The phone page already scrolls; a second scroll area here
-                // would trap the gesture and hide the preview.
-                draw_list(ui);
+            // The saved-library page does not scroll as a whole, so the panes
+            // take every point left below the search and status rows.
+            let height = remaining_pane_height(ui.available_height(), 0.0);
+            if ui.available_width() >= 560.0 {
+                ui.columns(2, |columns| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("saved-dance-list")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[0], |ui| {
+                            if !empty_message.is_empty() {
+                                ui.label(
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
+                                );
+                            }
+                            for entry in &entries {
+                                if let Some(next) = saved_dance_row(
+                                    ui,
+                                    entry,
+                                    selected_ref,
+                                    &folders,
+                                    animate,
+                                    false,
+                                ) {
+                                    action = Some(next);
+                                }
+                            }
+                        });
+                    egui::ScrollArea::vertical()
+                        .id_salt("saved-dance-preview")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[1], |ui| {
+                            if let Some(dance) = &preview {
+                                if let Some(next) = saved_dance_preview(ui, dance, false) {
+                                    action = Some(next);
+                                }
+                            } else {
+                                ui.label(
+                                    egui::RichText::new("Select a saved dance to see its card.")
+                                        .color(theme::muted(ui)),
+                                );
+                            }
+                        });
+                });
             } else {
-                egui::ScrollArea::vertical()
-                    .id_salt("saved-dance-list-narrow")
-                    .max_height(300.0)
-                    .show(ui, &mut draw_list);
-            }
-            ui.separator();
-            if let Some(dance) = &preview {
-                if let Some(next) = saved_dance_preview(ui, dance) {
-                    action = Some(next);
-                }
-            } else {
-                ui.label(
-                    egui::RichText::new("Select a saved dance to see its card.")
-                        .color(theme::muted(ui)),
-                );
+                // Too narrow for two readable columns: one scrolling pane
+                // holds the list and preview and still ends at the same bottom
+                // edge as the folder panel. The pane is vertical even though
+                // its parent row is horizontal, or the card and preview would
+                // flow side by side inside the scroll content.
+                ui.vertical(|ui| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("saved-dance-list-narrow")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            if !empty_message.is_empty() {
+                                ui.label(
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
+                                );
+                            }
+                            for entry in &entries {
+                                if let Some(next) = saved_dance_row(
+                                    ui,
+                                    entry,
+                                    selected_ref,
+                                    &folders,
+                                    animate,
+                                    false,
+                                ) {
+                                    action = Some(next);
+                                }
+                            }
+                            ui.separator();
+                            if let Some(dance) = &preview {
+                                if let Some(next) = saved_dance_preview(ui, dance, false) {
+                                    action = Some(next);
+                                }
+                            } else {
+                                ui.label(
+                                    egui::RichText::new("Select a saved dance to see its card.")
+                                        .color(theme::muted(ui)),
+                                );
+                            }
+                        });
+                });
             }
         }
 
@@ -340,16 +359,7 @@ impl ContraApp {
         apply_phone_spacing(ui, compact);
         let mut open_download = false;
         if compact {
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
-                ui.heading("Select tune");
-            });
+            ui.heading("Select tune");
             let width = ui.available_width();
             if ui
                 .add_sized(
@@ -363,13 +373,6 @@ impl ContraApp {
             }
         } else {
             ui.horizontal(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
                 ui.heading("Select tune");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
@@ -476,10 +479,17 @@ impl ContraApp {
         let mut command = None;
 
         if wide {
+            // The folder panel and both saved-list columns share one height so
+            // they end at the same bottom edge as the window.
+            let pane_height = remaining_pane_height(ui.available_height(), 0.0);
             ui.horizontal_top(|ui| {
                 egui::ScrollArea::vertical()
                     .id_salt("tune-folder-panel")
-                    .max_height(480.0)
+                    .max_height(pane_height)
+                    // Shrink horizontally to the 230-point panel so the list
+                    // and preview keep the rest of the row; fill vertically so
+                    // the panel ends at the same bottom edge as the columns.
+                    .auto_shrink([true, false])
                     .show(ui, |ui| {
                         ui.vertical(|ui| {
                             ui.set_width(230.0);
@@ -563,17 +573,17 @@ impl ContraApp {
                 .map(|entry| entry.item.clone())
         });
         let empty_message = if self.tune_library.is_empty() {
-            "No saved tunes yet. Use Download tune to fetch one from ABC Session Tunes."
+            "No saved tunes yet. Use Download tune to fetch one from ABC Session Tunes.".to_string()
         } else if entries.is_empty() {
-            "No saved tunes match this search and folder."
+            "No saved tunes match this search and folder.".to_string()
         } else {
-            ""
+            String::new()
         };
         let mut action = None;
 
         if compact {
             if !empty_message.is_empty() {
-                ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
+                ui.label(egui::RichText::new(&empty_message).color(theme::muted(ui)));
             }
             for entry in &entries {
                 if let Some(next) = saved_tune_row(
@@ -590,7 +600,7 @@ impl ContraApp {
             }
             ui.separator();
             if let Some(tune) = &preview {
-                if let Some(next) = self.saved_tune_preview(ui, tune) {
+                if let Some(next) = self.saved_tune_preview(ui, tune, true) {
                     action = Some(next);
                 }
             } else {
@@ -599,83 +609,100 @@ impl ContraApp {
                         .color(theme::muted(ui)),
                 );
             }
-        } else if ui.available_width() >= 560.0 {
-            ui.columns(2, |columns| {
-                egui::ScrollArea::vertical()
-                    .id_salt("saved-tune-list")
-                    .max_height(480.0)
-                    .show(&mut columns[0], |ui| {
-                        if !empty_message.is_empty() {
-                            ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
-                        }
-                        for entry in &entries {
-                            if let Some(next) = saved_tune_row(
-                                ui,
-                                entry,
-                                selected_id.as_deref(),
-                                &folders,
-                                animate,
-                                self.tune_in_rotation(&entry.item),
-                                false,
-                            ) {
-                                action = Some(next);
-                            }
-                        }
-                    });
-                egui::ScrollArea::vertical()
-                    .id_salt("saved-tune-preview")
-                    .max_height(480.0)
-                    .show(&mut columns[1], |ui| {
-                        if let Some(tune) = &preview {
-                            if let Some(next) = self.saved_tune_preview(ui, tune) {
-                                action = Some(next);
-                            }
-                        } else {
-                            ui.label(
-                                egui::RichText::new("Select a saved tune to see its sheet music.")
-                                    .color(theme::muted(ui)),
-                            );
-                        }
-                    });
-            });
         } else {
-            let mut draw_list = |ui: &mut egui::Ui| {
-                if !empty_message.is_empty() {
-                    ui.label(egui::RichText::new(empty_message).color(theme::muted(ui)));
-                }
-                for entry in &entries {
-                    if let Some(next) = saved_tune_row(
-                        ui,
-                        entry,
-                        selected_id.as_deref(),
-                        &folders,
-                        animate,
-                        self.tune_in_rotation(&entry.item),
-                        compact,
-                    ) {
-                        action = Some(next);
-                    }
-                }
-            };
-            if compact {
-                // The phone page already scrolls; the preview follows inline.
-                draw_list(ui);
+            // The saved-library page does not scroll as a whole, so the panes
+            // take every point left below the search and status rows.
+            let height = remaining_pane_height(ui.available_height(), 0.0);
+            if ui.available_width() >= 560.0 {
+                ui.columns(2, |columns| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("saved-tune-list")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[0], |ui| {
+                            if !empty_message.is_empty() {
+                                ui.label(
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
+                                );
+                            }
+                            for entry in &entries {
+                                if let Some(next) = saved_tune_row(
+                                    ui,
+                                    entry,
+                                    selected_id.as_deref(),
+                                    &folders,
+                                    animate,
+                                    self.tune_in_rotation(&entry.item),
+                                    false,
+                                ) {
+                                    action = Some(next);
+                                }
+                            }
+                        });
+                    egui::ScrollArea::vertical()
+                        .id_salt("saved-tune-preview")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[1], |ui| {
+                            if let Some(tune) = &preview {
+                                if let Some(next) = self.saved_tune_preview(ui, tune, false) {
+                                    action = Some(next);
+                                }
+                            } else {
+                                ui.label(
+                                    egui::RichText::new(
+                                        "Select a saved tune to see its sheet music.",
+                                    )
+                                    .color(theme::muted(ui)),
+                                );
+                            }
+                        });
+                });
             } else {
-                egui::ScrollArea::vertical()
-                    .id_salt("saved-tune-list-narrow")
-                    .max_height(300.0)
-                    .show(ui, &mut draw_list);
-            }
-            ui.separator();
-            if let Some(tune) = &preview {
-                if let Some(next) = self.saved_tune_preview(ui, tune) {
-                    action = Some(next);
-                }
-            } else {
-                ui.label(
-                    egui::RichText::new("Select a saved tune to see its sheet music.")
-                        .color(theme::muted(ui)),
-                );
+                // Too narrow for two readable columns: one scrolling pane
+                // holds the list and preview and still ends at the same bottom
+                // edge as the folder panel. The pane is vertical even though
+                // its parent row is horizontal, or the card and preview would
+                // flow side by side inside the scroll content.
+                ui.vertical(|ui| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("saved-tune-list-narrow")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            if !empty_message.is_empty() {
+                                ui.label(
+                                    egui::RichText::new(&empty_message).color(theme::muted(ui)),
+                                );
+                            }
+                            for entry in &entries {
+                                if let Some(next) = saved_tune_row(
+                                    ui,
+                                    entry,
+                                    selected_id.as_deref(),
+                                    &folders,
+                                    animate,
+                                    self.tune_in_rotation(&entry.item),
+                                    false,
+                                ) {
+                                    action = Some(next);
+                                }
+                            }
+                            ui.separator();
+                            if let Some(tune) = &preview {
+                                if let Some(next) = self.saved_tune_preview(ui, tune, false) {
+                                    action = Some(next);
+                                }
+                            } else {
+                                ui.label(
+                                    egui::RichText::new(
+                                        "Select a saved tune to see its sheet music.",
+                                    )
+                                    .color(theme::muted(ui)),
+                                );
+                            }
+                        });
+                });
             }
         }
 
@@ -686,7 +713,12 @@ impl ContraApp {
 
     /// Preview a tune that came from the local library, including its sheet
     /// music, and offer the library actions.
-    fn saved_tune_preview(&mut self, ui: &mut egui::Ui, tune: &Tune) -> Option<LibraryAction> {
+    fn saved_tune_preview(
+        &mut self,
+        ui: &mut egui::Ui,
+        tune: &Tune,
+        compact: bool,
+    ) -> Option<LibraryAction> {
         let mut action = None;
         ui.heading(&tune.title);
         ui.label(
@@ -711,16 +743,32 @@ impl ContraApp {
         });
         ui.add_space(4.0);
         let in_rotation = self.tune_in_rotation(tune);
+        let width = action_width(
+            ui.available_width(),
+            ui.spacing().item_spacing.x,
+            3,
+            compact,
+        );
         ui.horizontal_wrapped(|ui| {
-            if ui.button("Use this tune").clicked() {
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Use this tune").wrap(),
+                )
+                .clicked()
+            {
                 action = Some(LibraryAction::UseTune(tune.clone()));
             }
             if ui
-                .button(if in_rotation {
-                    "Remove from tune set"
-                } else {
-                    "Add to tune set"
-                })
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new(if in_rotation {
+                        "Remove from tune set"
+                    } else {
+                        "Add to tune set"
+                    })
+                    .wrap(),
+                )
                 .on_hover_text(if in_rotation {
                     "Remove this tune from the set"
                 } else {
@@ -730,7 +778,13 @@ impl ContraApp {
             {
                 action = Some(LibraryAction::ToggleRotation(tune.clone()));
             }
-            if ui.button("Remove from saved tunes").clicked() {
+            if ui
+                .add_sized(
+                    [width, theme::TOUCH_TARGET],
+                    egui::Button::new("Remove from saved tunes").wrap(),
+                )
+                .clicked()
+            {
                 action = Some(LibraryAction::RemoveTune(tune.source.id.clone()));
             }
         });
@@ -775,8 +829,12 @@ impl ContraApp {
                 self.picker.dance_selected = None;
             }
             LibraryAction::UseDance(dance) => self.use_dance(dance),
-            LibraryAction::RemoveDance(id) => self.remove_saved_dance(&id),
-            LibraryAction::MoveDance { id, folder } => self.move_saved_dance(&id, folder),
+            LibraryAction::RemoveDance { provider, id } => self.remove_saved_dance(&provider, &id),
+            LibraryAction::MoveDance {
+                provider,
+                id,
+                folder,
+            } => self.move_saved_dance(&provider, &id, folder),
             LibraryAction::PreviewTune(tune) => {
                 if self
                     .picker
@@ -863,30 +921,29 @@ fn folder_panel_ui(ui: &mut egui::Ui, panel: FolderPanel<'_>) -> Option<FolderCo
     };
 
     ui.label(egui::RichText::new("Folders").strong());
-    if ui
-        .selectable_label(
-            *panel.filter == FolderFilter::All,
-            format!("{} ({})", panel.all_label, panel.all_count),
-        )
-        .clicked()
+    if block_selectable(
+        ui,
+        *panel.filter == FolderFilter::All,
+        format!("{} ({})", panel.all_label, panel.all_count),
+    )
+    .clicked()
     {
         *panel.filter = FolderFilter::All;
         *panel.renaming = None;
     }
-    if ui
-        .selectable_label(
-            *panel.filter == FolderFilter::Unfiled,
-            format!("Unfiled ({})", panel.unfiled_count),
-        )
-        .clicked()
+    if block_selectable(
+        ui,
+        *panel.filter == FolderFilter::Unfiled,
+        format!("Unfiled ({})", panel.unfiled_count),
+    )
+    .clicked()
     {
         *panel.filter = FolderFilter::Unfiled;
         *panel.renaming = None;
     }
     for (folder, count) in panel.folders.iter().zip(panel.counts.iter()) {
         let is_selected = matches!(&*panel.filter, FolderFilter::Folder(name) if name == folder);
-        if ui
-            .selectable_label(is_selected, format!("{folder} ({count})"))
+        if block_selectable(ui, is_selected, format!("{folder} ({count})"))
             .on_hover_text("Show only this folder")
             .clicked()
         {
@@ -906,29 +963,27 @@ fn folder_panel_ui(ui: &mut egui::Ui, panel: FolderPanel<'_>) -> Option<FolderCo
             let response =
                 ui.add(egui::TextEdit::singleline(panel.rename_text).desired_width(f32::INFINITY));
             let submit = submitted(ui, &response);
-            ui.horizontal_wrapped(|ui| {
-                if ui.button("Save name").clicked() || submit {
+            ui.vertical(|ui| {
+                if block_button(ui, "Save name").clicked() || submit {
                     command = Some(FolderCommand::Rename {
                         old: folder.clone(),
                         new: panel.rename_text.clone(),
                     });
                 }
-                if ui.button("Cancel").clicked() {
+                if block_button(ui, "Cancel").clicked() {
                     *panel.renaming = None;
                 }
             });
         } else {
             ui.vertical(|ui| {
-                if ui
-                    .small_button("Rename folder")
+                if block_button(ui, "Rename folder")
                     .on_hover_text("Rename this folder without moving its items out")
                     .clicked()
                 {
                     *panel.renaming = Some(folder.clone());
                     *panel.rename_text = folder.clone();
                 }
-                if ui
-                    .small_button("Delete folder")
+                if block_button(ui, "Delete folder")
                     .on_hover_text("Delete this folder; its items become unfiled")
                     .clicked()
                 {
@@ -955,8 +1010,7 @@ fn folder_panel_ui(ui: &mut egui::Ui, panel: FolderPanel<'_>) -> Option<FolderCo
             .desired_width(f32::INFINITY),
     );
     let submit = submitted(ui, &response);
-    if ui
-        .button("Create folder")
+    if block_button(ui, "Create folder")
         .on_hover_text("Create folder (Enter)")
         .clicked()
         || submit
@@ -991,12 +1045,16 @@ fn apply_folder_command<T: contra_core::LibraryItem>(
 fn saved_dance_row(
     ui: &mut egui::Ui,
     entry: &contra_core::LibraryEntry<Dance>,
-    selected_id: Option<&str>,
+    selected: Option<(&str, &str)>,
     folders: &[String],
     animate: bool,
     compact: bool,
 ) -> Option<LibraryAction> {
-    let selected = selected_id == Some(entry.item.source.id.as_str());
+    let selected = selected
+        == Some((
+            entry.item.source.provider.as_str(),
+            entry.item.source.id.as_str(),
+        ));
     let selected_t = animate_amount(
         ui.ctx(),
         ("saved-dance-selected", &entry.item.source.id),
@@ -1020,11 +1078,19 @@ fn saved_dance_row(
         if body.clicked() {
             action = Some(LibraryAction::PreviewDance(entry.item.clone()));
         }
+        // "Use" and the folder menu split the card width evenly so the row is
+        // made of two large targets instead of two small inline buttons.
+        let width = action_width(
+            ui.available_width(),
+            ui.spacing().item_spacing.x,
+            2,
+            compact,
+        );
         ui.horizontal_wrapped(|ui| {
-            if row_button(ui, compact, "Use").clicked() {
+            if row_button(ui, width, "Use").clicked() {
                 action = Some(LibraryAction::UseDance(entry.item.clone()));
             }
-            folder_menu(ui, compact, entry, folders, &mut action);
+            folder_menu(ui, width, entry, folders, &mut action);
         });
         body.hovered()
     };
@@ -1080,7 +1146,7 @@ fn dance_row_body(
 
 fn folder_menu(
     ui: &mut egui::Ui,
-    compact: bool,
+    width: f32,
     entry: &contra_core::LibraryEntry<Dance>,
     folders: &[String],
     action: &mut Option<LibraryAction>,
@@ -1089,12 +1155,13 @@ fn folder_menu(
         .folder
         .clone()
         .unwrap_or_else(|| "Unfiled".to_string());
-    row_menu_button(ui, compact, format!("Folder: {folder_label}"), |ui| {
+    row_menu_button(ui, width, format!("Folder: {folder_label}"), |ui| {
         if ui
             .selectable_label(entry.folder.is_none(), "Unfiled")
             .clicked()
         {
             *action = Some(LibraryAction::MoveDance {
+                provider: entry.item.source.provider.clone(),
                 id: entry.item.source.id.clone(),
                 folder: None,
             });
@@ -1104,6 +1171,7 @@ fn folder_menu(
             let current = entry.folder.as_deref() == Some(folder.as_str());
             if ui.selectable_label(current, folder).clicked() {
                 *action = Some(LibraryAction::MoveDance {
+                    provider: entry.item.source.provider.clone(),
                     id: entry.item.source.id.clone(),
                     folder: Some(folder.clone()),
                 });
@@ -1113,7 +1181,7 @@ fn folder_menu(
     });
 }
 
-fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance) -> Option<LibraryAction> {
+fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Option<LibraryAction> {
     let mut action = None;
     ui.heading(&dance.title);
     ui.label(
@@ -1133,7 +1201,10 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance) -> Option<LibraryAction
         .small()
         .color(theme::muted(ui)),
     );
-    ui.hyperlink_to("Open on ContraDB", &dance.source.url);
+    ui.hyperlink_to(
+        format!("Open on {}", source_label(&dance.source.provider)),
+        &dance.source.url,
+    );
     ui.separator();
     for figure in &dance.figures {
         ui.label(format!(
@@ -1144,12 +1215,33 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance) -> Option<LibraryAction
         ));
     }
     ui.add_space(6.0);
+    let width = action_width(
+        ui.available_width(),
+        ui.spacing().item_spacing.x,
+        2,
+        compact,
+    );
     ui.horizontal_wrapped(|ui| {
-        if ui.button("Use this dance").clicked() {
+        if ui
+            .add_sized(
+                [width, theme::TOUCH_TARGET],
+                egui::Button::new("Use this dance").wrap(),
+            )
+            .clicked()
+        {
             action = Some(LibraryAction::UseDance(dance.clone()));
         }
-        if ui.button("Remove from saved dances").clicked() {
-            action = Some(LibraryAction::RemoveDance(dance.source.id.clone()));
+        if ui
+            .add_sized(
+                [width, theme::TOUCH_TARGET],
+                egui::Button::new("Remove from saved dances").wrap(),
+            )
+            .clicked()
+        {
+            action = Some(LibraryAction::RemoveDance {
+                provider: dance.source.provider.clone(),
+                id: dance.source.id.clone(),
+            });
         }
     });
     action
@@ -1188,12 +1280,20 @@ fn saved_tune_row(
         if body.clicked() {
             action = Some(LibraryAction::PreviewTune(entry.item.clone()));
         }
+        // "Use", "Add to set", and the folder menu split the card width evenly
+        // so the row is made of three large targets, not small inline buttons.
+        let width = action_width(
+            ui.available_width(),
+            ui.spacing().item_spacing.x,
+            3,
+            compact,
+        );
         ui.horizontal_wrapped(|ui| {
-            if row_button(ui, compact, "Use").clicked() {
+            if row_button(ui, width, "Use").clicked() {
                 action = Some(LibraryAction::UseTune(entry.item.clone()));
             }
             let set_label = if in_rotation { "In set" } else { "Add to set" };
-            if row_button(ui, compact, set_label)
+            if row_button(ui, width, set_label)
                 .on_hover_text(if in_rotation {
                     "Remove this tune from the set"
                 } else {
@@ -1203,7 +1303,7 @@ fn saved_tune_row(
             {
                 action = Some(LibraryAction::ToggleRotation(entry.item.clone()));
             }
-            tune_folder_menu(ui, compact, entry, folders, &mut action);
+            tune_folder_menu(ui, width, entry, folders, &mut action);
         });
         body.hovered()
     };
@@ -1260,7 +1360,7 @@ fn tune_row_body(
 
 fn tune_folder_menu(
     ui: &mut egui::Ui,
-    compact: bool,
+    width: f32,
     entry: &contra_core::LibraryEntry<Tune>,
     folders: &[String],
     action: &mut Option<LibraryAction>,
@@ -1269,7 +1369,7 @@ fn tune_folder_menu(
         .folder
         .clone()
         .unwrap_or_else(|| "Unfiled".to_string());
-    row_menu_button(ui, compact, format!("Folder: {folder_label}"), |ui| {
+    row_menu_button(ui, width, format!("Folder: {folder_label}"), |ui| {
         if ui
             .selectable_label(entry.folder.is_none(), "Unfiled")
             .clicked()

@@ -16,7 +16,7 @@ and build tools used by the project.
 | `epaint_default_fonts` | MIT OR Apache-2.0 AND OFL-1.1 AND Ubuntu-font-1.0 | Shared egui font for sheet-music text |
 | `midly` | Unlicense | Standard MIDI File writing |
 | `rustysynth` | MIT | Optional SoundFont synthesis |
-| `scraper` | ISC | ContraDB HTML parsing |
+| `scraper` | ISC | ContraDB and Caller's Box HTML parsing |
 | `ehttp` | MIT OR Apache-2.0 | HTTP on native and WASM |
 | `serde` / `serde_json` | MIT OR Apache-2.0 | Serialization |
 | `regex` | MIT OR Apache-2.0 | Role-term and alias matching |
@@ -37,6 +37,8 @@ and build tools used by the project.
 | `arc-swap` | MIT OR Apache-2.0 | Real-time-safe audio buffer swaps |
 | `souvlaki` | MIT | OS media keys and media session (Windows, Linux) |
 | `raw-window-handle` | MIT OR Apache-2.0 | Native window handle for the Windows media session |
+| `jni` | MIT OR Apache-2.0 | Android media-session bridge (JNI calls between Rust and `MainActivity`) |
+| `ndk-context` | MIT OR Apache-2.0 | Android Java VM and activity handles for that bridge |
 | `env_logger` | MIT OR Apache-2.0 | Logging setup |
 | `thiserror` | MIT OR Apache-2.0 | Error types |
 | `egui_kittest` | MIT OR Apache-2.0 | Headless UI rendering for docs screenshots (development only) |
@@ -116,11 +118,17 @@ See the `egui`/`epaint` source for the exact font files and notices.
   2008 Frank Wen; © 2008 Toby Smithe. MIT licensed. Contra Karaoke bundles a
   **subset** (`assets/defaults/fluid-r3-gm-subset.sf2`) containing only the GM
   programs the instrument preferences use: Acoustic Grand Piano (0), Accordion
-  (21), Acoustic Guitar (steel, 25) and Violin (40). The subset is produced with
-  `scripts/soundfont-subset.py`; it keeps the selected presets' generators,
-  modulators and sample data unchanged, so it renders identically to the full
-  bank for those programs. The full 141 MB bank is not redistributed, and a user
-  can still load any other `.sf2`.
+  (21), Acoustic Guitar (steel, 25), Violin (40), Alto Sax (65), Tenor Sax (66)
+  and Clarinet (71). The subset is produced from the official MIT-licensed
+  release
+  (`https://github.com/Jacalz/fluid-soundfont/releases/download/v1.0/GM-and-SF3.tar.bz2`)
+  by `scripts/rebuild-soundfont.py`, which verifies the pinned SHA-256 of both
+  the archive and the extracted `FluidR3_GM.sf2`, and keeps the selected
+  presets' generators, modulators and sample data unchanged, so it renders
+  identically to the full bank for those programs. The program list lives in
+  `scripts/soundfont-keep.txt`; `scripts/soundfont-subset.py` is the low-level
+  editor it calls. The full 141 MB bank is not redistributed, and a user can
+  still load any other `.sf2`.
 
   ```text
   Fluid (R3) SoundFont
@@ -160,6 +168,14 @@ See the `egui`/`epaint` source for the exact font files and notices.
 - **ContraDB** — <https://contradb.com>. Dance transcriptions are contributed
   by ContraDB users. The bundled default *Another Last Dance* (dance 2409) is by
   Erik Hoffman, transcribed on ContraDB by Koren A Wake.
+- **The Caller's Box** — <https://www.ibiblio.org/contradance/thecallersbox/>.
+  A contra dance database produced by Chris Page and Michael Dyck. Dance
+  records and their figures belong to the site's editors and the dance authors;
+  figures are shown only for records whose permission level allows it. The app
+  fetches and caches the site's search pages and JSON records on demand and
+  does not redistribute the database or its dance cards. The site's
+  [glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm) is
+  linked from the user guide as a reading aid and is not bundled.
 - **ABC Session Tunes** — <https://abcsessiontunes.com>. Tune transcriptions
   remain the property of their transcribers. The bundled *Sandy Boys* ABC is
   credited to Josh Larios; the ABC notes chords from Sarah Comer.

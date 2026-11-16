@@ -1,4 +1,6 @@
+use super::about::about;
 use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
+use crate::app::history::HistoryAction;
 use crate::app::*;
 use contra_core::{ChorusPreset, EchoPreset, ReverbPreset};
 use eframe::egui;
@@ -6,8 +8,9 @@ use eframe::egui;
 /// Every preferences section, in display order.
 ///
 /// A new setting belongs in the matching section function, so unrelated
-/// branches edit different functions instead of the same 200-line body.
-const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
+/// branches edit different functions instead of the same 200-line body. About
+/// is last because it is the least frequently needed section.
+pub(in crate::app) const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
     role_terms,
     instruments,
     appearance,
@@ -16,25 +19,26 @@ const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
     playback,
     soundfont,
     effects,
+    data_sources,
     web_proxy,
     maintenance,
+    about,
 ];
+
+/// The About section, named so the shell tests can assert that the version,
+/// author, and project links are drawn from Preferences and nowhere else.
+#[cfg(test)]
+pub(in crate::app) const ABOUT_SECTION: fn(&mut ContraApp, &mut egui::Ui, bool) = about;
 
 impl ContraApp {
     pub(in crate::app) fn preferences_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
         let before = self.prefs.clone();
-        ui.horizontal(|ui| {
-            if ui
-                .button("< Back to session")
-                .on_hover_text("Back to session (Esc)")
-                .clicked()
-            {
-                self.screen = Screen::Session;
-            }
-            ui.heading("Preferences");
-        });
+        // Recomputed by the custom role fields each frame. While a field is
+        // focused the timeline rebuild is deferred; see `role_terms`.
+        self.role_edit_active = false;
+        ui.heading("Preferences");
         ui.label(
             egui::RichText::new("Changes are saved automatically. Playback settings are applied without restarting the music; role and alias changes rebuild the call timeline.")
                 .color(theme::muted(ui)),
@@ -52,7 +56,7 @@ impl ContraApp {
         self.prefs.validate();
         if self.prefs != before {
             let changes = self.prefs.changes_since(&before);
-            if changes.timeline {
+            if changes.timeline && !self.role_edit_active {
                 self.rebuild_timeline();
                 self.last_spoken = None;
             }
@@ -78,7 +82,10 @@ impl ContraApp {
 
 fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Role terms");
-    let mut preset = RolePreset::detect(&app.prefs.role_terms);
+    // The stored selection, not an inference from the terms: choosing Custom
+    // keeps the editable fields on screen even when the words still match a
+    // named preset.
+    let mut preset = app.prefs.role_preset;
     let combo = if compact {
         egui::ComboBox::from_id_salt("role-terms")
     } else {
@@ -91,33 +98,44 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 ui.selectable_value(&mut preset, option, option.label());
             }
         });
-    if preset != RolePreset::detect(&app.prefs.role_terms) {
-        app.prefs.role_terms = RoleTerms::preset(preset);
-        app.rebuild_timeline();
-        app.needs_render = true;
-        app.save_prefs();
+    if preset != app.prefs.role_preset {
+        let before = app.prefs.role_terms.clone();
+        app.prefs.select_role_preset(preset);
+        // A named preset replaces the terms, so the change is complete now.
+        // Custom keeps the current words and waits for an edit.
+        app.role_edit_pending = false;
+        if app.prefs.role_terms != before {
+            app.needs_render = true;
+        }
     }
-    if preset == RolePreset::Custom {
+    if app.prefs.role_preset == RolePreset::Custom {
         egui::Grid::new("custom-roles")
             .num_columns(if compact { 1 } else { 2 })
             .show(ui, |ui| {
                 form_row(ui, compact, "Left singular", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.left_singular);
+                    edit_role_term(app, ui, RoleField::LeftSingular);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Left plural", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.left_plural);
+                    edit_role_term(app, ui, RoleField::LeftPlural);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Right singular", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.right_singular);
+                    edit_role_term(app, ui, RoleField::RightSingular);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Right plural", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.right_plural);
+                    edit_role_term(app, ui, RoleField::RightPlural);
                 });
                 ui.end_row();
             });
+        // The example below and the next session frame read the edited terms
+        // immediately, but the deferred rebuild waits until the field loses
+        // focus so typing a long word does not rebuild the timeline and
+        // restart speech on every keystroke.
+        if app.role_edit_pending && !app.role_edit_active {
+            app.commit_role_terms();
+        }
     }
     ui.label(
         egui::RichText::new(
@@ -134,48 +152,130 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
+/// One editable custom role term.
+///
+/// Editing a term always means Custom: it marks the selection, remembers that
+/// a rebuild is pending, and lets the field lose focus before the timeline is
+/// rebuilt. The active flag is cleared at the start of every preferences
+/// frame, so a stale focus state cannot defer the rebuild forever.
+fn edit_role_term(app: &mut ContraApp, ui: &mut egui::Ui, field: RoleField) {
+    let terms = &mut app.prefs.role_terms;
+    let buffer = match field {
+        RoleField::LeftSingular => &mut terms.left_singular,
+        RoleField::LeftPlural => &mut terms.left_plural,
+        RoleField::RightSingular => &mut terms.right_singular,
+        RoleField::RightPlural => &mut terms.right_plural,
+    };
+    let response = ui.text_edit_singleline(buffer);
+    if response.changed() {
+        app.prefs.role_preset = RolePreset::Custom;
+        app.role_edit_pending = true;
+        app.role_edit_active = true;
+    }
+    if response.has_focus() || response.lost_focus() {
+        app.role_edit_active = true;
+    }
+    if response.lost_focus() {
+        app.commit_role_terms();
+    }
+}
+
+#[derive(Clone, Copy)]
+enum RoleField {
+    LeftSingular,
+    LeftPlural,
+    RightSingular,
+    RightPlural,
+}
+
 fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Instruments");
     if compact {
         inline_field(ui, true, "Melody", |ui| {
             melody_combo(ui, true, &mut app.prefs);
         });
+        copies_field(
+            ui,
+            true,
+            "Melody",
+            &mut app.prefs.instrument_copies.melody,
+            InstrumentCopies::MAX,
+        );
         inline_field(ui, true, "Accompaniment", |ui| {
             accompaniment_combo(ui, true, &mut app.prefs);
         });
         inline_field(ui, true, "Rhythm", |ui| {
             rhythm_combo(ui, true, &mut app.prefs);
         });
-        inline_field(ui, true, "Second accompaniment", |ui| {
-            second_accompaniment_combo(ui, true, &mut app.prefs);
+        copies_field(
+            ui,
+            true,
+            "Accompaniment",
+            &mut app.prefs.instrument_copies.accompaniment,
+            InstrumentCopies::MAX,
+        );
+        inline_field(ui, true, "Countermelody", |ui| {
+            countermelody_combo(ui, true, &mut app.prefs);
         });
+        copies_field(
+            ui,
+            true,
+            "Countermelody",
+            &mut app.prefs.instrument_copies.countermelody,
+            InstrumentCopies::MAX,
+        );
         inline_field(ui, true, "Percussion", |ui| {
             percussion_combo(ui, true, &mut app.prefs);
         });
         inline_field(ui, true, "Percussion rhythm", |ui| {
             percussion_rhythm_combo(ui, true, &mut app.prefs);
         });
+        copies_field(
+            ui,
+            true,
+            "Percussion",
+            &mut app.prefs.instrument_copies.percussion,
+            InstrumentCopies::MAX_PERCUSSION,
+        );
     } else {
         egui::Grid::new("instruments")
             .num_columns(2)
             .show(ui, |ui| {
                 ui.label("Melody");
-                melody_combo(ui, false, &mut app.prefs);
+                ui.horizontal(|ui| {
+                    melody_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Melody",
+                        &mut app.prefs.instrument_copies.melody,
+                        InstrumentCopies::MAX,
+                    );
+                });
                 ui.end_row();
                 ui.label("Accompaniment");
                 ui.horizontal(|ui| {
                     accompaniment_combo(ui, false, &mut app.prefs);
                     ui.label("Rhythm");
                     rhythm_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Accompaniment",
+                        &mut app.prefs.instrument_copies.accompaniment,
+                        InstrumentCopies::MAX,
+                    );
                 });
                 ui.end_row();
-                ui.label("Second accompaniment");
+                ui.label("Countermelody");
                 ui.horizontal(|ui| {
-                    second_accompaniment_combo(ui, false, &mut app.prefs);
-                    ui.label(
-                        egui::RichText::new("countermelody")
-                            .small()
-                            .color(theme::muted(ui)),
+                    countermelody_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Countermelody",
+                        &mut app.prefs.instrument_copies.countermelody,
+                        InstrumentCopies::MAX,
                     );
                 });
                 ui.end_row();
@@ -184,6 +284,13 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                     percussion_combo(ui, false, &mut app.prefs);
                     ui.label("Rhythm");
                     percussion_rhythm_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Percussion",
+                        &mut app.prefs.instrument_copies.percussion,
+                        InstrumentCopies::MAX_PERCUSSION,
+                    );
                 });
                 ui.end_row();
             });
@@ -198,6 +305,16 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     );
     ui.label(
         egui::RichText::new(
+            "Copies add players to a part, up to four (three for percussion). Every copy is a \
+             separate player with its own pan, a few milliseconds of spread, and a slight tuning \
+             difference, so the section sounds wider instead of just louder. One copy is the \
+             single player and sounds exactly as before.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    ui.label(
+        egui::RichText::new(
             "Percussion is optional: foot taps play a one-and-a gallop (eighth + two sixteenths \
              per dance beat), or a simple drum kit adds kick, snare, and hi-hat. The rhythm menu \
              changes the pattern; it starts with the count-in.",
@@ -205,23 +322,29 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    slider_row(ui, compact, "Melody volume", |ui| {
-        ui.add(egui::Slider::new(&mut app.prefs.melody_volume, 0.0..=1.5))
-    });
-    slider_row(ui, compact, "Accompaniment volume", |ui| {
-        ui.add(egui::Slider::new(
-            &mut app.prefs.accompaniment_volume,
-            0.0..=1.5,
-        ))
-    });
+    slider_row(
+        ui,
+        compact,
+        "Melody volume",
+        &mut app.prefs.melody_volume,
+        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+    );
+    slider_row(
+        ui,
+        compact,
+        "Accompaniment volume",
+        &mut app.prefs.accompaniment_volume,
+        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+    );
     let percussion_enabled = app.prefs.percussion.is_enabled();
     ui.add_enabled_ui(percussion_enabled, |ui| {
-        slider_row(ui, compact, "Percussion volume", |ui| {
-            ui.add(egui::Slider::new(
-                &mut app.prefs.percussion_volume,
-                0.0..=1.5,
-            ))
-        });
+        slider_row(
+            ui,
+            compact,
+            "Percussion volume",
+            &mut app.prefs.percussion_volume,
+            |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+        );
     });
     ui.separator();
 }
@@ -259,15 +382,58 @@ fn rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
         });
 }
 
-fn second_accompaniment_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+fn countermelody_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
     let combo = egui::ComboBox::from_id_salt("second_accompaniment");
     responsive_combo(combo, ui, compact)
         .selected_text(prefs.second_accompaniment.label())
         .show_ui(ui, |ui| {
-            for option in SecondAccompaniment::ALL {
+            for option in Countermelody::ALL {
                 ui.selectable_value(&mut prefs.second_accompaniment, option, option.label());
             }
         });
+}
+
+/// A labelled copies stepper: `Copies  −  1  +`.
+///
+/// Every part gets its own stepper; the buttons carry the part's name in their
+/// accessible label ("Fewer melody copies") so an agent can tell the four
+/// apart in the widget tree. On a phone both buttons are full 44-point touch
+/// targets.
+fn copies_field(ui: &mut egui::Ui, compact: bool, part: &str, copies: &mut u8, max: u8) {
+    inline_field(ui, compact, "Copies", |ui| {
+        copies_stepper(ui, compact, part, copies, max);
+    });
+}
+
+fn copies_stepper(ui: &mut egui::Ui, compact: bool, part: &str, copies: &mut u8, max: u8) {
+    let name = format!("{} copies", part.to_lowercase());
+    let fewer = format!("Fewer {name}");
+    let more = format!("More {name}");
+    let size = if compact {
+        egui::vec2(theme::TOUCH_TARGET, theme::TOUCH_TARGET)
+    } else {
+        egui::vec2(28.0, 20.0)
+    };
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 6.0;
+        let decrease = ui
+            .add_enabled(*copies > 1, egui::Button::new("−").min_size(size))
+            .accessible_name(&fewer);
+        if decrease.clicked() {
+            *copies = (*copies).saturating_sub(1).max(1);
+        }
+        ui.add_sized(
+            [size.x, size.y],
+            egui::Label::new(egui::RichText::new(copies.to_string()).monospace()),
+        )
+        .accessible_name(format!("{name}: {copies}"));
+        let increase = ui
+            .add_enabled(*copies < max, egui::Button::new("+").min_size(size))
+            .accessible_name(&more);
+        if increase.clicked() {
+            *copies = (*copies + 1).min(max);
+        }
+    });
 }
 
 fn percussion_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
@@ -292,7 +458,7 @@ fn percussion_rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Prefere
         });
 }
 
-fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
+fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Theme");
     ui.horizontal(|ui| {
         for option in Theme::ALL {
@@ -308,9 +474,13 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
                 .small()
                 .color(theme::muted(ui)),
             );
+    undo_redo_buttons(app, ui, compact);
+    if let Some(message) = &app.history_status {
+        ui.label(egui::RichText::new(message).small().color(theme::muted(ui)));
+    }
     ui.label(
                 egui::RichText::new(
-                    "Keyboard: Space play/pause · R restart · Esc back · 1–4 switch tabs · Enter starts a search, creates a folder, or adds an alias.",
+                    "Keyboard: Space play/pause · R restart · Esc back · 1-3 switch tabs · 4 opens Preferences · ←/→ previous or next tab · Ctrl+Z undo · Ctrl+Y or Ctrl+Shift+Z redo · Enter starts a search, creates a folder, or adds an alias.",
                 )
                 .small()
                 .color(theme::muted(ui)),
@@ -318,38 +488,92 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.separator();
 }
 
+/// Undo and redo buttons for the last preference or picker change.
+///
+/// The keyboard chords do the same thing; the buttons exist so the feature is
+/// discoverable and works on a touch screen, where there is no Ctrl key. Both
+/// carry an accessible name and are disabled when their stack is empty.
+fn undo_redo_buttons(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    let size = if compact {
+        egui::vec2(112.0, theme::TOUCH_TARGET)
+    } else {
+        egui::vec2(96.0, 24.0)
+    };
+    ui.horizontal_wrapped(|ui| {
+        let undo = ui
+            .add_enabled(
+                app.history.can_undo(),
+                egui::Button::new("Undo").min_size(size),
+            )
+            .on_hover_text("Undo the last change (Ctrl+Z)")
+            .accessible_name("Undo");
+        if undo.clicked() {
+            app.pending_history = Some(HistoryAction::Undo);
+        }
+        let redo = ui
+            .add_enabled(
+                app.history.can_redo(),
+                egui::Button::new("Redo").min_size(size),
+            )
+            .on_hover_text("Redo the change (Ctrl+Y or Ctrl+Shift+Z)")
+            .accessible_name("Redo");
+        if redo.clicked() {
+            app.pending_history = Some(HistoryAction::Redo);
+        }
+    });
+}
+
 fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Calling lead");
     ui.checkbox(&mut app.prefs.lead.auto, "Automatic syllable-based lead");
     if app.prefs.lead.auto {
-        slider_row(ui, compact, "Minimum speech lead", |ui| {
-            ui.add(egui::Slider::new(&mut app.prefs.lead.min_beats, 0.5..=4.0).text("beats"))
-        });
-        slider_row(ui, compact, "Maximum speech lead", |ui| {
-            ui.add(egui::Slider::new(&mut app.prefs.lead.max_beats, 1.0..=6.0).text("beats"))
-        });
-        slider_row(ui, compact, "Speech rate", |ui| {
-            ui.add(
-                egui::Slider::new(&mut app.prefs.lead.syllables_per_second, 3.0..=10.0)
-                    .text("syllables/s"),
-            )
-        });
+        slider_row(
+            ui,
+            compact,
+            "Minimum speech lead",
+            &mut app.prefs.lead.min_beats,
+            |ui, value| ui.add(egui::Slider::new(value, 0.5..=4.0).text("beats")),
+        );
+        slider_row(
+            ui,
+            compact,
+            "Maximum speech lead",
+            &mut app.prefs.lead.max_beats,
+            |ui, value| ui.add(egui::Slider::new(value, 1.0..=6.0).text("beats")),
+        );
+        slider_row(
+            ui,
+            compact,
+            "Speech rate",
+            &mut app.prefs.lead.syllables_per_second,
+            |ui, value| ui.add(egui::Slider::new(value, 3.0..=10.0).text("syllables/s")),
+        );
     } else {
-        slider_row(ui, compact, "Manual speech lead", |ui| {
-            ui.add(egui::Slider::new(&mut app.prefs.lead.manual_beats, 0.5..=6.0).text("beats"))
-        });
+        slider_row(
+            ui,
+            compact,
+            "Manual speech lead",
+            &mut app.prefs.lead.manual_beats,
+            |ui, value| ui.add(egui::Slider::new(value, 0.5..=6.0).text("beats")),
+        );
     }
-    slider_row(ui, compact, "Safety padding", |ui| {
-        ui.add(
-            egui::Slider::new(
-                &mut app.prefs.lead.padding_seconds,
-                contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+    slider_row(
+        ui,
+        compact,
+        "Safety padding",
+        &mut app.prefs.lead.padding_seconds,
+        |ui, value| {
+            ui.add(
+                egui::Slider::new(
+                    value,
+                    contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+                )
+                .step_by(0.1)
+                .fixed_decimals(1)
+                .text("s"),
             )
-            .step_by(0.1)
-            .fixed_decimals(1)
-            .text("s"),
-        )
-    });
+        },
+    );
     ui.label(
         egui::RichText::new(
             "Added to every call after the speech-lead clamp. Zero removes the buffer.",
@@ -414,20 +638,16 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    slider_row(ui, compact, "Rate", |ui| {
-        let response = ui.add(
-            egui::Slider::new(
-                &mut app.prefs.tts_rate,
-                contra_core::MIN_TTS_RATE..=contra_core::MAX_TTS_RATE,
-            )
-            .step_by(0.1)
-            .fixed_decimals(1),
-        );
-        if response.changed() {
-            app.speech.set_rate(app.prefs.speech_rate());
-        }
-        response
+    let rate_response = slider_row(ui, compact, "Rate", &mut app.prefs.tts_rate, |ui, rate| {
+        ui.add(
+            egui::Slider::new(rate, contra_core::MIN_TTS_RATE..=contra_core::MAX_TTS_RATE)
+                .step_by(0.1)
+                .fixed_decimals(1),
+        )
     });
+    if rate_response.changed() {
+        app.speech.set_rate(app.prefs.speech_rate());
+    }
     ui.horizontal(|ui| {
         ui.label("Tone");
         egui::ComboBox::from_id_salt("tts_tone")
@@ -505,6 +725,16 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
         .color(theme::muted(ui)),
     );
     ui.checkbox(&mut app.prefs.show_original, "Show original card text");
+    ui.checkbox(&mut app.prefs.humanize_timing, "Humanize timing");
+    ui.label(
+        egui::RichText::new(
+            "Each player drifts by a fraction of a percent and a controller gently settles it back on \
+             the tempo; chord notes start a few milliseconds apart. The count-in, the 64-beat grid, \
+             and the calls stay exact.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     ui.separator();
 }
 
@@ -596,6 +826,62 @@ fn effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             .small()
             .color(theme::muted(ui)),
     );
+    ui.separator();
+}
+
+/// Choose the site **Download dance** searches.
+///
+/// Saved dances keep their own source, so switching this menu never rewrites
+/// the library; it only changes where the next download comes from.
+fn data_sources(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    ui.heading("Data sources");
+    ui.label(
+        egui::RichText::new(
+            "The Download dance screen searches the selected source. Saved dances keep the \
+             source they came from, and their Open on… link returns there.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    let current = app.dance_source();
+    // Replace an id from an older or newer build with the provider this build
+    // actually resolved, so the file and the menu agree.
+    if app.prefs.dance_source != current.id() {
+        app.prefs.dance_source = current.id().to_string();
+    }
+    let mut chosen = None;
+    inline_field(ui, compact, "Dance source", |ui| {
+        let combo = egui::ComboBox::from_id_salt("dance_source");
+        responsive_combo(combo, ui, compact)
+            .selected_text(current.display_name())
+            .show_ui(ui, |ui| {
+                for provider in contra_sources::dance_providers() {
+                    if ui
+                        .selectable_label(provider.id() == current.id(), provider.display_name())
+                        .clicked()
+                    {
+                        chosen = Some(provider.id());
+                    }
+                }
+            });
+    });
+    if let Some(id) = chosen {
+        app.set_dance_source(id);
+    }
+    let selected = app.dance_source();
+    let mut description = format!("{} — {}", selected.display_name(), selected.base_url());
+    match selected.result_limit() {
+        Some(limit) => description.push_str(&format!(
+            ". Returns up to {limit} matches per search; narrow the search for a large result."
+        )),
+        None => description.push('.'),
+    }
+    ui.label(
+        egui::RichText::new(description)
+            .small()
+            .color(theme::muted(ui)),
+    );
+    ui.hyperlink_to("Open the source site", selected.base_url());
     ui.separator();
 }
 

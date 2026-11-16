@@ -43,6 +43,33 @@ requires, and it produces an APK with an empty `classes.dex` slot. The script
 handles that step, sets `android:hasCode="true"`, removes the old signature,
 and signs the final archive.
 
+## Media session
+
+`MainActivity` registers an `android.media.session.MediaSession` in `onCreate`
+and posts a `MediaStyle` notification whose title is the loaded dance, whose
+artist is the tune, and whose album is *Contra Karaoke*. Headset, Bluetooth,
+lock-screen, notification, and system media controls arrive at the session's
+`MediaSession.Callback` (and at a notification `BroadcastReceiver` on Android 12
+and older), which forwards them to Rust through the static native method
+`nativeMediaCommand(int)`.
+
+Rust publishes back through `setMediaPlaybackState(boolean)` and
+`setMediaMetadata(String, String, String)` on the same class; those calls come
+from `crates/app/src/media_keys.rs`. The command codes are shared between
+`MainActivity.java` (`COMMAND_*`) and `media_keys.rs` (`android_bridge`), so a
+change on one side must change the other.
+
+The callback and the broadcast receiver are anonymous classes, so `javac`
+emits `MainActivity$1.class`, `MainActivity$2.class`, and so on. `build-apk.py`
+packages every `MainActivity*.class` into `classes.dex`; packaging only the
+activity itself makes the session fail with `NoClassDefFoundError`.
+
+`POST_NOTIFICATIONS` is declared in `crates/app/Cargo.toml` and requested at
+startup on Android 13+. Declining only hides the notification: the media session
+is independent of it, so headset, Bluetooth, lock-screen, and system controls
+still work. Nothing here is a foreground service; Android may still stop the app
+in the background, and playback stops with it.
+
 ## Signing
 
 The script uses `CARGO_APK_RELEASE_KEYSTORE` and

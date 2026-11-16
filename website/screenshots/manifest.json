@@ -48,14 +48,14 @@
     },
     {
       "id": "about-window",
-      "alt": "The About window over the session screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
-      "caption": "About shows the program version, its author, and the project links.",
+      "alt": "The About section at the bottom of the Preferences screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
+      "caption": "About sits at the bottom of Preferences, below the other settings.",
       "status": "pending"
     },
     {
       "id": "dance-picker-open",
       "alt": "The Download dance screen with Title, Choreographer, User, Hook, Formation, Figure type, Figure contains, Verified only, and Sort fields above an empty results area.",
-      "caption": "Download dance searches ContraDB and previews a card before saving it locally.",
+      "caption": "Download dance searches the dance source selected in Preferences and previews a card before saving it locally.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -126,8 +126,8 @@
     },
     {
       "id": "session-call-now",
-      "alt": "The session screen during a figure, showing the CALL NOW prompt, the executes-in countdown, the next call, and the active dance-card row.",
-      "caption": "The large prompt is the call to say now; the next call is previewed below it.",
+      "alt": "The session screen during a figure, showing the CALL NOW prompt, the executes-in countdown, the NEXT footer naming the following call inside the same card, and the active dance-card row.",
+      "caption": "The large prompt is the call to say now; its footer previews the next call, so the panel keeps one height.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -184,16 +184,16 @@
     },
     {
       "id": "prefs-open",
-      "alt": "The Preferences screen with Role terms at the top, followed by role preset controls and the Instruments section.",
-      "caption": "Playback settings apply without restarting; role and alias changes rebuild the call timeline.",
+      "alt": "The Preferences screen opened from the gear button, with Role terms at the top, followed by the role preset controls and the Instruments section.",
+      "caption": "The gear in the header opens Preferences; playback settings apply without restarting, and role and alias changes rebuild the call timeline.",
       "status": "ready",
       "width": 1280,
       "height": 800
     },
     {
       "id": "prefs-roles-presets",
-      "alt": "The Role terms section with the Larks / Robins preset selected and the live role-replacement example below it.",
-      "caption": "Larks / Robins is the default; the example updates as the terms change.",
+      "alt": "The Role terms section with the Larks / Robins preset selected (presets read left side first) and the live role-replacement example below it.",
+      "caption": "Presets name the left side first; Larks / Robins is the default and the example updates as the terms change.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -208,8 +208,8 @@
     },
     {
       "id": "prefs-interface",
-      "alt": "The Preferences screen showing the Theme buttons and the Interface section with Smooth animations and the keyboard shortcut reference.",
-      "caption": "Interface settings control the screen transitions and show the keyboard shortcuts.",
+      "alt": "The Preferences screen showing the Theme buttons and the Interface section with Smooth animations, the Undo and Redo buttons, and the keyboard shortcut reference.",
+      "caption": "Interface settings control the screen transitions, undo and redo the last change, and show the keyboard shortcuts.",
       "status": "ready",
       "width": 1280,
       "height": 1000
@@ -264,15 +264,15 @@
     },
     {
       "id": "prefs-instrument-melody",
-      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment, rhythm, second-accompaniment, and percussion menus below it, and the volume sliders visible.",
-      "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
+      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment, rhythm, countermelody, and percussion menus below it, a Copies stepper beside each part, and the volume sliders visible.",
+      "caption": "Fiddle is the default melody instrument; Accordion, Alto sax, Tenor sax, and Clarinet are the alternatives.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-instrument-accompaniment",
-      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it, above the Second accompaniment and Percussion rows.",
+      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it, above the Countermelody and Percussion rows, with a Copies stepper on each row.",
       "caption": "Piano, Guitar, and Accordion are the chordal accompaniment voices; the Rhythm menu chooses the backing pattern.",
       "status": "ready",
       "width": 1280,
@@ -280,28 +280,28 @@
     },
     {
       "id": "prefs-instrument-second",
-      "alt": "The Instruments section with the Second accompaniment menu set to Fiddle and the countermelody note beside it, above the Percussion row.",
+      "alt": "The Instruments section with the Countermelody menu set to Fiddle and its Copies stepper showing two players, above the Percussion row.",
       "caption": "The default trio adds an accordion countermelody; Fiddle gives a second fiddle, and Off leaves a duo.",
       "status": "pending"
     },
     {
       "id": "prefs-instrument-percussion",
-      "alt": "The Instruments section with the Percussion menu set to Foot taps, the Percussion rhythm menu set to Gallop, and the optional note beside them.",
+      "alt": "The Instruments section with the Percussion menu set to Foot taps, the Percussion rhythm menu set to Gallop, its Copies stepper showing two players, and the optional note beside them.",
       "caption": "Percussion is optional; Foot taps play a one-and-a gallop, Drumset adds a full kit, and the rhythm menu changes the pattern.",
       "status": "pending"
     },
     {
       "id": "prefs-instrument-mix",
-      "alt": "The Instruments section showing the Melody volume, Accompaniment volume, and Percussion volume sliders.",
-      "caption": "Balance the melody against the accompaniment and the optional percussion; the second accompaniment follows the accompaniment volume.",
+      "alt": "The Instruments section showing the Melody volume, Accompaniment volume, and Percussion volume sliders below the Copies steppers.",
+      "caption": "Balance the melody against the accompaniment and the optional percussion; the countermelody follows the accompaniment volume.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-accompaniment-variations",
-      "alt": "The Playback section showing the Vary the music on each loop checkbox and its descriptive note.",
-      "caption": "Music variations add melody ornaments, emphasis notes, and the occasional melody-only bar.",
+      "alt": "The Playback section showing the Humanize timing and Vary the music on each loop checkboxes with their descriptive notes.",
+      "caption": "Humanize timing gives every player a tiny independent drift; music variations add ornaments, emphasis notes, and melody-only bars.",
       "status": "ready",
       "width": 1280,
       "height": 2250
@@ -420,15 +420,15 @@
     },
     {
       "id": "prefs-theme-light",
-      "alt": "The Theme section with Light selected and the surrounding Preferences screen rendered in light grey.",
-      "caption": "The light theme keeps the same grey structure with inverted values.",
+      "alt": "The Theme section with Light selected and the surrounding Preferences screen rendered in warm cream.",
+      "caption": "The light theme keeps the same neutral structure in a warm cream palette.",
       "status": "ready",
       "width": 1280,
       "height": 1000
     },
     {
       "id": "main-light",
-      "alt": "The session screen in the light theme, with dark text on a light grey background and the current call highlighted.",
+      "alt": "The session screen in the light theme, with dark text on a warm cream background and the current call highlighted.",
       "caption": "The light theme is available for bright rooms and projectors.",
       "status": "ready",
       "width": 1280,
@@ -556,7 +556,7 @@
     },
     {
       "id": "transport-summary",
-      "alt": "The tune and instrument summary below the call prompt, showing the tune title, key, rhythm, melody, accompaniment, second accompaniment, and percussion with its rhythm.",
+      "alt": "The tune and instrument summary below the call prompt, showing the tune title, key, rhythm, melody, accompaniment, countermelody, and percussion with its rhythm, and the copy counts for each part.",
       "caption": "The summary confirms what will play before you start.",
       "status": "ready",
       "width": 1280,
@@ -605,7 +605,7 @@
     {
       "id": "dance-filter-user",
       "alt": "The Download dance screen with a User filter entered and matching results.",
-      "caption": "The User filter matches the ContraDB contributor name.",
+      "caption": "With ContraDB selected, the User filter matches the contributor name.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -613,7 +613,7 @@
     {
       "id": "dance-filter-hook",
       "alt": "The Download dance screen with a Hook filter entered and matching results.",
-      "caption": "The Hook filter matches the short hook line on ContraDB cards.",
+      "caption": "With ContraDB selected, the Hook filter matches the short hook line on its cards.",
       "status": "ready",
       "width": 1280,
       "height": 800
@@ -634,9 +634,11 @@
     },
     {
       "id": "install-windows-wizard",
-      "alt": "The Inno Setup installer wizard for Contra Karaoke.",
+      "alt": "The Inno Setup installer wizard for Contra Karaoke showing the Select Destination Location page, the C:\\Program Files\\Contra Karaoke folder, and the Next button.",
       "caption": "Follow the wizard, choose whether to create a desktop shortcut, and finish.",
-      "status": "pending"
+      "status": "ready",
+      "width": 998,
+      "height": 767
     },
     {
       "id": "install-windows-smartscreen",
@@ -646,9 +648,11 @@
     },
     {
       "id": "install-windows-portable",
-      "alt": "A file-manager view of the extracted portable ZIP with contra-karaoke.exe.",
+      "alt": "A file-manager view of the extracted portable ZIP folder with contra-karaoke.exe listed beside the license, readme, credits, and changelog files.",
       "caption": "The portable build runs from its folder and does not write to the registry.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1452,
+      "height": 471
     },
     {
       "id": "install-linux-deb",

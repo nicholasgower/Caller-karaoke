@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::alias::AliasTable;
 use crate::dance::SourceRef;
 use crate::effects::AudioEffects;
-use crate::roles::RoleTerms;
+use crate::roles::{RolePreset, RoleTerms};
 use crate::time::Tempo;
 use crate::timing::LeadSettings;
 
@@ -26,20 +26,39 @@ pub const MIN_TTS_RATE: f32 = 0.4;
 /// 1.25, rounded to one decimal place.
 pub const MAX_TTS_RATE: f32 = 1.3;
 
+/// The instrument that plays the tune.
+///
+/// The two original contra voices (fiddle and accordion) are joined by the
+/// single-reed winds a pickup band often brings: alto sax, tenor sax, and
+/// clarinet. Every choice has a General MIDI program in the bundled subset, so
+/// the list only grows when the font carries the new program; the keep-list in
+/// `scripts/soundfont-keep.txt` is the other half of that change.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MelodyInstrument {
     #[default]
     Fiddle,
     Accordion,
+    AltoSax,
+    TenorSax,
+    Clarinet,
 }
 
 impl MelodyInstrument {
-    pub const ALL: [Self; 2] = [Self::Fiddle, Self::Accordion];
+    pub const ALL: [Self; 5] = [
+        Self::Fiddle,
+        Self::Accordion,
+        Self::AltoSax,
+        Self::TenorSax,
+        Self::Clarinet,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::Fiddle => "Fiddle",
             Self::Accordion => "Accordion",
+            Self::AltoSax => "Alto sax",
+            Self::TenorSax => "Tenor sax",
+            Self::Clarinet => "Clarinet",
         }
     }
 
@@ -48,6 +67,9 @@ impl MelodyInstrument {
         match self {
             Self::Fiddle => 40,    // Violin
             Self::Accordion => 21, // Accordion
+            Self::AltoSax => 65,   // Alto Sax
+            Self::TenorSax => 66,  // Tenor Sax
+            Self::Clarinet => 71,  // Clarinet
         }
     }
 }
@@ -81,24 +103,29 @@ impl AccompanimentInstrument {
     }
 }
 
-/// The second accompaniment voice, which turns the duo into a trio.
+/// The countermelody voice, which turns the duo into a trio.
 ///
-/// The melody and [`AccompanimentInstrument`] provide two voices. The second
-/// accompaniment is a countermelody played by a melody instrument underneath
-/// the tune, so the default session sounds like a small contra band rather than
-/// a solo with a backing track. Set it to [`Self::Off`] for a duo.
+/// The melody and [`AccompanimentInstrument`] provide two voices. The
+/// countermelody is played by a melody instrument underneath the tune, so the
+/// default session sounds like a small contra band rather than a solo with a
+/// backing track. Set it to [`Self::Off`] for a duo.
+///
+/// This type was called `SecondAccompaniment`. The preference field is still
+/// [`Preferences::second_accompaniment`] and the serialized values are
+/// unchanged (`"Accordion"`, `"Fiddle"`, `"Off"`), so older preference files
+/// keep loading and the rename needs no migration.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SecondAccompaniment {
+pub enum Countermelody {
     /// An accordion countermelody under the tune (the default trio).
     #[default]
     Accordion,
     /// A second fiddle playing the countermelody.
     Fiddle,
-    /// No second voice; play the melody and one accompaniment.
+    /// No countermelody; play the melody and one accompaniment.
     Off,
 }
 
-impl SecondAccompaniment {
+impl Countermelody {
     /// Every choice, in display order.
     pub const ALL: [Self; 3] = [Self::Accordion, Self::Fiddle, Self::Off];
 
@@ -122,6 +149,81 @@ impl SecondAccompaniment {
     /// General MIDI program for the countermelody voice, if it is enabled.
     pub fn gm_program(self) -> Option<u8> {
         self.instrument().map(MelodyInstrument::gm_program)
+    }
+}
+
+/// How many players each part of the virtual band has.
+///
+/// Contra bands thicken a line by doubling it: two fiddles, a piano and a
+/// guitar, two accordions. Every copy is rendered as its own player with a
+/// small independent pan, a few milliseconds of timing spread, and a slight
+/// tuning or velocity difference, so a section sounds wider rather than merely
+/// louder.
+///
+/// One is the single-player default, so an existing session sounds exactly the
+/// same until the user adds a copy. Files written before this setting existed
+/// get the default through `serde`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct InstrumentCopies {
+    /// Players on the melody line.
+    pub melody: u8,
+    /// Players on the chordal accompaniment.
+    pub accompaniment: u8,
+    /// Players on the countermelody.
+    pub countermelody: u8,
+    /// Players on the optional percussion layer.
+    pub percussion: u8,
+}
+
+impl Default for InstrumentCopies {
+    fn default() -> Self {
+        Self {
+            melody: 1,
+            accompaniment: 1,
+            countermelody: 1,
+            percussion: 1,
+        }
+    }
+}
+
+impl InstrumentCopies {
+    /// Fewest players a part can have.
+    pub const MIN: u8 = 1;
+    /// Most players a melodic part can have.
+    ///
+    /// Four keeps the three melodic parts inside the fifteen General MIDI
+    /// channels that are not the drum channel.
+    pub const MAX: u8 = 4;
+    /// Most players the percussion layer can have.
+    pub const MAX_PERCUSSION: u8 = 3;
+
+    /// Clamp hand-edited or older values into the supported range.
+    pub fn validate(&mut self) {
+        self.melody = self.melody.clamp(Self::MIN, Self::MAX);
+        self.accompaniment = self.accompaniment.clamp(Self::MIN, Self::MAX);
+        self.countermelody = self.countermelody.clamp(Self::MIN, Self::MAX);
+        self.percussion = self.percussion.clamp(Self::MIN, Self::MAX_PERCUSSION);
+    }
+
+    /// Melody players, clamped for a renderer.
+    pub fn melody_count(self) -> usize {
+        usize::from(self.melody.clamp(Self::MIN, Self::MAX))
+    }
+
+    /// Accompaniment players, clamped for a renderer.
+    pub fn accompaniment_count(self) -> usize {
+        usize::from(self.accompaniment.clamp(Self::MIN, Self::MAX))
+    }
+
+    /// Countermelody players, clamped for a renderer.
+    pub fn countermelody_count(self) -> usize {
+        usize::from(self.countermelody.clamp(Self::MIN, Self::MAX))
+    }
+
+    /// Percussion players, clamped for a renderer.
+    pub fn percussion_count(self) -> usize {
+        usize::from(self.percussion.clamp(Self::MIN, Self::MAX_PERCUSSION))
     }
 }
 
@@ -438,6 +540,13 @@ impl TuneRotation {
 #[serde(default)]
 pub struct Preferences {
     pub schema_version: u32,
+    /// The role preset the user explicitly selected.
+    ///
+    /// Stored instead of inferred every frame: a custom vocabulary can happen
+    /// to equal a named preset, and choosing Custom must stay Custom until the
+    /// user picks something else. Older files have no field; the
+    /// `role-preset-v11` migration infers it from [`Self::role_terms`].
+    pub role_preset: RolePreset,
     pub role_terms: RoleTerms,
     pub aliases: AliasTable,
     pub melody: MelodyInstrument,
@@ -446,8 +555,12 @@ pub struct Preferences {
     /// Pattern used for the accompaniment chords; see [`AccompanimentRhythm`].
     pub accompaniment_rhythm: AccompanimentRhythm,
     /// The countermelody voice that completes the default trio; see
-    /// [`SecondAccompaniment`].
-    pub second_accompaniment: SecondAccompaniment,
+    /// [`Countermelody`]. The field keeps its original name so older preference
+    /// files keep loading.
+    pub second_accompaniment: Countermelody,
+    /// Players per part of the virtual band; see [`InstrumentCopies`].
+    #[serde(default)]
+    pub instrument_copies: InstrumentCopies,
     /// Optional percussion layer; see [`Percussion`].
     pub percussion: Percussion,
     /// Rhythm used to place the percussion layer; see [`PercussionRhythm`].
@@ -475,6 +588,12 @@ pub struct Preferences {
     /// later loop passes (ornaments, emphasis notes; now and then one bar of
     /// melody alone).
     pub accompaniment_variations: bool,
+    /// Give each player a tiny independent tempo drift, with a controller that
+    /// settles it back on the user's tempo, and spread chord notes by a few
+    /// milliseconds. Audio only; the count-in, the 64-beat grid, the calls, and
+    /// MIDI export stay exact.
+    #[serde(default = "default_humanize_timing")]
+    pub humanize_timing: bool,
     pub show_original: bool,
     pub melody_volume: f32,
     pub accompaniment_volume: f32,
@@ -486,6 +605,13 @@ pub struct Preferences {
     pub effects: AudioEffects,
     pub master_volume: f32,
     pub soundfont: Option<SoundFontSetting>,
+    /// Provider id used by the **Download dance** screen.
+    ///
+    /// Stored as the provider's stable id rather than an enum, so adding a
+    /// source does not need a change in `core`. An unknown id is resolved to
+    /// [`DEFAULT_DANCE_SOURCE`] by the app.
+    #[serde(default = "default_dance_source")]
+    pub dance_source: String,
     pub web_proxy_url: Option<String>,
     pub web_proxy_token: Option<String>,
     pub last_dance: Option<SourceRef>,
@@ -507,7 +633,13 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 10;
+pub const CURRENT_SCHEMA_VERSION: u32 = 11;
+
+/// The dance source a new or older preference file downloads from.
+///
+/// ContraDB is the historical behaviour, so adding [`Preferences::dance_source`]
+/// needs no migration: an absent field gets this value.
+pub const DEFAULT_DANCE_SOURCE: &str = "contradb";
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -551,7 +683,7 @@ pub const MIGRATIONS: &[Migration] = &[
     Migration {
         tag: "second-accompaniment-v7",
         version: 7,
-        apply: migrate_v6_second_accompaniment,
+        apply: migrate_v6_countermelody,
     },
     Migration {
         tag: "tune-rotation-v7",
@@ -582,6 +714,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "audio-effects-v10",
         version: 10,
         apply: migrate_v9_audio_effects,
+    },
+    Migration {
+        tag: "role-preset-v11",
+        version: 11,
+        apply: migrate_v10_role_preset,
     },
 ];
 
@@ -626,10 +763,11 @@ fn migrate_v5_accompaniment_rhythm(_prefs: &mut Preferences) {
     // padding; `serde` supplies the defaults for older files.
 }
 
-fn migrate_v6_second_accompaniment(_prefs: &mut Preferences) {
-    // v7 adds the second accompaniment. Older files have no value, so `serde`
-    // supplies the default (Accordion), which gives every session the trio
-    // sound. A file that stores `Off` keeps it.
+fn migrate_v6_countermelody(_prefs: &mut Preferences) {
+    // v7 adds the countermelody (then called the second accompaniment). Older
+    // files have no value, so `serde` supplies the default (Accordion), which
+    // gives every session the trio sound. A file that stores `Off` keeps it.
+    // The tag keeps its original name because a tag must never be renamed.
 }
 
 fn migrate_v6_tune_rotation(_prefs: &mut Preferences) {
@@ -670,6 +808,14 @@ fn migrate_v9_audio_effects(_prefs: &mut Preferences) {
     // the new room sound without changing anything else.
 }
 
+fn migrate_v10_role_preset(prefs: &mut Preferences) {
+    // v11 stores the explicit role preset. Files written before it carry only
+    // the four terms, so infer the preset from them: a custom vocabulary (or
+    // terms that no preset defines) becomes Custom instead of showing the
+    // wrong selection.
+    prefs.role_preset = RolePreset::detect(&prefs.role_terms);
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -701,16 +847,28 @@ fn default_tts_voice() -> String {
     "af_heart".to_string()
 }
 
+/// Human timing is on by default; it is part of the band's sound, not an
+/// effect the user has to discover.
+fn default_humanize_timing() -> bool {
+    true
+}
+
+fn default_dance_source() -> String {
+    DEFAULT_DANCE_SOURCE.to_string()
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
             schema_version: CURRENT_SCHEMA_VERSION,
+            role_preset: RolePreset::LarksRobins,
             role_terms: RoleTerms::default(),
             aliases: AliasTable::default(),
             melody: MelodyInstrument::default(),
             accompaniment: AccompanimentInstrument::default(),
             accompaniment_rhythm: AccompanimentRhythm::default(),
-            second_accompaniment: SecondAccompaniment::default(),
+            second_accompaniment: Countermelody::default(),
+            instrument_copies: InstrumentCopies::default(),
             percussion: Percussion::default(),
             percussion_rhythm: PercussionRhythm::default(),
             theme: Theme::default(),
@@ -725,6 +883,7 @@ impl Default for Preferences {
             loop_enabled: true,
             count_in_enabled: true,
             accompaniment_variations: true,
+            humanize_timing: default_humanize_timing(),
             show_original: false,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
@@ -732,6 +891,7 @@ impl Default for Preferences {
             effects: AudioEffects::default(),
             master_volume: 0.8,
             soundfont: None,
+            dance_source: default_dance_source(),
             web_proxy_url: None,
             web_proxy_token: None,
             last_dance: None,
@@ -747,6 +907,19 @@ impl Preferences {
         Tempo::new(self.tempo_bpm)
     }
 
+    /// Select a role preset.
+    ///
+    /// A named preset replaces all four terms. Custom keeps the current words
+    /// as the starting point for editing and stays selected: the selection is
+    /// stored in [`Self::role_preset`], not re-detected from the terms, so a
+    /// vocabulary that happens to match a named preset does not snap back.
+    pub fn select_role_preset(&mut self, preset: RolePreset) {
+        self.role_preset = preset;
+        if preset != RolePreset::Custom {
+            self.role_terms = RoleTerms::preset(preset);
+        }
+    }
+
     /// The rate handed to the speech engine.
     pub fn speech_rate(&self) -> f32 {
         self.tts_rate * TTS_RATE_SCALE
@@ -760,10 +933,14 @@ impl Preferences {
         if self.tts_voice.trim().is_empty() {
             self.tts_voice = default_tts_voice();
         }
+        if self.dance_source.trim().is_empty() {
+            self.dance_source = default_dance_source();
+        }
         self.lead.validate();
         self.tempo_bpm = Tempo::new(self.tempo_bpm).bpm();
         self.tune_rotation.validate();
         self.tts_rate = self.tts_rate.clamp(MIN_TTS_RATE, MAX_TTS_RATE);
+        self.instrument_copies.validate();
         self.melody_volume = self.melody_volume.clamp(0.0, 2.0);
         self.accompaniment_volume = self.accompaniment_volume.clamp(0.0, 2.0);
         self.percussion_volume = self.percussion_volume.clamp(0.0, 2.0);
@@ -837,10 +1014,12 @@ impl Preferences {
             audio: self.tempo_bpm != old.tempo_bpm
                 || self.count_in_enabled != old.count_in_enabled
                 || self.accompaniment_variations != old.accompaniment_variations
+                || self.humanize_timing != old.humanize_timing
                 || self.melody != old.melody
                 || self.accompaniment != old.accompaniment
                 || self.accompaniment_rhythm != old.accompaniment_rhythm
                 || self.second_accompaniment != old.second_accompaniment
+                || self.instrument_copies != old.instrument_copies
                 || self.percussion != old.percussion
                 || self.percussion_rhythm != old.percussion_rhythm
                 || self.melody_volume != old.melody_volume
@@ -861,16 +1040,22 @@ mod tests {
     #[test]
     fn defaults_match_product_spec() {
         let prefs = Preferences::default();
+        assert_eq!(prefs.role_preset, RolePreset::LarksRobins);
         assert_eq!(prefs.role_terms.left_plural, "larks");
         assert_eq!(prefs.role_terms.right_plural, "robins");
         assert_eq!(prefs.melody, MelodyInstrument::Fiddle);
         assert_eq!(prefs.accompaniment, AccompanimentInstrument::Piano);
         assert_eq!(prefs.accompaniment_rhythm, AccompanimentRhythm::Auto);
-        assert_eq!(prefs.second_accompaniment, SecondAccompaniment::Accordion);
+        assert_eq!(prefs.second_accompaniment, Countermelody::Accordion);
         assert!(
             prefs.second_accompaniment.instrument().is_some(),
             "the default session is a trio"
         );
+        assert_eq!(prefs.instrument_copies, InstrumentCopies::default());
+        assert_eq!(prefs.instrument_copies.melody, 1);
+        assert_eq!(prefs.instrument_copies.accompaniment, 1);
+        assert_eq!(prefs.instrument_copies.countermelody, 1);
+        assert_eq!(prefs.instrument_copies.percussion, 1);
         assert_eq!(prefs.percussion, Percussion::Off);
         assert!(!prefs.percussion.is_enabled());
         assert_eq!(prefs.effects, AudioEffects::default());
@@ -884,6 +1069,7 @@ mod tests {
         assert!(prefs.loop_enabled);
         assert!(prefs.count_in_enabled);
         assert!(prefs.accompaniment_variations);
+        assert!(prefs.humanize_timing);
         assert!(!prefs.tts_enabled);
         assert_eq!(prefs.tts_rate, 1.0);
         assert!((prefs.speech_rate() - 1.2).abs() < 1e-6);
@@ -893,6 +1079,31 @@ mod tests {
         assert!(!prefs.shuffle_alternatives);
         assert!(!prefs.tune_rotation.enabled);
         assert_eq!(prefs.tune_rotation.passes_per_tune, 8);
+    }
+
+    #[test]
+    fn humanize_timing_is_on_by_default_and_marks_the_music_for_render() {
+        let old = Preferences::default();
+        assert!(old.humanize_timing);
+
+        let changed = Preferences {
+            humanize_timing: false,
+            ..old.clone()
+        };
+        let changes = changed.changes_since(&old);
+        assert!(changes.audio, "a humanize change must re-render the music");
+        assert!(!changes.timeline, "it must not rebuild the call timeline");
+
+        let json = changed.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(!restored.humanize_timing);
+    }
+
+    #[test]
+    fn older_files_get_human_timing_by_default() {
+        let prefs = Preferences::from_json(r#"{"schema_version": 11}"#).expect("deserialize");
+        assert!(prefs.humanize_timing);
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
@@ -920,6 +1131,37 @@ mod tests {
         prefs.tts_rate = 0.0;
         prefs.validate();
         assert_eq!(prefs.tts_rate, MIN_TTS_RATE);
+    }
+
+    #[test]
+    fn the_dance_source_defaults_to_contradb_and_round_trips() {
+        let prefs = Preferences::default();
+        assert_eq!(prefs.dance_source, DEFAULT_DANCE_SOURCE);
+        assert_eq!(prefs.dance_source, "contradb");
+
+        let prefs = Preferences {
+            dance_source: "callersbox".into(),
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.dance_source, "callersbox");
+    }
+
+    #[test]
+    fn older_files_download_from_contradb() {
+        let prefs = Preferences::from_json(r#"{"schema_version":11}"#).expect("deserialize");
+        assert_eq!(prefs.dance_source, DEFAULT_DANCE_SOURCE);
+    }
+
+    #[test]
+    fn a_blank_dance_source_falls_back_to_contradb() {
+        let mut prefs = Preferences {
+            dance_source: "   ".into(),
+            ..Preferences::default()
+        };
+        prefs.validate();
+        assert_eq!(prefs.dance_source, DEFAULT_DANCE_SOURCE);
     }
 
     #[test]
@@ -961,6 +1203,81 @@ mod tests {
     fn missing_fields_use_defaults() {
         let prefs = Preferences::from_json("{}").expect("deserialize");
         assert_eq!(prefs, Preferences::default());
+    }
+
+    #[test]
+    fn role_presets_round_trip_through_preferences() {
+        for preset in RolePreset::ALL {
+            let mut prefs = Preferences::default();
+            prefs.select_role_preset(preset);
+            let json = prefs.to_json().expect("serialize");
+            let restored = Preferences::from_json(&json).expect("deserialize");
+            assert_eq!(restored.role_preset, preset);
+            if preset != RolePreset::Custom {
+                assert_eq!(restored.role_terms, RoleTerms::preset(preset));
+            }
+        }
+    }
+
+    #[test]
+    fn custom_role_terms_survive_a_preferences_round_trip() {
+        let mut prefs = Preferences::default();
+        prefs.select_role_preset(RolePreset::Custom);
+        prefs.role_terms = RoleTerms {
+            left_singular: "port".into(),
+            left_plural: "ports".into(),
+            right_singular: "starboard".into(),
+            right_plural: "starboards".into(),
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.role_preset, RolePreset::Custom);
+        assert_eq!(restored.role_terms, prefs.role_terms);
+    }
+
+    /// The stored selection is the source of truth. A custom vocabulary may
+    /// match a named preset, but the menu must stay on Custom until the user
+    /// chooses another preset.
+    #[test]
+    fn a_stored_custom_selection_is_not_redetected() {
+        let mut prefs = Preferences::default();
+        prefs.select_role_preset(RolePreset::Custom);
+        prefs.role_terms = RoleTerms::preset(RolePreset::LarksRobins);
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.role_preset, RolePreset::Custom);
+        assert_eq!(
+            restored.role_terms,
+            RoleTerms::preset(RolePreset::LarksRobins)
+        );
+    }
+
+    #[test]
+    fn older_files_infer_the_role_preset_from_their_terms() {
+        let custom = r#"{
+            "schema_version": 10,
+            "role_terms": {
+                "left_singular": "port",
+                "left_plural": "ports",
+                "right_singular": "starboard",
+                "right_plural": "starboards"
+            }
+        }"#;
+        let prefs = Preferences::from_json(custom).expect("deserialize");
+        assert_eq!(prefs.role_preset, RolePreset::Custom);
+        assert_eq!(prefs.role_terms.left_plural, "ports");
+
+        let presets = r#"{
+            "schema_version": 10,
+            "role_terms": {
+                "left_singular": "lady",
+                "left_plural": "ladies",
+                "right_singular": "gentleman",
+                "right_plural": "gentlemen"
+            }
+        }"#;
+        let prefs = Preferences::from_json(presets).expect("deserialize");
+        assert_eq!(prefs.role_preset, RolePreset::LadiesGentlemen);
     }
 
     #[test]
@@ -1110,32 +1427,89 @@ mod tests {
     }
 
     #[test]
-    fn second_accompaniment_can_be_turned_off_and_round_trips() {
+    fn the_countermelody_can_be_turned_off_and_round_trips() {
         let prefs = Preferences {
-            second_accompaniment: SecondAccompaniment::Off,
+            second_accompaniment: Countermelody::Off,
             ..Preferences::default()
         };
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
-        assert_eq!(restored.second_accompaniment, SecondAccompaniment::Off);
+        assert_eq!(restored.second_accompaniment, Countermelody::Off);
         assert_eq!(restored.second_accompaniment.instrument(), None);
     }
 
     #[test]
-    fn second_accompaniment_uses_a_melody_instrument() {
+    fn the_countermelody_uses_a_melody_instrument() {
         assert_eq!(
-            SecondAccompaniment::Accordion.instrument(),
+            Countermelody::Accordion.instrument(),
             Some(MelodyInstrument::Accordion)
         );
         assert_eq!(
-            SecondAccompaniment::Fiddle.instrument(),
+            Countermelody::Fiddle.instrument(),
             Some(MelodyInstrument::Fiddle)
         );
-        assert_eq!(SecondAccompaniment::Off.gm_program(), None);
+        assert_eq!(Countermelody::Off.gm_program(), None);
         assert_eq!(
-            SecondAccompaniment::Accordion.gm_program(),
+            Countermelody::Accordion.gm_program(),
             Some(MelodyInstrument::Accordion.gm_program())
         );
+    }
+
+    #[test]
+    fn instrument_copies_round_trip_and_clamp() {
+        let prefs = Preferences {
+            instrument_copies: InstrumentCopies {
+                melody: 2,
+                accompaniment: 3,
+                countermelody: 4,
+                percussion: 2,
+            },
+            ..Preferences::default()
+        };
+        let json = prefs.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert_eq!(restored.instrument_copies, prefs.instrument_copies);
+        assert_eq!(restored.instrument_copies.melody_count(), 2);
+        assert_eq!(restored.instrument_copies.accompaniment_count(), 3);
+        assert_eq!(restored.instrument_copies.countermelody_count(), 4);
+        assert_eq!(restored.instrument_copies.percussion_count(), 2);
+
+        let mut hand_edited = InstrumentCopies {
+            melody: 0,
+            accompaniment: 99,
+            countermelody: 0,
+            percussion: 99,
+        };
+        hand_edited.validate();
+        assert_eq!(
+            hand_edited,
+            InstrumentCopies {
+                melody: InstrumentCopies::MIN,
+                accompaniment: InstrumentCopies::MAX,
+                countermelody: InstrumentCopies::MIN,
+                percussion: InstrumentCopies::MAX_PERCUSSION,
+            }
+        );
+        // The renderer accessors clamp too, so a value from a file that never
+        // went through `validate` cannot ask for a channel the plan lacks.
+        let raw = InstrumentCopies {
+            melody: 0,
+            accompaniment: 200,
+            countermelody: 0,
+            percussion: 200,
+        };
+        assert_eq!(raw.melody_count(), 1);
+        assert_eq!(raw.accompaniment_count(), 4);
+        assert_eq!(raw.percussion_count(), 3);
+    }
+
+    #[test]
+    fn older_files_get_one_copy_of_every_part() {
+        // The copy counts are a plain serde default: no migration tag and no
+        // schema bump, because one player is the previous behaviour.
+        let prefs = Preferences::from_json(r#"{"schema_version": 11}"#).expect("deserialize");
+        assert_eq!(prefs.instrument_copies, InstrumentCopies::default());
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
@@ -1169,7 +1543,7 @@ mod tests {
         let json = r#"{"schema_version": 6}"#;
         let prefs = Preferences::from_json(json).expect("deserialize");
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
-        assert_eq!(prefs.second_accompaniment, SecondAccompaniment::Accordion);
+        assert_eq!(prefs.second_accompaniment, Countermelody::Accordion);
     }
 
     #[test]
@@ -1276,8 +1650,41 @@ mod tests {
     #[test]
     fn instrument_gm_programs_are_sensible() {
         assert_eq!(MelodyInstrument::Fiddle.gm_program(), 40);
+        assert_eq!(MelodyInstrument::Accordion.gm_program(), 21);
+        assert_eq!(MelodyInstrument::AltoSax.gm_program(), 65);
+        assert_eq!(MelodyInstrument::TenorSax.gm_program(), 66);
+        assert_eq!(MelodyInstrument::Clarinet.gm_program(), 71);
         assert_eq!(AccompanimentInstrument::Piano.gm_program(), 0);
         assert_eq!(AccompanimentInstrument::Guitar.gm_program(), 25);
+    }
+
+    /// Every melody choice must offer a distinct label and a distinct General
+    /// MIDI program, and survive a preferences round trip: the picker shows the
+    /// label, the renderer sends the program.
+    #[test]
+    fn every_melody_instrument_round_trips_with_its_own_label_and_program() {
+        let mut labels = BTreeSet::new();
+        let mut programs = BTreeSet::new();
+        for melody in MelodyInstrument::ALL {
+            let label = melody.label();
+            assert!(!label.trim().is_empty());
+            assert!(labels.insert(label), "duplicate label {label:?}");
+            assert!(
+                programs.insert(melody.gm_program()),
+                "duplicate program {} for {label:?}",
+                melody.gm_program()
+            );
+
+            let prefs = Preferences {
+                melody,
+                ..Preferences::default()
+            };
+            let json = prefs.to_json().expect("serialize");
+            let restored = Preferences::from_json(&json).expect("deserialize");
+            assert_eq!(restored.melody, melody);
+            assert_eq!(restored.melody.label(), label);
+        }
+        assert_eq!(labels.len(), MelodyInstrument::ALL.len());
     }
 
     #[test]
@@ -1401,7 +1808,7 @@ mod tests {
         );
 
         let mut second = base.clone();
-        second.second_accompaniment = SecondAccompaniment::Off;
+        second.second_accompaniment = Countermelody::Off;
         assert_eq!(
             second.changes_since(&base),
             ChangeSet {
@@ -1415,6 +1822,17 @@ mod tests {
         percussion.percussion = Percussion::FootTaps;
         assert_eq!(
             percussion.changes_since(&base),
+            ChangeSet {
+                timeline: false,
+                audio: true,
+                tone: false
+            }
+        );
+
+        let mut copies = base.clone();
+        copies.instrument_copies.melody = 2;
+        assert_eq!(
+            copies.changes_since(&base),
             ChangeSet {
                 timeline: false,
                 audio: true,

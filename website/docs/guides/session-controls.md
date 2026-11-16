@@ -25,10 +25,10 @@ volume settings.
 
 <Shot id="transport-tempo" />
 
-Changing tempo, count-in, an instrument, second-accompaniment, or percussion
-choice, a percussion rhythm, an accompaniment rhythm,
-melody/accompaniment/percussion volume, or a SoundFont marks the music for a
-rebuild. Playback settings apply without
+Changing tempo, count-in, an instrument, countermelody, or percussion
+choice, a percussion rhythm, an accompaniment rhythm, a copy count,
+melody/accompaniment/percussion volume, a SoundFont, or **Humanize timing**
+marks the music for a rebuild. Playback settings apply without
 restarting the music: release the control and the app re-renders the loop and
 keeps the current beat. The session master **Volume** applies immediately. If
 the session is not playing, it shows:
@@ -39,19 +39,47 @@ Press **Play** to render and start. The app renders synchronously on that press;
 there is no separate “preparing music” screen in 0.1.0. Role, alias, and lead
 changes rebuild the call timeline without re-rendering the music.
 
+**Undo** and **Redo** (Ctrl+Z and Ctrl+Y) put a setting or a dance/tune choice
+back. A running session keeps its beat when only playback settings changed: the
+loop is re-rendered and playback resumes where it was. Undoing a dance or tune
+selection stops the old music and speech and leaves the restored tune ready for
+the next **Play**, exactly as choosing it from a picker would.
+
+## Background playback
+
+Minimizing the window, covering it, or switching to another app leaves the audio
+alone: the music keeps playing and the spoken calls keep coming on the same
+beats. Only the drawing stops.
+
+The transport follows the audio position, not the frame rate, so the caller
+stays in time whether or not a frame is painted. **Pause** is the only thing
+that stops it. On desktop, the keyboard's play/pause media key still works while
+the window is in the background. On Android, the headset, lock-screen, and
+notification controls keep working while the activity is in front or paused;
+the app does not run a foreground service, so a session that Android stops in
+the background stops with it.
+
 ## Keyboard
 
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
 - **Esc** returns from a download screen to its saved-content list, and from a
   picker or Preferences to the session.
-- **1–4** switch between Session, Select dance, Select tune, and Preferences.
+- **1-3** switch between Session, Select dance, and Select tune; **4** opens
+  Preferences from any screen, like the gear button in the header.
+- **← / →** switch to the previous or next tab, wrapping at the ends.
 - **Enter** starts a search from a search field, creates a folder, or adds a
   custom alias.
+- **Ctrl+Z** undoes the last preference or dance/tune change; **Ctrl+Y** or
+  **Ctrl+Shift+Z** redoes it. The same actions are buttons in **Preferences →
+  Interface**.
 
-Shortcuts are ignored while a text field has focus. On desktop, the keyboard's
-play/pause media key controls the transport even when the window is in the
-background. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
+Shortcuts are ignored while a text field has focus, and the arrow keys are left
+to a focused slider or list. On desktop, the keyboard's play/pause media key
+controls the transport even when the window is in the background; on Android,
+the headset, lock-screen, and notification controls do the same while the app is
+running. See
+[Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 ## The call prompt
 
@@ -62,12 +90,18 @@ karaoke prompt. It moves through these states:
 | --- | --- | --- |
 | Ready | `READY`, `Press Play to begin` | Press **Play** to build the music. |
 | Count-in | `COUNT-IN`, a large number, and either **CALL NOW** or `Listen for the first chord` | Wait for the loop, or say the first call if it is already due. |
-| Calling | `CALL NOW`, green card | Say the words now. The line below counts down to the execute beat. |
+| Calling | `CALL NOW`, green card | Say the words now. The detail line counts down to the execute beat, and the **NEXT:** footer previews the following call. |
 | Executing | `UPCOMING MOVE`, red card, the next call, and `call in N beats` | The figure is happening; prepare to say the next call. The dance card still highlights the figure in progress. |
 | Finished | `Dance complete` | Press **Restart** to run again. End tune also finishes here. |
 
 While a figure executes, the prompt switches to the move you must say next. The
-**Next:** line remains below the prompt for the following call.
+call that follows it stays inside the same card as a **NEXT:** footer — it is
+part of the prompt, not a separate line under it. The card therefore keeps one
+height while the session runs, so switching between **CALL NOW**, **UPCOMING
+MOVE**, and the final figure never moves the controls below. The card reserves
+room for two lines of call text and the footer; a longer call wraps and makes
+the card taller instead of clipping the words. The idle `READY` card and the
+completed card stay content-sized.
 
 <Shot id="session-upcoming-move" />
 
@@ -97,7 +131,8 @@ the count-in, the panel shows **CALL NOW** and the call text instead of
 ## The tune summary and dance card
 
 Below the prompt, the tune line shows the tune title, key, rhythm, melody,
-accompaniment, second accompaniment, and any enabled percussion. The dance card
+accompaniment, countermelody, and any enabled percussion, with a copy count such
+as `×2` when a part has more than one player. The dance card
 at the bottom of the session shows every figure with its phrase label and beat
 count. The active figure row is highlighted as the music moves.
 
@@ -171,29 +206,31 @@ See [Text to speech](/docs/guides/text-to-speech) for availability and rate.
 ## Volume
 
 The session **Volume** slider is the master level. The melody, accompaniment,
-and percussion balances live in **Preferences → Instruments**; the second
-accompaniment follows the accompaniment balance. They are separate controls; a
+and percussion balances live in **Preferences → Instruments**; the
+countermelody follows the accompaniment balance, and the **Copies** steppers in
+that section set how many players each part has. They are separate controls; a
 quiet master with a loud melody is still quiet overall.
 
 <Shot id="transport-volume" />
 
 ## About and project links
 
-The **About** button sits in the top-right corner of the tab row on every
-screen. Select it to open a window with the program name, its version, a short
-description, the author (Nicholas Gower), and links to the GitHub repository and
-the documentation site. The project pages may not be live yet.
+The About text is the last section of **Preferences**, below Maintenance. It
+shows the program name, its version, a short description, the author (Nicholas
+Gower), and links to the GitHub repository and the documentation site. The
+project pages may not be live yet.
 
 <Shot id="about-window" />
 
-Close the window with **Close**, **Esc**, or a click outside it. While it is
-open, the transport and tab shortcuts are suspended.
+Because it is part of the scrolling Preferences page, it never covers the
+session, traps focus, or suspends the transport and tab shortcuts. Press **Esc**
+or select **Session** to leave.
 
 ## Narrow windows
 
-At phone width the session tab uses its compact layout. The top row keeps four
-short tabs — **Session**, **Dance**, **Tune**, and **Prefs** — beside the
-pinned **About** button, without the wordmark. The tempo and volume sliders
+At phone width the session tab uses its compact layout. The top row keeps three
+short tabs — **Session**, **Dance**, and **Tune** — beside the pinned gear button
+that opens **Preferences**, without the wordmark. The tempo and volume sliders
 span the screen with their value boxes, and **Play**, **Pause**,
 **Restart**, and **End** split one row evenly. Loop, cycle tunes, count-in, and
 spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch
@@ -204,6 +241,12 @@ card together, the whole session page scrolls; the prompt stays at the top of
 that page. On a taller phone the prompt stays put and only the dance card
 scrolls. The saved-content and download screens use a single scrolling column
 at phone width, with full-width fields and the preview below the results.
+
+On a touch screen, swipe left or right across the content to change tabs. The
+gesture ignores a swipe that starts on a slider, and a mostly vertical swipe on
+a slider scrolls the page instead of changing the value, so passing a thumb
+over the tempo or volume control while scrolling does not disturb it. Drag a
+slider sideways to change it on purpose.
 
 <Shot id="session-mobile-controls" />
 

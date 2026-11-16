@@ -59,10 +59,12 @@ host it under a subpath, keep `index.html` and the generated assets together.
 
 ## Configure the data proxy
 
-The browser build cannot call ContraDB or ABC Session Tunes directly:
+The browser build cannot call ContraDB, ABC Session Tunes, or The Caller's Box
+directly:
 
 - `contradb.com` sends no CORS headers;
-- `backend.abcsessiontunes.com` allows only its own origin.
+- `backend.abcsessiontunes.com` allows only its own origin;
+- `www.ibiblio.org` sends no CORS headers for The Caller's Box.
 
 The repository includes a Cloudflare Worker in `proxy/`. Deploy it with
 Wrangler, then set its URL in the app.
@@ -103,8 +105,8 @@ content. Online search will fail.
 ## Keyboard shortcuts
 
 **Space** plays or pauses, **R** restarts, **Esc** returns to the session
-from a picker or Preferences, **1–4** switch tabs, and **Enter** submits a
-search or adds a custom alias. Shortcuts are ignored while a text field has
-focus. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
+from a picker or Preferences, **1–3** switch tabs, **4** opens Preferences, and
+**Enter** submits a search or adds a custom alias. Shortcuts are ignored while a
+text field has focus. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 Next: [Your first session](/docs/getting-started/first-session).

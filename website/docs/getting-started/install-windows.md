@@ -32,7 +32,8 @@ They are not code-signed.
 
 <Steps>
   <Step shot="install-windows-wizard">
-    Run the setup program and follow the Inno Setup wizard. Choose whether to
+    Run the setup program. The wizard opens on **Select Destination Location**,
+    which defaults to `C:\Program Files\Contra Karaoke`; choose whether to
     create a desktop shortcut, then finish the install.
   </Step>
   <Step shot="install-windows-smartscreen">
@@ -67,6 +68,24 @@ The app opens on **Session** with *Another Last Dance* and *Sandy Boys*. Press
 If SmartScreen or antivirus blocks the unsigned executable, verify the download
 hash from the nightly release and use the **More info** path rather than
 disabling security features.
+
+## Media keys and the system media overlay
+
+Contra Karaoke registers with System Media Transport Controls, so the keyboard's
+**Play/Pause** key, the media overlay that appears when you press it, and the
+media controls in the Quick Settings panel drive the session from any window.
+The overlay shows the loaded dance as the title, the tune as the artist, and
+*Contra Karaoke* as the album, so you can see what is loaded without focusing
+the app.
+
+- **Play** starts or resumes the session.
+- **Pause** pauses it and stops speech; the beat is kept, so the next Play
+  resumes from the same place.
+- **Stop** pauses. **Next** and **Previous** are ignored.
+
+These controls work while the window is minimized and while a text field has
+focus. If another app is the current media session, Windows may send the key
+there instead; pause that app or use the app's own buttons.
 
 ## Uninstall
 

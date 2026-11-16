@@ -20,6 +20,20 @@ const MEASURES_PER_SYSTEM: usize = 4;
 const MAX_RASTER_WIDTH: f32 = 1200.0;
 const MAX_RASTER_HEIGHT: f32 = 2400.0;
 
+/// Acorde draws chord symbols at the staff size (18 pt here), which loses
+/// almost all detail once the sheet is scaled into a phone-width preview.
+/// Doubling the letters restores their weight without touching the staff or
+/// the notes; the engraver's symbol lane already leaves room for one line of
+/// text above the staff.
+const CHORD_SYMBOL_SCALE: f32 = 2.0;
+/// Width of one italic serif digit as a fraction of the font size. A row-start
+/// measure number keeps its left edge on the staff margin, so a second digit
+/// runs right into the treble clef; shifting by one extra digit's advance
+/// keeps the number clear while a single digit stays where the engraver put it.
+/// The fraction is slightly wider than a plain 0.5 em because italic numerals
+/// overhang their advance.
+const MEASURE_NUMBER_DIGIT_ADVANCE: f32 = 0.55;
+
 /// A rasterized sheet-music texture ready to draw in the tune picker.
 pub struct SheetPreview {
     texture: egui::TextureHandle,
@@ -53,6 +67,12 @@ impl SheetPreview {
 /// Engrave an ABC tune to SVG. Public so tests can check the notation without
 /// creating a GPU texture.
 pub fn abc_to_svg(abc: &str) -> Result<String, String> {
+    engrave_abc(abc).map(|svg| restyle_annotations(&svg))
+}
+
+/// The engraver's unmodified output. Kept separate so tests can compare the
+/// preview's typography against what acorde actually drew.
+fn engrave_abc(abc: &str) -> Result<String, String> {
     let abc = normalize_modal_keys(abc);
     let score = acorde::io::parse_abc(&abc).map_err(|error| format!("ABC parser: {error}"))?;
     let options = acorde_render_svg::SvgRenderOptions {
@@ -62,6 +82,88 @@ pub fn abc_to_svg(abc: &str) -> Result<String, String> {
         interactive: false,
     };
     acorde_render_svg::render_svg(&score, &options).map_err(|error| format!("engraver: {error}"))
+}
+
+/// Preview-only typography fixes applied to the engraver's SVG.
+///
+/// This is a deliberate text-level pass rather than a forked engraver: acorde
+/// emits every annotation as a plain `<text>` element with a stable class, so
+/// rewriting two attributes keeps the display change isolated from playback and
+/// from the ABC parser. Elements without a matching class are copied verbatim,
+/// byte for byte.
+fn restyle_annotations(svg: &str) -> String {
+    let mut out = String::with_capacity(svg.len() + 256);
+    let mut cursor = 0;
+    while let Some(offset) = svg[cursor..].find("<text") {
+        let start = cursor + offset;
+        let Some(tag_end) = svg[start..].find('>').map(|end| start + end + 1) else {
+            break;
+        };
+        let Some(content_end) = svg[tag_end..].find("</text>").map(|end| tag_end + end) else {
+            break;
+        };
+        let element_end = content_end + "</text>".len();
+        out.push_str(&svg[cursor..start]);
+        match restyle_text_element(&svg[start..tag_end], &svg[tag_end..content_end]) {
+            Some(element) => out.push_str(&element),
+            None => out.push_str(&svg[start..element_end]),
+        }
+        cursor = element_end;
+    }
+    out.push_str(&svg[cursor..]);
+    out
+}
+
+/// Rewrite one `<text>` element, or return `None` when it is not an annotation
+/// the preview adjusts. `tag` is the start tag without its `>`, `text` is the
+/// element's character data.
+fn restyle_text_element(tag: &str, text: &str) -> Option<String> {
+    let classes: Vec<&str> = attribute(tag, "class")?.split_whitespace().collect();
+    if classes.contains(&"acorde-chord-symbol") {
+        let size: f32 = attribute(tag, "font-size")?.parse().ok()?;
+        let tag = with_attribute(
+            tag,
+            "font-size",
+            &format!("{:.2}", size * CHORD_SYMBOL_SCALE),
+        )?;
+        return Some(format!("{tag}>{text}</text>"));
+    }
+    if classes.contains(&"acorde-measure-number") {
+        // Acorde writes a number only for the first measure of a system
+        // (`col == 0 && row_idx > 0`), so every measure number here starts a
+        // row; mid-row numbers do not exist in the output.
+        let digits = text.trim().chars().count();
+        if digits < 2 {
+            return None;
+        }
+        let size: f32 = attribute(tag, "font-size")?.parse().ok()?;
+        let x: f32 = attribute(tag, "x")?.parse().ok()?;
+        let shift = (digits - 1) as f32 * size * MEASURE_NUMBER_DIGIT_ADVANCE;
+        let x = (x - shift).max(0.0);
+        let tag = with_attribute(tag, "x", &format!("{x:.2}"))?;
+        return Some(format!("{tag}>{text}</text>"));
+    }
+    None
+}
+
+/// Value of the `name="..."` attribute in an SVG start tag.
+fn attribute<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+    let needle = format!(" {name}=\"");
+    let rest = &tag[tag.find(&needle)? + needle.len()..];
+    let end = rest.find('"')?;
+    Some(&rest[..end])
+}
+
+/// Replace an existing attribute value without touching the rest of the tag.
+fn with_attribute(tag: &str, name: &str, value: &str) -> Option<String> {
+    let needle = format!(" {name}=\"");
+    let value_start = tag.find(&needle)? + needle.len();
+    let value_end = value_start + tag[value_start..].find('"')?;
+    let mut out = String::with_capacity(tag.len() + value.len());
+    out.push_str(&tag[..value_start]);
+    out.push_str(value);
+    out.push_str(&tag[value_end..]);
+    Some(out)
 }
 
 /// Acorde understands major and minor key signatures, but not ABC's modal
@@ -190,6 +292,176 @@ mod tests {
     use super::*;
 
     const DEFAULT_ABC: &str = include_str!("../../../assets/defaults/sandy_boys.abc");
+
+    /// Every `<text>` element whose class list contains `class`, with the byte
+    /// offset where it starts in `svg`.
+    fn text_elements<'a>(svg: &'a str, class: &str) -> Vec<(usize, &'a str)> {
+        svg.match_indices("<text")
+            .filter_map(|(start, _)| {
+                let end = start + svg[start..].find("</text>")? + "</text>".len();
+                let element = &svg[start..end];
+                let classes = attribute(element, "class")?;
+                classes
+                    .split_whitespace()
+                    .any(|name| name == class)
+                    .then_some((start, element))
+            })
+            .collect()
+    }
+
+    fn text_content(element: &str) -> &str {
+        let start = element.find('>').expect("text element has a start tag") + 1;
+        let end = element
+            .rfind("</text>")
+            .expect("text element has an end tag");
+        &element[start..end]
+    }
+
+    fn attr_f32(element: &str, name: &str) -> f32 {
+        attribute(element, name)
+            .and_then(|value| value.parse().ok())
+            .unwrap_or_else(|| panic!("text element has a numeric {name}"))
+    }
+
+    /// Leftmost x of the treble clef's ink in the vertical band a row-start
+    /// measure number occupies. Read from the clef path that precedes the
+    /// number so the assertion follows the engraver if it moves the clef.
+    fn treble_clef_left_edge(svg_before_number: &str, baseline: f32, size: f32) -> f32 {
+        let clef = svg_before_number
+            .rfind("class=\"acorde-clef acorde-clef-treble\"")
+            .expect("each system draws its treble clef before its first measure");
+        let path_start = svg_before_number[clef..]
+            .find(" d=\"")
+            .expect("the clef glyph is a path")
+            + clef
+            + 4;
+        let path_end = path_start
+            + svg_before_number[path_start..]
+                .find('"')
+                .expect("the path data ends with a quote");
+        let points: Vec<f32> = svg_before_number[path_start..path_end]
+            .split(|character: char| character.is_whitespace() || character == ',')
+            .filter_map(|token| token.parse().ok())
+            .collect();
+        let top = baseline - 0.75 * size;
+        let bottom = baseline + 0.15 * size;
+        points
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .filter(|pair| pair[1] >= top && pair[1] <= bottom)
+            .map(|pair| pair[0])
+            .fold(f32::INFINITY, f32::min)
+    }
+
+    #[test]
+    fn chord_symbols_render_at_twice_the_engraver_size() {
+        let raw = engrave_abc(DEFAULT_ABC).expect("the bundled tune engraves");
+        let styled = abc_to_svg(DEFAULT_ABC).expect("the preview typography applies");
+        let raw_chords = text_elements(&raw, "acorde-chord-symbol");
+        let styled_chords = text_elements(&styled, "acorde-chord-symbol");
+
+        assert!(raw_chords.len() >= 4, "the bundled tune has chord symbols");
+        assert_eq!(raw_chords.len(), styled_chords.len());
+        for ((_, raw), (_, styled)) in raw_chords.iter().zip(&styled_chords) {
+            let raw_size = attr_f32(raw, "font-size");
+            let styled_size = attr_f32(styled, "font-size");
+            assert!(
+                (styled_size - CHORD_SYMBOL_SCALE * raw_size).abs() < 0.01,
+                "chord symbol {raw_size} should render at {styled_size}"
+            );
+            // A rough cap height keeps the enlarged text inside the view box.
+            assert!(
+                attr_f32(styled, "y") - 0.75 * styled_size > 0.0,
+                "the enlarged chord symbol would be clipped at the top"
+            );
+            assert!(
+                (attr_f32(styled, "y") - attr_f32(raw, "y")).abs() < 0.01,
+                "doubling the font must not move the chord baseline"
+            );
+        }
+
+        // Chords in the same annotation lane must not run into each other.
+        let mut lanes: Vec<(f32, f32, f32)> = styled_chords
+            .iter()
+            .map(|(_, element)| {
+                let size = attr_f32(element, "font-size");
+                let width = text_content(element).chars().count() as f32 * 0.6 * size;
+                (attr_f32(element, "y"), attr_f32(element, "x"), width)
+            })
+            .collect();
+        lanes.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
+        for pair in lanes.windows(2) {
+            if (pair[0].0 - pair[1].0).abs() < 0.01 {
+                assert!(
+                    pair[0].1 + 0.5 * pair[0].2 < pair[1].1 - 0.5 * pair[1].2,
+                    "chord symbols {:?} and {:?} collide",
+                    pair[0],
+                    pair[1]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn double_digit_row_start_measure_numbers_shift_clear_of_the_clef() {
+        let raw_svg = engrave_abc(DEFAULT_ABC).expect("the bundled tune engraves");
+        let styled_svg = abc_to_svg(DEFAULT_ABC).expect("the preview typography applies");
+        let raw_numbers = text_elements(&raw_svg, "acorde-measure-number");
+        let styled_numbers = text_elements(&styled_svg, "acorde-measure-number");
+
+        assert_eq!(raw_numbers.len(), styled_numbers.len());
+        assert!(
+            raw_numbers
+                .iter()
+                .any(|(_, text)| text_content(text).trim().len() == 1)
+        );
+        assert!(
+            raw_numbers
+                .iter()
+                .any(|(_, text)| text_content(text).trim().len() == 2)
+        );
+
+        for ((offset, raw), (_, styled)) in raw_numbers.iter().zip(&styled_numbers) {
+            let offset = *offset;
+            let (raw, styled) = (*raw, *styled);
+            let digits = text_content(raw).trim().chars().count();
+            let size = attr_f32(raw, "font-size");
+            let clef_left = treble_clef_left_edge(&raw_svg[..offset], attr_f32(raw, "y"), size);
+            assert!(clef_left.is_finite(), "the clef has ink beside the number");
+            // 0.6 em per numeral is wider than a serif digit advance, so the
+            // clearance assertion stays conservative.
+            let width = digits as f32 * 0.6 * size;
+            let raw_right = attr_f32(raw, "x") + width;
+
+            if digits == 1 {
+                assert!(
+                    (attr_f32(styled, "x") - attr_f32(raw, "x")).abs() < 0.01,
+                    "a single-digit measure number must not move"
+                );
+                assert!(
+                    raw_right <= clef_left,
+                    "premise: a single digit clears the clef"
+                );
+            } else {
+                let shift = (digits - 1) as f32 * size * MEASURE_NUMBER_DIGIT_ADVANCE;
+                assert!(
+                    (attr_f32(raw, "x") - attr_f32(styled, "x") - shift).abs() < 0.01,
+                    "a {digits}-digit number shifts by one extra digit's advance"
+                );
+                assert!(
+                    raw_right > clef_left,
+                    "premise: the engraver's {digits}-digit number overlaps the clef"
+                );
+            }
+            assert!(
+                attr_f32(styled, "x") + width <= clef_left,
+                "measure number {} intrudes into the treble clef",
+                text_content(styled)
+            );
+            assert!(attr_f32(styled, "x") >= 0.0, "the number stays on the page");
+        }
+    }
 
     #[test]
     fn bundled_tune_engraves_to_svg() {

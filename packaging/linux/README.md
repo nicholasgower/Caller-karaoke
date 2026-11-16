@@ -28,4 +28,25 @@ to the platform voice.
 
 The `.deb` is written to `target/debian/`; the AppImage to `dist/`.
 
+## Media keys (MPRIS)
+
+With a D-Bus session bus, the app registers the MPRIS player
+`org.contrakaraoke.ContraKaraoke`. The desktop's media keys, its media widget
+(including the Cinnamon sound applet on Linux Mint), and lock-screen controls
+drive the session from any window; the player shows the loaded dance as the
+title and the tune as the artist.
+
+MPRIS is the correct integration on Cinnamon, GNOME, KDE Plasma, Xfce, and
+MATE — no tray icon or desktop-specific code is involved. If the app starts
+without a session bus (a bare TTY, or a test runner), it skips the media session
+instead of failing; check `DBUS_SESSION_BUS_ADDRESS` or
+`$XDG_RUNTIME_DIR/bus` when debugging.
+
+`contra-karaoke.desktop` sets `StartupWMClass=contra-karaoke`. winit derives
+`WM_CLASS` from the executable's file name, so the packaged binary at
+`/usr/bin/contra-karaoke` reports `contra-karaoke` and the panel associates the
+window with the desktop entry. Renaming the executable means updating `Exec=`,
+the `StartupWMClass=` value, and the icon name together, or the desktop keeps a
+second, anonymous window entry.
+
 For Flatpak, see `packaging/flatpak/README.md`.

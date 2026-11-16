@@ -9,7 +9,8 @@ const DEFAULT_DANCE_JSON: &str = include_str!("../../../assets/defaults/another_
 const DEFAULT_ABC: &str = include_str!("../../../assets/defaults/sandy_boys.abc");
 
 /// A subset of Fluid R3 GM (MIT, Frank Wen) covering the instruments the
-/// preferences offer. Regenerate with `scripts/soundfont-subset.py`.
+/// preferences offer. Regenerate with `scripts/rebuild-soundfont.py`, which
+/// reads the keep-list in `scripts/soundfont-keep.txt`.
 const DEFAULT_SOUNDFONT: &[u8] = include_bytes!("../../../assets/defaults/fluid-r3-gm-subset.sf2");
 
 pub fn default_dance() -> Dance {
@@ -58,7 +59,7 @@ mod tests {
                     .map(|instrument| instrument.gm_program()),
             )
             .chain(
-                contra_core::SecondAccompaniment::ALL
+                contra_core::Countermelody::ALL
                     .iter()
                     .filter_map(|instrument| instrument.gm_program()),
             )

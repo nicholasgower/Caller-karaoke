@@ -34,11 +34,13 @@ impl ContraApp {
             }
             ui.heading("Download dance");
         });
+        let provider = self.dance_source();
+        let display_name = provider.display_name();
         ui.label(
-            egui::RichText::new(
-                "Search ContraDB, preview the card, and download it to your saved dances. \
-                 Downloaded cards stay available without a network connection.",
-            )
+            egui::RichText::new(format!(
+                "Search {display_name}, preview the card, and download it to your saved \
+                 dances. Downloaded cards stay available without a network connection."
+            ))
             .color(theme::muted(ui)),
         );
         if let Some(status) = &self.library_status {
@@ -46,134 +48,100 @@ impl ContraApp {
         }
         ui.add_space(6.0);
 
+        let specs = provider.filter_specs();
         let mut submit = false;
         egui::Grid::new("dance-search-grid")
             .num_columns(if compact { 1 } else { 2 })
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
-                form_row(ui, compact, "Title", |ui| {
-                    submit |= submit_text_edit(ui, &mut self.picker.dance_query.title);
-                });
-                ui.end_row();
-                form_row(ui, compact, "Choreographer", |ui| {
-                    submit |= submit_text_edit(ui, &mut self.picker.dance_query.choreographer);
-                });
-                ui.end_row();
-                form_row(ui, compact, "User", |ui| {
-                    submit |= submit_text_edit(ui, &mut self.picker.dance_query.user);
-                });
-                ui.end_row();
-                form_row(ui, compact, "Hook", |ui| {
-                    submit |= submit_text_edit(ui, &mut self.picker.dance_query.hook);
-                });
-                ui.end_row();
-                form_row(ui, compact, "Formation", |ui| {
-                    let combo = egui::ComboBox::from_id_salt("formation");
-                    responsive_combo(combo, ui, compact)
-                        .selected_text(formation_label(
-                            self.picker.dance_query.formation.as_deref(),
-                        ))
-                        .show_ui(ui, |ui| {
-                            for (value, label) in [
-                                ("", "Any formation"),
-                                ("improper", "Improper"),
-                                ("becket", "Becket"),
-                                ("proper", "Proper"),
-                                ("everything else", "Everything else"),
-                            ] {
-                                let selected =
-                                    self.picker.dance_query.formation.as_deref().unwrap_or("")
-                                        == value;
-                                if ui.selectable_label(selected, label).clicked() {
-                                    self.picker.dance_query.formation = if value.is_empty() {
-                                        None
-                                    } else {
-                                        Some(value.to_string())
-                                    };
-                                }
+                // A source advertises the fields it understands; the screen
+                // draws only those, so a site without a "User" or "Verified"
+                // filter does not show a field that would be ignored.
+                for key in [
+                    "title",
+                    "choreographer",
+                    "user",
+                    "hook",
+                    "formation",
+                    "figure_move",
+                    "figure_text",
+                    "verified",
+                ] {
+                    let Some(spec) = specs.iter().find(|spec| spec.key == key) else {
+                        continue;
+                    };
+                    match &spec.kind {
+                        FilterKind::Text => {
+                            if let Some(buffer) = query_text(&mut self.picker.dance_query, spec.key)
+                            {
+                                form_row(ui, compact, spec.label, |ui| {
+                                    submit |= submit_text_edit(ui, buffer);
+                                });
                             }
-                        });
-                });
-                ui.end_row();
-                form_row(ui, compact, "Figure type", |ui| {
-                    let figure_options = [
-                        ("", "Any figure"),
-                        ("swing", "Swing"),
-                        ("allemande", "Allemande"),
-                        ("do si do", "Do-si-do"),
-                        ("balance", "Balance"),
-                        ("chain", "Chain"),
-                        ("circle", "Circle"),
-                        ("star", "Star"),
-                        ("hey", "Hey"),
-                        ("gyre", "Gyre"),
-                        ("promenade", "Promenade"),
-                        ("long lines", "Long lines"),
-                        ("right left through", "Right and left through"),
-                        ("pass through", "Pass through"),
-                        ("petronella", "Petronella"),
-                        ("mad robin", "Mad robin"),
-                    ];
-                    let selected = self
-                        .picker
-                        .dance_query
-                        .figure_move
-                        .as_deref()
-                        .and_then(|current| {
-                            figure_options
+                            ui.end_row();
+                        }
+                        FilterKind::Checkbox => {
+                            if let Some(flag) = query_flag(&mut self.picker.dance_query, spec.key) {
+                                if compact {
+                                    ui.checkbox(flag, spec.label);
+                                } else {
+                                    form_row(ui, compact, spec.label, |ui| {
+                                        ui.checkbox(flag, "");
+                                    });
+                                }
+                                ui.end_row();
+                            }
+                        }
+                        FilterKind::Select(options) => {
+                            let current = query_select_value(&self.picker.dance_query, spec.key)
+                                .cloned()
+                                .unwrap_or_default();
+                            let selected_label = options
                                 .iter()
                                 .find(|(value, _)| *value == current)
                                 .map(|(_, label)| *label)
-                        })
-                        .unwrap_or("Any figure");
-                    let combo = egui::ComboBox::from_id_salt("figure-move");
-                    responsive_combo(combo, ui, compact)
-                        .selected_text(selected)
-                        .show_ui(ui, |ui| {
-                            for (value, label) in figure_options {
-                                let is_selected =
-                                    self.picker.dance_query.figure_move.as_deref().unwrap_or("")
-                                        == value;
-                                if ui.selectable_label(is_selected, label).clicked() {
-                                    self.picker.dance_query.figure_move = if value.is_empty() {
-                                        None
-                                    } else {
-                                        Some(value.to_string())
-                                    };
-                                }
-                            }
-                        });
-                });
-                ui.end_row();
-                form_row(ui, compact, "Figure contains", |ui| {
-                    submit |= submit_text_edit(ui, &mut self.picker.dance_query.figure_text);
-                });
-                ui.end_row();
-                if compact {
-                    // Let the label itself toggle the checkbox; a bare square
-                    // is a small target on a phone.
-                    ui.checkbox(&mut self.picker.dance_query.verified, "Verified only");
-                } else {
-                    form_row(ui, compact, "Verified only", |ui| {
-                        ui.checkbox(&mut self.picker.dance_query.verified, "");
-                    });
+                                .unwrap_or(spec.label);
+                            form_row(ui, compact, spec.label, |ui| {
+                                let combo =
+                                    egui::ComboBox::from_id_salt(("dance-filter", spec.key));
+                                responsive_combo(combo, ui, compact)
+                                    .selected_text(selected_label)
+                                    .show_ui(ui, |ui| {
+                                        for (value, label) in options {
+                                            if ui
+                                                .selectable_label(current == *value, *label)
+                                                .clicked()
+                                            {
+                                                set_query_select_value(
+                                                    &mut self.picker.dance_query,
+                                                    spec.key,
+                                                    value,
+                                                );
+                                            }
+                                        }
+                                    });
+                            });
+                            ui.end_row();
+                        }
+                    }
                 }
-                ui.end_row();
-                form_row(ui, compact, "Sort", |ui| {
-                    let combo = egui::ComboBox::from_id_salt("dance-sort");
-                    responsive_combo(combo, ui, compact)
-                        .selected_text(self.picker.dance_query.sort.label())
-                        .show_ui(ui, |ui| {
-                            for sort in DanceSort::ALL {
-                                ui.selectable_value(
-                                    &mut self.picker.dance_query.sort,
-                                    sort,
-                                    sort.label(),
-                                );
-                            }
-                        });
-                });
-                ui.end_row();
+                if provider.supports_sort() {
+                    form_row(ui, compact, "Sort", |ui| {
+                        let combo = egui::ComboBox::from_id_salt("dance-sort");
+                        responsive_combo(combo, ui, compact)
+                            .selected_text(self.picker.dance_query.sort.label())
+                            .show_ui(ui, |ui| {
+                                for sort in DanceSort::ALL {
+                                    ui.selectable_value(
+                                        &mut self.picker.dance_query.sort,
+                                        sort,
+                                        sort.label(),
+                                    );
+                                }
+                            });
+                    });
+                    ui.end_row();
+                }
             });
         if submit {
             self.search_dances();
@@ -193,31 +161,56 @@ impl ContraApp {
                 ui.label("Searching…");
             }
             if let Some(results) = &self.picker.dance_results {
-                ui.label(
-                    egui::RichText::new(format!("{} matches", results.total))
-                        .color(theme::muted(ui)),
-                );
+                let label =
+                    if provider.result_limit().is_some() && results.total > results.dances.len() {
+                        format!(
+                            "{} matches · first {} shown",
+                            results.total,
+                            results.dances.len()
+                        )
+                    } else {
+                        format!("{} matches", results.total)
+                    };
+                ui.label(egui::RichText::new(label).color(theme::muted(ui)));
             }
         });
+        if let Some(limit) = provider.result_limit() {
+            ui.label(
+                egui::RichText::new(format!(
+                    "{display_name} returns up to {limit} matches per search and has no \
+                     further pages. Add a title, author, or figure phrase to narrow a \
+                     larger result."
+                ))
+                .small()
+                .color(theme::muted(ui)),
+            );
+        }
 
         ui.add_space(6.0);
-        if compact {
-            ui.label(egui::RichText::new("Results").strong());
-            self.dance_results_list(ui, true);
-            ui.separator();
-            ui.label(egui::RichText::new("Preview").strong());
-            self.dance_preview_panel(ui);
-        } else {
-            ui.columns(2, |columns| {
-                egui::ScrollArea::vertical()
-                    .id_salt("dance-results")
-                    .max_height(420.0)
-                    .show(&mut columns[0], |ui| self.dance_results_list(ui, false));
-                egui::ScrollArea::vertical()
-                    .id_salt("dance-preview")
-                    .max_height(420.0)
-                    .show(&mut columns[1], |ui| self.dance_preview_panel(ui));
-            });
+        match picker_pane_height(compact, ui.available_height(), PAGINATION_ROW_HEIGHT) {
+            None => {
+                // The phone page scrolls: the stacked list and preview keep
+                // their natural height instead of reserving an empty box.
+                ui.label(egui::RichText::new("Results").strong());
+                self.dance_results_list(ui, true);
+                ui.separator();
+                ui.label(egui::RichText::new("Preview").strong());
+                self.dance_preview_panel(ui, true);
+            }
+            Some(height) => {
+                ui.columns(2, |columns| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("dance-results")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[0], |ui| self.dance_results_list(ui, false));
+                    egui::ScrollArea::vertical()
+                        .id_salt("dance-preview")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(&mut columns[1], |ui| self.dance_preview_panel(ui, false));
+                });
+            }
         }
         self.pagination_ui(ui, true);
     }
@@ -235,7 +228,9 @@ impl ContraApp {
                 .is_some_and(|value| value.id == dance.id);
             let selected_t =
                 animate_amount(ui.ctx(), ("dance-selected", &dance.id), selected, animate);
-            let downloaded = self.dance_library.contains("contradb", &dance.id);
+            let downloaded = self
+                .dance_library
+                .contains(&self.picker.dance_provider, &dance.id);
             let mut preview = false;
             egui::Frame::group(ui.style())
                 .fill(lerp_color(
@@ -262,13 +257,14 @@ impl ContraApp {
                 });
             if preview {
                 self.picker.dance_selected = Some(dance.clone());
-                self.source.load_dance(dance.id.clone());
+                self.source
+                    .load_dance(&self.picker.dance_provider, dance.id.clone());
                 self.picker.preview_loading = true;
             }
         }
     }
 
-    fn dance_preview_panel(&mut self, ui: &mut egui::Ui) {
+    fn dance_preview_panel(&mut self, ui: &mut egui::Ui, compact: bool) {
         if self.picker.preview_loading {
             ui.horizontal(|ui| {
                 ui.spinner();
@@ -294,37 +290,64 @@ impl ContraApp {
                 .small()
                 .color(theme::muted(ui)),
             );
-            ui.hyperlink_to("Open on ContraDB", &dance.source.url);
+            ui.hyperlink_to(
+                format!("Open on {}", source_label(&dance.source.provider)),
+                &dance.source.url,
+            );
             ui.add_space(4.0);
             let downloaded = self
                 .dance_library
                 .contains(&dance.source.provider, &dance.source.id);
+            // The preview actions share the column on a desktop and stack at
+            // full width on a phone, so every row is a 44-point target.
+            let width = action_width(
+                ui.available_width(),
+                ui.spacing().item_spacing.x,
+                3,
+                compact,
+            );
             ui.horizontal_wrapped(|ui| {
                 if ui
-                    .button(if downloaded {
-                        "Download again"
-                    } else {
-                        "Download dance"
-                    })
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new(if downloaded {
+                            "Download again"
+                        } else {
+                            "Download dance"
+                        })
+                        .wrap(),
+                    )
                     .on_hover_text("Save this card to your local library")
                     .clicked()
                 {
                     self.download_dance(dance.clone());
                 }
-                if ui.button("Use this dance").clicked() {
+                if ui
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new("Use this dance").wrap(),
+                    )
+                    .clicked()
+                {
                     self.use_dance(dance.clone());
                 }
-                if ui.button("View saved dances").clicked() {
+                if ui
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::new("View saved dances").wrap(),
+                    )
+                    .clicked()
+                {
                     self.screen = Screen::DancePicker;
                 }
-                if downloaded {
-                    ui.label(
-                        egui::RichText::new("already downloaded")
-                            .small()
-                            .color(theme::muted(ui)),
-                    );
-                }
             });
+            if downloaded {
+                ui.label(
+                    egui::RichText::new("already downloaded")
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+            }
             ui.separator();
             for figure in &dance.figures {
                 ui.label(format!(
@@ -360,4 +383,40 @@ fn dance_summary(ui: &mut egui::Ui, dance: &contra_sources::DanceSummary, downlo
                 .color(theme::muted(ui)),
         );
     }
+}
+
+/// The text field behind one source-neutral filter key.
+fn query_text<'a>(query: &'a mut DanceQuery, key: &str) -> Option<&'a mut String> {
+    match key {
+        "title" => Some(&mut query.title),
+        "choreographer" => Some(&mut query.choreographer),
+        "user" => Some(&mut query.user),
+        "hook" => Some(&mut query.hook),
+        "figure_text" => Some(&mut query.figure_text),
+        _ => None,
+    }
+}
+
+/// The checkbox behind one source-neutral filter key.
+fn query_flag<'a>(query: &'a mut DanceQuery, key: &str) -> Option<&'a mut bool> {
+    (key == "verified").then_some(&mut query.verified)
+}
+
+/// The current value of a select filter; an empty value means "any".
+fn query_select_value<'a>(query: &'a DanceQuery, key: &str) -> Option<&'a String> {
+    match key {
+        "formation" => query.formation.as_ref(),
+        "figure_move" => query.figure_move.as_ref(),
+        _ => None,
+    }
+}
+
+/// Store a select filter, mapping the empty option back to `None`.
+fn set_query_select_value(query: &mut DanceQuery, key: &str, value: &str) {
+    let target = match key {
+        "formation" => &mut query.formation,
+        "figure_move" => &mut query.figure_move,
+        _ => return,
+    };
+    *target = (!value.is_empty()).then(|| value.to_string());
 }

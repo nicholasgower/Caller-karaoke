@@ -1,15 +1,16 @@
 //! Small built-in synthesizer.
 //!
 //! This is not a sampled instrument library. It provides recognisable fiddle,
-//! accordion, piano, and guitar timbres from procedural oscillators, and acts as
-//! the fallback when the bundled Fluid R3 GM subset or a user-supplied SF2
-//! cannot be loaded (see `soundfont.rs`).
+//! accordion, sax, clarinet, piano, and guitar timbres from procedural
+//! oscillators, and acts as the fallback when the bundled Fluid R3 GM subset or
+//! a user-supplied SF2 cannot be loaded (see `soundfont.rs`).
 
 use std::f32::consts::TAU;
 
 use contra_core::{AccompanimentInstrument, MelodyInstrument};
 
 use crate::arrange::EndingNote;
+use crate::humanize::{Humanizer, Voice, VoiceTiming, chord_members};
 use crate::render::{AudioBuffer, RenderRequest};
 use crate::score::NoteEvent;
 
@@ -17,6 +18,10 @@ use crate::score::NoteEvent;
 enum Timbre {
     Fiddle,
     Accordion,
+    /// Bright single reed: a square wave with the odd harmonics dominant.
+    Sax,
+    /// Hollow single reed: a darker square wave with no vibrato.
+    Clarinet,
     Piano,
     Guitar,
 }
@@ -54,10 +59,12 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
 
     let melody_voice = melody_timbre(request.melody);
     let accompaniment_timbre = accompaniment_timbre(request.accompaniment);
+    let copies = request.copies;
+    let humanizer = Humanizer::new(request);
     for pass in 0..passes {
         let offset = count_in_samples as i64 + pass as i64 * pass_samples as i64;
         if pass == 0 {
-            render_notes(
+            render_section(
                 &mut samples,
                 &request.arrangement.pickup,
                 melody_voice,
@@ -66,10 +73,13 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 samples_per_beat,
                 sample_rate,
                 -0.10,
+                copies.melody_count(),
+                Voice::Melody,
+                &humanizer,
             );
         }
         let melody = request.arrangement.melody_notes_for_pass(pass);
-        render_notes(
+        render_section(
             &mut samples,
             &melody,
             melody_voice,
@@ -78,6 +88,9 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             samples_per_beat,
             sample_rate,
             -0.10,
+            copies.melody_count(),
+            Voice::Melody,
+            &humanizer,
         );
 
         let accompaniment = request
@@ -87,7 +100,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 request.accompaniment_rhythm,
                 pass,
             );
-        render_notes(
+        render_section(
             &mut samples,
             &accompaniment,
             accompaniment_timbre,
@@ -96,28 +109,34 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             samples_per_beat,
             sample_rate,
             0.10,
+            copies.accompaniment_count(),
+            Voice::Accompaniment,
+            &humanizer,
         );
 
-        // Second accompaniment: a countermelody on a melody instrument, mixed a
-        // little quieter and to the other side so the trio stays legible.
-        if let Some(second) = request.second_accompaniment.instrument() {
-            let countermelody = request.arrangement.countermelody_notes_for_pass(pass);
-            render_notes(
+        // Countermelody: a countermelody on a melody instrument, mixed a little
+        // quieter and to the other side so the trio stays legible.
+        if let Some(countermelody) = request.second_accompaniment.instrument() {
+            let notes = request.arrangement.countermelody_notes_for_pass(pass);
+            render_section(
                 &mut samples,
-                &countermelody,
-                melody_timbre(second),
+                &notes,
+                melody_timbre(countermelody),
                 request.accompaniment_volume * 0.8,
                 offset,
                 samples_per_beat,
                 sample_rate,
                 0.30,
+                copies.countermelody_count(),
+                Voice::Countermelody,
+                &humanizer,
             );
         }
     }
 
     if let Some(ending) = &ending {
         let offset = (count_in_samples + loop_samples) as i64;
-        render_ending_notes(
+        render_ending_section(
             &mut samples,
             &ending.melody,
             melody_voice,
@@ -125,8 +144,9 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             offset,
             sample_rate,
             -0.10,
+            copies.melody_count(),
         );
-        render_ending_notes(
+        render_ending_section(
             &mut samples,
             &ending.accompaniment,
             accompaniment_timbre,
@@ -134,6 +154,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             offset,
             sample_rate,
             0.10,
+            copies.accompaniment_count(),
         );
         apply_ending_fade(
             &mut samples,
@@ -180,31 +201,39 @@ fn render_count_in(
     let chord_notes = chord.voicing(55);
     let duration = (0.40 * samples_per_beat) as usize;
     let count = request.count_in_beats.round().clamp(0.0, 4.0) as usize;
+    // The count-in is accompaniment, so it gets the accompaniment section: a
+    // two-piano band counts in with both pianos.
+    let voices = crate::copies::voices(0.10, request.copies.accompaniment_count(), sample_rate);
     for beat in 0..count {
-        let start = (beat as f64 * samples_per_beat).round() as usize;
-        render_note(
-            samples,
-            start,
-            duration,
-            chord.bass_midi(),
-            62,
-            timbre,
-            sample_rate as f32,
-            request.accompaniment_volume * 0.8,
-            0.10,
-        );
-        for midi in &chord_notes {
+        let beat_start = (beat as f64 * samples_per_beat).round() as usize;
+        for voice in &voices {
+            let start = beat_start + voice.delay_samples as usize;
             render_note(
                 samples,
                 start,
                 duration,
-                *midi,
-                55,
+                chord.bass_midi(),
+                62,
                 timbre,
                 sample_rate as f32,
-                request.accompaniment_volume * 0.6,
-                0.10,
+                request.accompaniment_volume * 0.8 * voice.gain,
+                voice.pan,
+                voice.detune,
             );
+            for midi in &chord_notes {
+                render_note(
+                    samples,
+                    start,
+                    duration,
+                    *midi,
+                    55,
+                    timbre,
+                    sample_rate as f32,
+                    request.accompaniment_volume * 0.6 * voice.gain,
+                    voice.pan,
+                    voice.detune,
+                );
+            }
         }
     }
 }
@@ -213,6 +242,50 @@ fn melody_timbre(instrument: MelodyInstrument) -> Timbre {
     match instrument {
         MelodyInstrument::Fiddle => Timbre::Fiddle,
         MelodyInstrument::Accordion => Timbre::Accordion,
+        MelodyInstrument::AltoSax | MelodyInstrument::TenorSax => Timbre::Sax,
+        MelodyInstrument::Clarinet => Timbre::Clarinet,
+    }
+}
+
+/// Render one part's notes once per copy.
+///
+/// A single copy goes through the same code as before copies existed, with
+/// unity gain, the part's base pan, and no latency or detune. Human timing is
+/// per copy: each player's curve is seeded from the tune, the voice, and the
+/// copy index.
+#[allow(clippy::too_many_arguments)]
+fn render_section(
+    samples: &mut [f32],
+    notes: &[NoteEvent],
+    timbre: Timbre,
+    volume: f32,
+    offset: i64,
+    samples_per_beat: f64,
+    sample_rate: u32,
+    base_pan: f32,
+    copies: usize,
+    voice: Voice,
+    humanizer: &Humanizer,
+) {
+    let chord = chord_members(notes);
+    for (copy, player) in crate::copies::voices(base_pan, copies, sample_rate)
+        .into_iter()
+        .enumerate()
+    {
+        let timing = humanizer.voice(voice, copy);
+        render_notes(
+            samples,
+            notes,
+            timbre,
+            volume * player.gain,
+            offset + player.delay_samples as i64,
+            samples_per_beat,
+            sample_rate,
+            player.pan,
+            player.detune,
+            timing.as_ref(),
+            &chord,
+        );
     }
 }
 
@@ -226,9 +299,22 @@ fn render_notes(
     samples_per_beat: f64,
     sample_rate: u32,
     pan: f32,
+    detune: f32,
+    timing: Option<&VoiceTiming>,
+    chord: &[bool],
 ) {
-    for note in notes {
-        let start = offset + (note.start_beat * samples_per_beat).round() as i64;
+    for (index, note) in notes.iter().enumerate() {
+        let humanized = timing.map_or(0.0, |timing| {
+            timing.onset_offset_seconds(
+                note.start_beat,
+                note.duration_beats,
+                note.midi,
+                chord.get(index).copied().unwrap_or(false),
+            )
+        });
+        let start = offset
+            + (note.start_beat * samples_per_beat).round() as i64
+            + (humanized * f64::from(sample_rate)).round() as i64;
         let duration = (note.duration_beats * samples_per_beat).round().max(1.0) as usize;
         if start < 0 {
             continue;
@@ -243,6 +329,34 @@ fn render_notes(
             sample_rate as f32,
             volume,
             pan,
+            detune,
+        );
+    }
+}
+
+/// Render the ending's notes once per copy, timed in seconds because the
+/// ending deliberately leaves the dance-beat grid.
+#[allow(clippy::too_many_arguments)]
+fn render_ending_section(
+    samples: &mut [f32],
+    notes: &[EndingNote],
+    timbre: Timbre,
+    volume: f32,
+    offset: i64,
+    sample_rate: u32,
+    base_pan: f32,
+    copies: usize,
+) {
+    for voice in crate::copies::voices(base_pan, copies, sample_rate) {
+        render_ending_notes(
+            samples,
+            notes,
+            timbre,
+            volume * voice.gain,
+            offset + voice.delay_samples as i64,
+            sample_rate,
+            voice.pan,
+            voice.detune,
         );
     }
 }
@@ -258,6 +372,7 @@ fn render_ending_notes(
     offset: i64,
     sample_rate: u32,
     pan: f32,
+    detune: f32,
 ) {
     for note in notes {
         let start = offset + (note.start_seconds * sample_rate as f64).round() as i64;
@@ -277,6 +392,7 @@ fn render_ending_notes(
             sample_rate as f32,
             volume,
             pan,
+            detune,
         );
     }
 }
@@ -318,13 +434,14 @@ fn render_note(
     sample_rate: f32,
     gain: f32,
     pan: f32,
+    detune: f32,
 ) {
     if duration == 0 || start >= out.len() / 2 {
         return;
     }
     let velocity = (velocity.max(1) as f32 / 127.0).clamp(0.05, 1.0);
     let gain = gain * velocity;
-    let freq = midi_frequency(midi);
+    let freq = midi_frequency(midi) * detune;
     let pan = pan.clamp(-1.0, 1.0);
     let left_gain = (0.5 * (1.0 - pan)).sqrt();
     let right_gain = (0.5 * (1.0 + pan)).sqrt();
@@ -342,6 +459,26 @@ fn render_note(
             sample_rate,
         ),
         Timbre::Accordion => render_accordion(
+            out,
+            start,
+            duration,
+            freq,
+            gain,
+            left_gain,
+            right_gain,
+            sample_rate,
+        ),
+        Timbre::Sax => render_sax(
+            out,
+            start,
+            duration,
+            freq,
+            gain,
+            left_gain,
+            right_gain,
+            sample_rate,
+        ),
+        Timbre::Clarinet => render_clarinet(
             out,
             start,
             duration,
@@ -440,6 +577,84 @@ fn render_accordion(
             0.08,
         );
         let sample = saw * gain * envelope * tremolo * 0.45;
+        out[(start + index) * 2] += sample * left_gain;
+        out[(start + index) * 2 + 1] += sample * right_gain;
+    }
+}
+
+/// A bright single reed: a square wave softened by a one-pole lowpass, with a
+/// little vibrato and a hint of the octave above for the saxophone's edge.
+///
+/// The timbre stands in for both sax choices; the alto and tenor differ by
+/// register in the arrangement, and the built-in voice is only the fallback
+/// when no soundfont is available.
+#[allow(clippy::too_many_arguments)]
+fn render_sax(
+    out: &mut [f32],
+    start: usize,
+    duration: usize,
+    freq: f32,
+    gain: f32,
+    left_gain: f32,
+    right_gain: f32,
+    sample_rate: f32,
+) {
+    let mut phase = 0.0f32;
+    let mut lowpass = 0.0f32;
+    for index in 0..duration {
+        let t = index as f32 / sample_rate;
+        let vibrato = 1.0 + 0.004 * (TAU * 5.0 * t).sin() * (t * 6.0).min(1.0);
+        phase += freq * vibrato / sample_rate;
+        phase -= phase.floor();
+        let square = if phase < 0.5 { 1.0 } else { -1.0 };
+        lowpass += 0.30 * (square - lowpass);
+        let edge = 0.12 * (TAU * freq * 2.0 * t).sin();
+        let envelope = adsr(
+            index as f32 / sample_rate,
+            duration as f32 / sample_rate,
+            0.025,
+            0.05,
+            0.86,
+            0.10,
+        );
+        let sample = (lowpass + edge) * gain * envelope * 0.34;
+        out[(start + index) * 2] += sample * left_gain;
+        out[(start + index) * 2 + 1] += sample * right_gain;
+    }
+}
+
+/// A hollow single reed: the odd harmonics of a square wave behind a stronger
+/// lowpass, with no vibrato. That is enough to read as a clarinet next to the
+/// fiddle's bowed saw and the accordion's detuned reeds.
+#[allow(clippy::too_many_arguments)]
+fn render_clarinet(
+    out: &mut [f32],
+    start: usize,
+    duration: usize,
+    freq: f32,
+    gain: f32,
+    left_gain: f32,
+    right_gain: f32,
+    sample_rate: f32,
+) {
+    let mut phase = 0.0f32;
+    let mut lowpass = 0.0f32;
+    for index in 0..duration {
+        let t = index as f32 / sample_rate;
+        phase += freq / sample_rate;
+        phase -= phase.floor();
+        let square = if phase < 0.5 { 1.0 } else { -1.0 };
+        lowpass += 0.12 * (square - lowpass);
+        let body = 0.08 * (TAU * freq * 3.0 * t).sin();
+        let envelope = adsr(
+            index as f32 / sample_rate,
+            duration as f32 / sample_rate,
+            0.045,
+            0.06,
+            0.88,
+            0.12,
+        );
+        let sample = (lowpass + body) * gain * envelope * 0.38;
         out[(start + index) * 2] += sample * left_gain;
         out[(start + index) * 2 + 1] += sample * right_gain;
     }
@@ -568,7 +783,8 @@ mod tests {
             melody: MelodyInstrument::Fiddle,
             accompaniment: AccompanimentInstrument::Piano,
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::SecondAccompaniment::Accordion,
+            second_accompaniment: contra_core::Countermelody::Accordion,
+            copies: contra_core::InstrumentCopies::default(),
             percussion: contra_core::Percussion::Off,
             percussion_rhythm: contra_core::PercussionRhythm::Auto,
             melody_volume: 0.75,
@@ -579,6 +795,7 @@ mod tests {
             sample_rate: 24_000,
             variation_passes: 1,
             ending: false,
+            humanize_timing: true,
         }
     }
 
@@ -654,10 +871,10 @@ mod tests {
     }
 
     #[test]
-    fn second_accompaniment_adds_a_third_voice() {
+    fn the_countermelody_adds_a_third_voice() {
         let mut trio = request();
         let with = render_builtin(&trio);
-        trio.second_accompaniment = contra_core::SecondAccompaniment::Off;
+        trio.second_accompaniment = contra_core::Countermelody::Off;
         let without = render_builtin(&trio);
 
         assert_eq!(with.frames(), without.frames());
@@ -668,10 +885,69 @@ mod tests {
             .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
         assert!(
             difference > 1e-3,
-            "the second accompaniment should change the mix, not {difference}"
+            "the countermelody should change the mix, not {difference}"
         );
         assert!(with.samples.iter().all(|sample| sample.is_finite()));
         assert!(with.samples.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn extra_copies_thicken_the_section_without_moving_the_grid() {
+        let single = render_builtin(&request());
+        let mut section = request();
+        section.copies = contra_core::InstrumentCopies {
+            melody: 2,
+            accompaniment: 3,
+            countermelody: 2,
+            percussion: 1,
+        };
+        let thicker = render_builtin(&section);
+
+        assert_eq!(single.frames(), thicker.frames());
+        assert_eq!(single.loop_pass_samples, thicker.loop_pass_samples);
+        assert_eq!(single.loop_start_sample, thicker.loop_start_sample);
+        assert_eq!(single.loop_end_sample, thicker.loop_end_sample);
+        let difference = single
+            .samples
+            .iter()
+            .zip(&thicker.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-3,
+            "copies must change the rendered section, not {difference}"
+        );
+        assert!(thicker.samples.iter().all(|sample| sample.is_finite()));
+        assert!(thicker.samples.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn humanized_renders_are_reproducible_and_keep_the_grid() {
+        let mut grid_exact = request();
+        grid_exact.humanize_timing = false;
+        let plain = render_builtin(&grid_exact);
+        let humanized = render_builtin(&request());
+        let again = render_builtin(&request());
+
+        assert_eq!(plain.frames(), humanized.frames());
+        assert_eq!(plain.loop_pass_samples, humanized.loop_pass_samples);
+        assert_eq!(plain.loop_start_sample, humanized.loop_start_sample);
+        assert_eq!(plain.loop_end_sample, humanized.loop_end_sample);
+        assert_eq!(
+            humanized.samples, again.samples,
+            "the same request must render bit-identically"
+        );
+        assert!(humanized.samples.iter().all(|sample| sample.is_finite()));
+        assert!(humanized.samples.iter().all(|sample| sample.abs() <= 1.0));
+
+        let difference = plain
+            .samples
+            .iter()
+            .zip(&humanized.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-4,
+            "human timing should change the mix, not {difference}"
+        );
     }
 
     #[test]
@@ -716,7 +992,7 @@ mod tests {
 
     #[test]
     fn all_instruments_render() {
-        for melody in [MelodyInstrument::Fiddle, MelodyInstrument::Accordion] {
+        for melody in MelodyInstrument::ALL {
             for accompaniment in [
                 AccompanimentInstrument::Piano,
                 AccompanimentInstrument::Guitar,
@@ -728,6 +1004,45 @@ mod tests {
                 let buffer = render_builtin(&request);
                 assert!(buffer.samples.iter().any(|sample| sample.abs() > 0.001));
             }
+        }
+    }
+
+    /// The winds must not silently fall back to the fiddle's bowed saw or the
+    /// accordion's reeds: each one gets its own procedural voice.
+    #[test]
+    fn winds_have_their_own_fallback_timbre() {
+        assert_eq!(melody_timbre(MelodyInstrument::AltoSax), Timbre::Sax);
+        assert_eq!(melody_timbre(MelodyInstrument::TenorSax), Timbre::Sax);
+        assert_eq!(melody_timbre(MelodyInstrument::Clarinet), Timbre::Clarinet);
+        assert_ne!(melody_timbre(MelodyInstrument::Clarinet), Timbre::Sax);
+
+        let render = |melody| {
+            let mut request = request();
+            request.melody = melody;
+            render_builtin(&request)
+        };
+        let fiddle = render(MelodyInstrument::Fiddle);
+        for melody in [
+            MelodyInstrument::AltoSax,
+            MelodyInstrument::TenorSax,
+            MelodyInstrument::Clarinet,
+        ] {
+            let buffer = render(melody);
+            let peak = buffer
+                .samples
+                .iter()
+                .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+            assert!(peak > 0.02, "{melody:?} rendered at peak {peak}");
+            assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
+            let difference = buffer
+                .samples
+                .iter()
+                .zip(&fiddle.samples)
+                .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+            assert!(
+                difference > 1e-3,
+                "{melody:?} should not sound like the fiddle ({difference})"
+            );
         }
     }
 }
