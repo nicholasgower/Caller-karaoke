@@ -20,7 +20,7 @@ the platform voice.
 <Steps>
   <Step shot="transport-tts-on">
     In the session controls, select **Speak calls**. The same checkbox is
-    available in **Preferences → Text to speech**.
+    available in **Preferences → Calling**.
   </Step>
 </Steps>
 
@@ -33,7 +33,7 @@ if a long call is still being spoken.
 
 <Steps>
   <Step shot="prefs-tts-rate">
-    Open **Preferences → Text to speech**. On desktop, choose **Voice** from
+    Open **Preferences → Calling**. On desktop, choose **Voice** from
     Heart, Bella, Sarah, Michael, Fenrir, or Onyx. The description below the menu
     summarises the selected voice. Web and Android show the selector disabled
     because they use the platform voice.
@@ -50,7 +50,7 @@ platform voice.
 
 <Steps>
   <Step shot="prefs-tts-rate">
-    In **Preferences → Text to speech**, choose **Tone**.
+    In **Preferences → Calling**, choose **Tone**.
   </Step>
 </Steps>
 

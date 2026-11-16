@@ -36,7 +36,7 @@ and projectors.
 
 <Steps>
   <Step shot="prefs-interface">
-    Open **Preferences** with the gear button and find **Interface** to turn
+    Open **Preferences** with the gear button and find **Appearance** to turn
     **Smooth animations** on or off. The **Undo** and **Redo** buttons and the
     keyboard reference sit below the checkbox.
   </Step>
@@ -114,7 +114,7 @@ added to the label pass.
 
 The app does not flash or pulse the call prompt. The progress bar moves
 continuously with playback. If screen transitions are distracting, turn off
-**Smooth animations** in **Preferences → Interface**. The docs site respects
+**Smooth animations** in **Preferences → Appearance**. The docs site respects
 `prefers-reduced-motion` and uses no animated screenshots.
 
 ## Text-to-speech

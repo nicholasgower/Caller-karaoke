@@ -5,24 +5,119 @@ use crate::app::*;
 use contra_core::{ChorusPreset, EchoPreset, ReverbPreset};
 use eframe::egui;
 
-/// Every preferences section, in display order.
+/// The top-level groups of Preferences.
+///
+/// A desktop shows the list in a left frame and the selected group's settings
+/// beside it; a phone shows the list first and drills into one group, so a
+/// long page is not one three-thousand-point scroll.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::app) enum PreferencesCategory {
+    Calling,
+    BandAndSound,
+    Playback,
+    Appearance,
+    DataAndStorage,
+    About,
+}
+
+impl PreferencesCategory {
+    pub(in crate::app) const ALL: [Self; 6] = [
+        Self::Calling,
+        Self::BandAndSound,
+        Self::Playback,
+        Self::Appearance,
+        Self::DataAndStorage,
+        Self::About,
+    ];
+
+    pub(in crate::app) fn label(self) -> &'static str {
+        match self {
+            Self::Calling => "Calling",
+            Self::BandAndSound => "Band & Sound",
+            Self::Playback => "Playback",
+            Self::Appearance => "Appearance",
+            Self::DataAndStorage => "Data & Storage",
+            Self::About => "About",
+        }
+    }
+
+    pub(in crate::app) fn summary(self) -> &'static str {
+        match self {
+            Self::Calling => "Role terms, lead timing, and spoken calls",
+            Self::BandAndSound => "Instruments, copies, soundfont, and effects",
+            Self::Playback => "Loop, count-in, tempo range, and human timing",
+            Self::Appearance => "Theme, motion, keyboard shortcuts, undo",
+            Self::DataAndStorage => "Dance source, web proxy, cache, MIDI export",
+            Self::About => "Version, credits, and project links",
+        }
+    }
+}
+
+/// Which Preferences page is in front.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(in crate::app) enum PreferencesPage {
+    /// The category list. A desktop also shows the selected group's settings
+    /// beside it; a phone shows only the list until a category is chosen.
+    #[default]
+    Categories,
+    Category(PreferencesCategory),
+}
+
+impl PreferencesPage {
+    /// The category whose settings are shown on the desktop.
+    pub(in crate::app) fn selected(self) -> PreferencesCategory {
+        match self {
+            Self::Categories => PreferencesCategory::Calling,
+            Self::Category(category) => category,
+        }
+    }
+
+    /// Where Back and the Android system back button lead inside Preferences.
+    ///
+    /// A phone drills down and can step back to the list; a desktop has the
+    /// list on screen already, so Back leaves Preferences entirely.
+    pub(in crate::app) fn back_target(self, compact: bool) -> Option<Self> {
+        match self {
+            Self::Category(_) if compact => Some(Self::Categories),
+            _ => None,
+        }
+    }
+}
+
+/// One preferences group: where it belongs and what it draws.
+#[derive(Clone, Copy)]
+pub(in crate::app) struct PreferencesSection {
+    pub category: PreferencesCategory,
+    pub draw: fn(&mut ContraApp, &mut egui::Ui, bool),
+}
+
+impl PreferencesSection {
+    const fn new(
+        category: PreferencesCategory,
+        draw: fn(&mut ContraApp, &mut egui::Ui, bool),
+    ) -> Self {
+        Self { category, draw }
+    }
+}
+
+/// Every preferences section, in the order it is drawn inside its category.
 ///
 /// A new setting belongs in the matching section function, so unrelated
-/// branches edit different functions instead of the same 200-line body. About
-/// is last because it is the least frequently needed section.
-pub(in crate::app) const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
-    role_terms,
-    instruments,
-    appearance,
-    calling_lead,
-    speech,
-    playback,
-    soundfont,
-    effects,
-    data_sources,
-    web_proxy,
-    maintenance,
-    about,
+/// branches edit different functions instead of the same 200-line body.
+pub(in crate::app) const SECTIONS: &[PreferencesSection] = &[
+    PreferencesSection::new(PreferencesCategory::Calling, role_terms),
+    PreferencesSection::new(PreferencesCategory::Calling, calling_lead),
+    PreferencesSection::new(PreferencesCategory::Calling, speech),
+    PreferencesSection::new(PreferencesCategory::BandAndSound, instruments),
+    PreferencesSection::new(PreferencesCategory::BandAndSound, soundfont),
+    PreferencesSection::new(PreferencesCategory::BandAndSound, effects),
+    PreferencesSection::new(PreferencesCategory::Playback, playback),
+    PreferencesSection::new(PreferencesCategory::Playback, tempo_range),
+    PreferencesSection::new(PreferencesCategory::Appearance, appearance),
+    PreferencesSection::new(PreferencesCategory::DataAndStorage, data_sources),
+    PreferencesSection::new(PreferencesCategory::DataAndStorage, web_proxy),
+    PreferencesSection::new(PreferencesCategory::DataAndStorage, maintenance),
+    PreferencesSection::new(PreferencesCategory::About, about),
 ];
 
 /// The About section, named so the shell tests can assert that the version,
@@ -45,18 +140,126 @@ impl ContraApp {
         );
         ui.add_space(8.0);
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            for section in SECTIONS {
-                section(self, ui, compact);
-            }
-        });
+        if compact {
+            self.preferences_phone_ui(ui, compact);
+        } else {
+            self.preferences_desktop_ui(ui, compact);
+        }
 
         // One place applies a change to the subsystem it belongs to; see
         // Preferences::changes_since. A value changed and changed back before
         // the queued render runs leaves no pending work.
         self.reconcile_preferences(before);
     }
+
+    /// Desktop Preferences: a category list on the left, settings on the right.
+    fn preferences_desktop_ui(&mut self, ui: &mut egui::Ui, compact: bool) {
+        let selected = self.prefs_page.selected();
+        ui.horizontal_top(|ui| {
+            let nav_height = ui.available_height();
+            ui.allocate_ui_with_layout(
+                egui::vec2(PREFERENCES_NAV_WIDTH, nav_height),
+                egui::Layout::top_down(egui::Align::LEFT),
+                |ui| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("preferences-categories")
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            for category in PreferencesCategory::ALL {
+                                let response =
+                                    ui.selectable_label(category == selected, category.label());
+                                if response.clicked() {
+                                    self.prefs_page = PreferencesPage::Category(category);
+                                }
+                            }
+                        });
+                },
+            );
+            ui.separator();
+            ui.vertical(|ui| {
+                egui::ScrollArea::vertical()
+                    .id_salt("preferences-settings")
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.heading(selected.label());
+                        ui.label(
+                            egui::RichText::new(selected.summary())
+                                .small()
+                                .color(theme::muted(ui)),
+                        );
+                        ui.add_space(4.0);
+                        for section in SECTIONS
+                            .iter()
+                            .filter(|section| section.category == selected)
+                        {
+                            (section.draw)(self, ui, compact);
+                        }
+                    });
+            });
+        });
+    }
+
+    /// Phone Preferences: the category list, then one category with a Back
+    /// control. The Android system back button uses the same target.
+    fn preferences_phone_ui(&mut self, ui: &mut egui::Ui, compact: bool) {
+        match self.prefs_page {
+            PreferencesPage::Categories => {
+                for category in PreferencesCategory::ALL {
+                    let response = ui
+                        .add_sized(
+                            [ui.available_width(), theme::TOUCH_TARGET],
+                            egui::Button::new(
+                                egui::RichText::new(format!(
+                                    "{}\n{}",
+                                    category.label(),
+                                    category.summary()
+                                ))
+                                .size(15.0),
+                            )
+                            .wrap(),
+                        )
+                        .accessible_name(category.label());
+                    if response.clicked() {
+                        self.prefs_page = PreferencesPage::Category(category);
+                    }
+                }
+            }
+            PreferencesPage::Category(category) => {
+                if ui
+                    .add_sized(
+                        [ui.available_width().min(200.0), theme::TOUCH_TARGET],
+                        egui::Button::new("< Categories"),
+                    )
+                    .on_hover_text("Back to the settings categories (Esc)")
+                    .accessible_name("Back to settings categories")
+                    .clicked()
+                {
+                    self.prefs_page = PreferencesPage::Categories;
+                }
+                ui.heading(category.label());
+                ui.label(
+                    egui::RichText::new(category.summary())
+                        .small()
+                        .color(theme::muted(ui)),
+                );
+                egui::ScrollArea::vertical()
+                    .id_salt("preferences-settings")
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        for section in SECTIONS
+                            .iter()
+                            .filter(|section| section.category == category)
+                        {
+                            (section.draw)(self, ui, compact);
+                        }
+                    });
+            }
+        }
+    }
 }
+
+/// Width of the desktop Preferences category column.
+const PREFERENCES_NAV_WIDTH: f32 = 170.0;
 
 fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Role terms");
@@ -862,6 +1065,75 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
+/// Clamp a tempo window to the global limits and keep it at least one BPM wide.
+///
+/// The two controls are edited independently, so the helper is what turns an
+/// out-of-range or inverted pair into a usable slider range without silently
+/// snapping the caller's current tempo.
+fn normalize_tempo_range(min_bpm: &mut f64, max_bpm: &mut f64) {
+    *min_bpm = min_bpm.clamp(contra_core::Tempo::MIN_BPM, contra_core::Tempo::MAX_BPM);
+    *max_bpm = max_bpm.clamp(contra_core::Tempo::MIN_BPM, contra_core::Tempo::MAX_BPM);
+    if *min_bpm > *max_bpm {
+        std::mem::swap(min_bpm, max_bpm);
+    }
+    if *min_bpm >= *max_bpm {
+        if *max_bpm >= contra_core::Tempo::MAX_BPM {
+            *max_bpm = contra_core::Tempo::MAX_BPM;
+            *min_bpm = contra_core::Tempo::MAX_BPM - 1.0;
+        } else {
+            *max_bpm = *min_bpm + 1.0;
+        }
+    }
+}
+
+/// The session tempo slider's default window.
+const DEFAULT_TEMPO_MIN_BPM: f64 = 200.0;
+const DEFAULT_TEMPO_MAX_BPM: f64 = 300.0;
+
+fn tempo_range(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    ui.heading("Tempo range");
+    ui.label(
+        egui::RichText::new(
+            "The session tempo slider starts at this window, 200–300 BPM by default. \
+             The full range is 120–320 BPM, and a tempo outside the window stays selectable.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    let mut min = app.prefs.tempo_min_bpm;
+    let mut max = app.prefs.tempo_max_bpm;
+    inline_field(ui, compact, "Minimum", |ui| {
+        ui.add(
+            egui::DragValue::new(&mut min)
+                .range(contra_core::Tempo::MIN_BPM..=contra_core::Tempo::MAX_BPM)
+                .speed(1.0)
+                .suffix(" BPM"),
+        )
+        .on_hover_text("Lowest tempo on the session slider")
+        .accessible_name("Minimum tempo");
+    });
+    inline_field(ui, compact, "Maximum", |ui| {
+        ui.add(
+            egui::DragValue::new(&mut max)
+                .range(contra_core::Tempo::MIN_BPM..=contra_core::Tempo::MAX_BPM)
+                .speed(1.0)
+                .suffix(" BPM"),
+        )
+        .on_hover_text("Highest tempo on the session slider")
+        .accessible_name("Maximum tempo");
+    });
+    normalize_tempo_range(&mut min, &mut max);
+    if min != app.prefs.tempo_min_bpm || max != app.prefs.tempo_max_bpm {
+        app.prefs.tempo_min_bpm = min;
+        app.prefs.tempo_max_bpm = max;
+    }
+    if ui.button("Reset to 200–300").clicked() {
+        app.prefs.tempo_min_bpm = DEFAULT_TEMPO_MIN_BPM;
+        app.prefs.tempo_max_bpm = DEFAULT_TEMPO_MAX_BPM;
+    }
+    ui.separator();
+}
+
 fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Soundfont");
     let current = app
@@ -954,55 +1226,30 @@ fn effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
-/// Choose the site **Download dance** searches.
+/// Where the **Download dance** source lives, and where the cache is.
 ///
-/// Saved dances keep their own source, so switching this menu never rewrites
-/// the library; it only changes where the next download comes from.
-fn data_sources(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+/// The source menu moved to the Download dance page, next to the search form it
+/// controls. Saved dances keep their own source, so switching it there never
+/// rewrites the library; it only changes where the next download comes from.
+fn data_sources(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Data sources");
     ui.label(
         egui::RichText::new(
-            "The Download dance screen searches the selected source. Saved dances keep the \
-             source they came from, and their Open on… link returns there.",
+            "Choose the search source for new downloads on the Download dance page, next to \
+             the search form. Saved dances keep the source they came from, and their Open on… \
+             link returns there.",
         )
         .small()
         .color(theme::muted(ui)),
     );
-    let current = app.dance_source();
-    // Replace an id from an older or newer build with the provider this build
-    // actually resolved, so the file and the menu agree.
-    if app.prefs.dance_source != current.id() {
-        app.prefs.dance_source = current.id().to_string();
-    }
-    let mut chosen = None;
-    inline_field(ui, compact, "Dance source", |ui| {
-        let combo = egui::ComboBox::from_id_salt("dance_source");
-        responsive_combo(combo, ui, compact)
-            .selected_text(current.display_name())
-            .show_ui(ui, |ui| {
-                for provider in contra_sources::dance_providers() {
-                    if ui
-                        .selectable_label(provider.id() == current.id(), provider.display_name())
-                        .clicked()
-                    {
-                        chosen = Some(provider.id());
-                    }
-                }
-            });
-    });
-    if let Some(id) = chosen {
-        app.set_dance_source(id);
-    }
     let selected = app.dance_source();
-    let mut description = format!("{} — {}", selected.display_name(), selected.base_url());
-    match selected.result_limit() {
-        Some(limit) => description.push_str(&format!(
-            ". Returns up to {limit} matches per search; narrow the search for a large result."
-        )),
-        None => description.push('.'),
+    // An id from an older or newer build is replaced with the provider this
+    // build actually resolved, so the file and the menu agree.
+    if app.prefs.dance_source != selected.id() {
+        app.prefs.dance_source = selected.id().to_string();
     }
     ui.label(
-        egui::RichText::new(description)
+        egui::RichText::new(format!("Current source: {}", selected.display_name()))
             .small()
             .color(theme::muted(ui)),
     );
@@ -1129,5 +1376,75 @@ fn memory_use(app: &mut ContraApp, ui: &mut egui::Ui) {
                 egui::RichText::new(format!("{:.1} MiB", crate::memory::mebibytes(total))).strong(),
             );
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_tempo_range_is_validated_and_inverted_pairs_are_read_the_same() {
+        let (mut min, mut max) = (200.0, 300.0);
+        normalize_tempo_range(&mut min, &mut max);
+        assert_eq!((min, max), (200.0, 300.0));
+
+        // Out of the global limits.
+        (min, max) = (50.0, 900.0);
+        normalize_tempo_range(&mut min, &mut max);
+        assert_eq!((min, max), (120.0, 320.0));
+
+        // Inverted input becomes the same usable window.
+        (min, max) = (300.0, 200.0);
+        normalize_tempo_range(&mut min, &mut max);
+        assert_eq!((min, max), (200.0, 300.0));
+
+        // Equal values keep a one-BPM window instead of a one-point slider.
+        (min, max) = (250.0, 250.0);
+        normalize_tempo_range(&mut min, &mut max);
+        assert_eq!((min, max), (250.0, 251.0));
+        (min, max) = (320.0, 320.0);
+        normalize_tempo_range(&mut min, &mut max);
+        assert_eq!((min, max), (319.0, 320.0));
+    }
+
+    #[test]
+    fn the_reset_action_restores_the_default_tempo_window() {
+        assert_eq!(
+            (DEFAULT_TEMPO_MIN_BPM, DEFAULT_TEMPO_MAX_BPM),
+            (200.0, 300.0)
+        );
+    }
+
+    #[test]
+    fn a_phone_drills_into_a_category_and_back_to_the_list() {
+        let page = PreferencesPage::Categories;
+        assert_eq!(page.back_target(true), None);
+        assert_eq!(page.back_target(false), None);
+
+        let page = PreferencesPage::Category(PreferencesCategory::Playback);
+        assert_eq!(page.back_target(true), Some(PreferencesPage::Categories));
+        // A desktop shows the list beside the settings, so it has nothing to
+        // step back to inside Preferences.
+        assert_eq!(page.back_target(false), None);
+        assert_eq!(page.selected(), PreferencesCategory::Playback);
+        assert_eq!(
+            PreferencesPage::Categories.selected(),
+            PreferencesCategory::Calling
+        );
+    }
+
+    #[test]
+    fn every_category_owns_at_least_one_section_and_about_is_last() {
+        for category in PreferencesCategory::ALL {
+            assert!(
+                SECTIONS.iter().any(|section| section.category == category),
+                "{} has no settings",
+                category.label()
+            );
+        }
+        let last = SECTIONS.last().expect("sections");
+        assert_eq!(last.category, PreferencesCategory::About);
+        assert_eq!(SECTIONS.len(), 13, "every existing section is preserved");
     }
 }

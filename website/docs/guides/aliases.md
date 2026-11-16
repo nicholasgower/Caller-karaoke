@@ -72,7 +72,7 @@ Fractional counts keep their words, for example `once and a half`.
 ## Alternative calls
 
 A move can have more than one natural wording. Swing, for example, can be
-`swing your partner` or `partner swing`. **Preferences → Text to speech** has a
+`swing your partner` or `partner swing`. **Preferences → Calling** has a
 **Shuffle alternative call aliases** checkbox. When it is on, the app chooses one
 usable wording for each figure, including the active template, and shows and
 speaks that choice. The chosen wording also determines the lead time.

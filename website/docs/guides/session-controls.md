@@ -12,7 +12,7 @@ volume settings.
 
 | Control | Range / default | Notes |
 | --- | --- | --- |
-| **Tempo** | 120–320 BPM, default 240 | A dance beat is half a bar. At 240 BPM one beat is 0.5 s and a 64-beat dance is 32 s. |
+| **Tempo** | 200–300 BPM by default; the session range is configurable in **Preferences → Playback**, and the full range is 120–320 | A dance beat is half a bar. At 240 BPM one beat is 0.5 s and a 64-beat dance is 32 s. A tempo outside the configured window stays selectable. |
 | **Play** | — | Renders pending music, then starts or resumes. |
 | **Pause** | — | Stops the music and any speech; the position is retained. |
 | **Restart** | — | Returns to the count-in and clears the call state. |
@@ -25,6 +25,12 @@ volume settings.
 | **Band** | 0–1.5, default 0.8 | Master level of the music mix. |
 
 <Shot id="transport-tempo" />
+
+The tempo slider uses a 200–300 BPM window by default. **Preferences →
+Playback → Tempo range** sets a different minimum and maximum inside the
+120–320 BPM limits, with **Reset to 200–300** to restore the default. A tempo
+outside the window is not snapped: the slider widens just enough to keep the
+current value selectable.
 
 Changing tempo, count-in, an instrument row, a player count, a row's volume or
 direction, the band list, the output mode, a percussion rhythm, an
@@ -64,8 +70,10 @@ the background stops with it.
 
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
-- **Esc** returns from a download screen to its saved-content list, and from a
-  picker or Preferences to the session.
+- **Esc** returns from a download screen to its saved-content list, from the
+  alias editor to **Preferences**, and from a picker or **Preferences** to the
+  session. On a phone it first steps out of a Preferences category to the
+  category list. The Android system back button does the same.
 - **1-3** switch between Session, Select dance, and Select tune; **4** opens
   Preferences from any screen, like the gear button in the header.
 - **← / →** switch to the previous or next tab, wrapping at the ends.
@@ -73,7 +81,7 @@ the background stops with it.
   custom alias.
 - **Ctrl+Z** undoes the last preference or dance/tune change; **Ctrl+Y** or
   **Ctrl+Shift+Z** redoes it. The same actions are buttons in **Preferences →
-  Interface**.
+  Appearance**.
 
 Shortcuts are ignored while a text field has focus, and the arrow keys are left
 to a focused slider or list. On desktop, the keyboard's play/pause media key
@@ -121,11 +129,18 @@ wording appears in small muted text next to the rendered call.
 <Shot id="session-count-in" />
 
 The count-in is four dance beats of accompaniment only. At 240 BPM that is
-2.0 seconds. The first call often starts during the count-in because its lead is
-subtracted from beat 0. That is intentional: the caller needs to say the first
-figure before the dancers move on beat 0. When a call is already active during
-the count-in, the panel shows **CALL NOW** and the call text instead of
-`Listen for the first chord`.
+2.0 seconds. Turn **Count-in** off to start directly on the first figure. The
+setting applies to the next run when the session is idle, and turning it on
+while a dance is playing gives the next run a count-in. If you turn it off
+during a count-in that is already playing, the app lets that count-in finish and
+changes the timeline and the music together at beat 0, so the dance never
+restarts in the middle of the count. The first call often starts during the
+count-in because its lead is subtracted from beat 0. That is intentional: the
+caller needs to say the first figure before the dancers move on beat 0. When a
+call is already active during the count-in, the panel shows **CALL NOW** and
+the call text instead of `Listen for the first chord`. With the count-in off,
+the first call is announced as the run starts, and it is never spoken twice or
+dropped when the setting changes.
 
 <Shot id="session-first-call" />
 
@@ -136,6 +151,12 @@ row with its player count such as `Fiddle ×2` when a row has more than one
 player. The dance card at the bottom of the session shows every figure with its
 phrase label and beat count. The active figure row is highlighted as the music
 moves.
+
+On a wide window the space below the controls is split into two boxes: the dance
+information and beat meter on the left, and the dance card on the right. The
+card scrolls inside its box, so a long card never pushes the prompt or the
+controls off screen. Phone and tablet widths keep the stacked layout, with the
+card below the meter.
 
 <Shot id="transport-summary" />
 
@@ -215,15 +236,28 @@ See [Text to speech](/docs/guides/text-to-speech) for availability and rate.
 The session has two sliders. **Caller** sets the spoken calls and **Band** sets
 the whole music mix. They are independent: a quiet band still lets the caller
 through, and turning the caller down leaves the music alone. Each band row's
-own **Volume** lives in **Preferences → Instruments**, under the shared **Band
+own **Volume** lives in **Preferences → Band & Sound**, under the shared **Band
 volume** master.
 
 <Shot id="transport-volume" />
 
+## Preferences
+
+**Preferences** has six categories: **Calling** (role terms, lead timing, spoken
+calls), **Band & Sound** (the band list, output mode, SoundFont, effects),
+**Playback** (loop, count-in, tempo range, variations, human timing),
+**Appearance** (theme, motion, shortcuts, undo), **Data & Storage**
+(dance-source pointer, web proxy, cache, MIDI export, memory use), and **About**
+(version, credits, project links). A desktop shows the category list in a left
+frame and the selected category's settings beside it. A phone shows the list
+first and opens one category at a time; the back control, **Esc**, and the
+Android system back button return to the category list, and a second Back
+returns to the session.
+
 ## Maintenance and memory
 
-**Preferences → Maintenance** has **Export MIDI…**, **Clear source cache**, and
-a **Memory use** section. The memory table measures the bundled and decoded
+**Preferences → Data & Storage** has **Export MIDI…**, **Clear source cache**,
+and a **Memory use** section. The memory table measures the bundled and decoded
 SoundFont, the rendered music buffer, the prepared rotation buffer, fonts, the
 sheet-music texture, saved libraries, caches, undo snapshots, and the optional
 neural voice, and gives a total. **Refresh memory use** rebuilds the table after
@@ -238,23 +272,25 @@ for the measured numbers and the remaining options.
 
 ## About and project links
 
-The About text is the last section of **Preferences**, below Maintenance. It
-shows the program name, its version, a short description, the author (Nicholas
-Gower), and links to the GitHub repository and the documentation site. The
-project pages may not be live yet.
+The About text is the **About** category of **Preferences**. It shows the
+program name, its version, a short description, the author (Nicholas Gower), and
+links to the GitHub repository and the documentation site. The project pages may
+not be live yet.
 
 <Shot id="about-window" />
 
-Because it is part of the scrolling Preferences page, it never covers the
-session, traps focus, or suspends the transport and tab shortcuts. Press **Esc**
-or select **Session** to leave.
+It is part of the Preferences screen, so it never covers the session, traps
+focus, or suspends the transport and tab shortcuts. Press **Esc** or select
+**Session** to leave.
 
 ## Narrow windows
 
 At phone width the session tab uses its compact layout. The top row keeps three
 short tabs — **Session**, **Dance**, and **Tune** — beside the pinned gear button
-that opens **Preferences**, without the wordmark. The tempo, caller, and band
-sliders span the screen with their value boxes, and **Play**, **Pause**,
+that opens **Preferences**, without the wordmark. On a wide window the gear also
+carries the word **Preferences** when the header has room; the text is dropped
+before anything wraps. The tempo, caller, and band sliders
+span the screen with their value boxes, and **Play**, **Pause**,
 **Restart**, and **End** split one row evenly. Loop, cycle tunes, count-in, and
 spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch
 target.

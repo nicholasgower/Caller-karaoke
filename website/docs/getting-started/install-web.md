@@ -75,7 +75,7 @@ Wrangler, then set its URL in the app.
     require a shared token.
   </CommandStep>
   <Step shot="prefs-proxy">
-    Open **Preferences → Web data proxy**, enter the deployed proxy URL, and
+    Open **Preferences → Data & Storage**, enter the deployed proxy URL, and
     the same token if you configured one.
   </Step>
 </Steps>
@@ -87,7 +87,7 @@ content. Online search will fail.
 
 - Preferences are stored in `localStorage` under `contra-karaoke.prefs`.
 - Source responses are stored under keys beginning `contra-karaoke.cache.`.
-- Clearing **Preferences → Maintenance → Clear source cache** removes cached
+- Clearing **Preferences → Data & Storage → Clear source cache** removes cached
   source responses; it does not clear your preferences.
 - Reloading the page keeps both. Clearing site data removes both.
 

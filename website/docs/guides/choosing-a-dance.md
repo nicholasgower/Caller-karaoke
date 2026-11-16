@@ -92,10 +92,13 @@ fields, and every figure, so the file can be read back by this app or inspected
 by another tool. The desktop build uses a save dialog, the browser downloads the
 file, and Android saves it in the app's export folder and offers **Share**.
 
-The screen searches the dance source chosen in **Preferences → Data sources**:
-ContraDB (the default) or The Caller's Box. Saved dances keep their own source,
-and the preview's **Open on …** link always returns to that source. The form
-shows only the filters the selected source understands.
+The screen searches the dance source chosen at the top of the **Download dance**
+screen: ContraDB (the default) or The Caller's Box. The same menu used to live in
+**Preferences → Data & sources**; that page now only shows the current source and
+a link to it. Saved dances keep their own source, and the preview's **Open on …**
+link always returns to that source. The form shows only the filters the selected
+source understands. Changing the source clears the old results, preview, and
+source-specific filters so a search never mixes two sites.
 
 The search form stays at the top, the **Previous** and **Next** row stays at the
 bottom, and the result list and preview share the height in between. On a phone
@@ -203,7 +206,7 @@ loaded.
 
 Saved dances are stored with your app data: JSON files on desktop and Android,
 `localStorage` in the browser. They survive **Clear source cache** in
-**Preferences → Maintenance**, which only clears the temporary search and
+**Preferences → Data & Storage**, which only clears the temporary search and
 detail responses. See [Cache and offline](/docs/guides/cache-and-offline).
 
 ## Attribution
