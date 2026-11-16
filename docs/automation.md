@@ -230,7 +230,8 @@ more detail.
 - **`attach` connects but tools fail** — check `status`; an app restart drops
   the connection, so call `attach` again.
 - **Screenshots time out** — the window is minimized or occluded; bring it to
-  the foreground.
+  the foreground. The session itself keeps running while the window is hidden, so
+  only the pixels need a visible window.
 - **Port already in use** — another app or an earlier run owns `5719`; choose a
   different port in `EGUI_INSPECTION` and in `attach`'s `port`.
 - **`widget_tree` is hard to search** — use `content_contains`, then narrow with

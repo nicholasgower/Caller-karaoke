@@ -8,7 +8,8 @@ use std::time::Duration;
 use contra_core::{
     AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, COUNT_IN_BEATS, Dance,
     FolderFilter, Library, MelodyInstrument, MoveKind, Percussion, PercussionRhythm,
-    PracticeTimeline, Preferences, RolePreset, SecondAccompaniment, Theme, TimelineConfig, Tune,
+    PracticeTimeline, Preferences, RolePreset, RoleTerms, ScheduledCall, SecondAccompaniment,
+    Theme, TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
@@ -1606,28 +1607,18 @@ impl ContraApp {
         // start before the transport does when the count-in is off or shorter
         // than the lead. Capture it before the speech gates so a run that
         // starts with speech disabled never announces a finished first figure.
-        let starting = if self.first_call_pending {
-            self.timeline.starting_call(beat)
-        } else {
-            None
-        };
+        let starting = self.first_call_pending;
         self.first_call_pending = false;
         if !self.prefs.tts_enabled || !self.speech.available() || !self.audio.is_playing() {
             return;
         }
-        if let Some(call) = starting
-            && self.last_spoken != Some(call.start_beat)
-        {
-            self.speech.speak(&call.call.text);
-            self.last_spoken = Some(call.start_beat);
-            return;
-        }
-        if let Some(call) = self
-            .timeline
-            .scheduled_call_at(beat, self.prefs.loop_enabled)
-            && call.is_calling(beat)
-            && self.last_spoken != Some(call.start_beat)
-        {
+        if let Some(call) = call_to_speak(
+            &self.timeline,
+            beat,
+            self.prefs.loop_enabled,
+            self.last_spoken,
+            starting,
+        ) {
             self.speech.speak(&call.call.text);
             self.last_spoken = Some(call.start_beat);
         }
@@ -1747,6 +1738,49 @@ impl ContraApp {
 }
 
 impl ContraApp {
+    /// One frame of session work: everything playback needs that draws nothing.
+    ///
+    /// `eframe` calls [`eframe::App::logic`] but not [`eframe::App::ui`] while
+    /// the window is minimized, hidden, or fully occluded, and the audio thread
+    /// keeps playing either way. The caller, the tune rotation, the media keys,
+    /// the background render, and the queued playback settings therefore live
+    /// here, so that minimizing the window cannot change what is heard.
+    ///
+    /// `logic` runs immediately before every visible frame, so this is the only
+    /// place the session advances: the UI path must not call it again, or a
+    /// visible frame would speak the same call twice.
+    fn tick(&mut self, ctx: &egui::Context) {
+        self.handle_source_events();
+        self.handle_media_keys();
+
+        // The audio position is the only clock: speech is triggered from the
+        // rendered timeline, never from wall-clock time.
+        let beat = self.current_beat();
+        self.update_speech(beat);
+        self.poll_prepared_tune();
+        self.tick_rotation(beat);
+
+        // Playback settings apply once the control is released, so dragging a
+        // slider does not re-render on every frame. A hidden window has no
+        // pointer input, so anything pending applies there even if the last
+        // drawn frame still reported a held button.
+        let dragging = ctx.input(|input| {
+            input.pointer.primary_down() && input.viewport().visible() != Some(false)
+        });
+        if self.pending_audio && self.started && !dragging {
+            self.apply_audio_settings();
+        }
+
+        self.sync_media_session();
+
+        // Keep the event loop waking while there is something to advance. A
+        // hidden window is throttled by eframe to one pass per 100 ms, but each
+        // pass still reads the audio clock, so the caller stays on the beat.
+        if self.audio.is_playing() || self.render_loading || self.speech.is_busy() {
+            ctx.request_repaint_after(PLAYBACK_TICK);
+        }
+    }
+
     fn ui_contents(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         if !self.headless {
@@ -1758,17 +1792,12 @@ impl ContraApp {
             self.tune_sheet = None;
         }
         theme::apply(&ctx, self.prefs.theme, self.prefs.animations_enabled);
-        self.handle_source_events();
-        self.handle_media_keys();
 
         if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
         }
 
         let beat = self.current_beat();
-        self.update_speech(beat);
-        self.poll_prepared_tune();
-        self.tick_rotation(beat);
 
         let compact = compact_layout(ui.available_width());
         egui::Panel::top("tabs")
@@ -1860,12 +1889,8 @@ impl ContraApp {
             }
         });
 
-        // Playback settings are applied once the mouse button is released, so
-        // dragging a slider does not re-render on every frame. The transport
-        // keeps its position and play state across the re-render.
-        if self.pending_audio && self.started && !ctx.input(|input| input.pointer.primary_down()) {
-            self.apply_audio_settings();
-        }
+        // Playback settings are applied by `tick`, which runs before this ui on
+        // every visible frame and also while the window is hidden.
 
         // A tab click can leave Preferences while a custom role field still
         // has focus; commit the deferred rebuild here so the session never
@@ -1875,11 +1900,6 @@ impl ContraApp {
         }
 
         self.about_ui(&ctx);
-        self.sync_media_session();
-
-        if self.audio.is_playing() || self.render_loading || self.speech.is_busy() {
-            ctx.request_repaint_after(Duration::from_millis(16));
-        }
     }
 
     fn shutdown(&mut self, _gl: Option<&eframe::glow::Context>) {
@@ -1936,6 +1956,15 @@ impl eframe::App for ContraApp {
         }
     }
 
+    /// Session work that must also run while the window is minimized or hidden.
+    ///
+    /// eframe skips [`Self::ui`] for a hidden window, so the transport, the
+    /// caller, and the tune rotation are advanced here. Nothing is drawn, and
+    /// `ui` does not repeat any of it.
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.tick(ctx);
+    }
+
     fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
         self.shutdown(gl);
     }
@@ -1970,6 +1999,12 @@ fn android_safe_area(
 
 /// Duration of the fade/slide when the active screen changes.
 const SCREEN_ANIM_SECONDS: f32 = 0.22;
+/// How often the session asks for another frame while the transport runs.
+///
+/// eframe clamps a hidden window to one pass per 100 ms, so a minimized app
+/// advances at that rate; each pass reads the audio clock, so speech stays in
+/// time with the music rather than with the frame rate.
+const PLAYBACK_TICK: Duration = Duration::from_millis(16);
 /// Width below which the UI switches to its phone layout (ROADMAP §8.2).
 const COMPACT_WIDTH: f32 = 640.0;
 /// Height below which the session tab scrolls as one page so the dance card
@@ -2181,6 +2216,30 @@ fn next_rotation_index(position: Option<usize>, len: usize) -> Option<usize> {
 /// like a wrap.
 fn pass_wrapped(previous: f64, beat: f64) -> bool {
     beat + 0.25 < previous && previous > 0.5
+}
+
+/// The call the caller must speak at `beat`, or `None` while it must stay quiet.
+///
+/// The decision is a pure function of the audio position and of what has already
+/// been spoken, so it behaves the same whether the frame that runs it is drawn
+/// or not: a hidden window and a visible one speak the same calls at the same
+/// beats. `first_call_pending` is set when a run starts at the top of the dance,
+/// where the first call's lead may already have begun.
+fn call_to_speak(
+    timeline: &PracticeTimeline,
+    beat: f64,
+    looping: bool,
+    last_spoken: Option<f64>,
+    first_call_pending: bool,
+) -> Option<ScheduledCall> {
+    if first_call_pending
+        && let Some(call) = timeline.starting_call(beat)
+        && last_spoken != Some(call.start_beat)
+    {
+        return Some(call);
+    }
+    let call = timeline.scheduled_call_at(beat, looping)?;
+    (call.is_calling(beat) && last_spoken != Some(call.start_beat)).then_some(call)
 }
 
 fn build_timeline(
@@ -2605,6 +2664,216 @@ mod tests {
         // A deliberate restart resets the stored beat, so it cannot look like
         // a wrap either.
         assert!(!pass_wrapped(0.0, 0.0));
+    }
+
+    /// The default timeline, with the bundle's dance and preferences.
+    fn default_timeline() -> PracticeTimeline {
+        build_timeline(
+            &crate::defaults::default_dance(),
+            &Preferences::default(),
+            0,
+        )
+        .expect("the bundled dance builds a timeline")
+    }
+
+    /// Drive the caller from `from` for `beats` beats the way a hidden window
+    /// does: a steady audio position, advancing `step` beats per pass, and no
+    /// UI at all. Returns the `(call index, wrapped)` triggers in order.
+    ///
+    /// This mirrors `update_speech`: the audio position is wrapped at the loop
+    /// boundary, the trigger is remembered, and the wrap forgets it so the next
+    /// pass can announce its first call.
+    fn drive(timeline: &PracticeTimeline, from: f64, beats: f64, step: f64) -> Vec<(usize, bool)> {
+        let loop_beats = timeline.music_loop_beats;
+        let mut triggers = Vec::new();
+        let mut last_spoken = None;
+        let mut last_beat: Option<f64> = None;
+        let mut beat = from;
+        while beat < from + beats {
+            let loop_beat = if beat < 0.0 { beat } else { beat % loop_beats };
+            if last_beat.is_some_and(|last| pass_wrapped(last, loop_beat)) {
+                last_spoken = None;
+            }
+            last_beat = Some(loop_beat);
+            if let Some(call) = call_to_speak(timeline, loop_beat, true, last_spoken, false) {
+                last_spoken = Some(call.start_beat);
+                triggers.push((call.index, call.wrapped));
+            }
+            beat += step;
+        }
+        triggers
+    }
+
+    /// Assert that each call index appears exactly once in `triggers`.
+    fn assert_each_call_once(triggers: &[(usize, bool)], calls: usize) {
+        let mut indices: Vec<usize> = triggers.iter().map(|(index, _)| *index).collect();
+        indices.sort_unstable();
+        assert_eq!(indices, (0..calls).collect::<Vec<usize>>(), "{triggers:?}");
+    }
+
+    #[test]
+    fn a_steady_beat_speaks_every_call_once_per_pass() {
+        let timeline = default_timeline();
+        let calls = timeline.calls.len();
+
+        // A run starts at the beginning of the count-in, where the first
+        // call's lead opens. Every call is spoken once, in order, and the
+        // first call is announced once more for the coming loop.
+        let first = drive(
+            &timeline,
+            -timeline.count_in_beats,
+            timeline.music_loop_beats + timeline.count_in_beats,
+            0.05,
+        );
+        assert_eq!(first.len(), calls + 1, "{first:?}");
+        assert_eq!(first.first().copied(), Some((0, false)), "{first:?}");
+        assert_eq!(first.last().copied(), Some((0, true)), "{first:?}");
+        let run: Vec<usize> = first[..first.len() - 1]
+            .iter()
+            .map(|(index, _)| *index)
+            .collect();
+        assert!(run.windows(2).all(|pair| pair[0] < pair[1]), "{first:?}");
+
+        // Every pass after that announces each call exactly once: the wrapped
+        // first call at the end of the pass is the one the next pass needs, so
+        // the top of the pass does not repeat it.
+        let steady = drive(&timeline, 0.0, timeline.music_loop_beats, 0.05);
+        assert_each_call_once(&steady, calls);
+        assert_eq!(steady.len(), calls, "{steady:?}");
+        assert_eq!(steady.last().copied(), Some((0, true)), "{steady:?}");
+    }
+
+    #[test]
+    fn a_slow_hidden_frame_rate_still_speaks_every_call() {
+        let timeline = default_timeline();
+        // eframe throttles a hidden window to one pass per 100 ms, which is
+        // 0.2 beats at 240 BPM. Even a coarser cadence must not drop a call:
+        // the trigger is the audio position, not the frame rate.
+        let steady = drive(&timeline, 0.0, timeline.music_loop_beats, 0.2);
+        assert_each_call_once(&steady, timeline.calls.len());
+        assert_eq!(steady.len(), timeline.calls.len(), "{steady:?}");
+    }
+
+    #[test]
+    fn a_call_that_was_already_spoken_is_not_repeated() {
+        let timeline = default_timeline();
+        let first = &timeline.calls[0];
+        let inside = first.call_start_beat + 0.5;
+        let call = timeline
+            .starting_call(inside)
+            .expect("the first call opens during the count-in");
+
+        // The first frame of a run announces the first call ...
+        assert_eq!(
+            call_to_speak(&timeline, inside, true, None, true).map(|call| call.start_beat),
+            Some(call.start_beat)
+        );
+        // ... and every later frame of the same call stays quiet.
+        assert!(
+            call_to_speak(&timeline, inside, true, Some(call.start_beat), false).is_none(),
+            "a resumed or re-rendered frame must not repeat the call"
+        );
+    }
+
+    #[test]
+    fn the_caller_stays_quiet_outside_a_call_lead() {
+        let timeline = default_timeline();
+        let first = &timeline.calls[0];
+        // Before the first lead opens there is nothing to say yet.
+        assert!(
+            call_to_speak(&timeline, first.call_start_beat - 1.0, false, None, false).is_none()
+        );
+
+        // Past the last figure the dance is over.
+        let last = timeline.calls.last().expect("the dance has calls");
+        assert!(call_to_speak(&timeline, last.end_beat, true, None, false).is_none());
+    }
+
+    /// A headless app whose transport is a silent 64-beat clock.
+    ///
+    /// The audio position is moved with `seek_beat`, so `tick` can be driven
+    /// exactly as a hidden window drives it: no UI, no device, no tune render.
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn hidden_app() -> (ContraApp, egui::Context) {
+        let ctx = egui::Context::default();
+        let cc = eframe::CreationContext::_new_kittest(ctx.clone());
+        let mut app = ContraApp::new_headless(&cc);
+        // `new_headless` installs a silent loop, so nothing needs rendering.
+        app.needs_render = false;
+        app.prefs.tts_enabled = true;
+        app.speech.set_enabled(true);
+        app.started = true;
+        app.audio.play();
+        (app, ctx)
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn a_hidden_window_keeps_calling_and_pause_does_not_repeat_a_call() {
+        let (mut app, ctx) = hidden_app();
+        let stop_at = 30.0;
+
+        // Run the count-in and the first calls through `tick` only: this is
+        // all a minimized window runs, and every call must still be announced.
+        let mut beat = -app.timeline.count_in_beats;
+        while beat < stop_at {
+            app.audio.seek_beat(beat);
+            app.tick(&ctx);
+            beat += 0.05;
+        }
+        let expected = app
+            .timeline
+            .calls
+            .iter()
+            .rfind(|call| call.call_start_beat < stop_at)
+            .map(|call| call.call_start_beat)
+            .expect("a call opens before the pause point");
+        assert_eq!(
+            app.last_spoken,
+            Some(expected),
+            "the newest call was announced without a drawn frame"
+        );
+
+        // Pause stops the transport and says nothing new.
+        app.pause();
+        assert!(!app.audio.is_playing());
+        app.tick(&ctx);
+        assert_eq!(
+            app.last_spoken,
+            Some(expected),
+            "pause must not announce a call"
+        );
+
+        // Resuming at the same position does not repeat the call that was
+        // already spoken there ...
+        app.audio.play();
+        app.started = true;
+        app.tick(&ctx);
+        assert_eq!(
+            app.last_spoken,
+            Some(expected),
+            "resume must not re-announce a call already spoken"
+        );
+
+        // ... but the next call still comes at its own beat.
+        let next = app
+            .timeline
+            .calls
+            .iter()
+            .find(|call| call.call_start_beat > stop_at)
+            .map(|call| call.call_start_beat)
+            .expect("another call follows");
+        app.audio.seek_beat(next + 0.5);
+        app.tick(&ctx);
+        assert_eq!(app.last_spoken, Some(next), "the caller carries on");
     }
 }
 

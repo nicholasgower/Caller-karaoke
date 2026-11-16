@@ -39,6 +39,17 @@ Press **Play** to render and start. The app renders synchronously on that press;
 there is no separate “preparing music” screen in 0.1.0. Role, alias, and lead
 changes rebuild the call timeline without re-rendering the music.
 
+## Background playback
+
+Minimizing the window, covering it, or switching to another app leaves the audio
+alone: the music keeps playing and the spoken calls keep coming on the same
+beats. Only the drawing stops.
+
+The transport follows the audio position, not the frame rate, so the caller
+stays in time whether or not a frame is painted. **Pause** is the only thing
+that stops it. On desktop, the keyboard's play/pause media key still works while
+the window is in the background.
+
 ## Keyboard
 
 - **Space** plays or pauses.

@@ -43,6 +43,10 @@ development release. These are the limitations to know before relying on it.
   clearing the cache and downloading an item again are the maintenance actions.
 - The first **Play** renders the music synchronously. There is no progress bar
   or cancel control while it runs.
+- A **minimized window** keeps playing and calling, but the desktop throttles a
+  hidden window's frames to about one every 100 ms, so a call can begin up to a
+  tenth of a second after its beat. The lead's safety padding covers that
+  delay; no call is skipped and the order never changes.
 - **Cycle tunes** renders the next tune during the current tune's last time
   through on desktop and Android. The web build has no render worker and
   prepares the next tune at the change, which can pause briefly.

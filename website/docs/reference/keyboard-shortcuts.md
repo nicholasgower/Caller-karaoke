@@ -52,9 +52,10 @@ the tune as the artist.
   resumes from the same place.
 - **Stop** pauses. **Next** and **Previous** are ignored.
 
-Media keys are not app shortcuts: they work without clicking the window and
-while a text field has focus. The browser and Android builds do not handle media
-keys in 0.1.0. If another app is playing media, the operating system may send
-the key there instead; pause that app or use **Space** in Contra Karaoke.
+Media keys are not app shortcuts: they work without clicking the window, while a
+text field has focus, and while the window is minimized. The browser and Android
+builds do not handle media keys in 0.1.0. If another app is playing media, the
+operating system may send the key there instead; pause that app or use **Space**
+in Contra Karaoke.
 
 Next: [How calls are timed](/docs/reference/how-calls-are-timed).
