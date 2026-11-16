@@ -1,5 +1,6 @@
 use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
 use crate::app::*;
+use contra_core::{ChorusPreset, EchoPreset, ReverbPreset};
 use eframe::egui;
 
 /// Every preferences section, in display order.
@@ -14,6 +15,7 @@ const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
     speech,
     playback,
     soundfont,
+    midi_effects,
     web_proxy,
     maintenance,
 ];
@@ -532,6 +534,61 @@ fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
         if app.prefs.soundfont.is_some() && ui.button("Use bundled").clicked() {
             app.remove_soundfont();
         }
+    });
+    ui.separator();
+}
+
+fn midi_effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    ui.heading("MIDI effects");
+    ui.label(
+        egui::RichText::new(
+            "Applied when you export the tune as a MIDI file; playback in this app is unchanged. \
+             The file carries General MIDI effect sends, so the sound also depends on the player.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    inline_field(ui, compact, "Reverb", |ui| {
+        let combo = egui::ComboBox::from_id_salt("midi_reverb");
+        responsive_combo(combo, ui, compact)
+            .selected_text(app.prefs.midi_effects.reverb.label())
+            .show_ui(ui, |ui| {
+                for option in ReverbPreset::ALL {
+                    ui.selectable_value(&mut app.prefs.midi_effects.reverb, option, option.label());
+                }
+            });
+    });
+    ui.label(
+        egui::RichText::new(app.prefs.midi_effects.reverb.detail())
+            .small()
+            .color(theme::muted(ui)),
+    );
+    inline_field(ui, compact, "Echo", |ui| {
+        let combo = egui::ComboBox::from_id_salt("midi_echo");
+        responsive_combo(combo, ui, compact)
+            .selected_text(app.prefs.midi_effects.echo.label())
+            .show_ui(ui, |ui| {
+                for option in EchoPreset::ALL {
+                    ui.selectable_value(&mut app.prefs.midi_effects.echo, option, option.label());
+                }
+            });
+    });
+    ui.label(
+        egui::RichText::new(
+            "Uses the General MIDI delay send. Players that do not implement it ignore the echo.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    inline_field(ui, compact, "Chorus", |ui| {
+        let combo = egui::ComboBox::from_id_salt("midi_chorus");
+        responsive_combo(combo, ui, compact)
+            .selected_text(app.prefs.midi_effects.chorus.label())
+            .show_ui(ui, |ui| {
+                for option in ChorusPreset::ALL {
+                    ui.selectable_value(&mut app.prefs.midi_effects.chorus, option, option.label());
+                }
+            });
     });
     ui.separator();
 }

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::alias::AliasTable;
 use crate::dance::SourceRef;
+use crate::midi_effects::MidiEffects;
 use crate::roles::RoleTerms;
 use crate::time::Tempo;
 use crate::timing::LeadSettings;
@@ -479,6 +480,11 @@ pub struct Preferences {
     pub accompaniment_volume: f32,
     /// Level of the optional percussion layer, when it is enabled.
     pub percussion_volume: f32,
+    /// Reverb, chorus, and echo sends written into exported MIDI files.
+    ///
+    /// These do not change in-app playback; the soundfont already adds its own
+    /// effects while rendering the loop.
+    pub midi_effects: MidiEffects,
     pub master_volume: f32,
     pub soundfont: Option<SoundFontSetting>,
     pub web_proxy_url: Option<String>,
@@ -502,7 +508,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 9;
+pub const CURRENT_SCHEMA_VERSION: u32 = 10;
 
 /// One upgrade step for a preference file written by an older build.
 pub struct Migration {
@@ -572,6 +578,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "tts-voice-nicole-v9",
         version: 9,
         apply: migrate_v8_tts_voice_nicole,
+    },
+    Migration {
+        tag: "midi-effects-v10",
+        version: 10,
+        apply: migrate_v9_midi_effects,
     },
 ];
 
@@ -654,6 +665,12 @@ fn migrate_v8_percussion_rhythm(_prefs: &mut Preferences) {
     // style's existing pattern.
 }
 
+fn migrate_v9_midi_effects(_prefs: &mut Preferences) {
+    // v10 adds the exported-MIDI effect sends. `serde` supplies the default
+    // medium-room reverb with no chorus or echo, so existing files get the new
+    // room sound without changing anything else.
+}
+
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
 fn applied_tags() -> BTreeSet<String> {
     MIGRATIONS
@@ -713,6 +730,7 @@ impl Default for Preferences {
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,
+            midi_effects: MidiEffects::default(),
             master_volume: 0.8,
             soundfont: None,
             web_proxy_url: None,
@@ -855,6 +873,11 @@ mod tests {
         );
         assert_eq!(prefs.percussion, Percussion::Off);
         assert!(!prefs.percussion.is_enabled());
+        assert_eq!(prefs.midi_effects, MidiEffects::default());
+        assert_eq!(
+            prefs.midi_effects.reverb,
+            crate::midi_effects::ReverbPreset::MediumRoom
+        );
         assert_eq!(prefs.theme, Theme::Dark);
         assert!(prefs.animations_enabled);
         assert_eq!(prefs.tempo_bpm, 240.0);
@@ -913,6 +936,8 @@ mod tests {
             .aliases
             .add_alternative(crate::alias::MoveKind::Swing, "swing it around");
         prefs.shuffle_alternatives = true;
+        prefs.midi_effects.reverb = crate::midi_effects::ReverbPreset::Hall;
+        prefs.midi_effects.echo = crate::midi_effects::EchoPreset::Strong;
         let json = prefs.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
         assert_eq!(prefs, restored);
@@ -1009,6 +1034,20 @@ mod tests {
 
         assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(migrated.tts_tone, CallTone::Commanding);
+        assert_eq!(migrated.tempo_bpm, 220.0);
+    }
+
+    #[test]
+    fn v9_preferences_default_to_a_medium_room_midi_reverb() {
+        let json = r#"{"schema_version":9,"tempo_bpm":220.0}"#;
+        let migrated = Preferences::from_json(json).expect("deserialize");
+
+        assert_eq!(migrated.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(migrated.midi_effects, MidiEffects::default());
+        assert_eq!(
+            migrated.midi_effects.reverb,
+            crate::midi_effects::ReverbPreset::MediumRoom
+        );
         assert_eq!(migrated.tempo_bpm, 220.0);
     }
 

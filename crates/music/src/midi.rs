@@ -10,8 +10,8 @@ use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, Percussion, PercussionRhythm,
-    SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, MelodyInstrument, MidiEffects, Percussion,
+    PercussionRhythm, SecondAccompaniment,
 };
 
 use crate::arrange::Arrangement;
@@ -31,6 +31,7 @@ pub fn export_midi(
     percussion: Percussion,
     percussion_rhythm: PercussionRhythm,
     bpm: f64,
+    effects: MidiEffects,
 ) -> Vec<u8> {
     export_midi_with_passes(
         arrangement,
@@ -42,6 +43,7 @@ pub fn export_midi(
         percussion_rhythm,
         bpm,
         crate::VARIATION_PASSES,
+        effects,
     )
 }
 
@@ -50,6 +52,9 @@ pub fn export_midi(
 /// `variation_passes` is the number of 64-beat passes to write back to back,
 /// matching [`crate::RenderRequest::variation_passes`]. One pass is the plain
 /// loop; later passes carry the melody and accompaniment variations.
+///
+/// `effects` becomes the General MIDI effect sends at the start of every
+/// channel track; see [`apply_effects`].
 #[allow(clippy::too_many_arguments)]
 pub fn export_midi_with_passes(
     arrangement: &Arrangement,
@@ -61,6 +66,7 @@ pub fn export_midi_with_passes(
     percussion_rhythm: PercussionRhythm,
     bpm: f64,
     variation_passes: u32,
+    effects: MidiEffects,
 ) -> Vec<u8> {
     let passes = variation_passes.max(1);
     let mut melody_notes = Vec::new();
@@ -151,18 +157,123 @@ pub fn export_midi_with_passes(
         ));
     }
 
-    let smf = Smf {
+    let mut smf = Smf {
         header: Header::new(
             Format::Parallel,
             Timing::Metrical(u15::new(TICKS_PER_QUARTER)),
         ),
         tracks,
     };
+    apply_effects(&mut smf, effects);
     let mut bytes = Vec::new();
     smf.write_std(&mut bytes)
         .expect("writing an in-memory MIDI file cannot fail");
     bytes
 }
+
+/// Add the selected General MIDI effect sends to an already built MIDI file.
+///
+/// Every channel track receives controller 91 (reverb send), 93 (chorus send),
+/// and 94 (GM2 delay/echo send) at tick zero. The first track also receives a
+/// GM2 reverb-type SysEx message when reverb is on, so a GM2 player chooses the
+/// requested room; General MIDI level 1 players use the controller send alone.
+///
+/// This is deliberately a separate pass so a caller can post-process a file it
+/// already has, not only the export built by this module.
+pub fn apply_effects(smf: &mut Smf<'_>, effects: MidiEffects) {
+    // Replace any sends already in the file so a second pass changes the
+    // effect instead of stacking a second, older controller behind the new one.
+    for track in &mut smf.tracks {
+        track.retain(|event| !is_effect_send(event) && !is_gm2_reverb_sysex(event));
+    }
+
+    if let Some(index) = effects.reverb.gm2_type_index()
+        && let Some(track) = smf.tracks.first_mut()
+    {
+        let position = track_name_position(track);
+        track.insert(
+            position,
+            TrackEvent {
+                delta: u28::new(0),
+                kind: TrackEventKind::SysEx(&GM2_REVERB_TYPES[index]),
+            },
+        );
+    }
+
+    let sends = effects.sends();
+    for track in &mut smf.tracks {
+        let Some(channel) = track.iter().find_map(|event| match event.kind {
+            TrackEventKind::Midi { channel, .. } => Some(channel),
+            _ => None,
+        }) else {
+            continue;
+        };
+        let position = track_name_position(track);
+        let events: Vec<TrackEvent<'static>> = sends
+            .iter()
+            .map(|(controller, value)| TrackEvent {
+                delta: u28::new(0),
+                kind: TrackEventKind::Midi {
+                    channel,
+                    message: MidiMessage::Controller {
+                        controller: u7::new(*controller),
+                        value: u7::new(*value),
+                    },
+                },
+            })
+            .collect();
+        track.splice(position..position, events);
+    }
+}
+
+/// Keep a leading track name first; put the new events after it.
+fn track_name_position(track: &[TrackEvent<'_>]) -> usize {
+    usize::from(
+        track.first().is_some_and(|event| {
+            matches!(event.kind, TrackEventKind::Meta(MetaMessage::TrackName(_)))
+        }),
+    )
+}
+
+/// The three General MIDI effect send controllers this module owns.
+const EFFECT_CONTROLLERS: [u8; 3] = [91, 93, 94];
+
+fn is_effect_send(event: &TrackEvent<'_>) -> bool {
+    matches!(
+        event.kind,
+        TrackEventKind::Midi {
+            message: MidiMessage::Controller { controller, .. },
+            ..
+        } if EFFECT_CONTROLLERS.contains(&controller.as_int())
+    )
+}
+
+fn is_gm2_reverb_sysex(event: &TrackEvent<'_>) -> bool {
+    matches!(
+        event.kind,
+        TrackEventKind::SysEx(data)
+            if data.len() == 12
+                && data.starts_with(&[0x7E, 0x7F, 0x09, 0x04, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00])
+    )
+}
+
+/// GM2 global-parameter control for the reverb type.
+///
+/// `F0 7E 7F 09 04 01 01 01 01 01 00 <type> F7`, without the leading `F0`
+/// because the SMF stores the SysEx payload only.
+const fn gm2_reverb_type(type_value: u8) -> [u8; 12] {
+    [
+        0x7E, 0x7F, 0x09, 0x04, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, type_value, 0xF7,
+    ]
+}
+
+/// Small room, medium room, large room, and large hall, in GM2 type order.
+const GM2_REVERB_TYPES: [[u8; 12]; 4] = [
+    gm2_reverb_type(0x00),
+    gm2_reverb_type(0x01),
+    gm2_reverb_type(0x02),
+    gm2_reverb_type(0x04),
+];
 
 fn shifted(mut note: NoteEvent, offset_beats: f64) -> NoteEvent {
     note.start_beat += offset_beats;
@@ -314,6 +425,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
+            MidiEffects::default(),
         );
         assert!(bytes.starts_with(b"MThd"));
         let smf = Smf::parse(&bytes).expect("parse midi");
@@ -369,6 +481,7 @@ mod tests {
             PercussionRhythm::Auto,
             240.0,
             1,
+            MidiEffects::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
         let melody = note_velocities(&smf, 0);
@@ -400,6 +513,7 @@ mod tests {
             PercussionRhythm::Auto,
             240.0,
             1,
+            MidiEffects::default(),
         );
         let varied = export_midi_with_passes(
             &arrangement,
@@ -411,6 +525,7 @@ mod tests {
             PercussionRhythm::Auto,
             240.0,
             4,
+            MidiEffects::default(),
         );
         let plain = Smf::parse(&plain).expect("parse midi");
         let varied = Smf::parse(&varied).expect("parse midi");
@@ -437,6 +552,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
+            MidiEffects::default(),
         );
         let sustained = export_midi(
             &arrangement,
@@ -447,6 +563,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
+            MidiEffects::default(),
         );
         assert_ne!(
             block, sustained,
@@ -467,6 +584,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
+            MidiEffects::default(),
         );
         let second = export_midi(
             &arrangement,
@@ -477,6 +595,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
+            MidiEffects::default(),
         );
         assert_eq!(first, second);
     }
@@ -494,6 +613,7 @@ mod tests {
             Percussion::Off,
             PercussionRhythm::Auto,
             240.0,
+            MidiEffects::default(),
         );
         let smf = Smf::parse(&trio).expect("parse midi");
         assert_eq!(smf.tracks.len(), 3);
@@ -525,6 +645,7 @@ mod tests {
             Percussion::Drumset,
             PercussionRhythm::Auto,
             240.0,
+            MidiEffects::default(),
         );
         let smf = Smf::parse(&bytes).expect("parse midi");
         assert_eq!(smf.tracks.len(), 4);
@@ -541,5 +662,129 @@ mod tests {
             })
             .count();
         assert!(drum_notes > 0, "the percussion track must sound");
+    }
+
+    fn controller_values(smf: &Smf, controller: u8) -> Vec<u8> {
+        smf.tracks
+            .iter()
+            .flat_map(|track| track.iter())
+            .filter_map(|event| match event.kind {
+                TrackEventKind::Midi {
+                    message:
+                        MidiMessage::Controller {
+                            controller: found,
+                            value,
+                        },
+                    ..
+                } if found.as_int() == controller => Some(value.as_int()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn has_gm2_reverb_type(smf: &Smf, type_value: u8) -> bool {
+        smf.tracks
+            .iter()
+            .flat_map(|track| track.iter())
+            .any(|event| match event.kind {
+                TrackEventKind::SysEx(data) => {
+                    data.len() == 12
+                        && data.starts_with(&[
+                            0x7E, 0x7F, 0x09, 0x04, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00,
+                        ])
+                        && data[10] == type_value
+                        && data[11] == 0xF7
+                }
+                _ => false,
+            })
+    }
+
+    #[test]
+    fn default_export_requests_a_medium_room_reverb() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let bytes = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            MidiEffects::default(),
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+
+        assert_eq!(controller_values(&smf, 91), vec![64, 64]);
+        assert_eq!(controller_values(&smf, 93), vec![0, 0]);
+        assert_eq!(controller_values(&smf, 94), vec![0, 0]);
+        assert!(has_gm2_reverb_type(&smf, 0x01));
+    }
+
+    #[test]
+    fn effect_sends_follow_the_selected_presets() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let effects = MidiEffects {
+            reverb: contra_core::ReverbPreset::Off,
+            chorus: contra_core::ChorusPreset::Rich,
+            echo: contra_core::EchoPreset::Strong,
+        };
+        let bytes = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            effects,
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+
+        assert_eq!(controller_values(&smf, 91), vec![0, 0]);
+        assert_eq!(controller_values(&smf, 93), vec![88, 88]);
+        assert_eq!(controller_values(&smf, 94), vec![96, 96]);
+        assert!(!has_gm2_reverb_type(&smf, 0x01));
+    }
+
+    #[test]
+    fn effects_can_be_applied_to_an_existing_midi_file() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let bytes = export_midi(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            MidiEffects::default(),
+        );
+        let mut smf = Smf::parse(&bytes).expect("parse midi");
+        apply_effects(
+            &mut smf,
+            MidiEffects {
+                reverb: contra_core::ReverbPreset::Hall,
+                chorus: contra_core::ChorusPreset::Subtle,
+                echo: contra_core::EchoPreset::Off,
+            },
+        );
+        let mut changed = Vec::new();
+        smf.write_std(&mut changed).expect("write midi");
+        let smf = Smf::parse(&changed).expect("parse midi");
+
+        assert_eq!(controller_values(&smf, 91), vec![112, 112]);
+        assert_eq!(controller_values(&smf, 93), vec![40, 40]);
+        assert_eq!(controller_values(&smf, 94), vec![0, 0]);
+        assert!(has_gm2_reverb_type(&smf, 0x04));
+        assert!(
+            !has_gm2_reverb_type(&smf, 0x01),
+            "applying a second pass must replace the previous room"
+        );
     }
 }

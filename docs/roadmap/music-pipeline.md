@@ -188,4 +188,9 @@ Soundfont file selection:
 - Include tempo, meter, key, and program changes.
 - Write the same variation passes as playback: one plain 64-beat pass when
   variations are off, four varied passes when they are on.
-- The export must match what the synth plays.
+- Add General MIDI effect sends (reverb 91, chorus 93, delay/echo 94) to every
+  channel track. The default is a medium-room reverb with no chorus or echo.
+  A GM2 reverb-type message selects the requested room, and the sends are
+  replaced rather than stacked when an existing file is post-processed.
+- The notes must match what the synth plays; the effect sends are an
+  export-only post-process and do not change in-app playback.
