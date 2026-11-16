@@ -44,10 +44,10 @@ impl PreferencesCategory {
     pub(in crate::app) fn summary(self) -> &'static str {
         match self {
             Self::Calling => "Role terms, lead timing, and spoken calls",
-            Self::BandAndSound => "Instruments, copies, soundfont, and effects",
-            Self::Playback => "Loop, count-in, tempo range, and human timing",
+            Self::BandAndSound => "Band list, soundfont, effects, and mix",
+            Self::Playback => "Loop, count-in, tempo range, and variations",
             Self::Appearance => "Theme, motion, keyboard shortcuts, undo",
-            Self::DataAndStorage => "Dance source, web proxy, cache, MIDI export",
+            Self::DataAndStorage => "Web proxy, cache, MIDI export, and memory",
             Self::About => "Version, credits, and project links",
         }
     }
@@ -205,21 +205,7 @@ impl ContraApp {
         match self.prefs_page {
             PreferencesPage::Categories => {
                 for category in PreferencesCategory::ALL {
-                    let response = ui
-                        .add_sized(
-                            [ui.available_width(), theme::TOUCH_TARGET],
-                            egui::Button::new(
-                                egui::RichText::new(format!(
-                                    "{}\n{}",
-                                    category.label(),
-                                    category.summary()
-                                ))
-                                .size(15.0),
-                            )
-                            .wrap(),
-                        )
-                        .accessible_name(category.label());
-                    if response.clicked() {
+                    if category_row(ui, category) {
                         self.prefs_page = PreferencesPage::Category(category);
                     }
                 }
@@ -260,6 +246,73 @@ impl ContraApp {
 
 /// Width of the desktop Preferences category column.
 const PREFERENCES_NAV_WIDTH: f32 = 170.0;
+
+/// Height of one phone Preferences category row.
+///
+/// Every row uses this height and the same left inset, so the titles and
+/// summaries line up in a single column instead of each short title drifting
+/// toward the centre of its own button.
+const PHONE_CATEGORY_ROW_HEIGHT: f32 = 60.0;
+
+/// Horizontal inset of the title and summary inside a phone category row.
+const PHONE_CATEGORY_INSET: f32 = 14.0;
+
+/// Draw one tappable phone Preferences category row.
+///
+/// A plain `Button` centres each line independently, which makes a list of
+/// two-line labels look ragged: "Calling" can start well right of "Band &
+/// Sound". Painting the row ourselves keeps every title and summary on the
+/// same left edge while preserving the touch target, hover/press feedback,
+/// focus ring, and accessible name.
+fn category_row(ui: &mut egui::Ui, category: PreferencesCategory) -> bool {
+    let width = ui.available_width();
+    let (rect, response) = ui.allocate_exact_size(
+        egui::vec2(width, PHONE_CATEGORY_ROW_HEIGHT),
+        egui::Sense::click(),
+    );
+    let visuals = ui.style().interact(&response);
+    let painter = ui.painter().with_clip_rect(rect);
+    painter.rect(
+        rect,
+        egui::CornerRadius::same(6),
+        visuals.weak_bg_fill,
+        if response.has_focus() {
+            ui.visuals().selection.stroke
+        } else {
+            visuals.bg_stroke
+        },
+        egui::StrokeKind::Inside,
+    );
+
+    let left = rect.left() + PHONE_CATEGORY_INSET;
+    let top = rect.top() + 8.0;
+    painter.text(
+        egui::pos2(left, top),
+        egui::Align2::LEFT_TOP,
+        category.label(),
+        egui::FontId::proportional(15.0),
+        visuals.text_color(),
+    );
+    let wrap = (rect.width() - 2.0 * PHONE_CATEGORY_INSET).max(1.0);
+    let summary = painter.layout(
+        category.summary().to_owned(),
+        egui::FontId::proportional(13.0),
+        theme::muted(ui),
+        wrap,
+    );
+    painter.galley(egui::pos2(left, top + 20.0), summary, theme::muted(ui));
+
+    let label = format!("{}. {}", category.label(), category.summary());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
+    if response.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    response.clicked()
+        || (response.has_focus()
+            && ui.input(|input| {
+                input.key_pressed(egui::Key::Enter) || input.key_pressed(egui::Key::Space)
+            }))
+}
 
 fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Role terms");

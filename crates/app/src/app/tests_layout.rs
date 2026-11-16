@@ -11,6 +11,7 @@
 //! the headless app disables animations so frames settle immediately.
 
 use super::*;
+use crate::app::ui::preferences::{PreferencesCategory, PreferencesPage};
 use contra_core::SourceRef;
 use contra_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary};
 use eframe::egui;
@@ -218,6 +219,57 @@ fn every_screen_fits_horizontally_at_every_supported_width() {
                 );
             }
         }
+    }
+}
+
+#[test]
+fn phone_preferences_category_rows_share_one_left_edge() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(390.0, 844.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Preferences;
+            app.prefs_page = PreferencesPage::Categories;
+            app
+        });
+    harness.run_steps(3);
+    let nodes = node_rects(&harness);
+    let mut rows: Vec<egui::Rect> = Vec::new();
+    for category in PreferencesCategory::ALL {
+        let prefix = format!("{}. ", category.label());
+        let Some((rect, _, _)) = nodes.iter().find(|(_, role, label)| {
+            *role == accesskit::Role::Button && label.starts_with(&prefix)
+        }) else {
+            panic!("no category row for {}", category.label());
+        };
+        rows.push(*rect);
+    }
+    let first = rows[0];
+    for (rect, category) in rows.iter().zip(PreferencesCategory::ALL) {
+        assert!(
+            (rect.left() - first.left()).abs() < 0.6,
+            "{} starts at {:.1}, not {:.1}",
+            category.label(),
+            rect.left(),
+            first.left()
+        );
+        assert!(
+            (rect.height() - first.height()).abs() < 0.6,
+            "{} is {:.1} points tall, not {:.1}",
+            category.label(),
+            rect.height(),
+            first.height()
+        );
+        assert!(
+            rect.width() >= 360.0 - 2.0 * 12.0,
+            "{} row is only {:.1} wide",
+            category.label(),
+            rect.width()
+        );
     }
 }
 
