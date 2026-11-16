@@ -30,6 +30,8 @@ The export contains:
   second accompaniment (countermelody) — or two tracks when it is **Off**;
 - a fourth track on the General MIDI drum channel when percussion is on;
 - the selected accompaniment rhythm;
+- General MIDI reverb, chorus, and echo sends at the start of every channel
+  track (see [Effects](#effects));
 - the arranged 64-beat loop. When **Vary the music on each loop** is enabled,
   the file contains the same four variation passes as playback, so the melody
   and accompaniment change from pass to pass instead of repeating identically.
@@ -43,6 +45,26 @@ The MIDI does **not** include the four-beat count-in, the pickup notes, or the
 live slow ending. It is the arranged loop, not the full playback buffer. Because
 the export re-parses the tune's stored ABC, edits made in the preview field are
 ignored.
+
+## Effects
+
+A Standard MIDI File contains performance instructions, not rendered audio, so
+the effects are written as the General MIDI sends that a player applies while it
+renders the file. Set them in **Preferences → MIDI effects**:
+
+- **Reverb** defaults to **Medium room**. The file carries a reverb send on
+  controller 91 and, when reverb is on, a GM2 reverb-type message so a GM2
+  player uses the requested room. Choose **Off**, **Small room**, **Medium
+  room**, **Large room**, or **Hall**.
+- **Echo** defaults to **Off**. **Subtle** and **Strong** use the GM2 delay
+  send on controller 94. Players that only implement General MIDI level 1 may
+  ignore it, because controller 94 has no standard delay meaning there.
+- **Chorus** defaults to **Off**. **Subtle** and **Rich** use controller 93.
+
+These settings do not change playback in the app: the soundfont synthesizer
+already adds its own reverb and chorus while rendering the loop. Because the
+effect sends are part of the MIDI file, the exact sound also depends on the
+player's own effects; a DAW can replace them with its own reverb or delay.
 
 ## File format and editing
 

@@ -1644,6 +1644,7 @@ impl ContraApp {
                 self.prefs.percussion_rhythm,
                 self.prefs.tempo_bpm,
                 variation_passes,
+                self.prefs.midi_effects,
             );
             match std::fs::write(&path, bytes) {
                 Ok(()) => self.status = format!("Saved MIDI to {}", path.display()),

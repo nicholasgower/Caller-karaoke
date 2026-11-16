@@ -7,6 +7,7 @@
 pub mod alias;
 pub mod dance;
 pub mod library;
+pub mod midi_effects;
 pub mod prefs;
 pub mod pronounce;
 pub mod roles;
@@ -20,6 +21,7 @@ pub use dance::{Dance, Figure, SourceRef};
 pub use library::{
     FolderError, FolderFilter, LIBRARY_SCHEMA_VERSION, Library, LibraryEntry, LibraryItem,
 };
+pub use midi_effects::{ChorusPreset, EchoPreset, MidiEffects, ReverbPreset};
 pub use prefs::{
     AccompanimentInstrument, AccompanimentRhythm, CallTone, ChangeSet, MAX_TTS_RATE, MIN_TTS_RATE,
     MelodyInstrument, Percussion, PercussionRhythm, Preferences, SecondAccompaniment,
