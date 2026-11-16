@@ -178,7 +178,11 @@ fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64, rhythm: PercussionRhyt
                     push(
                         notes,
                         beat + offset,
-                        if index == 0 { 0.18 } else { 0.08 },
+                        match index {
+                            0 => 0.3,
+                            1 => 0.08,
+                            _ => 0.04,
+                        },
                         SIDE_STICK,
                         match index {
                             0 => 92,
@@ -284,9 +288,9 @@ fn drumset(notes: &mut Vec<NoteEvent>, loop_beats: f64, meter: Meter, rhythm: Pe
             PercussionRhythm::Gallop => {
                 let mut pulse = bar;
                 while pulse < bar_end - 1e-9 {
-                    push(notes, pulse, 0.14, KICK, 106, bar_end);
-                    push(notes, pulse + 0.25, 0.08, SNARE, 88, bar_end);
-                    push(notes, pulse + 0.375, 0.08, SNARE, 92, bar_end);
+                    push(notes, pulse, 0.22, KICK, 106, bar_end);
+                    push(notes, pulse + 0.25, 0.06, SNARE, 88, bar_end);
+                    push(notes, pulse + 0.375, 0.04, SNARE, 92, bar_end);
                     for (index, offset) in [0.0, 0.25, 0.375].into_iter().enumerate() {
                         push(
                             notes,
@@ -405,6 +409,7 @@ pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
             note.midi,
             note.velocity,
             volume,
+            buffer.samples_per_beat,
             buffer.sample_rate,
         );
     }
@@ -422,6 +427,7 @@ pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
                 note.midi,
                 note.velocity,
                 volume,
+                buffer.samples_per_beat,
                 buffer.sample_rate,
             );
         }
@@ -437,6 +443,7 @@ fn render_note(
     midi: u8,
     velocity: u8,
     volume: f32,
+    samples_per_beat: f64,
     sample_rate: u32,
 ) {
     let frames = out.len() / 2;
@@ -445,6 +452,7 @@ fn render_note(
     }
     let duration = duration.min(frames - start);
     let sample_rate = sample_rate.max(8_000) as f32;
+    let duration_beats = duration as f64 / samples_per_beat.max(1.0);
     let velocity = (velocity.max(1) as f32 / 127.0).clamp(0.05, 1.0);
     let gain = volume * velocity;
     // Deterministic noise keeps a render reproducible.
@@ -457,8 +465,18 @@ fn render_note(
         SNARE => (0.65, 30.0),
         CLOSED_HAT => (0.35, 90.0),
         // Foot tap / side stick: a bright enough body to carry on small
-        // speakers, with a short scuff for the attack.
-        SIDE_STICK => (1.25, 42.0),
+        // speakers, with a short scuff for the attack. A long gallop note rings
+        // longer; the short third note is clipped sooner.
+        SIDE_STICK => (
+            1.25,
+            if duration_beats > 0.2 {
+                16.0
+            } else if duration_beats < 0.06 {
+                80.0
+            } else {
+                42.0
+            },
+        ),
         _ => (1.0, 45.0),
     };
     let release_samples = (sample_rate * 0.005).max(1.0);
@@ -645,6 +663,14 @@ mod tests {
                 "gallop tap at {position}, expected {expected}"
             );
         }
+        let durations = notes
+            .iter()
+            .map(|note| note.duration_beats)
+            .collect::<Vec<_>>();
+        assert!(
+            durations[0] > durations[1] && durations[1] > durations[2],
+            "the gallop should be long-short-short, not {durations:?}"
+        );
     }
 
     #[test]
