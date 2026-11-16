@@ -368,6 +368,24 @@ engine.
   the generic tools can find it, and add a session tool when the state or value
   is not visible in the widget tree. A new interaction is not done until an
   agent has reproduced it; "it works when I click it" is not enough.
+- **Every user-facing function must have a test in `contra-perf`.** A new
+  screen, action, or control is not done until `crates/app/src/app/perf.rs`
+  measures it. The measurement must name the function path, cover the desktop
+  and phone layouts where they differ, and be run with
+  `scripts/profile.ps1` or `scripts/profile.sh`. The budgets are 16.67 ms for
+  a screen frame, 100 ms for an action, and 250 ms for startup.
+- **If a measured function is over budget, optimize it before shipping.** First
+  look for work inside the function that can be prepared, parsed, synthesized,
+  or otherwise cached in RAM before the user calls it; prefetch it on a worker
+  where the platform has one. Only then optimize the remaining logic. Do not
+  accept a synchronous UI-thread render, scan, or blocking wait when the work
+  can be moved earlier or off the UI thread. Re-run `contra-perf` and record
+  the before/after medians in the change description.
+- **Performance trade-offs.** When startup time conflicts with action response
+  time, choose the lower action response time. When CPU time conflicts with RAM
+  usage, spend RAM to save CPU. Preparing or caching work at startup is
+  acceptable when it keeps user actions responsive and CPU-light; do not trade
+  a fast action for a smaller cache or a faster launch.
 - Avoid flashing faster than 3 Hz.
 - Do not use images for text or icons that could be rendered as text.
 
@@ -424,6 +442,13 @@ engine.
 ## 12. Testing requirements
 
 - Add tests with every behavior change.
+- Every user-facing function has a `contra-perf` measurement; add or update it
+  with every UI, session, picker, or preference change. `contra-perf` is the
+  source of truth for the frame, action, and startup budgets (16.67 ms, 100 ms,
+  and 250 ms).
+- A user-facing action over its budget is a defect, not a note. Optimize it,
+  preferring precomputation or RAM caching before the call over repeated work
+  inside it.
 - Pure logic (`core`, `music`, parsers) needs unit tests; UI needs at least
   state-machine tests and a manual QA note.
 - Use small, attributed fixtures. Do not commit full site dumps.
@@ -515,6 +540,12 @@ A change is done when:
 - [ ] New UI follows the grey theme and is usable at phone width.
 - [ ] Every new user input can be emulated through the MCP server (see §9), and
       the accessible name or session tool that makes it possible is documented.
+- [ ] Every new or changed user-facing function has a `contra-perf` test (see
+      §9 and §12) and its median is inside the frame, action, or startup
+      budget, or the over-budget function was optimized.
+- [ ] Over-budget functions were optimized by moving cacheable work
+      (parsing, arrangement, synthesis, rendered buffers, library scans) into
+      RAM before the call, with the before/after `contra-perf` medians recorded.
 - [ ] Every screen, picker, modal, empty state, and error banner was inspected
       at 1280×800 and 390×844 (and at the 360-point minimum width), with no
       horizontal overflow and no 44 px touch target removed.

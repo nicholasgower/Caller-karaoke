@@ -51,6 +51,26 @@ pub fn render_soundfont(
     request: &RenderRequest,
     soundfont: &Arc<SoundFont>,
 ) -> Result<AudioBuffer, RenderError> {
+    // Four seconds per chunk keeps thread-spawn overhead low while the extra
+    // per-slot buffers stay small (about 1.5 MiB each at 48 kHz stereo).
+    let chunk_frames = (request.sample_rate.max(16_000) as usize * 4)
+        .next_multiple_of(64)
+        .max(64);
+    let workers = std::thread::available_parallelism()
+        .map(|count| count.get())
+        .unwrap_or(1);
+    render_soundfont_inner(request, soundfont, chunk_frames, workers)
+}
+
+/// The render body, with an explicit chunk size and worker cap so tests can
+/// prove that chunking and parallelism do not change the mix.
+fn render_soundfont_inner(
+    request: &RenderRequest,
+    soundfont: &Arc<SoundFont>,
+    chunk_frames: usize,
+    max_workers: usize,
+) -> Result<AudioBuffer, RenderError> {
+    let chunk_frames = chunk_frames.next_multiple_of(64).max(64);
     let sample_rate = request.sample_rate.max(16_000);
     let channels = usize::from(request.output.channels());
     let beat_seconds = 120.0 / request.bpm.max(1.0);
@@ -76,23 +96,74 @@ pub fn render_soundfont(
     let band = crate::band::effective(request);
     let count_in_slots = crate::band::count_in_slots(&band);
     let mut samples = vec![0.0f32; total_samples as usize * channels];
+
+    // Each pitched slot is an independent synthesizer with its own program,
+    // channels, and note schedule. Build the slot renderers up front, then
+    // render the timeline in chunks with one worker per slot. Chunking keeps
+    // the extra buffers small (a few seconds of audio) instead of holding one
+    // full 50 MiB copy per slot. Results are summed in slot order, so the mix
+    // is deterministic regardless of which worker finishes first.
+    let mut renderers = Vec::new();
     for (index, slot) in band.iter().enumerate() {
         if !slot.is_pitched() {
             continue;
         }
-        render_slot(
+        let Some(program) = slot.voice.gm_program() else {
+            continue;
+        };
+        renderers.push(SlotRenderer::new(
             request,
             slot,
+            program,
             count_in_slots.contains(&index),
             ending.as_ref(),
             soundfont,
-            &mut samples,
             total_samples,
             samples_per_beat,
             pass_samples,
             passes,
             sample_rate,
-        )?;
+        )?);
+    }
+
+    let workers = max_workers.min(renderers.len());
+    let mut position = 0u64;
+    while position < total_samples {
+        let frames = ((total_samples - position) as usize).min(chunk_frames);
+        let offset = position as usize * channels;
+        let end = offset + frames * channels;
+        if workers > 1 {
+            let chunks = std::thread::scope(|scope| {
+                let handles = renderers
+                    .iter_mut()
+                    .map(|renderer| {
+                        scope.spawn(move || {
+                            let mut chunk = vec![0.0f32; frames * channels];
+                            renderer.render_chunk(frames, &mut chunk);
+                            chunk
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                handles
+                    .into_iter()
+                    .map(|handle| {
+                        handle.join().map_err(|_| {
+                            RenderError::SoundFont("the render worker panicked".to_string())
+                        })
+                    })
+                    .collect::<Result<Vec<_>, RenderError>>()
+            })?;
+            for chunk in chunks {
+                for (out, add) in samples[offset..end].iter_mut().zip(chunk) {
+                    *out += add;
+                }
+            }
+        } else {
+            for renderer in &mut renderers {
+                renderer.render_chunk(frames, &mut samples[offset..end]);
+            }
+        }
+        position += frames as u64;
     }
 
     if let Some(ending) = &ending {
@@ -124,116 +195,154 @@ pub fn render_soundfont(
     })
 }
 
-/// Render one band slot into the output layout.
-#[allow(clippy::too_many_arguments)]
-fn render_slot(
-    request: &RenderRequest,
-    slot: &contra_core::BandSlot,
-    count_in: bool,
-    ending: Option<&crate::arrange::Ending>,
-    soundfont: &Arc<SoundFont>,
-    samples: &mut [f32],
+/// One slot's persistent synthesizer, schedule, and small block buffers.
+///
+/// A renderer survives across chunks so the sampled voices keep their state.
+/// `render_chunk` advances it by at most `frames` samples and writes the routed
+/// output into the caller's slice.
+struct SlotRenderer {
+    synth: Synthesizer,
+    scheduled: Vec<Scheduled>,
+    event_index: usize,
+    position: u64,
     total_samples: u64,
-    samples_per_beat: f64,
-    pass_samples: u64,
-    passes: u32,
-    sample_rate: u32,
-) -> Result<(), RenderError> {
-    let Some(program) = slot.voice.gm_program() else {
-        return Ok(());
-    };
-    let players = slot.player_count();
-    let mut settings = SynthesizerSettings::new(sample_rate as i32);
-    settings.block_size = 64;
-    settings.maximum_polyphony = 128;
-    // Reverb and chorus are applied once, after every voice and the percussion
-    // layer are mixed, so playback and MIDI export share the same settings.
-    settings.enable_reverb_and_chorus = false;
-    let mut synth = Synthesizer::new(soundfont, &settings)
-        .map_err(|error| RenderError::SoundFont(error.to_string()))?;
+    left: [f32; 64],
+    right: [f32; 64],
+    gains: [f32; 5],
+    channels: usize,
+}
 
-    configure_slot(&mut synth, program, slot.volume, slot.pan, players);
+impl SlotRenderer {
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        request: &RenderRequest,
+        slot: &contra_core::BandSlot,
+        program: u8,
+        count_in: bool,
+        ending: Option<&crate::arrange::Ending>,
+        soundfont: &Arc<SoundFont>,
+        total_samples: u64,
+        samples_per_beat: f64,
+        pass_samples: u64,
+        passes: u32,
+        sample_rate: u32,
+    ) -> Result<Self, RenderError> {
+        let players = slot.player_count();
+        let mut settings = SynthesizerSettings::new(sample_rate as i32);
+        settings.block_size = 64;
+        settings.maximum_polyphony = 128;
+        // Reverb and chorus are applied once, after every voice and the
+        // percussion layer are mixed, so playback and MIDI export share the
+        // same settings.
+        settings.enable_reverb_and_chorus = false;
+        let mut synth = Synthesizer::new(soundfont, &settings)
+            .map_err(|error| RenderError::SoundFont(error.to_string()))?;
 
-    let count_in_samples = (request.count_in_beats.max(0.0) * samples_per_beat).round() as u64;
-    let humanizer = Humanizer::new(request);
-    let voice = crate::band::humanized_voice(slot.part);
-    let mut scheduled = Vec::new();
-    if count_in {
-        schedule_count_in(
-            &mut scheduled,
-            request,
-            players,
-            count_in_samples,
-            samples_per_beat,
-            sample_rate,
-        );
-    }
-    for pass in 0..passes {
-        let notes = crate::band::notes_for_pass(request, slot, pass);
-        if notes.is_empty() {
-            continue;
-        }
-        let offset = count_in_samples + pass as u64 * pass_samples;
-        if let Some(voice) = voice {
-            schedule_notes(
+        configure_slot(&mut synth, program, slot.volume, slot.pan, players);
+
+        let count_in_samples = (request.count_in_beats.max(0.0) * samples_per_beat).round() as u64;
+        let humanizer = Humanizer::new(request);
+        let voice = crate::band::humanized_voice(slot.part);
+        let mut scheduled = Vec::new();
+        if count_in {
+            schedule_count_in(
                 &mut scheduled,
-                &notes,
+                request,
                 players,
-                offset,
+                count_in_samples,
                 samples_per_beat,
                 sample_rate,
-                voice,
-                &humanizer,
             );
         }
-    }
-    if let Some(ending) = ending {
-        let notes = crate::band::ending_notes_for_slot(slot, ending);
-        if !notes.is_empty() {
-            schedule_ending_notes(
-                &mut scheduled,
-                notes,
-                players,
-                count_in_samples + pass_samples * passes as u64,
-                sample_rate,
-            );
-        }
-    }
-
-    scheduled.sort_by(|a, b| a.sample.cmp(&b.sample).then(a.order.cmp(&b.order)));
-
-    let channels = usize::from(request.output.channels());
-    let gains = layout::stereo_gains(request.output, slot.depth);
-    let mut left = [0.0f32; 64];
-    let mut right = [0.0f32; 64];
-    let mut event_index = 0usize;
-    let mut position = 0u64;
-
-    while position < total_samples {
-        let block_end = (position + 64).min(total_samples);
-        while event_index < scheduled.len() && scheduled[event_index].sample < block_end {
-            match &scheduled[event_index].kind {
-                ScheduledKind::NoteOn {
-                    channel,
-                    key,
-                    velocity,
-                } => synth.note_on(*channel, *key, *velocity),
-                ScheduledKind::NoteOff { channel, key } => synth.note_off(*channel, *key),
+        for pass in 0..passes {
+            let notes = crate::band::notes_for_pass(request, slot, pass);
+            if notes.is_empty() {
+                continue;
             }
-            event_index += 1;
+            let offset = count_in_samples + pass as u64 * pass_samples;
+            if let Some(voice) = voice {
+                schedule_notes(
+                    &mut scheduled,
+                    &notes,
+                    players,
+                    offset,
+                    samples_per_beat,
+                    sample_rate,
+                    voice,
+                    &humanizer,
+                );
+            }
         }
-        let length = (block_end - position) as usize;
-        for value in left.iter_mut().take(length) {
-            *value = 0.0;
+        if let Some(ending) = ending {
+            let notes = crate::band::ending_notes_for_slot(slot, ending);
+            if !notes.is_empty() {
+                schedule_ending_notes(
+                    &mut scheduled,
+                    notes,
+                    players,
+                    count_in_samples + pass_samples * passes as u64,
+                    sample_rate,
+                );
+            }
         }
-        for value in right.iter_mut().take(length) {
-            *value = 0.0;
-        }
-        synth.render(&mut left[..length], &mut right[..length]);
-        route_block(samples, channels, position, &left, &right, length, &gains);
-        position = block_end;
+
+        scheduled.sort_by(|a, b| a.sample.cmp(&b.sample).then(a.order.cmp(&b.order)));
+
+        let channels = usize::from(request.output.channels());
+        let gains = layout::stereo_gains(request.output, slot.depth);
+        Ok(Self {
+            synth,
+            scheduled,
+            event_index: 0,
+            position: 0,
+            total_samples,
+            left: [0.0f32; 64],
+            right: [0.0f32; 64],
+            gains,
+            channels,
+        })
     }
-    Ok(())
+
+    /// Render up to `frames` samples into the routed output slice.
+    fn render_chunk(&mut self, frames: usize, out: &mut [f32]) {
+        let start = self.position;
+        let end = (start + frames as u64).min(self.total_samples);
+        let mut position = start;
+        while position < end {
+            let block_end = (position + 64).min(end);
+            while self.event_index < self.scheduled.len()
+                && self.scheduled[self.event_index].sample < block_end
+            {
+                match &self.scheduled[self.event_index].kind {
+                    ScheduledKind::NoteOn {
+                        channel,
+                        key,
+                        velocity,
+                    } => self.synth.note_on(*channel, *key, *velocity),
+                    ScheduledKind::NoteOff { channel, key } => self.synth.note_off(*channel, *key),
+                }
+                self.event_index += 1;
+            }
+            let length = (block_end - position) as usize;
+            self.left[..length].fill(0.0);
+            self.right[..length].fill(0.0);
+            self.synth
+                .render(&mut self.left[..length], &mut self.right[..length]);
+            let offset = (position - start) as usize * self.channels;
+            let routed = &mut out[offset..offset + length * self.channels];
+            route_block(
+                routed,
+                self.channels,
+                0,
+                &self.left,
+                &self.right,
+                length,
+                &self.gains,
+            );
+            position = block_end;
+        }
+        self.position = position;
+    }
 }
 
 /// Sum a stereo block into the output layout.
@@ -459,6 +568,61 @@ fn normalize(samples: &mut [f32]) {
 mod tests {
     use super::*;
     use contra_core::OutputMode;
+
+    const TEST_FONT: &[u8] = include_bytes!("../../../assets/defaults/fluid-r3-gm-subset.sf2");
+
+    fn request() -> RenderRequest {
+        let score = crate::abc::parse_abc(
+            "X:1\nT:Chunk Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n",
+        )
+        .expect("the test tune parses");
+        RenderRequest {
+            arrangement: crate::arrange::Arrangement::from_score(&score, 64.0),
+            bpm: 240.0,
+            melody: contra_core::MelodyInstrument::Fiddle,
+            accompaniment: contra_core::AccompanimentInstrument::Piano,
+            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
+            second_accompaniment: contra_core::Countermelody::Accordion,
+            band: contra_core::default_band(),
+            output: OutputMode::Stereo,
+            copies: contra_core::InstrumentCopies::default(),
+            variations: contra_core::VariationOptions::default(),
+            humanize_options: contra_core::HumanizeOptions::default(),
+            ending_options: contra_core::EndingOptions::default(),
+            dancer_sounds: false,
+            dancer_sound_volume: 0.0,
+            dancer_sound_events: Vec::new(),
+            percussion: contra_core::Percussion::Off,
+            percussion_rhythm: contra_core::PercussionRhythm::Auto,
+            melody_volume: 0.75,
+            accompaniment_volume: 0.65,
+            percussion_volume: 0.5,
+            effects: contra_core::AudioEffects::default(),
+            count_in_beats: contra_core::COUNT_IN_BEATS,
+            sample_rate: 24_000,
+            variation_passes: crate::VARIATION_PASSES,
+            ending: true,
+            humanize_timing: true,
+        }
+    }
+
+    #[test]
+    fn chunking_and_parallel_slots_produce_the_same_mix() {
+        let font = load_soundfont(TEST_FONT).expect("the bundled test font loads");
+        let request = request();
+        // Force different chunk sizes and worker counts. Both must match the
+        // sequential render sample for sample: the sum order is fixed and the
+        // chunk boundary is aligned to the synth's 64-sample block.
+        let sequential =
+            render_soundfont_inner(&request, &font, 24_000, 1).expect("sequential render");
+        let parallel =
+            render_soundfont_inner(&request, &font, 96_000, usize::MAX).expect("parallel render");
+        assert_eq!(sequential.samples.len(), parallel.samples.len());
+        assert!(
+            sequential.samples == parallel.samples,
+            "chunked parallel rendering changed the mix"
+        );
+    }
 
     #[test]
     fn invalid_soundfont_is_an_error() {

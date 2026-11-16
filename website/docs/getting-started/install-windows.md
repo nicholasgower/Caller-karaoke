@@ -62,7 +62,8 @@ directories, so the app behaves the same across installer and portable builds.
 ## First launch
 
 The app opens on **Session** with *Another Last Dance* and *Sandy Boys*. Press
-**Play** to build the music; the first call may start during the count-in. See
+**Play** to start; the loop is prepared in the background, and the first call may
+start during the count-in. See
 [Your first session](/docs/getting-started/first-session).
 
 If SmartScreen or antivirus blocks the unsigned executable, verify the download

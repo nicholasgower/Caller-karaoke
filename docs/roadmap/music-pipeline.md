@@ -248,6 +248,11 @@ separate gains, so turning the band down never hides a call.
   on the 64-beat grid.
 - Rotation requires looping. The web build has no render worker and prepares
   the next tune at the boundary instead.
+- The current tune gets the same treatment: an idle prefetch fills a RAM cache
+  keyed by the tune text and the audio settings, so the first Play and repeat
+  plays install the cached buffer. A playback-setting change renders the
+  replacement on the worker while the old loop keeps playing, then installs it
+  at the current beat. The web build renders that replacement synchronously.
 
 ### 6.10 MIDI export
 

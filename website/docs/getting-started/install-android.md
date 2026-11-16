@@ -58,8 +58,9 @@ With ADB, `adb install path/to/contra-karaoke.apk` performs the same install.
 ## First launch
 
 The app opens with *Another Last Dance* and *Sandy Boys*. Press **Play** to
-render the music. Android uses the AAudio backend through cpal; the first
-gesture is a normal app interaction, not a browser restriction.
+start; the music is prepared in the background. Android uses the AAudio backend
+through cpal; the first gesture is a normal app interaction, not a browser
+restriction.
 
 If audio or TTS misbehaves, include the device model, Android version, and
 whether a SoundFont was loaded in the issue report.

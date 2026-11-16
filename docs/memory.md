@@ -16,6 +16,7 @@ driver overhead that the app does not own.
 | --- | ---: | --- |
 | Neural voice (Kokoro + ONNX Runtime) | ~155 MiB | Optional; loaded when **Speak calls** is on. 92 MiB quantized model plus session arenas and the 16.5 MiB runtime |
 | Rendered music, four variation passes | ~50 MiB | Count-in + 4 × 64-beat passes + ending, interleaved stereo f32 at 48 kHz |
+| RAM render cache | shares the rendered music allocation | The cache and the audio callback hold the same `Arc`; a settings change can briefly hold the old loop and the new one |
 | Next tune prepared for **Cycle tunes** | ~50 MiB | A second rendered pass held until the rotation boundary |
 | Bundled SoundFont file | ~21 MiB | `fluid-r3-gm-subset.sf2` is inside the executable |
 | Decoded SoundFont samples | ~21–22 MiB | rustysynth decodes the bank to `i16` sample data |
@@ -24,9 +25,10 @@ driver overhead that the app does not own.
 | Runtime, GPU driver, allocator, thread stacks | remainder | eframe/wgpu/GL, the OS, and allocator arenas; not controlled by this app |
 
 A cold session with speech off is therefore around 120–150 MiB. Using speech
-once adds the model; cycling tunes adds the prepared buffer. The reported
-540 MB suggests speech on, cycling on, and platform/driver overhead on top of
-the table above.
+once adds the model; cycling tunes adds the prepared buffer, and a settings
+change can briefly hold the previous loop while the replacement renders. The
+reported 540 MB suggests speech on, cycling on, and platform/driver overhead on
+top of the table above.
 
 ## What the app reports
 
@@ -81,7 +83,9 @@ app uses 1.5× the file size plus the runtime library as a labelled estimate.
   pass is 32 s, so the buffer is about 50 MiB at 48 kHz stereo.
 - **Prepared tune.** **Cycle tunes** renders the next tune on a worker while the
   current one plays. The finished buffer waits at the pass boundary, so two
-  music buffers can be resident during a rotation.
+  music buffers can be resident during a rotation. The current tune has the same
+  treatment: an idle prefetch fills the RAM cache, and a playback-setting change
+  can render the replacement while the old loop keeps playing.
 - **Speech.** The platform voice costs the app almost nothing. On desktop the
   Kokoro neural voice is the default when available: a 92 MiB quantized model
   is loaded into ONNX Runtime, with session arenas and the 16.5 MiB runtime.

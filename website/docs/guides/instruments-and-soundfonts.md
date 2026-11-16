@@ -57,8 +57,8 @@ drift. The section is levelled so that adding players thickens the part without
 changing how loud it is, and the renderer still removes any peak above its
 headroom.
 
-The list is saved with the other preferences. Changing a row re-renders the loop
-without restarting playback, like any other instrument change.
+The list is saved with the other preferences. Changing a row prepares a new loop
+in the background without restarting playback, like any other instrument change.
 
 ## The countermelody
 
@@ -184,11 +184,11 @@ The subtle echo is a short slapback: it widens the band without smearing the
 dance pulse. Choose **Off** for a completely dry session or **Strong** for a
 longer echo.
 
-Changes re-render the loop without restarting; playback keeps its position.
-The same settings are written into an exported MIDI file as General MIDI effect
-sends, so the arrangement retains its character in a DAW or MIDI player. See
-[Export MIDI](/docs/guides/export-midi#effects) for what the file carries and
-which players honor the echo send.
+Changes prepare a new loop while the old one keeps playing; playback keeps its
+position. The same settings are written into an exported MIDI file as General
+MIDI effect sends, so the arrangement retains its character in a DAW or MIDI
+player. See [Export MIDI](/docs/guides/export-midi#effects) for what the file
+carries and which players honor the echo send.
 
 ## Vary the music
 
@@ -236,7 +236,7 @@ unchanged, the calls do not move, and an exported MIDI file stays grid-exact.
 Percussion is not humanized because it is the audible grid the band plays
 against.
 
-Turning the setting off re-renders the loop with every note exactly on the
+Turning the setting off prepares a new loop with every note exactly on the
 grid. The human timing is deterministic for a given tune, so the same tune
 sounds the same each time it is rendered.
 
@@ -256,9 +256,10 @@ length.
 
 Instrument, rhythm, player-count, volume, direction, output-mode, effect, and
 music-variation changes apply without restarting the music. Release the control
-and the app re-renders the loop, keeping the current beat. If the session is not
-playing, press **Play** to render and start. The caller and band levels apply
-immediately to the existing buffer.
+and the app prepares the new loop in the background, keeps the current beat, and
+installs it when it is ready. If the session is not playing, press **Play** to
+install and start. The caller and band levels apply immediately to the existing
+buffer.
 
 ## Soundfont
 

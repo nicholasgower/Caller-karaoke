@@ -14,8 +14,8 @@ message in Preferences.
 | Symptom | What to try |
 | --- | --- |
 | No music | Check **Volume**, the OS output device, and the `Audio device:` message. Pause and Play again. |
-| Music does not start | The first Play renders the loop synchronously. Wait for it; the window may be busy for a moment. In a browser, press **Play** once to allow audio. |
-| `Press Play to prepare the music…` will not go away | Press **Play**. Tempo, instrument, percussion, accompaniment rhythm, melody/accompaniment/percussion volume, SoundFont, and count-in changes rebuild the loop; while playing they apply without restarting. |
+| Music does not start | The app prepares the loop in the background. If the status reads `Preparing music…`, wait for it; the window stays responsive. In a browser, press **Play** once to allow audio. |
+| `Press Play to prepare the music…` will not go away | Press **Play** to install the prepared loop. Tempo, instrument, percussion, accompaniment rhythm, melody/accompaniment/percussion volume, SoundFont, and count-in changes rebuild the loop; while playing they apply without restarting. |
 | A call seems late or early | Check **Calling lead** and the alias length. A longer call is moved earlier automatically. |
 | The first call appears during the count-in | Expected. The first call starts before beat 0. |
 | Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, the number keys 1-4, and Enter are ignored while a text field has focus. |
