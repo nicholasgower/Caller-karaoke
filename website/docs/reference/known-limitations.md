@@ -63,10 +63,11 @@ does not rescale either one. Prefer 64-beat cards.
 
 ## Accessibility
 
-The app is keyboard-operable for Space, R, Esc, 1–4, the Left/Right arrows, and
-Enter, and responds to the system media controls from any window on Windows and
-Linux and from the lock screen, headset, and Bluetooth buttons on Android. On a
-touch screen, swipe left or right across the content to change tabs. The
+The app is keyboard-operable for Space, R, Esc, 1-3 (the tabs), 4 (Preferences),
+the Left/Right arrows, and Enter, and responds to the system media controls from
+any window on Windows and Linux and from the lock screen, headset, and Bluetooth
+buttons on Android. On a touch screen, swipe left or right across the content to
+change tabs. The
 accessibility tree is still being audited. Several search, alias, and slider
 controls are visually labelled without a formal accessible-name association.
 Screen-reader support is incomplete.

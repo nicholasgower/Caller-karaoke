@@ -1,3 +1,4 @@
+use super::about::about;
 use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
 use crate::app::*;
 use contra_core::{ChorusPreset, EchoPreset, ReverbPreset};
@@ -6,8 +7,9 @@ use eframe::egui;
 /// Every preferences section, in display order.
 ///
 /// A new setting belongs in the matching section function, so unrelated
-/// branches edit different functions instead of the same 200-line body.
-const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
+/// branches edit different functions instead of the same 200-line body. About
+/// is last because it is the least frequently needed section.
+pub(in crate::app) const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
     role_terms,
     instruments,
     appearance,
@@ -18,7 +20,13 @@ const SECTIONS: &[fn(&mut ContraApp, &mut egui::Ui, bool)] = &[
     effects,
     web_proxy,
     maintenance,
+    about,
 ];
+
+/// The About section, named so the shell tests can assert that the version,
+/// author, and project links are drawn from Preferences and nowhere else.
+#[cfg(test)]
+pub(in crate::app) const ABOUT_SECTION: fn(&mut ContraApp, &mut egui::Ui, bool) = about;
 
 impl ContraApp {
     pub(in crate::app) fn preferences_ui(&mut self, ui: &mut egui::Ui) {
@@ -466,7 +474,7 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
             );
     ui.label(
                 egui::RichText::new(
-                    "Keyboard: Space play/pause · R restart · Esc back · 1–4 switch tabs · ←/→ previous or next tab · Enter starts a search, creates a folder, or adds an alias.",
+                    "Keyboard: Space play/pause · R restart · Esc back · 1-3 switch tabs · 4 opens Preferences · ←/→ previous or next tab · Enter starts a search, creates a folder, or adds an alias.",
                 )
                 .small()
                 .color(theme::muted(ui)),

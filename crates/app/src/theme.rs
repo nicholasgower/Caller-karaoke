@@ -91,7 +91,7 @@ fn palette_for(ui: &egui::Ui) -> &'static Palette {
     palette(ui.visuals().dark_mode)
 }
 
-/// Fill behind the tab row, including the wordmark and the About button.
+/// Fill behind the tab row, including the wordmark and the Preferences gear.
 pub fn header_bg(ui: &egui::Ui) -> egui::Color32 {
     palette_for(ui).header_bg
 }

@@ -69,17 +69,6 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
     }
     capture(harness, out, "main-idle")?;
 
-    // About window over the session.
-    {
-        let app = harness.state_mut();
-        app.about_open = true;
-    }
-    capture(harness, out, "about-window")?;
-    {
-        let app = harness.state_mut();
-        app.about_open = false;
-    }
-
     {
         let app = harness.state_mut();
         app.needs_render = false;
@@ -773,6 +762,21 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     }
     capture(harness, out, "session-mobile-controls")?;
 
+    // About is the last section of Preferences. This shot scrolls that page,
+    // so it comes after every other Preferences shot in the run: the scroll
+    // position is remembered and would move a later screenshot.
+    harness.set_size(DESKTOP);
+    {
+        let app = harness.state_mut();
+        app.audio.stop();
+        app.started = false;
+        app.prefs.web_proxy_url = None;
+        app.prefs.web_proxy_token = None;
+        app.screen = Screen::Preferences;
+        app.about_reveal = true;
+    }
+    capture(harness, out, "about-window")?;
+
     Ok(())
 }
 
@@ -788,7 +792,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         app.screen = Screen::Session;
         app.started = false;
         app.needs_render = true;
-        app.about_open = false;
+        app.about_reveal = false;
     }
     capture(harness, out, "main-idle")?;
 
@@ -903,15 +907,6 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     {
         let app = harness.state_mut();
         app.alias_filter.clear();
-        app.screen = Screen::Session;
-        app.started = false;
-        app.needs_render = false;
-        app.about_open = true;
-    }
-    capture(harness, out, "about-window")?;
-    {
-        let app = harness.state_mut();
-        app.about_open = false;
         app.screen = Screen::DanceDownload;
         app.error = Some("HTTP 500 Internal Server Error".into());
     }
@@ -947,6 +942,17 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         app.needs_render = false;
     }
     capture(harness, out, "main-360")?;
+
+    // About is the last section of Preferences. This shot scrolls that page,
+    // so it comes last: the scroll position is remembered per screen and would
+    // otherwise move a later Preferences screenshot.
+    harness.set_size(MOBILE);
+    {
+        let app = harness.state_mut();
+        app.screen = Screen::Preferences;
+        app.about_reveal = true;
+    }
+    capture(harness, out, "about-window")?;
 
     Ok(())
 }

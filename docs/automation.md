@@ -158,8 +158,11 @@ Useful checks for this app:
   `session_action` (`play`, `pause`, `restart`) drives the same app path the
   session uses; use it when changing the media integration. The Android
   session is a device feature and is not reachable from `contra-mcp`.
-- Number keys `1`–`4` switch tabs, and `Enter` in a search field starts the
-  search or adds a custom or alternative alias.
+- Number keys `1`-`3` switch tabs, `4` opens Preferences, and `Enter` in a
+  search field starts the search or adds a custom or alternative alias.
+- Preferences is not a tab: click the header gear, whose accessible name is
+  `Preferences`. Its accessible node reports the selected state while
+  Preferences or the alias editor is in front.
 - After selecting a dance or tune, use `wait_for` on the result text before
   asserting the session screen changed.
 - The screenshot is useful for theme and layout checks; `widget_tree` is better

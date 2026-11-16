@@ -2,7 +2,8 @@
 
 ### 3.1 Main session screen
 
-- Top tab row: **Select dance**, **Select tune**, **Preferences**.
+- Top tab row: **Select dance**, **Select tune**, with the Preferences gear
+  button at the top right and About at the bottom of Preferences.
 - Session controls directly below the tabs:
   - Tempo (default 240 BPM), with stepper and slider.
   - Play/pause, restart, loop toggle, and **End tune** (a slow, held final

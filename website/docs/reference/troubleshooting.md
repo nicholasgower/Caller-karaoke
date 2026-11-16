@@ -18,7 +18,7 @@ message in Preferences.
 | `Press Play to prepare the music…` will not go away | Press **Play**. Tempo, instrument, percussion, accompaniment rhythm, melody/accompaniment/percussion volume, SoundFont, and count-in changes rebuild the loop; while playing they apply without restarting. |
 | A call seems late or early | Check **Calling lead** and the alias length. A longer call is moved earlier automatically. |
 | The first call appears during the count-in | Expected. The first call starts before beat 0. |
-| Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, 1–4, and Enter are ignored while a text field has focus. |
+| Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, the number keys 1-4, and Enter are ignored while a text field has focus. |
 | A media key does nothing | The operating system sends the key to the active media player. Pause any other player, or use **Space** in Contra Karaoke. On Android, check that the app is still running; the media session is not a foreground service, so Android can stop playback in the background. The browser build has no media session in 0.1.0. |
 | Search returns an error | Dismiss it and retry. Cached content may still be available. In a browser, check the web proxy URL/token. |
 | Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from Maintenance. |

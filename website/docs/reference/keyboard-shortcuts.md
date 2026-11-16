@@ -1,6 +1,6 @@
 ---
 title: Keyboard shortcuts
-description: Play, pause, restart, and leave a picker without using the mouse, plus hardware media keys.
+description: Play, pause, restart, open Preferences, and leave a picker without using the mouse, plus hardware media keys.
 sidebar_position: 1
 ---
 
@@ -14,9 +14,10 @@ system's media controls drive the transport from outside the app; see
 | --- | --- | --- |
 | **Space** | Play or pause | If the music is playing, Space pauses; otherwise it starts or resumes. |
 | **R** | Restart | Returns to the count-in and resets the call state. |
-| **Esc** | Close About, go back, or return to **Session** | Closes the **About** window. Otherwise returns **Download dance** and **Download tune** to their saved-content lists, the alias editor to **Preferences**, and **Select dance**, **Select tune**, and **Preferences** to **Session**. |
-| **1–4** | Switch tabs | 1 Session, 2 Select dance, 3 Select tune, 4 Preferences. |
-| **← / →** | Previous or next tab | The tab row wraps: Left from Session reaches Preferences, Right from Preferences returns to Session. Ignored while a control has keyboard focus. |
+| **Esc** | Go back or return to **Session** | Returns **Download dance** and **Download tune** to their saved-content lists, the alias editor to **Preferences**, and **Select dance**, **Select tune**, and **Preferences** to **Session**. |
+| **1-3** | Switch tabs | 1 Session, 2 Select dance, 3 Select tune. |
+| **4** | Open **Preferences** | Preferences is the gear button at the top right rather than a tab, but its number key still works from any screen. |
+| **← / →** | Previous or next tab | The tab row wraps. Ignored while a control has keyboard focus. |
 | **Enter** | Submit | Starts a search from a search field, creates a folder from the folder-name field, or adds the custom alias when the alias fields are filled. |
 
 ## Details
@@ -27,10 +28,12 @@ system's media controls drive the transport from outside the app; see
   from the count-in.
 - **Esc** does not replace **Use this dance** or **Use this tune**. Leaving a
   picker does not change the loaded dance or tune. From a **Download** screen,
-  Esc returns to the corresponding saved-content list. It also closes the
-  **About** window; the other shortcuts are suspended while that window is open.
-- **1–4** are ignored while a text field has focus, so typing a number does not
-  change tabs.
+  Esc returns to the corresponding saved-content list, and from **Preferences**
+  it returns to **Session**. The About text lives at the bottom of
+  **Preferences**, so nothing on that screen is modal and the transport
+  shortcuts keep working.
+- **1-3** are ignored while a text field has focus, so typing a number does not
+  change tabs. **4** does the same and opens **Preferences**.
 - **← / →** are ignored whenever any control has keyboard focus. A focused
   slider still moves with the arrow keys, and a focused list still scrolls, so
   the shortcuts never steal an arrow key from the control you are using. On a

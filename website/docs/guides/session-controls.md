@@ -59,7 +59,8 @@ the background stops with it.
 - **R** restarts from the count-in.
 - **Esc** returns from a download screen to its saved-content list, and from a
   picker or Preferences to the session.
-- **1–4** switch between Session, Select dance, Select tune, and Preferences.
+- **1-3** switch between Session, Select dance, and Select tune; **4** opens
+  Preferences from any screen, like the gear button in the header.
 - **← / →** switch to the previous or next tab, wrapping at the ends.
 - **Enter** starts a search from a search field, creates a folder, or adds a
   custom alias.
@@ -205,21 +206,22 @@ quiet master with a loud melody is still quiet overall.
 
 ## About and project links
 
-The **About** button sits in the top-right corner of the tab row on every
-screen. Select it to open a window with the program name, its version, a short
-description, the author (Nicholas Gower), and links to the GitHub repository and
-the documentation site. The project pages may not be live yet.
+The About text is the last section of **Preferences**, below Maintenance. It
+shows the program name, its version, a short description, the author (Nicholas
+Gower), and links to the GitHub repository and the documentation site. The
+project pages may not be live yet.
 
 <Shot id="about-window" />
 
-Close the window with **Close**, **Esc**, or a click outside it. While it is
-open, the transport and tab shortcuts are suspended.
+Because it is part of the scrolling Preferences page, it never covers the
+session, traps focus, or suspends the transport and tab shortcuts. Press **Esc**
+or select **Session** to leave.
 
 ## Narrow windows
 
-At phone width the session tab uses its compact layout. The top row keeps four
-short tabs — **Session**, **Dance**, **Tune**, and **Prefs** — beside the
-pinned **About** button, without the wordmark. The tempo and volume sliders
+At phone width the session tab uses its compact layout. The top row keeps three
+short tabs — **Session**, **Dance**, and **Tune** — beside the pinned gear button
+that opens **Preferences**, without the wordmark. The tempo and volume sliders
 span the screen with their value boxes, and **Play**, **Pause**,
 **Restart**, and **End** split one row evenly. Loop, cycle tunes, count-in, and
 spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch

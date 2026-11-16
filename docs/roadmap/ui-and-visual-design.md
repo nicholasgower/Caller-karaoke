@@ -90,9 +90,9 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 
 ### 8.3 Accessibility
 
-- Keyboard: Space = play/pause, R = restart, Esc = back, 1–4 = switch tabs,
-  Enter = submit a search or add an alias. Shortcuts are suspended while a text
-  field has focus.
+- Keyboard: Space = play/pause, R = restart, Esc = back, 1–3 = switch tabs,
+  4 = Preferences, Enter = submit a search or add an alias. Shortcuts are
+  suspended while a text field has focus.
 - Every control has a text label or accessibility label.
 - Text contrast meets WCAG AA against the chosen background.
 - TTS is optional and never the only way to receive a call.
