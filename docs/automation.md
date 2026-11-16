@@ -129,13 +129,13 @@ succeeds. Then work in an observe → act → verify loop:
 | `screenshot` | PNG of the frame; returns an image content block. |
 | `click` / `hover` | Click or hover a widget or raw `{x, y}` point. |
 | `type_text` | Type into the focused widget or a targeted one. |
-| `press_key` | Press a key such as `Space`, `R`, or `Escape`. |
+| `press_key` | Press a key such as `Space`, `R`, or `Escape`, optionally with modifiers (`command: true` is Ctrl on Windows/Linux and Cmd on macOS). |
 | `scroll` / `drag` | Scroll a target or drag from one target to another. |
 | `resize` | Change the viewport size in logical points. |
 | `wait_for` | Poll until matching widgets or frames appear. |
 | `batch` | Run several actions and observations in one round trip. |
-| `session_state` | Read the Session tab's transport state, beat, tempo, volume, and toggles. |
-| `session_action` | Press Play, Pause, Restart, End, or Cancel ending. |
+| `session_state` | Read the Session tab's transport state, beat, tempo, volume, toggles, and (while Preferences is open) whether Undo and Redo are available. |
+| `session_action` | Press Play, Pause, Restart, End, or Cancel ending; `undo` and `redo` press the keyboard chords. |
 | `session_set` | Set the tempo, volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles. |
 | `session_wait` | Wait until the transport reaches a state or the beat crosses a bound. |
 
@@ -219,6 +219,12 @@ Details worth knowing:
   after inspecting a picker. `end` presses **End tune**, or **Cancel ending**
   when an ending is waiting; the ending itself starts at the tune's last bar, so
   `transport` stays `playing` until then.
+- `session_action` with `undo` or `redo` presses the app's Ctrl+Z and Ctrl+Y
+  chords instead of clicking, so the front tab does not change. Open
+  Preferences and read `undo_available`/`redo_available` to check the stack, or
+  use the generic `press_key` with `{"key": "Z", "modifiers": {"command": true}}`
+  for the same shortcut. Undoing a dance or tune selection stops the old music
+  and speech and leaves the session ready to play the restored tune.
 - Controls are located by accessible name, so the desktop and phone layouts both
   work: `resize` to `390 × 844` and repeat the same calls to check the compact
   layout. The generic tools still cover anything the session tools do not, such

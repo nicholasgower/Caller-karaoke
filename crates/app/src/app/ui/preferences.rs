@@ -1,5 +1,6 @@
 use super::about::about;
 use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
+use crate::app::history::HistoryAction;
 use crate::app::*;
 use contra_core::{ChorusPreset, EchoPreset, ReverbPreset};
 use eframe::egui;
@@ -456,7 +457,7 @@ fn percussion_rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Prefere
         });
 }
 
-fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
+fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Theme");
     ui.horizontal(|ui| {
         for option in Theme::ALL {
@@ -472,14 +473,53 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
                 .small()
                 .color(theme::muted(ui)),
             );
+    undo_redo_buttons(app, ui, compact);
+    if let Some(message) = &app.history_status {
+        ui.label(egui::RichText::new(message).small().color(theme::muted(ui)));
+    }
     ui.label(
                 egui::RichText::new(
-                    "Keyboard: Space play/pause · R restart · Esc back · 1-3 switch tabs · 4 opens Preferences · ←/→ previous or next tab · Enter starts a search, creates a folder, or adds an alias.",
+                    "Keyboard: Space play/pause · R restart · Esc back · 1-3 switch tabs · 4 opens Preferences · ←/→ previous or next tab · Ctrl+Z undo · Ctrl+Y or Ctrl+Shift+Z redo · Enter starts a search, creates a folder, or adds an alias.",
                 )
                 .small()
                 .color(theme::muted(ui)),
             );
     ui.separator();
+}
+
+/// Undo and redo buttons for the last preference or picker change.
+///
+/// The keyboard chords do the same thing; the buttons exist so the feature is
+/// discoverable and works on a touch screen, where there is no Ctrl key. Both
+/// carry an accessible name and are disabled when their stack is empty.
+fn undo_redo_buttons(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    let size = if compact {
+        egui::vec2(112.0, theme::TOUCH_TARGET)
+    } else {
+        egui::vec2(96.0, 24.0)
+    };
+    ui.horizontal_wrapped(|ui| {
+        let undo = ui
+            .add_enabled(
+                app.history.can_undo(),
+                egui::Button::new("Undo").min_size(size),
+            )
+            .on_hover_text("Undo the last change (Ctrl+Z)")
+            .accessible_name("Undo");
+        if undo.clicked() {
+            app.pending_history = Some(HistoryAction::Undo);
+        }
+        let redo = ui
+            .add_enabled(
+                app.history.can_redo(),
+                egui::Button::new("Redo").min_size(size),
+            )
+            .on_hover_text("Redo the change (Ctrl+Y or Ctrl+Shift+Z)")
+            .accessible_name("Redo");
+        if redo.clicked() {
+            app.pending_history = Some(HistoryAction::Redo);
+        }
+    });
 }
 
 fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {

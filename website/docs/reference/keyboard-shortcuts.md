@@ -19,6 +19,8 @@ system's media controls drive the transport from outside the app; see
 | **4** | Open **Preferences** | Preferences is the gear button at the top right rather than a tab, but its number key still works from any screen. |
 | **← / →** | Previous or next tab | The tab row wraps. Ignored while a control has keyboard focus. |
 | **Enter** | Submit | Starts a search from a search field, creates a folder from the folder-name field, or adds the custom alias when the alias fields are filled. |
+| **Ctrl+Z** | Undo | Restores the state before the last preference or dance/tune change. The last 100 changes are kept. On macOS this would be Cmd+Z. |
+| **Ctrl+Y** or **Ctrl+Shift+Z** | Redo | Re-applies a change that was just undone. A new edit discards the redo steps. |
 
 ## Details
 
@@ -42,6 +44,14 @@ system's media controls drive the transport from outside the app; see
 - **Enter** in a search field submits the current filters; in the folder-name
   field it creates the folder; in the custom alias or alternative-call fields it
   adds the entry when both fields are filled.
+- **Ctrl+Z** and **Ctrl+Y** work on every screen, including **Preferences** and
+  the alias editor. They step through preferences (role terms, aliases,
+  instruments, copies, volumes, theme, timing, speech, proxy) and the
+  selected dance and tune. Typing in a text field is left to the field's own
+  undo: the app shortcut only fires when no text field has focus, and an open
+  drop-down keeps it from firing. A drag on a slider is one step, not one step
+  per pixel. Downloading, removing, or re-filing a saved card is a library
+  change rather than a setting, so it is not undone.
 - On a browser, click the app once before using Space so the canvas has focus.
   If the page scrolls instead, click the session background and try again.
 

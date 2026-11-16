@@ -31,6 +31,7 @@ use crate::sheet::SheetPreview;
 use crate::source::{SourceClient, SourceEvent};
 use crate::theme;
 use crate::tts::Speech;
+use history::{History, HistoryAction, MergeKey, Snapshot};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Screen {
@@ -269,6 +270,30 @@ fn number_key_shortcut(input: &egui::InputState) -> Option<Screen> {
     screen_for_number_key(key)
 }
 
+/// The undo or redo shortcut pressed this frame, if any.
+///
+/// `Ctrl+Z` undoes and `Ctrl+Y` or `Ctrl+Shift+Z` redo; `Modifiers::COMMAND`
+/// makes the first chord `Cmd+Z` on macOS. [`egui::InputState::consume_key`]
+/// ignores an extra Shift, so the shifted redo chord is checked first: read the
+/// other way round, `Ctrl+Shift+Z` would undo.
+fn history_shortcut(input: &mut egui::InputState) -> Option<HistoryAction> {
+    if !input.modifiers.command {
+        return None;
+    }
+    if input.consume_key(
+        egui::Modifiers::COMMAND.plus(egui::Modifiers::SHIFT),
+        egui::Key::Z,
+    ) {
+        return Some(HistoryAction::Redo);
+    }
+    if input.consume_key(egui::Modifiers::COMMAND, egui::Key::Y) {
+        return Some(HistoryAction::Redo);
+    }
+    input
+        .consume_key(egui::Modifiers::COMMAND, egui::Key::Z)
+        .then_some(HistoryAction::Undo)
+}
+
 pub struct ContraApp {
     prefs: Preferences,
     prefs_path: Option<PathBuf>,
@@ -358,6 +383,14 @@ pub struct ContraApp {
     /// Bumped whenever a setting changes; prepared buffers from an older
     /// generation are discarded.
     render_generation: u64,
+    /// Undo/redo steps over preferences and the selected dance and tune.
+    history: History,
+    /// An undo or redo asked for during this frame; it is applied after the
+    /// frame's own edits have been recorded, so the edit just made is on the
+    /// stack when the request arrives.
+    pending_history: Option<HistoryAction>,
+    /// The result of the last undo or redo, shown under the Interface buttons.
+    history_status: Option<String>,
 }
 
 /// Transient state of the two download screens.
@@ -678,6 +711,9 @@ impl ContraApp {
             alias_seed: 0,
             rotation: RotationState::default(),
             render_generation: 0,
+            history: History::default(),
+            pending_history: None,
+            history_status: None,
         }
     }
 
@@ -717,6 +753,15 @@ impl ContraApp {
     /// field never triggers play, restart, or a tab change, and the Left/Right
     /// arrows still adjust a focused slider or list instead of switching tabs.
     fn handle_shortcuts(&mut self, ui: &egui::Ui) {
+        // Undo and redo are app shortcuts only while no text field has focus
+        // (this method is not called then), so egui's own in-field undo keeps
+        // working. An open pop-up owns the keyboard too.
+        if !ui.ctx().any_popup_open()
+            && let Some(action) = ui.input_mut(history_shortcut)
+        {
+            self.pending_history = Some(action);
+        }
+
         let (space, restart, escape, tab, previous_tab, next_tab) = ui.input(|input| {
             (
                 input.key_pressed(egui::Key::Space),
@@ -1055,6 +1100,9 @@ impl ContraApp {
             alias_seed: 0,
             rotation: RotationState::default(),
             render_generation: 0,
+            history: History::default(),
+            pending_history: None,
+            history_status: None,
         }
     }
 
@@ -1070,6 +1118,197 @@ impl ContraApp {
             {
                 if self.prefs_path.is_some() {
                     crate::web_store::write_prefs(&json);
+                }
+            }
+        }
+    }
+
+    /// The state an undo step restores.
+    fn snapshot(&self) -> Snapshot {
+        Snapshot {
+            prefs: self.prefs.clone(),
+            dance: self.dance.clone(),
+            tune: self.tune.clone(),
+            alias_seed: self.alias_seed,
+        }
+    }
+
+    /// The gesture a change made this frame belongs to, if any.
+    ///
+    /// A focused widget is usually a text field being typed in; a held pointer
+    /// is usually a slider being dragged. Either way the whole gesture is one
+    /// history step, so undo returns to the value before the field or the
+    /// handle was touched instead of walking back a keystroke at a time.
+    fn merge_key(ctx: &egui::Context) -> Option<MergeKey> {
+        if let Some(id) = ctx.memory(|memory| memory.focused()) {
+            return Some(MergeKey::Focus(id));
+        }
+        ctx.input(|input| input.pointer.any_down())
+            .then_some(MergeKey::Pointer)
+    }
+
+    /// Record the state from before this frame's edits, if it changed.
+    ///
+    /// The headless renderer sets state between frames to stage a screenshot;
+    /// that is not user input and must not fill the history.
+    fn record_history(&mut self, before: Snapshot, ctx: &egui::Context) {
+        if self.headless {
+            return;
+        }
+        let now = self.snapshot();
+        if self.history.record(before, &now, Self::merge_key(ctx)) {
+            // The last undo/redo message is stale once a new edit lands.
+            self.history_status = None;
+        }
+    }
+
+    /// Apply an undo or redo requested by a shortcut or the Interface buttons.
+    ///
+    /// The request waits until the frame's own changes are recorded, so the
+    /// edit the user just made is already on the stack when this runs.
+    fn apply_history_request(&mut self, ctx: &egui::Context) {
+        let Some(action) = self.pending_history.take() else {
+            return;
+        };
+        let current = self.snapshot();
+        let restored = match action {
+            HistoryAction::Undo => self.history.undo(current),
+            HistoryAction::Redo => self.history.redo(current),
+        };
+        let message = match (action, restored) {
+            (_, None) => match action {
+                HistoryAction::Undo => "Nothing to undo".to_string(),
+                HistoryAction::Redo => "Nothing to redo".to_string(),
+            },
+            (HistoryAction::Undo, Some(snapshot)) => {
+                self.restore_snapshot(snapshot);
+                "Undid the last change".to_string()
+            }
+            (HistoryAction::Redo, Some(snapshot)) => {
+                self.restore_snapshot(snapshot);
+                "Redid the change".to_string()
+            }
+        };
+        self.status.clone_from(&message);
+        self.history_status = Some(message);
+        ctx.request_repaint();
+    }
+
+    /// Put a previous state back and rebuild what depends on it.
+    ///
+    /// A preference change re-applies the subsystems the Preferences screen
+    /// drives, keeping the transport where it is. A restored dance or tune takes
+    /// the same reset a picker choice does: the old audio and speech stop and
+    /// the restored tune is prepared on the next Play.
+    fn restore_snapshot(&mut self, snapshot: Snapshot) {
+        let changes = snapshot.prefs.changes_since(&self.prefs);
+        let dance_changed = snapshot.dance.source != self.dance.source;
+        let tune_changed = snapshot.tune.source != self.tune.source;
+        let soundfont_changed = snapshot.prefs.soundfont != self.prefs.soundfont;
+        let rotation_changed = snapshot.prefs.tune_rotation != self.prefs.tune_rotation;
+
+        self.prefs = snapshot.prefs;
+        self.prefs.validate();
+        self.dance = snapshot.dance;
+        self.tune = snapshot.tune;
+        self.alias_seed = snapshot.alias_seed;
+        self.error = None;
+
+        // Settings that apply immediately rather than through a rebuild. These
+        // mirror the Preferences screen, so undo sounds like choosing the old
+        // value again.
+        self.audio.set_looping(self.prefs.loop_enabled);
+        self.audio.set_volume(self.prefs.master_volume);
+        self.source.set_proxy(
+            self.prefs.web_proxy_url.clone(),
+            self.prefs.web_proxy_token.clone(),
+        );
+        self.speech.set_rate(self.prefs.speech_rate());
+        self.speech.set_voice(&self.prefs.tts_voice);
+        self.speech.set_tone(self.prefs.tts_tone);
+        self.speech.set_enabled(self.prefs.tts_enabled);
+        if !self.prefs.tts_enabled {
+            self.speech.stop();
+        }
+        if soundfont_changed {
+            self.reload_soundfont();
+        }
+
+        if dance_changed || tune_changed {
+            self.picker.dance_preview = None;
+            self.picker.dance_selected = None;
+            self.picker.tune_preview = None;
+            self.picker.tune_selected = None;
+            self.tune_sheet = None;
+            self.needs_render = true;
+            self.pending_audio = false;
+            self.arrangement = None;
+            self.audio.stop();
+            self.speech.stop();
+            self.started = false;
+            self.rotation.passes = 0;
+            self.rotation.last_beat = 0.0;
+            self.rotation_settings_changed();
+            self.rebuild_timeline();
+            self.last_spoken = None;
+            self.last_beat = 0.0;
+            self.length_warning = length_warning_for(&self.dance, &self.tune);
+        } else if changes.any() {
+            if changes.timeline {
+                self.rebuild_timeline();
+                self.last_spoken = None;
+            }
+            if changes.audio {
+                self.needs_render = true;
+                self.pending_audio = true;
+                // A started session applies the restored playback settings at
+                // once and keeps the beat. An unstarted one renders on the next
+                // Play, the way a preferences edit behaves.
+                if self.started {
+                    self.apply_audio_settings();
+                }
+            }
+        }
+        if rotation_changed {
+            // A prepared next tune was rendered from the old set or interval.
+            self.rotation_settings_changed();
+        }
+        self.save_prefs();
+    }
+
+    /// Re-read the SoundFont named by the preferences.
+    ///
+    /// The app keeps a parsed font rather than a path, so undoing "Use bundled"
+    /// or a font change has to load the file again.
+    fn reload_soundfont(&mut self) {
+        self.soundfont = None;
+        self.soundfont_error = None;
+        // Web and Android cannot load a font file, so they keep the bundled
+        // instruments. A stored path there can only come from a copied
+        // preference file.
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        {
+            let Some(path) = self
+                .prefs
+                .soundfont
+                .as_ref()
+                .and_then(|setting| setting.path.clone())
+            else {
+                return;
+            };
+            match std::fs::read(&path) {
+                Ok(bytes) => match contra_music::soundfont::load_soundfont(&bytes) {
+                    Ok(soundfont) => self.soundfont = Some(soundfont),
+                    Err(error) => {
+                        self.soundfont_error = Some(format!(
+                            "Could not load the saved SoundFont; using the bundled instruments: {error}"
+                        ));
+                    }
+                },
+                Err(error) => {
+                    self.soundfont_error = Some(format!(
+                        "Could not read the saved SoundFont; using the bundled instruments: {error}"
+                    ));
                 }
             }
         }
@@ -1884,6 +2123,10 @@ impl ContraApp {
         // tell content from a slider that already owns its drag.
         ui::begin_slider_frame(ui);
 
+        // Captured before any shortcut or widget runs, so the edit a frame makes
+        // is compared against the state that came before it.
+        let history_before = self.snapshot();
+
         if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
         }
@@ -1940,6 +2183,12 @@ impl ContraApp {
         if self.screen != Screen::Preferences {
             self.commit_role_terms();
         }
+
+        // One frame of edits is one history step (or one merged gesture), and
+        // an undo asked for by a shortcut or a button applies after the edits
+        // are on the stack.
+        self.record_history(history_before, &ctx);
+        self.apply_history_request(&ctx);
     }
 
     fn shutdown(&mut self, _gl: Option<&eframe::glow::Context>) {
@@ -3422,10 +3671,230 @@ mod tests {
             "the phone header's row height leaked into the rest of the UI"
         );
     }
+
+    /// A headless app with an empty history and nothing rendered yet.
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn history_app() -> (ContraApp, egui::Context) {
+        let ctx = egui::Context::default();
+        let cc = eframe::CreationContext::_new_kittest(ctx.clone());
+        let mut app = ContraApp::new_headless(&cc);
+        app.needs_render = false;
+        (app, ctx)
+    }
+
+    /// Run one frame with `events` and read the undo/redo shortcut it saw.
+    fn history_shortcut_for(events: Vec<egui::Event>) -> Option<HistoryAction> {
+        let ctx = egui::Context::default();
+        let mut action = None;
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                events,
+                ..Default::default()
+            },
+            |ui| action = ui.input_mut(history_shortcut),
+        );
+        output.textures_delta.clear();
+        action
+    }
+
+    fn command_key(key: egui::Key, modifiers: egui::Modifiers) -> Vec<egui::Event> {
+        vec![
+            egui::Event::ModifiersChanged(modifiers),
+            egui::Event::Key {
+                key,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers,
+            },
+        ]
+    }
+
+    #[test]
+    fn undo_and_redo_shortcuts_use_the_platform_command_key() {
+        let command = egui::Modifiers::COMMAND;
+        assert_eq!(
+            history_shortcut_for(command_key(egui::Key::Z, command)),
+            Some(HistoryAction::Undo)
+        );
+        assert_eq!(
+            history_shortcut_for(command_key(egui::Key::Y, command)),
+            Some(HistoryAction::Redo)
+        );
+        assert_eq!(
+            history_shortcut_for(command_key(
+                egui::Key::Z,
+                command.plus(egui::Modifiers::SHIFT)
+            )),
+            Some(HistoryAction::Redo),
+            "Ctrl+Shift+Z redoes rather than undoing"
+        );
+
+        // A bare Z or Y is text, not an app shortcut.
+        assert_eq!(
+            history_shortcut_for(command_key(egui::Key::Z, egui::Modifiers::NONE)),
+            None
+        );
+        assert_eq!(
+            history_shortcut_for(command_key(egui::Key::Y, egui::Modifiers::NONE)),
+            None
+        );
+        assert_eq!(history_shortcut_for(Vec::new()), None);
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn undo_restores_role_instrument_and_volume_values() {
+        let (mut app, ctx) = history_app();
+        let before = app.snapshot();
+        assert!(
+            app.timeline
+                .calls
+                .iter()
+                .any(|call| call.text.contains("larks"))
+        );
+
+        app.prefs.role_preset = RolePreset::Custom;
+        app.prefs.role_terms.left_plural = "ports".into();
+        app.prefs.melody = MelodyInstrument::Accordion;
+        app.prefs.melody_volume = 0.3;
+        app.rebuild_timeline();
+        app.history.record(before, &app.snapshot(), None);
+        assert!(
+            app.timeline
+                .calls
+                .iter()
+                .any(|call| call.text.contains("ports")),
+            "the changed role terms reach the calls first"
+        );
+
+        app.pending_history = Some(HistoryAction::Undo);
+        app.apply_history_request(&ctx);
+
+        assert_eq!(app.prefs.role_preset, RolePreset::LarksRobins);
+        assert_eq!(app.prefs.role_terms.left_plural, "larks");
+        assert_eq!(app.prefs.melody, MelodyInstrument::Fiddle);
+        assert!((app.prefs.melody_volume - 0.75).abs() < 1e-6);
+        assert!(
+            app.timeline
+                .calls
+                .iter()
+                .any(|call| call.text.contains("larks")),
+            "undo rebuilds the call timeline"
+        );
+        assert!(app.history.can_redo());
+        assert_eq!(app.history_status.as_deref(), Some("Undid the last change"));
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn a_new_edit_after_undo_discards_the_redo_step() {
+        let (mut app, ctx) = history_app();
+        let first = app.snapshot();
+        app.prefs.theme = Theme::Light;
+        app.history.record(first, &app.snapshot(), None);
+
+        app.pending_history = Some(HistoryAction::Undo);
+        app.apply_history_request(&ctx);
+        assert_eq!(app.prefs.theme, Theme::Dark);
+        assert!(app.history.can_redo());
+
+        let before = app.snapshot();
+        app.prefs.master_volume = 0.4;
+        app.history.record(before, &app.snapshot(), None);
+        assert!(!app.history.can_redo(), "the redo step is now stale");
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn undo_of_a_playback_setting_marks_the_music_for_a_rebuild() {
+        let (mut app, ctx) = history_app();
+        // An unstarted session renders on the next Play; the test must not
+        // block on a full render just to prove the flag was set.
+        assert!(!app.started);
+        let before = app.snapshot();
+        app.prefs.accompaniment = AccompanimentInstrument::Guitar;
+        app.history.record(before, &app.snapshot(), None);
+
+        app.pending_history = Some(HistoryAction::Undo);
+        app.apply_history_request(&ctx);
+
+        assert_eq!(app.prefs.accompaniment, AccompanimentInstrument::Piano);
+        assert!(app.needs_render, "the restored mix must be rendered again");
+        assert!(
+            app.pending_audio,
+            "the rebuild is queued for the next playback frame"
+        );
+        assert!(!app.started, "undo must not start a stopped session");
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "headless",
+        not(target_arch = "wasm32"),
+        not(target_os = "android")
+    ))]
+    fn undo_of_a_dance_selection_stops_the_old_music() {
+        let (mut app, ctx) = history_app();
+        app.prefs.last_dance = Some(app.dance.source.clone());
+        let before = app.snapshot();
+
+        let mut other = app.dance.clone();
+        other.source =
+            contra_core::SourceRef::new("contradb", "9999", "https://example.test/dances/9999");
+        other.title = "Another Dance".into();
+        app.dance = other;
+        app.prefs.last_dance = Some(app.dance.source.clone());
+        app.rebuild_timeline();
+        app.history.record(before.clone(), &app.snapshot(), None);
+
+        // Pretend the session was running on the new dance.
+        app.started = true;
+        app.audio.play();
+        assert!(app.audio.is_playing());
+
+        app.pending_history = Some(HistoryAction::Undo);
+        app.apply_history_request(&ctx);
+
+        assert_eq!(app.dance.source.id, before.dance.source.id);
+        assert_eq!(
+            app.prefs
+                .last_dance
+                .as_ref()
+                .map(|source| source.id.clone()),
+            Some(before.dance.source.id.clone()),
+            "the restored dance is the one a restart would load"
+        );
+        assert!(!app.started);
+        assert!(!app.audio.is_playing(), "the old dance's music stops");
+        assert!(
+            app.needs_render,
+            "the restored tune renders on the next Play"
+        );
+    }
 }
 
 // Each screen lives in its own file under `app/ui/`.
 mod ui;
+
+// Undo/redo history over the preferences and the selected dance and tune.
+mod history;
 
 #[cfg(feature = "headless")]
 pub mod headless;

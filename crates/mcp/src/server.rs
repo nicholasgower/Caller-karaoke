@@ -126,10 +126,12 @@ pub struct EmptyArgs {}
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SessionActionArgs {
-    /// `play`, `pause`, `restart`, `end`, or `cancel_ending`.
+    /// `play`, `pause`, `restart`, `end`, `cancel_ending`, `undo`, or `redo`.
     ///
     /// `end` presses **End tune** (or **Cancel ending** while an ending is
-    /// pending); `cancel_ending` only cancels a pending ending.
+    /// pending); `cancel_ending` only cancels a pending ending. `undo` and
+    /// `redo` press the app's Ctrl/Cmd+Z and Ctrl/Cmd+Y chords, so they work on
+    /// any screen and leave the front tab alone.
     pub action: SessionAction,
 }
 
@@ -252,11 +254,13 @@ impl ContraServer {
 impl ContraServer {
     /// Read the Session tab as data: the tab in front, transport state and beat,
     /// tempo, volume, and the Loop, Cycle tunes, Count-in, and Speak calls
-    /// toggles.
+    /// toggles. While Preferences is open, also whether **Undo** and **Redo**
+    /// are available.
     ///
     /// This reports what the session screen shows, so it can verify an action:
     /// `{"transport": "paused", "beat": 12.0, ...}`. The beat is the whole beat
-    /// the progress bar displays.
+    /// the progress bar displays. `undo_available` and `redo_available` are
+    /// `null` unless the Interface section is on screen.
     #[tool(
         title = "Session state",
         annotations(read_only_hint = true, open_world_hint = false)
@@ -271,13 +275,14 @@ impl ContraServer {
     }
 
     /// Press a transport button the way a user does: `play`, `pause`,
-    /// `restart`, `end`, or `cancel_ending`.
+    /// `restart`, `end`, or `cancel_ending`. `undo` and `redo` press the
+    /// app-wide Ctrl/Cmd+Z and Ctrl/Cmd+Y chords instead.
     ///
     /// The session tab is brought to the front first, so this works from any
     /// screen. Returns the state after the press. `play` renders pending music
     /// synchronously, so the call may take a moment; `pause` stops both audio
     /// and speech; `end` presses **End tune** (or **Cancel ending** when an
-    /// ending is already pending).
+    /// ending is already pending). `undo` and `redo` do not switch tabs.
     #[tool(
         title = "Session transport",
         annotations(
@@ -369,7 +374,7 @@ Getting started:
 
 Testing the session tab:
 - `session_state` reports the tab in front, the transport state and beat, tempo, volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles as data.
-- `session_action` presses Play, Pause, Restart, End, or Cancel ending through the real buttons and returns the resulting state.
+- `session_action` presses Play, Pause, Restart, End, or Cancel ending through the real buttons and returns the resulting state. `undo` and `redo` press the app's Ctrl/Cmd+Z and Ctrl/Cmd+Y chords instead, so they work on any screen and do not switch tabs.
 - `session_set` drags the tempo and volume sliders and clicks the toggles. Sliders are quantised by the rail width: read the returned value, not the requested one.
 - `session_wait` polls until a transport state or a displayed beat is reached, which is how to inspect a specific point in the dance without sleeping. Play starts with a four-beat count-in, so wait for `transport: "playing"` or `min_beat: 0` before checking a call.
 - The session controls are located by accessible name, so both the desktop and the phone layout work; `resize` to 390×844 to test the phone layout.
