@@ -37,6 +37,8 @@ and build tools used by the project.
 | `arc-swap` | MIT OR Apache-2.0 | Real-time-safe audio buffer swaps |
 | `souvlaki` | MIT | OS media keys and media session (Windows, Linux) |
 | `raw-window-handle` | MIT OR Apache-2.0 | Native window handle for the Windows media session |
+| `jni` | MIT OR Apache-2.0 | Android media-session bridge (JNI calls between Rust and `MainActivity`) |
+| `ndk-context` | MIT OR Apache-2.0 | Android Java VM and activity handles for that bridge |
 | `env_logger` | MIT OR Apache-2.0 | Logging setup |
 | `thiserror` | MIT OR Apache-2.0 | Error types |
 | `egui_kittest` | MIT OR Apache-2.0 | Headless UI rendering for docs screenshots (development only) |

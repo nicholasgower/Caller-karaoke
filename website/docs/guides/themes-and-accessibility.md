@@ -74,8 +74,10 @@ full-width target that previews that dance or tune.
 - **1–4** switch tabs.
 - **Enter** submits a search or adds a custom alias.
 
-Shortcuts are ignored while a text field has focus. The keyboard's play/pause
-media key works even when another window is in front. See
+Shortcuts are ignored while a text field has focus. On Windows, Linux, and
+Android, the operating system's media controls (the keyboard's play/pause key,
+the desktop media widget, or Android's lock screen and headset buttons) work
+even when another window or app is in front. See
 [Keyboard shortcuts](/docs/reference/keyboard-shortcuts) for details.
 
 ## Screen readers and labels

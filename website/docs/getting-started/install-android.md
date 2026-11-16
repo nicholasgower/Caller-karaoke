@@ -64,9 +64,31 @@ gesture is a normal app interaction, not a browser restriction.
 If audio or TTS misbehaves, include the device model, Android version, and
 whether a SoundFont was loaded in the issue report.
 
+## Media controls
+
+Android delivers headset buttons, Bluetooth controls, the lock screen, and the
+system media player to the app's media session. The session shows the loaded
+dance as the title, the tune as the artist, and *Contra Karaoke* as the album,
+with a Play/Pause control.
+
+- **Play** starts or resumes the session; **Pause** pauses it and keeps the beat
+  so the next Play resumes from the same place.
+- **Stop** pauses. **Next** and **Previous** are ignored.
+- Headset and Bluetooth buttons, the lock screen, and the playback notification
+  all take the same path as the app's own Play and Pause buttons.
+
+On Android 13 and newer the app asks for notification permission so the playback
+notification can appear. Denying it only hides the notification: headset,
+Bluetooth, lock-screen, and system media controls still work.
+
+The notification is a media-style notification, not a foreground service. If
+Android stops the app in the background, playback stops with it.
+
 ## Current Android limitations
 
 - Real-device audio and TTS testing is incomplete.
+- Playback stops when Android ends the app in the background; there is no
+  foreground service or background-playback mode yet.
 - Loading a SoundFont from a file is not available in this build yet; the
   bundled Fluid R3 GM subset is used instead.
 - MIDI export is not available in this build yet.

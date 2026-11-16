@@ -73,6 +73,28 @@ the AppImage and the `.deb` share them.
 Linux TTS requires Speech Dispatcher to be running. If it is not available, the
 visual calls still work and the TTS section explains the problem.
 
+## Media keys and the Cinnamon sound applet
+
+The app registers an MPRIS player, `org.contrakaraoke.ContraKaraoke`, on the
+D-Bus session bus. The keyboard's **Play/Pause** key, the media widget in the
+panel, and the lock-screen controls therefore drive the session from any window,
+and the widget shows the loaded dance as the title and the tune as the artist.
+
+On **Linux Mint (Cinnamon)**, the sound applet in the panel lists Contra Karaoke
+as a player while it is active. Its Play/Pause button, the media key, and the
+lock-screen media controls all go through MPRIS; the applet's own volume slider
+controls the system output, not the app's **Volume** setting inside the session
+tab. GNOME, KDE Plasma, and other MPRIS-aware panels work the same way.
+
+MPRIS needs a session bus, which a normal desktop login provides. In a bare TTY,
+or over SSH without a session bus, the app skips the media integration and the
+in-app controls still work.
+
+The desktop entry sets `StartupWMClass=contra-karaoke`, which matches the
+`WM_CLASS` the window reports when the packaged binary is launched from
+`/usr/bin/contra-karaoke`; that is what lets the panel associate the running
+window with the app icon.
+
 ## Uninstall
 
 ```sh

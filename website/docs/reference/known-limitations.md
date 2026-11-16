@@ -64,10 +64,15 @@ does not rescale either one. Prefer 64-beat cards.
 ## Accessibility
 
 The app is keyboard-operable for Space, R, Esc, 1–4, and Enter, and responds to
-the keyboard's play/pause media key from any window on desktop. The
-accessibility tree is still being audited. Several search, alias, and slider
-controls are visually labelled without a formal accessible-name association.
-Screen-reader support is incomplete.
+the system media controls from any window on Windows and Linux and from the lock
+screen, headset, and Bluetooth buttons on Android. The accessibility tree is
+still being audited. Several search, alias, and slider controls are visually
+labelled without a formal accessible-name association. Screen-reader support is
+incomplete.
+
+Android does not run a foreground service, so the media session controls a
+session that is still running; Android may stop the app, and the music with it,
+when it needs the memory.
 
 ## Data and privacy
 

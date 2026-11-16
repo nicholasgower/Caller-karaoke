@@ -10,4 +10,8 @@ Keywords=contra;dance;caller;music;ABC;
 # Lets the desktop hand the app a startup-notification token, so the window
 # opens focused instead of behind the launcher under focus-stealing prevention.
 StartupNotify=true
+# winit derives WM_CLASS from the executable's file name, so the packaged
+# binary (/usr/bin/contra-karaoke, or usr/bin/contra-karaoke inside the
+# AppImage) reports this class. Renaming the executable means changing this
+# value too, or the panel keeps a second, anonymous window entry.
 StartupWMClass=contra-karaoke

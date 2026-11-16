@@ -32,3 +32,12 @@ iscc packaging\windows\contra-karaoke.iss `
 
 The installer is written to `dist\`. Nightly CI overrides the version and
 filename with the current date and short SHA.
+
+## Media keys
+
+The binary registers System Media Transport Controls when it starts, using its
+own window handle. There is nothing to install or register: the keyboard's
+**Play/Pause** key, the media overlay, and the Quick Settings media controls
+find the app while it is running, and the overlay shows the loaded dance and
+tune. The portable ZIP and the installer behave the same way, since neither
+needs a registry entry for this.

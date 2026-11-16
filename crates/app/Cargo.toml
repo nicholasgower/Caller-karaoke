@@ -88,7 +88,11 @@ eframe = { workspace = true, features = ["accesskit"] }
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.15"
 eframe.workspace = true
+# The media session lives in MainActivity.java; Rust publishes metadata and
+# playback state to it and receives transport commands over JNI.
+jni = "0.21"
 log = "0.4"
+ndk-context = "0.1"
 winit = "0.30"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -107,6 +111,12 @@ resources = "../../packaging/android/res"
 
 [[package.metadata.android.uses_permission]]
 name = "android.permission.INTERNET"
+
+# Android 13+ gates the media notification behind a runtime permission. The
+# session, and therefore headset, Bluetooth, and lock-screen control, works
+# without it; MainActivity requests it at startup so the notification can show.
+[[package.metadata.android.uses_permission]]
+name = "android.permission.POST_NOTIFICATIONS"
 
 [package.metadata.android.application]
 label = "Contra Karaoke"

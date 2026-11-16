@@ -48,7 +48,10 @@ beats. Only the drawing stops.
 The transport follows the audio position, not the frame rate, so the caller
 stays in time whether or not a frame is painted. **Pause** is the only thing
 that stops it. On desktop, the keyboard's play/pause media key still works while
-the window is in the background.
+the window is in the background. On Android, the headset, lock-screen, and
+notification controls keep working while the activity is in front or paused;
+the app does not run a foreground service, so a session that Android stops in
+the background stops with it.
 
 ## Keyboard
 
@@ -62,7 +65,9 @@ the window is in the background.
 
 Shortcuts are ignored while a text field has focus. On desktop, the keyboard's
 play/pause media key controls the transport even when the window is in the
-background. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
+background; on Android, the headset, lock-screen, and notification controls do
+the same while the app is running. See
+[Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 ## The call prompt
 
