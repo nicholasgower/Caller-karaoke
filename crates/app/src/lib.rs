@@ -18,6 +18,48 @@ mod window;
 
 pub use app::ContraApp;
 
+/// System-bar insets reported by the Android activity.
+///
+/// The Java `MainActivity` sends these from `onApplyWindowInsets`, so the UI
+/// uses the actual status/navigation bar sizes rather than guessing from the
+/// window content rectangle (which also includes the gesture area).
+#[cfg(target_os = "android")]
+mod android_insets {
+    use std::sync::atomic::{AtomicI32, Ordering};
+
+    static INSETS: [AtomicI32; 4] = [
+        AtomicI32::new(0),
+        AtomicI32::new(0),
+        AtomicI32::new(0),
+        AtomicI32::new(0),
+    ];
+
+    pub(crate) fn system_bar_insets() -> [i32; 4] {
+        [
+            INSETS[0].load(Ordering::Relaxed),
+            INSETS[1].load(Ordering::Relaxed),
+            INSETS[2].load(Ordering::Relaxed),
+            INSETS[3].load(Ordering::Relaxed),
+        ]
+    }
+
+    /// Called from `MainActivity` with left, top, right, bottom in pixels.
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeSetSystemBarInsets(
+        _env: *mut core::ffi::c_void,
+        _class: *mut core::ffi::c_void,
+        left: i32,
+        top: i32,
+        right: i32,
+        bottom: i32,
+    ) {
+        INSETS[0].store(left, Ordering::Relaxed);
+        INSETS[1].store(top, Ordering::Relaxed);
+        INSETS[2].store(right, Ordering::Relaxed);
+        INSETS[3].store(bottom, Ordering::Relaxed);
+    }
+}
+
 /// Run the native desktop application.
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 pub fn run_desktop() -> eframe::Result {
