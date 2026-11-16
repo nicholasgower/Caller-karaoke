@@ -242,7 +242,7 @@ impl ContraApp {
             }
             ui.separator();
             if let Some(dance) = &preview {
-                if let Some(next) = saved_dance_preview(ui, dance, compact) {
+                if let Some(next) = saved_dance_preview(ui, dance) {
                     action = Some(next);
                 }
             } else {
@@ -278,7 +278,7 @@ impl ContraApp {
                     .max_height(480.0)
                     .show(&mut columns[1], |ui| {
                         if let Some(dance) = &preview {
-                            if let Some(next) = saved_dance_preview(ui, dance, compact) {
+                            if let Some(next) = saved_dance_preview(ui, dance) {
                                 action = Some(next);
                             }
                         } else {
@@ -319,7 +319,7 @@ impl ContraApp {
             }
             ui.separator();
             if let Some(dance) = &preview {
-                if let Some(next) = saved_dance_preview(ui, dance, compact) {
+                if let Some(next) = saved_dance_preview(ui, dance) {
                     action = Some(next);
                 }
             } else {
@@ -590,7 +590,7 @@ impl ContraApp {
             }
             ui.separator();
             if let Some(tune) = &preview {
-                if let Some(next) = self.saved_tune_preview(ui, tune, compact) {
+                if let Some(next) = self.saved_tune_preview(ui, tune) {
                     action = Some(next);
                 }
             } else {
@@ -627,7 +627,7 @@ impl ContraApp {
                     .max_height(480.0)
                     .show(&mut columns[1], |ui| {
                         if let Some(tune) = &preview {
-                            if let Some(next) = self.saved_tune_preview(ui, tune, compact) {
+                            if let Some(next) = self.saved_tune_preview(ui, tune) {
                                 action = Some(next);
                             }
                         } else {
@@ -668,7 +668,7 @@ impl ContraApp {
             }
             ui.separator();
             if let Some(tune) = &preview {
-                if let Some(next) = self.saved_tune_preview(ui, tune, compact) {
+                if let Some(next) = self.saved_tune_preview(ui, tune) {
                     action = Some(next);
                 }
             } else {
@@ -686,12 +686,7 @@ impl ContraApp {
 
     /// Preview a tune that came from the local library, including its sheet
     /// music, and offer the library actions.
-    fn saved_tune_preview(
-        &mut self,
-        ui: &mut egui::Ui,
-        tune: &Tune,
-        compact: bool,
-    ) -> Option<LibraryAction> {
+    fn saved_tune_preview(&mut self, ui: &mut egui::Ui, tune: &Tune) -> Option<LibraryAction> {
         let mut action = None;
         ui.heading(&tune.title);
         ui.label(
@@ -735,12 +730,7 @@ impl ContraApp {
             {
                 action = Some(LibraryAction::ToggleRotation(tune.clone()));
             }
-            let remove = if compact {
-                ui.button("Remove from saved tunes")
-            } else {
-                ui.small_button("Remove from saved tunes")
-            };
-            if remove.clicked() {
+            if ui.button("Remove from saved tunes").clicked() {
                 action = Some(LibraryAction::RemoveTune(tune.source.id.clone()));
             }
         });
@@ -1034,7 +1024,7 @@ fn saved_dance_row(
             if row_button(ui, compact, "Use").clicked() {
                 action = Some(LibraryAction::UseDance(entry.item.clone()));
             }
-            folder_menu(ui, entry, folders, &mut action);
+            folder_menu(ui, compact, entry, folders, &mut action);
         });
         body.hovered()
     };
@@ -1088,17 +1078,9 @@ fn dance_row_body(
     response
 }
 
-/// A row action button: touch sized on a phone, dense on a desktop.
-fn row_button(ui: &mut egui::Ui, compact: bool, label: &str) -> egui::Response {
-    if compact {
-        ui.button(label)
-    } else {
-        ui.small_button(label)
-    }
-}
-
 fn folder_menu(
     ui: &mut egui::Ui,
+    compact: bool,
     entry: &contra_core::LibraryEntry<Dance>,
     folders: &[String],
     action: &mut Option<LibraryAction>,
@@ -1107,7 +1089,7 @@ fn folder_menu(
         .folder
         .clone()
         .unwrap_or_else(|| "Unfiled".to_string());
-    ui.menu_button(format!("Folder: {folder_label}"), |ui| {
+    row_menu_button(ui, compact, format!("Folder: {folder_label}"), |ui| {
         if ui
             .selectable_label(entry.folder.is_none(), "Unfiled")
             .clicked()
@@ -1131,7 +1113,7 @@ fn folder_menu(
     });
 }
 
-fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Option<LibraryAction> {
+fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance) -> Option<LibraryAction> {
     let mut action = None;
     ui.heading(&dance.title);
     ui.label(
@@ -1166,12 +1148,7 @@ fn saved_dance_preview(ui: &mut egui::Ui, dance: &Dance, compact: bool) -> Optio
         if ui.button("Use this dance").clicked() {
             action = Some(LibraryAction::UseDance(dance.clone()));
         }
-        let remove = if compact {
-            ui.button("Remove from saved dances")
-        } else {
-            ui.small_button("Remove from saved dances")
-        };
-        if remove.clicked() {
+        if ui.button("Remove from saved dances").clicked() {
             action = Some(LibraryAction::RemoveDance(dance.source.id.clone()));
         }
     });
@@ -1226,7 +1203,7 @@ fn saved_tune_row(
             {
                 action = Some(LibraryAction::ToggleRotation(entry.item.clone()));
             }
-            tune_folder_menu(ui, entry, folders, &mut action);
+            tune_folder_menu(ui, compact, entry, folders, &mut action);
         });
         body.hovered()
     };
@@ -1283,6 +1260,7 @@ fn tune_row_body(
 
 fn tune_folder_menu(
     ui: &mut egui::Ui,
+    compact: bool,
     entry: &contra_core::LibraryEntry<Tune>,
     folders: &[String],
     action: &mut Option<LibraryAction>,
@@ -1291,7 +1269,7 @@ fn tune_folder_menu(
         .folder
         .clone()
         .unwrap_or_else(|| "Unfiled".to_string());
-    ui.menu_button(format!("Folder: {folder_label}"), |ui| {
+    row_menu_button(ui, compact, format!("Folder: {folder_label}"), |ui| {
         if ui
             .selectable_label(entry.folder.is_none(), "Unfiled")
             .clicked()

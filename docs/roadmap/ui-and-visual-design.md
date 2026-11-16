@@ -50,6 +50,9 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
   preview stack into one scrolling column instead of two narrow columns.
 - Saved-library folders collapse behind a single summary row on a phone so the
   saved cards start on screen.
+- Actions that share a row in the saved-dance and saved-tune lists use one
+  density: dense small buttons on a desktop and 44-point buttons on a phone.
+  The **Folder:** menu follows the row buttons, so a row never mixes heights.
 - Every screen, picker, dialog, empty state, and error banner is checked at both
   a desktop viewport (1280×800) and a phone viewport (390×844).
 - Respect safe-area insets on mobile.
