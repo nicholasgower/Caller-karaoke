@@ -1121,6 +1121,10 @@ impl ContraApp {
             LibraryAction::ExportTune(tune) => self.export_tune_abc(&tune),
             LibraryAction::ExportDance(dance) => self.export_dance_json(&dance),
             LibraryAction::EditTuneAbc(tune) => self.edit_tune_abc(&tune),
+            LibraryAction::OpenGlossary(term) => {
+                let return_to = self.screen;
+                self.open_glossary(Some(term), return_to);
+            }
             LibraryAction::UseChosenTuneSet => {
                 self.set_tune_set_source(contra_core::TuneSetSource::List)
             }
@@ -1890,12 +1894,16 @@ fn saved_dance_preview(
     }
     ui.separator();
     for figure in &dance.figures {
-        ui.label(format!(
-            "{}  {:.0}b  {}",
-            figure.phrase.as_deref().unwrap_or(""),
-            figure.beats,
-            figure.text
-        ));
+        ui.horizontal_wrapped(|ui| {
+            ui.label(format!(
+                "{}  {:.0}b  ",
+                figure.phrase.as_deref().unwrap_or(""),
+                figure.beats
+            ));
+            if let Some(entry) = glossary_text(ui, &figure.text, |text| egui::RichText::new(text)) {
+                action = Some(LibraryAction::OpenGlossary(entry.term));
+            }
+        });
     }
     ui.add_space(6.0);
     let width = action_width(

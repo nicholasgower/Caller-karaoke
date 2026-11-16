@@ -153,7 +153,11 @@ Useful checks for this app:
   is not done until the phone widths have no clipped controls or horizontal
   overflow.
 - `press_key` with `Space` toggles play/pause; `R` restarts; `Escape` leaves a
-  picker or preferences screen (the alias editor returns to preferences).
+  picker or preferences screen (the alias editor returns to preferences, and the
+  Dance glossary returns to the screen that opened it).
+- Glossary terms are clickable labels named with the term itself; the
+  **Glossary** button beside the Dance card heading has the same accessible
+  name. The **Filter terms** field narrows the reference list.
 - Media keys are not MCP inputs: the operating system's media session sits
   outside the app's widget tree, so no tool can press a hardware key.
   `session_action` (`play`, `pause`, `restart`) drives the same app path the

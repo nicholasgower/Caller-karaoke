@@ -175,8 +175,10 @@ See the `egui`/`epaint` source for the exact font files and notices.
   figures are shown only for records whose permission level allows it. The app
   fetches and caches the site's search pages and JSON records on demand and
   does not redistribute the database or its dance cards. The site's
-  [glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm) is
-  linked from the user guide as a reading aid and is not bundled.
+  [glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm)
+  is the source consulted for the vocabulary in Contra Karaoke's in-app Dance
+  glossary. The app definitions are short original summaries written for this
+  project, not copied glossary text, and the external glossary is not bundled.
 - **ABC Session Tunes** — <https://abcsessiontunes.com>. Tune transcriptions
   remain the property of their transcribers. The bundled *Sandy Boys* ABC is
   credited to Josh Larios; the ABC notes chords from Sarah Comer.

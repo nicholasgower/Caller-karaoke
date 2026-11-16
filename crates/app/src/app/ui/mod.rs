@@ -10,6 +10,7 @@ mod about;
 mod aliases;
 mod dance_picker;
 mod gesture;
+mod glossary;
 mod library;
 // The shell tests read the section list to assert where About is drawn.
 pub(in crate::app) mod preferences;
@@ -21,6 +22,7 @@ use crate::theme;
 pub(in crate::app) use abc_editor::{AbcEditorState, share_prompt};
 use contra_core::{Dance, FolderFilter, Tune};
 use eframe::egui;
+pub(in crate::app) use glossary::glossary_text;
 pub(in crate::app) use widgets::{
     RowPress, action_width, block_button, block_selectable, clamp_pane_width, combo_option,
     empty_label, group_chip, long_press_row, pane_splitter, row_activated, row_menu_button,
@@ -430,6 +432,8 @@ pub(super) enum LibraryAction {
     ExportDance(Dance),
     /// Open this saved tune in the ABC editor.
     EditTuneAbc(Tune),
+    /// Open a glossary entry from a linked term in the saved-dance preview.
+    OpenGlossary(&'static str),
     /// Switch the tune set from a folder back to the explicit chosen list.
     UseChosenTuneSet,
 }
@@ -501,18 +505,19 @@ pub(super) fn upcoming_move_card(
     beat: f64,
     show_original: bool,
     call_size: f32,
-) {
+) -> Option<&'static contra_core::glossary::GlossaryEntry> {
     ui.label(
         egui::RichText::new("UPCOMING MOVE")
             .small()
             .color(theme::muted(ui)),
     );
-    ui.label(
-        egui::RichText::new(&next.call.text)
+    let call_color = theme::on_card(ui);
+    let mut clicked = glossary_text(ui, &next.call.text, |text| {
+        egui::RichText::new(text)
             .size(call_size)
             .strong()
-            .color(theme::on_card(ui)),
-    );
+            .color(call_color)
+    });
     ui.horizontal_wrapped(|ui| {
         ui.label(
             egui::RichText::new(format!(
@@ -522,13 +527,16 @@ pub(super) fn upcoming_move_card(
             .color(theme::muted(ui)),
         );
         if show_original {
-            ui.label(
-                egui::RichText::new(format!("· {}", next.call.original_text))
-                    .small()
-                    .color(theme::muted(ui)),
-            );
+            ui.label(egui::RichText::new("·").small().color(theme::muted(ui)));
+            let original_color = theme::muted(ui);
+            if let Some(entry) = glossary_text(ui, &next.call.original_text, |text| {
+                egui::RichText::new(text).small().color(original_color)
+            }) {
+                clicked = Some(entry);
+            }
         }
     });
+    clicked
 }
 
 /// What the session controls changed this frame.

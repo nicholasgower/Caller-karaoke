@@ -30,7 +30,7 @@ fn heights() -> impl Iterator<Item = f32> {
     [844.0_f32, 560.0].into_iter()
 }
 
-const SCREENS: [Screen; 7] = [
+const SCREENS: [Screen; 8] = [
     Screen::Session,
     Screen::DancePicker,
     Screen::DanceDownload,
@@ -38,6 +38,7 @@ const SCREENS: [Screen; 7] = [
     Screen::TuneDownload,
     Screen::Preferences,
     Screen::Aliases,
+    Screen::Glossary,
 ];
 
 fn demo_app(cc: &mut eframe::CreationContext<'_>) -> ContraApp {
@@ -123,7 +124,7 @@ impl ContraApp {
     /// Whether this screen scrolls as one page at this size.
     fn screen_scrolls(&self, size: egui::Vec2) -> bool {
         match self.screen {
-            Screen::Preferences | Screen::Aliases | Screen::AbcEditor => true,
+            Screen::Preferences | Screen::Aliases | Screen::AbcEditor | Screen::Glossary => true,
             Screen::Session => session_layout(size.x, size.y).page_scroll,
             // The saved-content pickers switch to a single scrolling column
             // below 760 points; above it the panes are fixed.
@@ -144,7 +145,7 @@ impl ContraApp {
             Screen::TunePicker => &["Download tune"],
             Screen::DanceDownload => &["< Back to saved dances"],
             Screen::TuneDownload => &["< Back to saved tunes"],
-            Screen::Preferences | Screen::Aliases | Screen::AbcEditor => &[],
+            Screen::Preferences | Screen::Aliases | Screen::AbcEditor | Screen::Glossary => &[],
         }
     }
 }
@@ -271,6 +272,41 @@ fn phone_preferences_category_rows_share_one_left_edge() {
             rect.width()
         );
     }
+}
+
+#[test]
+fn a_glossary_term_opens_its_entry_and_back_returns_to_the_session() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Session;
+            app.error = None;
+            app.started = true;
+            app.needs_render = false;
+            app.audio.play();
+            app.audio.seek_beat(4.0);
+            app
+        });
+    harness.run_steps(3);
+
+    let term = harness
+        .query_all_by_label("balance and swing")
+        .next()
+        .expect("the prompt and dance card link the balance and swing figure");
+    term.click();
+    harness.run_steps(3);
+
+    assert_eq!(harness.state().screen, Screen::Glossary);
+    assert_eq!(harness.state().glossary_return, Screen::Session);
+
+    harness.get_by_label("< Back to session").click();
+    harness.run_steps(2);
+    assert_eq!(harness.state().screen, Screen::Session);
 }
 
 #[test]

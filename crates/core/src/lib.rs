@@ -8,6 +8,7 @@ pub mod alias;
 pub mod dance;
 pub mod dancer;
 pub mod effects;
+pub mod glossary;
 pub mod library;
 pub mod prefs;
 pub mod pronounce;

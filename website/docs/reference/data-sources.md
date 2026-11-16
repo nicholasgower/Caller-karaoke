@@ -18,7 +18,10 @@ explains the mechanics behind shorthand such as allemandes, gyres, heys, and
 poussettes, and the notation used in a downloaded card, which helps when a
 figure name is unfamiliar. The site also has a shorter [notation
 glossary](https://www.ibiblio.org/contradance/thecallersbox/Brief-glossary.htm).
-The glossary is a reading aid; the app never fetches or bundles it.
+
+The app includes its own [Dance glossary](/docs/reference/glossary) built from
+short original summaries of that vocabulary; links in the call prompt and dance
+card open it. The app never fetches or bundles The Caller's Box text itself.
 
 ## Dance sources
 
