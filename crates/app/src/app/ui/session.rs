@@ -299,9 +299,9 @@ impl ContraApp {
     pub(in crate::app) fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
         let layout = session_layout(ui.available_width(), ui.available_height());
         if layout.page_scroll {
-            // A short phone cannot fit the controls, prompt, and dance card at
-            // once. Scroll the whole page instead of squeezing the card into a
-            // few pixels or hiding it below the fold.
+            // A short phone cannot fit the prompt, controls, and dance card at
+            // once. Scroll the whole page: the prompt starts at the top of the
+            // content, and the card is reachable below the fold.
             egui::ScrollArea::vertical()
                 .id_salt("session-page")
                 .auto_shrink([false, false])
@@ -326,6 +326,11 @@ impl ContraApp {
             // The phone layout gives every interactive control a 44 pt row.
             ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
         }
+        // The prompt is the first thing under the tab row: it is what the caller
+        // reads mid-dance, so it keeps one fixed place at the top instead of
+        // sitting between the summary and the dance card.
+        self.prompt_card(ui, beat, compact);
+        ui.add_space(8.0);
         let SessionControlChanges {
             timeline_dirty,
             music_dirty,
@@ -510,7 +515,67 @@ impl ContraApp {
             }
         }
 
+        ui.add_space(6.0);
+        let progress = if beat < 0.0 {
+            0.0
+        } else {
+            (beat / self.timeline.music_loop_beats).clamp(0.0, 1.0)
+        };
+        let transport = transport_state(
+            self.started,
+            self.audio.is_playing(),
+            self.audio.is_finished(),
+            self.audio.in_ending(),
+            beat,
+        );
+        let progress_text = progress_text(transport, beat, self.timeline.music_loop_beats);
+        ui.add(
+            egui::ProgressBar::new(progress as f32)
+                .text(progress_text)
+                .desired_width(f32::INFINITY),
+        );
+
         ui.add_space(8.0);
+        ui.label(egui::RichText::new("Dance card").strong());
+        if card_scroll {
+            egui::ScrollArea::vertical()
+                .id_salt("dance-card")
+                .auto_shrink([false, false])
+                .show(ui, |ui| self.dance_card_list(ui, beat, compact));
+        } else {
+            self.dance_card_list(ui, beat, compact);
+        }
+
+        if timeline_dirty && !(music_dirty && self.audio.is_playing()) {
+            self.rebuild_timeline();
+        }
+        if music_dirty {
+            // Re-render on the next frame after the control is released; the
+            // old buffer keeps playing until then so playback does not restart.
+            self.needs_render = true;
+            self.pending_audio = true;
+        }
+        match action {
+            Some("play") => self.play(),
+            Some("pause") => self.pause(),
+            Some("restart") => self.restart(),
+            Some("end") | Some("cancel-ending") => self.end_tune(),
+            _ => {}
+        }
+        if rotation_changed {
+            self.rotation_settings_changed();
+        }
+        if save || timeline_dirty || music_dirty || rotation_changed {
+            self.save_prefs();
+        }
+    }
+
+    /// The large call prompt and the **Next:** line that follows it.
+    ///
+    /// It sits at the top of the session, directly under the tab row, because
+    /// it is the one panel a caller reads while the dance is running. The
+    /// controls, tune summary, progress bar, and dance card follow below it.
+    fn prompt_card(&self, ui: &mut egui::Ui, beat: f64, compact: bool) {
         let active = if self.started {
             self.timeline
                 .scheduled_call_at(beat, self.prefs.loop_enabled)
@@ -748,60 +813,6 @@ impl ContraApp {
                 ui.label(egui::RichText::new(&next.call.text).strong());
                 ui.label(egui::RichText::new(timing).small().color(theme::muted(ui)));
             });
-        }
-
-        ui.add_space(6.0);
-        let progress = if beat < 0.0 {
-            0.0
-        } else {
-            (beat / self.timeline.music_loop_beats).clamp(0.0, 1.0)
-        };
-        let transport = transport_state(
-            self.started,
-            self.audio.is_playing(),
-            self.audio.is_finished(),
-            self.audio.in_ending(),
-            beat,
-        );
-        let progress_text = progress_text(transport, beat, self.timeline.music_loop_beats);
-        ui.add(
-            egui::ProgressBar::new(progress as f32)
-                .text(progress_text)
-                .desired_width(f32::INFINITY),
-        );
-
-        ui.add_space(8.0);
-        ui.label(egui::RichText::new("Dance card").strong());
-        if card_scroll {
-            egui::ScrollArea::vertical()
-                .id_salt("dance-card")
-                .auto_shrink([false, false])
-                .show(ui, |ui| self.dance_card_list(ui, beat, compact));
-        } else {
-            self.dance_card_list(ui, beat, compact);
-        }
-
-        if timeline_dirty && !(music_dirty && self.audio.is_playing()) {
-            self.rebuild_timeline();
-        }
-        if music_dirty {
-            // Re-render on the next frame after the control is released; the
-            // old buffer keeps playing until then so playback does not restart.
-            self.needs_render = true;
-            self.pending_audio = true;
-        }
-        match action {
-            Some("play") => self.play(),
-            Some("pause") => self.pause(),
-            Some("restart") => self.restart(),
-            Some("end") | Some("cancel-ending") => self.end_tune(),
-            _ => {}
-        }
-        if rotation_changed {
-            self.rotation_settings_changed();
-        }
-        if save || timeline_dirty || music_dirty || rotation_changed {
-            self.save_prefs();
         }
     }
 
