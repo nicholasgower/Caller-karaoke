@@ -2853,7 +2853,9 @@ impl ContraApp {
     ///
     /// Kept separate from the file dialog so tests can exercise the memory
     /// consequences (the bundled font is dropped and reloaded lazily) without
-    /// opening a picker.
+    /// opening a picker. The file picker only exists on desktop, so the
+    /// platforms without one do not call this.
+    #[cfg_attr(any(target_arch = "wasm32", target_os = "android"), allow(dead_code))]
     fn install_user_soundfont(
         &mut self,
         soundfont: Arc<SoundFont>,

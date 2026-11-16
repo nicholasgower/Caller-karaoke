@@ -1,4 +1,4 @@
-﻿use super::gesture;
+use super::gesture;
 use super::*;
 use crate::app::*;
 use eframe::egui;
@@ -224,7 +224,7 @@ impl ContraApp {
                     // Folders are a filter, not the main content: keep them
                     // collapsed on a phone so the saved cards start on screen.
                     command = egui::CollapsingHeader::new(format!(
-                        "Folders Â· {}",
+                        "Folders · {}",
                         self.dance_library_folder.label()
                     ))
                     .id_salt("dance-folders")
@@ -569,7 +569,7 @@ impl ContraApp {
         };
         ui.label(
             egui::RichText::new(format!(
-                "Tune set: {} Â· {set_count} tunes. {cycle}",
+                "Tune set: {} · {set_count} tunes. {cycle}",
                 source.label()
             ))
             .small()
@@ -694,7 +694,7 @@ impl ContraApp {
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     command = egui::CollapsingHeader::new(format!(
-                        "Folders Â· {}",
+                        "Folders · {}",
                         self.tune_library_folder.label()
                     ))
                     .id_salt("tune-folders")
@@ -932,7 +932,7 @@ impl ContraApp {
         ui.heading(&tune.title);
         ui.label(
             egui::RichText::new(format!(
-                "{} Â· {} Â· {}",
+                "{} · {} · {}",
                 empty_label(&tune.composer, "unknown"),
                 tune.display_key(),
                 tune.display_meter()
@@ -947,7 +947,7 @@ impl ContraApp {
         let source = &self.prefs.tune_rotation.source;
         let set_count = self.rotation_tunes().len();
         ui.label(
-            egui::RichText::new(format!("Tune set: {} Â· {set_count} tunes", source.label()))
+            egui::RichText::new(format!("Tune set: {} · {set_count} tunes", source.label()))
                 .small()
                 .color(theme::muted(ui)),
         );
@@ -1245,9 +1245,9 @@ impl ContraApp {
 /// filter and its total so the two never repeat each other.
 fn group_label(filter: &FolderFilter, all_label: &str, count: usize) -> String {
     match filter {
-        FolderFilter::All => format!("{all_label} Â· {count}"),
-        FolderFilter::Unfiled => format!("Unfiled Â· {count}"),
-        FolderFilter::Folder(name) => format!("{name} Â· {count}"),
+        FolderFilter::All => format!("{all_label} · {count}"),
+        FolderFilter::Unfiled => format!("Unfiled · {count}"),
+        FolderFilter::Folder(name) => format!("{name} · {count}"),
     }
 }
 
@@ -1343,7 +1343,7 @@ fn folder_row_ui(
         } else {
             egui::CursorIcon::Grab
         })
-        .on_hover_text("Click to show this folder Â· drag to reorder");
+        .on_hover_text("Click to show this folder · drag to reorder");
     (response, press)
 }
 
@@ -1364,7 +1364,7 @@ fn folder_panel_ui(ui: &mut egui::Ui, panel: FolderPanel<'_>) -> Option<FolderCo
 
     ui.label(egui::RichText::new("Folders").strong());
     ui.label(
-        egui::RichText::new("Drag folders to reorder Â· hold on touch")
+        egui::RichText::new("Drag folders to reorder · hold on touch")
             .small()
             .color(theme::muted(ui)),
     );
@@ -1552,7 +1552,7 @@ fn folder_panel_ui(ui: &mut egui::Ui, panel: FolderPanel<'_>) -> Option<FolderCo
             ui.separator();
             ui.label(
                 egui::RichText::new(format!(
-                    "Tune set: {} Â· {} tunes",
+                    "Tune set: {} · {} tunes",
                     tune_set.source.label(),
                     tune_set.count
                 ))
@@ -1694,7 +1694,7 @@ fn row_context_menu(
         ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
         ui.label(
             egui::RichText::new(format!(
-                "Add to folder Â· now in {}",
+                "Add to folder · now in {}",
                 current.unwrap_or("Unfiled")
             ))
             .small()
@@ -1827,7 +1827,7 @@ fn dance_row_body(
             ui.label(egui::RichText::new(&entry.item.title).strong());
             ui.label(
                 egui::RichText::new(format!(
-                    "{} Â· {} Â· {}",
+                    "{} · {} · {}",
                     empty_label(&entry.item.choreographer, "unknown"),
                     empty_label(&entry.item.formation, "unknown"),
                     empty_label(entry.folder.as_deref().unwrap_or("Unfiled"), "Unfiled"),
@@ -1845,7 +1845,7 @@ fn dance_row_body(
             egui::Sense::click(),
         )
         .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .on_hover_text("Preview this dance Â· right-click for folder and delete");
+        .on_hover_text("Preview this dance · right-click for folder and delete");
     let label = format!("Preview {}", entry.item.title);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
     response
@@ -1867,7 +1867,7 @@ fn saved_dance_preview(
     ui.heading(&dance.title);
     ui.label(
         egui::RichText::new(format!(
-            "{} Â· {}",
+            "{} · {}",
             empty_label(&dance.choreographer, "unknown"),
             empty_label(&dance.formation, "unknown")
         ))
@@ -1875,7 +1875,7 @@ fn saved_dance_preview(
     );
     ui.label(
         egui::RichText::new(format!(
-            "{} figures Â· {} beats",
+            "{} figures · {} beats",
             dance.figures.len(),
             dance.total_beats()
         ))
@@ -2026,7 +2026,7 @@ fn tune_row_body(
             ui.label(egui::RichText::new(&entry.item.title).strong());
             ui.label(
                 egui::RichText::new(format!(
-                    "{} Â· {} Â· {} Â· {}",
+                    "{} · {} · {} · {}",
                     empty_label(&entry.item.composer, "unknown"),
                     entry.item.display_key(),
                     entry.item.display_rhythm(),
@@ -2045,7 +2045,7 @@ fn tune_row_body(
             egui::Sense::click(),
         )
         .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .on_hover_text("Preview this tune Â· right-click for folder and delete");
+        .on_hover_text("Preview this tune · right-click for folder and delete");
     let label = format!("Preview {}", entry.item.title);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
     response
@@ -2059,15 +2059,15 @@ mod tests {
     fn the_group_chip_names_the_current_folder_and_its_count() {
         assert_eq!(
             group_label(&FolderFilter::All, "All dances", 7),
-            "All dances Â· 7"
+            "All dances · 7"
         );
         assert_eq!(
             group_label(&FolderFilter::Unfiled, "All tunes", 2),
-            "Unfiled Â· 2"
+            "Unfiled · 2"
         );
         assert_eq!(
             group_label(&FolderFilter::Folder("Warmups".into()), "All dances", 3),
-            "Warmups Â· 3"
+            "Warmups · 3"
         );
         // The count line keeps the search result count, so the chip is the
         // only place the grouping and its total appear.

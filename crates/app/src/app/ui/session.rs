@@ -1,4 +1,4 @@
-﻿use super::*;
+use super::*;
 use crate::app::*;
 use crate::audio::AudioEngine;
 use crate::theme;
@@ -9,7 +9,7 @@ use eframe::egui;
 /// The instrument line under the tune.
 ///
 /// Each editable band row appears once, with its player count when the section
-/// has more than one player. `Ã—2` reads as two players on that part, which is
+/// has more than one player. `×2` reads as two players on that part, which is
 /// how a band describes a section.
 fn instrument_summary(prefs: &Preferences) -> String {
     let slots = prefs.band_slots();
@@ -17,7 +17,7 @@ fn instrument_summary(prefs: &Preferences) -> String {
         .iter()
         .map(|slot| part_summary(slot.part.label(), slot.voice.label(), slot.player_count()))
         .collect::<Vec<_>>();
-    parts.join(" Â· ")
+    parts.join(" · ")
 }
 
 fn part_summary(part: &str, instrument: &str, players: usize) -> String {
@@ -26,7 +26,7 @@ fn part_summary(part: &str, instrument: &str, players: usize) -> String {
 
 fn part_copy_label(instrument: &str, players: usize) -> String {
     if players > 1 {
-        format!("{instrument} Ã—{players}")
+        format!("{instrument} ×{players}")
     } else {
         instrument.to_string()
     }
@@ -34,7 +34,7 @@ fn part_copy_label(instrument: &str, players: usize) -> String {
 
 /// The session tempo slider's effective range.
 ///
-/// The user's configured window (200â€“300 BPM by default) is widened, never
+/// The user's configured window (200–300 BPM by default) is widened, never
 /// narrowed, to include the current tempo. A tempo restored from a file or set
 /// before the window changed therefore stays selectable instead of snapping to
 /// an endpoint.
@@ -105,7 +105,7 @@ fn session_controls(
             let in_ending = audio.in_ending();
             let can_end = !in_ending && !audio.is_finished() && audio.has_buffer();
             let end_label = if in_ending {
-                "Endingâ€¦"
+                "Ending…"
             } else if ending {
                 "Cancel"
             } else {
@@ -208,7 +208,7 @@ fn session_controls(
             let in_ending = audio.in_ending();
             let can_end = !in_ending && !audio.is_finished() && audio.has_buffer();
             let end_label = if in_ending {
-                "Endingâ€¦"
+                "Ending…"
             } else if ending {
                 "Cancel ending"
             } else {
@@ -371,14 +371,14 @@ fn progress_text(state: TransportState, beat: f64, loop_beats: f64, count_in_bea
         TransportState::CountIn => {
             let left = count_in_beats_left(beat, count_in_beats);
             if left == 1 {
-                "Count-in Â· 1 beat left".to_string()
+                "Count-in · 1 beat left".to_string()
             } else {
-                format!("Count-in Â· {left} beats left")
+                format!("Count-in · {left} beats left")
             }
         }
-        TransportState::Ending => "Ending Â· slow finish".to_string(),
+        TransportState::Ending => "Ending · slow finish".to_string(),
         _ => format!(
-            "{} Â· beat {:.0} / {:.0}",
+            "{} · beat {:.0} / {:.0}",
             state.label(),
             beat.clamp(0.0, loop_beats),
             loop_beats
@@ -422,8 +422,8 @@ impl CardMode {
     /// All three modes reserve identical rows. CALL NOW fills the footer with
     /// the following call; UPCOMING MOVE already names that call in its main
     /// line and leaves the footer blank; the last figure has nothing to
-    /// preview. Reserving the row in every mode is what stops the panel â€” and
-    /// the controls below it â€” from resizing when the mode changes.
+    /// preview. Reserving the row in every mode is what stops the panel — and
+    /// the controls below it — from resizing when the mode changes.
     fn card_rows(self) -> CardRows {
         CardRows {
             call: PROMPT_CARD_CALL_LINES,
@@ -475,7 +475,7 @@ fn card_footer(
 fn prompt_card_footer(ui: &mut egui::Ui, next: &contra_core::ScheduledCall, compact: bool) {
     let timing = if compact {
         format!(
-            "beat {:.0} Â· call {:.1}",
+            "beat {:.0} · call {:.1}",
             next.execute_beat, next.start_beat
         )
     } else {
@@ -690,7 +690,7 @@ impl ContraApp {
         }
         ui.label(
             egui::RichText::new(format!(
-                "{} Â· {} Â· {} beats",
+                "{} · {} · {} beats",
                 empty_label(&self.dance.choreographer, "unknown choreographer"),
                 empty_label(&self.dance.formation, "formation unknown"),
                 self.dance.total_beats()
@@ -703,7 +703,7 @@ impl ContraApp {
             // and the instrument summary never break mid-phrase at phone width.
             ui.label(
                 egui::RichText::new(format!(
-                    "Tune: {} Â· {} Â· {}",
+                    "Tune: {} · {} · {}",
                     self.tune.title,
                     self.tune.display_key(),
                     self.tune.display_rhythm()
@@ -716,7 +716,7 @@ impl ContraApp {
                 ui.label("Tune:");
                 ui.label(
                     egui::RichText::new(format!(
-                        "{} Â· {} Â· {}",
+                        "{} · {} · {}",
                         self.tune.title,
                         self.tune.display_key(),
                         self.tune.display_rhythm()
@@ -749,7 +749,7 @@ impl ContraApp {
                 };
                 let next = next.unwrap_or_else(|| "the first tune".to_string());
                 format!(
-                    "{place} Â· next: {next} Â· changes every {interval} times through (â‰ˆ{minutes:.1} min)"
+                    "{place} · next: {next} · changes every {interval} times through (≈{minutes:.1} min)"
                 )
             };
             let mut edit = false;
@@ -915,7 +915,7 @@ impl ContraApp {
                     );
                     ui.label(
                         egui::RichText::new(format!(
-                            "{} calls Â· {} beats Â· {}",
+                            "{} calls · {} beats · {}",
                             self.timeline.calls.len(),
                             self.timeline.music_loop_beats,
                             count_in_label
@@ -997,7 +997,7 @@ impl ContraApp {
                                 if self.prefs.show_original {
                                     ui.label(
                                         egui::RichText::new(format!(
-                                            "Â· {}",
+                                            "· {}",
                                             call.call.original_text
                                         ))
                                         .small()
@@ -1045,7 +1045,7 @@ impl ContraApp {
                                 if self.prefs.show_original {
                                     ui.label(
                                         egui::RichText::new(format!(
-                                            "Â· {}",
+                                            "· {}",
                                             call.call.original_text
                                         ))
                                         .small()
@@ -1069,7 +1069,7 @@ impl ContraApp {
                     );
                     ui.label(egui::RichText::new(&self.tune.title).size(28.0).strong());
                     ui.label(
-                        egui::RichText::new("Slowing down and holding the last noteâ€¦")
+                        egui::RichText::new("Slowing down and holding the last note…")
                             .color(theme::muted(ui)),
                     );
                 } else {
@@ -1080,7 +1080,7 @@ impl ContraApp {
                     );
                     ui.label(
                         egui::RichText::new(format!(
-                            "{} calls Â· {} beats Â· {}",
+                            "{} calls · {} beats · {}",
                             self.timeline.calls.len(),
                             self.timeline.music_loop_beats,
                             count_in_label
@@ -1199,8 +1199,8 @@ mod tests {
         let prefs = Preferences::default();
         assert_eq!(
             instrument_summary(&prefs),
-            "Melody: Fiddle Ã—2 Â· Accompaniment: Piano Â· Countermelody: Fiddle Ã—2 Â· \
-             Percussion: Foot taps Ã—3"
+            "Melody: Fiddle ×2 · Accompaniment: Piano · Countermelody: Fiddle ×2 · \
+             Percussion: Foot taps ×3"
         );
 
         let mut prefs = prefs;
@@ -1224,7 +1224,7 @@ mod tests {
         ];
         assert_eq!(
             instrument_summary(&prefs),
-            "Melody: Clarinet Ã—3 Â· Accompaniment: Guitar"
+            "Melody: Clarinet ×3 · Accompaniment: Guitar"
         );
 
         // Removing every pitched row would be repaired by validation, so the
@@ -1402,23 +1402,23 @@ mod tests {
     fn progress_text_explains_the_state_and_position() {
         assert_eq!(
             progress_text(TransportState::Ready, 0.0, 64.0, 4.0),
-            "Ready Â· beat 0 / 64"
+            "Ready · beat 0 / 64"
         );
         assert_eq!(
             progress_text(TransportState::Playing, 12.4, 64.0, 4.0),
-            "Playing Â· beat 12 / 64"
+            "Playing · beat 12 / 64"
         );
         assert_eq!(
             progress_text(TransportState::Paused, 12.6, 64.0, 4.0),
-            "Paused Â· beat 13 / 64"
+            "Paused · beat 13 / 64"
         );
         assert_eq!(
             progress_text(TransportState::Finished, 64.0, 64.0, 4.0),
-            "Finished Â· beat 64 / 64"
+            "Finished · beat 64 / 64"
         );
         assert_eq!(
             progress_text(TransportState::Ending, 62.0, 64.0, 4.0),
-            "Ending Â· slow finish"
+            "Ending · slow finish"
         );
     }
 
@@ -1426,21 +1426,21 @@ mod tests {
     fn count_in_text_counts_the_remaining_beats() {
         assert_eq!(
             progress_text(TransportState::CountIn, -4.0, 64.0, 4.0),
-            "Count-in Â· 4 beats left"
+            "Count-in · 4 beats left"
         );
         // The audio clock can land just past the first beat; the display must
         // still start at four, not five.
         assert_eq!(
             progress_text(TransportState::CountIn, -4.000_001, 64.0, 4.0),
-            "Count-in Â· 4 beats left"
+            "Count-in · 4 beats left"
         );
         assert_eq!(
             progress_text(TransportState::CountIn, -3.2, 64.0, 4.0),
-            "Count-in Â· 4 beats left"
+            "Count-in · 4 beats left"
         );
         assert_eq!(
             progress_text(TransportState::CountIn, -0.2, 64.0, 4.0),
-            "Count-in Â· 1 beat left"
+            "Count-in · 1 beat left"
         );
     }
 

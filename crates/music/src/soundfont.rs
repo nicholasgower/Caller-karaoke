@@ -1,8 +1,8 @@
-﻿//! Optional SoundFont rendering via `rustysynth`.
+//! Optional SoundFont rendering via `rustysynth`.
 //!
 //! The app bundles a trimmed Fluid R3 GM (MIT) subset and renders with it by
-//! default. This module loads whichever bank is active â€” the bundled subset or
-//! one the user supplied â€” and renders the same note events as the built-in
+//! default. This module loads whichever bank is active — the bundled subset or
+//! one the user supplied — and renders the same note events as the built-in
 //! synth using General MIDI programs.
 //!
 //! Each pitched [`contra_core::BandSlot`] is rendered by its own synthesizer
