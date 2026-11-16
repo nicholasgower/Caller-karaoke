@@ -75,7 +75,7 @@ with a Play/Pause control.
   so the next Play resumes from the same place.
 - **Stop** pauses. **Next** and **Previous** are ignored.
 - Headset and Bluetooth buttons, the lock screen, and the playback notification
-  all take the same path as the app's own Play and Pause buttons.
+  all take the same path as the app's own **Play/Pause** button.
 
 On Android 13 and newer the app asks for notification permission so the playback
 notification can appear. Denying it only hides the notification: headset,

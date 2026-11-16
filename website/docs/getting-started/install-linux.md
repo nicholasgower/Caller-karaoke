@@ -82,7 +82,8 @@ and the widget shows the loaded dance as the title and the tune as the artist.
 
 On **Linux Mint (Cinnamon)**, the sound applet in the panel lists Contra Karaoke
 as a player while it is active. Its Play/Pause button, the media key, and the
-lock-screen media controls all go through MPRIS; the applet's own volume slider
+lock-screen media controls all go through MPRIS and drive the same transport as
+the app's own **Play/Pause** button; the applet's own volume slider
 controls the system output, not the app's **Volume** setting inside the session
 tab. GNOME, KDE Plasma, and other MPRIS-aware panels work the same way.
 

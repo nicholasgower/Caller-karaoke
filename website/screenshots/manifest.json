@@ -114,7 +114,7 @@
     },
     {
       "id": "transport-tempo",
-      "alt": "The session controls with the Tempo slider set to 240 BPM beside Play, Pause, Restart, End tune, Loop, Cycle tunes, Count-in, Speak calls, and Volume.",
+      "alt": "The session controls with the Tempo slider set to 240 BPM beside one Play/Pause button, Restart, End tune, Loop, Cycle tunes, Count-in, Speak calls, and Volume.",
       "caption": "Tempo changes mark the music for a rebuild; press Play to apply them.",
       "status": "ready",
       "width": 1280,
@@ -584,7 +584,7 @@
     },
     {
       "id": "session-mobile-controls",
-      "alt": "The session screen at phone width with one-row tabs, full-width Tempo and Volume sliders, Play, Pause, Restart, and End on one row, and a green CALL NOW prompt above the dance card.",
+      "alt": "The session screen at phone width with one-row tabs, full-width Tempo and Volume sliders, Play/Pause, Restart, and End on one row, and a green CALL NOW prompt above the dance card.",
       "caption": "The phone layout gives the sliders the full width and every control a 44-pixel touch target.",
       "status": "ready",
       "width": 390,

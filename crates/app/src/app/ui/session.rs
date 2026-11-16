@@ -84,22 +84,20 @@ fn session_controls(
         });
 
         // Equal-width transport buttons: no control hides behind hover and
-        // each is a full touch target.
+        // each is a full touch target. Play and Pause share one toggle button.
         ui.horizontal(|ui| {
             let spacing = ui.spacing().item_spacing.x;
-            let width = ((ui.available_width() - 3.0 * spacing) / 4.0).max(62.0);
-            for (label, hover, action) in [
-                ("Play", "Play (Space)", "play"),
-                ("Pause", "Pause (Space)", "pause"),
-                ("Restart", "Restart (R)", "restart"),
-            ] {
-                if ui
-                    .add_sized([width, theme::TOUCH_TARGET], egui::Button::new(label))
-                    .on_hover_text(hover)
-                    .clicked()
-                {
-                    changes.action = Some(action);
-                }
+            let width = ((ui.available_width() - 2.0 * spacing) / 3.0).max(62.0);
+            let size = egui::vec2(width, theme::TOUCH_TARGET);
+            if play_pause_button(ui, audio.is_playing(), size).clicked() {
+                changes.action = Some("toggle");
+            }
+            if ui
+                .add_sized(size, egui::Button::new("Restart"))
+                .on_hover_text("Restart (R)")
+                .clicked()
+            {
+                changes.action = Some("restart");
             }
             let ending = audio.ending_requested();
             let in_ending = audio.in_ending();
@@ -113,7 +111,7 @@ fn session_controls(
             };
             let response = ui
                 .add_enabled_ui(can_end, |ui| {
-                    ui.add_sized([width, theme::TOUCH_TARGET], egui::Button::new(end_label))
+                    ui.add_sized(size, egui::Button::new(end_label))
                 })
                 .inner
                 .on_hover_text(if ending {
@@ -195,11 +193,11 @@ fn session_controls(
                 changes.timeline_dirty = true;
                 changes.music_dirty = true;
             }
-            if ui.button("Play").on_hover_text("Play (Space)").clicked() {
-                changes.action = Some("play");
-            }
-            if ui.button("Pause").on_hover_text("Pause (Space)").clicked() {
-                changes.action = Some("pause");
+            // One Play/Pause toggle: the icon is painted because the bundled
+            // fonts have no play or pause glyph.
+            let side = ui.spacing().interact_size.y;
+            if play_pause_button(ui, audio.is_playing(), egui::Vec2::splat(side)).clicked() {
+                changes.action = Some("toggle");
             }
             if ui.button("Restart").on_hover_text("Restart (R)").clicked() {
                 changes.action = Some("restart");
@@ -279,6 +277,74 @@ fn session_controls(
     }
 
     changes
+}
+
+/// The single Play/Pause button.
+///
+/// `egui::Button` keeps the fill, stroke, focus, and click handling the other
+/// transport buttons have; only the label is empty because the glyph is
+/// painted. No bundled font has a play or pause glyph — Ubuntu-Light covers no
+/// geometric shapes and the monochrome emoji fonts are not linked — so a
+/// "▶"/"⏸" label would render as an empty box.
+///
+/// The accessible name follows the action: "Play" while the session is
+/// stopped, "Pause" while the music runs. A screen reader announces what the
+/// press will do, and the MCP session tools find the button by that name.
+fn play_pause_button(ui: &mut egui::Ui, playing: bool, size: egui::Vec2) -> egui::Response {
+    let name = if playing { "Pause" } else { "Play" };
+    let response = ui
+        .add_sized(size, egui::Button::new(""))
+        .on_hover_text(format!("{name} (Space)"));
+    if ui.is_rect_visible(response.rect) {
+        let color = ui.style().interact(&response).fg_stroke.color;
+        ui.painter()
+            .extend(play_pause_shapes(response.rect, playing, color));
+    }
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), name));
+    response
+}
+
+/// The painted icon inside the Play/Pause button, centered in `rect`.
+///
+/// A filled triangle pointing right reads as play and two upright bars read as
+/// pause at any size. Every point stays inside `rect`, so the icon never paints
+/// over the button's border.
+fn play_pause_shapes(rect: egui::Rect, playing: bool, color: egui::Color32) -> Vec<egui::Shape> {
+    let center = rect.center();
+    let icon = rect.width().min(rect.height()) * 0.38;
+    if playing {
+        let bar = icon * 0.32;
+        let gap = icon * 0.24;
+        let top = center.y - icon / 2.0;
+        let radius = egui::CornerRadius::same((bar * 0.35).round() as u8);
+        let left = center.x - gap / 2.0 - bar;
+        vec![
+            egui::Shape::rect_filled(
+                egui::Rect::from_min_size(egui::pos2(left, top), egui::vec2(bar, icon)),
+                radius,
+                color,
+            ),
+            egui::Shape::rect_filled(
+                egui::Rect::from_min_size(
+                    egui::pos2(center.x + gap / 2.0, top),
+                    egui::vec2(bar, icon),
+                ),
+                radius,
+                color,
+            ),
+        ]
+    } else {
+        let half = icon / 2.0;
+        vec![egui::Shape::convex_polygon(
+            vec![
+                center + egui::vec2(-half * 0.8, -half),
+                center + egui::vec2(-half * 0.8, half),
+                center + egui::vec2(half, 0.0),
+            ],
+            color,
+            egui::Stroke::NONE,
+        )]
+    }
 }
 
 /// The transport state named by the progress bar.
@@ -708,8 +774,7 @@ impl ContraApp {
             }
         }
         match action {
-            Some("play") => self.play(),
-            Some("pause") => self.pause(),
+            Some("toggle") => self.toggle_playback(),
             Some("restart") => self.restart(),
             Some("end") | Some("cancel-ending") => self.end_tune(),
             _ => {}
@@ -1581,6 +1646,28 @@ mod tests {
         assert_eq!(count_in_beats_left(-1.0, 0.0), 0);
         assert_eq!(count_in_label(0.0), "no count-in");
         assert_eq!(count_in_label(4.0), "4-beat count-in");
+    }
+
+    #[test]
+    fn the_painted_play_pause_icon_fits_its_button() {
+        for side in [theme::TOUCH_TARGET, 40.0] {
+            let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(side, side));
+            let play = play_pause_shapes(rect, false, egui::Color32::WHITE);
+            let pause = play_pause_shapes(rect, true, egui::Color32::WHITE);
+            assert_eq!(play.len(), 1, "play is one filled triangle");
+            assert_eq!(pause.len(), 2, "pause is two bars");
+            for shape in play.iter().chain(&pause) {
+                let bounds = shape.visual_bounding_rect();
+                assert!(
+                    rect.contains_rect(bounds),
+                    "{bounds:?} escapes a {side}-point button"
+                );
+            }
+            // Upright bars read as pause even at a glance; a wide pair would
+            // look like a broken stop icon.
+            let bar = pause[0].visual_bounding_rect();
+            assert!(bar.height() > bar.width(), "pause bars stay upright");
+        }
     }
 
     #[test]

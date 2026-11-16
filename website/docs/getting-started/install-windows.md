@@ -85,7 +85,7 @@ the app.
 
 These controls work while the window is minimized and while a text field has
 focus. If another app is the current media session, Windows may send the key
-there instead; pause that app or use the app's own buttons.
+there instead; pause that app or use the app's own **Play/Pause** button.
 
 ## Uninstall
 

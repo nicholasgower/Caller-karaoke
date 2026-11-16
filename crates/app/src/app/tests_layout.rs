@@ -138,9 +138,7 @@ impl ContraApp {
     /// does not scroll.
     fn top_level_controls(&self) -> &'static [&'static str] {
         match self.screen {
-            Screen::Session => &[
-                "Play", "Pause", "Restart", "Loop", "Count-in", "Tempo", "Volume",
-            ],
+            Screen::Session => &["Play", "Restart", "Loop", "Count-in", "Tempo", "Volume"],
             Screen::DancePicker => &["Download dance"],
             Screen::TunePicker => &["Download tune"],
             Screen::DanceDownload => &["< Back to saved dances"],
@@ -540,6 +538,48 @@ fn a_swipe_that_starts_on_a_control_does_not_change_tabs() {
     harness.drop_at(blank - egui::vec2(140.0, 0.0));
     harness.run_steps(2);
     assert_eq!(harness.state().screen, Screen::DancePicker);
+}
+
+#[test]
+fn the_transport_has_one_play_pause_button() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(800.0, 844.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(demo_app);
+    harness.run_steps(3);
+
+    // Stopped: one button, and its accessible name is the action it offers.
+    assert!(
+        harness.get_by_label("Play").rect().height() >= 40.0,
+        "the Play/Pause button keeps a full-size target"
+    );
+    assert!(
+        harness.query_all_by_label("Pause").next().is_none(),
+        "the separate Pause button is gone"
+    );
+
+    harness.get_by_label("Play").click();
+    harness.run_steps(3);
+    assert!(harness.state().audio.is_playing());
+    assert!(
+        harness.query_all_by_label("Play").next().is_none(),
+        "a running session offers Pause, not Play"
+    );
+    assert!(
+        harness.query_all_by_label("Pause").next().is_some(),
+        "the same button now pauses"
+    );
+
+    harness.get_by_label("Pause").click();
+    harness.run_steps(3);
+    assert!(!harness.state().audio.is_playing());
+    assert!(
+        harness.query_all_by_label("Play").next().is_some(),
+        "pausing turns the button back into Play"
+    );
 }
 
 #[test]

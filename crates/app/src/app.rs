@@ -1025,11 +1025,7 @@ impl ContraApp {
             self.screen = tab_step(self.screen, -1);
         }
         if space {
-            if self.audio.is_playing() {
-                self.pause();
-            } else {
-                self.play();
-            }
+            self.toggle_playback();
         }
         if restart {
             self.restart();
@@ -2677,6 +2673,18 @@ impl ContraApp {
         self.audio.pause();
         self.speech.stop();
         self.status = "Paused".into();
+    }
+
+    /// Start, resume, or pause the session.
+    ///
+    /// The single Play/Pause button and the Space key both come here, so the
+    /// button's icon and the key can never disagree about what a press does.
+    fn toggle_playback(&mut self) {
+        if self.audio.is_playing() {
+            self.pause();
+        } else {
+            self.play();
+        }
     }
 
     fn restart(&mut self) {

@@ -24,7 +24,7 @@ system's media controls drive the transport from outside the app; see
 
 ## Details
 
-- **Space** uses the same path as the Play/Pause buttons. If the music needs a
+- **Space** uses the same path as the **Play/Pause** button. If the music needs a
   rebuild after a settings change, Space starts it and renders the new loop.
 - **R** restarts even while paused; it clears the last-spoken call and starts
   from the count-in.

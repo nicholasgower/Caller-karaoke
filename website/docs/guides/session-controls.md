@@ -13,8 +13,7 @@ volume settings.
 | Control | Range / default | Notes |
 | --- | --- | --- |
 | **Tempo** | 200–300 BPM by default; the session range is configurable in **Preferences → Playback**, and the full range is 120–320 | A dance beat is half a bar. At 240 BPM one beat is 0.5 s and a 64-beat dance is 32 s. A tempo outside the configured window stays selectable. |
-| **Play** | — | Renders pending music, then starts or resumes. |
-| **Pause** | — | Stops the music and any speech; the position is retained. |
+| **Play/Pause** | — | One button that shows the action it offers: the play symbol renders pending music and starts or resumes, and the pause symbol stops the music and any speech, keeping the position. |
 | **Restart** | — | Returns to the count-in and clears the call state. |
 | **End tune** | — | Slows the tune's last bar, holds the final chord, then stops. |
 | **Loop** | on by default | Repeats the 64-beat music loop. |
@@ -59,7 +58,7 @@ alone: the music keeps playing and the spoken calls keep coming on the same
 beats. Only the drawing stops.
 
 The transport follows the audio position, not the frame rate, so the caller
-stays in time whether or not a frame is painted. **Pause** is the only thing
+stays in time whether or not a frame is painted. Pausing is the only thing
 that stops it. On desktop, the keyboard's play/pause media key still works while
 the window is in the background. On Android, the headset, lock-screen, and
 notification controls keep working while the activity is in front or paused;
@@ -183,7 +182,8 @@ beats left.
   restarts with it.
 - With **Loop** off, the audio stops at the end of the loop and the prompt shows
   **Dance complete**.
-- **Pause** stops both audio and TTS. **Play** resumes from the current position.
+- The **Play/Pause** button stops both audio and TTS while the music runs; the
+  same button resumes from the current position.
 - **Restart** resets to the count-in, not to the beginning of the card.
 
 <Shot id="transport-loop-off" />
@@ -301,7 +301,7 @@ short tabs — **Session**, **Dance**, and **Tune** — beside the pinned gear b
 that opens **Preferences**, without the wordmark. On a wide window the gear also
 carries the word **Preferences** when the header has room; the text is dropped
 before anything wraps. The tempo, caller, and band sliders
-span the screen with their value boxes, and **Play**, **Pause**,
+span the screen with their value boxes, and **Play/Pause**,
 **Restart**, and **End** split one row evenly. Loop, cycle tunes, count-in, and
 spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch
 target.
