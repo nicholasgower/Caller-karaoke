@@ -31,7 +31,10 @@ the top of the session says **READY**, and the line below the controls says
   </Step>
 </Steps>
 
-The first **Play** renders the arrangement and starts the count-in.
+The app prepares the arrangement in the background as soon as the session is
+idle. The first **Play** installs that prepared loop and starts the count-in; if
+you press **Play** before preparation finishes, the status reads
+`Preparing music…` and playback starts as soon as the loop is ready.
 
 ## 2. Choose a dance
 
@@ -98,8 +101,8 @@ The default is **240 BPM**, which gives a 0.5-second dance beat and a 32-second
 <Steps>
   <Step shot="transport-tempo">
     Move the **Tempo** slider. The app shows the prepare-music message when
-    stopped; while playing it re-renders the loop without restarting and keeps
-    the current beat.
+    stopped; while playing it prepares the new loop in the background without
+    restarting, keeps the current beat, and installs it when it is ready.
   </Step>
 </Steps>
 
@@ -119,8 +122,9 @@ The default is **240 BPM**, which gives a 0.5-second dance beat and a 32-second
     states.
   </Step>
   <Step shot="session-changes-pending">
-    Change a setting such as tempo or an instrument. The music stops and the
-    prepare-music message returns; press **Play** to rebuild.
+    Change a setting such as tempo or an instrument. While playing, the new
+    loop is prepared without stopping the old one. When stopped, the
+    prepare-music message returns and the next **Play** applies it.
   </Step>
   <Step shot="session-paused">
     Press the **Play/Pause** button while the music runs: it shows the pause
@@ -161,8 +165,10 @@ not a metronome; the music is the clock.
 
 - **No sound:** check the audio device. The session shows an `Audio device:`
   message when the app had to fall back to silence.
-- **The music takes a moment to start:** the first **Play** renders the loop
-  synchronously. There is no separate progress screen in 0.1.0.
+- **The music takes a moment to start:** the app prepares the loop in the
+  background. If the first **Play** arrives before it finishes, the status reads
+  `Preparing music…` and playback starts when it is ready. There is no separate
+  progress screen in 0.1.0.
 - **A search fails:** dismiss the red bottom panel with **Dismiss** and retry.
   The current dance or tune is not replaced by a failed search.
 - **A call starts during the count-in:** that is expected. The first call is

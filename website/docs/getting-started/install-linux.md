@@ -66,9 +66,9 @@ not a published nightly package.
 
 ## First launch and data
 
-The app opens with the bundled defaults. Press **Play** to render the loop.
-Preferences and the source cache live in the standard XDG per-user directories;
-the AppImage and the `.deb` share them.
+The app opens with the bundled defaults. Press **Play** to start; the loop is
+prepared in the background. Preferences and the source cache live in the
+standard XDG per-user directories; the AppImage and the `.deb` share them.
 
 Linux TTS requires Speech Dispatcher to be running. If it is not available, the
 visual calls still work and the TTS section explains the problem.

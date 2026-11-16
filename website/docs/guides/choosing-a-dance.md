@@ -206,8 +206,8 @@ still not fully reached because the transport has one 64-beat loop.
 
 Select **Use this dance** in the download preview or in the saved-card preview.
 The app returns to **Session**, replaces the card, rebuilds the call timeline,
-and marks the music for a rebuild. Press **Play** to render and start the new
-arrangement.
+and starts preparing the new arrangement in the background. Press **Play** to
+start it.
 
 <Shot id="main-dance-loaded" />
 
