@@ -28,16 +28,18 @@ The saved-dance library, available offline:
 - Local search over title, choreographer, formation, and figure text.
 - Flat user folders: create, rename, delete, and move cards; deleting a folder
   keeps its cards as unfiled.
-- A **Download dance** submenu opens the ContraDB search screen:
-  - Text filters: title, choreographer, user, hook.
-  - Verified filter.
-  - Formation filter: improper, becket, proper, everything else.
-  - Figure filter: a move selector plus a "figure contains words" search.
-  - Sorting and pagination.
+- A **Download dance** submenu opens the search screen for the source selected
+  in Preferences → Data sources (ContraDB by default, or The Caller's Box):
+  - Text filters follow the source's `FilterSpec`: title and choreographer on
+    both; user and hook on ContraDB only.
+  - ContraDB adds a verified filter, formation presets, a move selector, and
+    sorting with pagination. The Caller's Box offers its own formation list and
+    a figure-phrase search over the first 50 matches.
   - Results show title, choreographer, formation, and hook, plus a downloaded
     marker.
   - Selecting a result opens a preview of its parsed figures, a **Download
-    dance** action, and a **Use this dance** action that saves and loads.
+    dance** action, and a **Use this dance** action that saves and loads. The
+    preview's **Open on …** link follows the card's own source.
 - The default dance is downloaded on first run and remains usable offline.
 - Downloads are stored separately from the HTTP source cache; clearing the
   cache keeps them.

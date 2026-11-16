@@ -34,7 +34,9 @@ development release. These are the limitations to know before relying on it.
   voice are downloaded on first use and then cached; a first run without a
   network connection falls back to the platform voice. Web and Android always
   use the platform voice. Visual calls continue if no voice is available.
-- **Page size** is fixed at ten results; there is no page-size selector.
+- ContraDB **page size** is fixed at ten results; there is no page-size selector.
+  The Caller's Box has no paging at all: one search returns at most 50 matches,
+  and a larger result must be narrowed by title, author, or figure text.
 - Folders are a flat list. There are no nested folders and no sync between
   devices.
 - There is no offline “using cached search results” banner; stale cache is used

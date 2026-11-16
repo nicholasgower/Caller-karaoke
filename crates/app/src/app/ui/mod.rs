@@ -16,8 +16,8 @@ mod tune_picker;
 mod widgets;
 
 pub(in crate::app) use widgets::{
-    action_width, block_button, block_selectable, combo_option, empty_label, formation_label,
-    row_button, row_menu_button, submit_text_edit, submitted,
+    action_width, block_button, block_selectable, combo_option, empty_label, row_button,
+    row_menu_button, submit_text_edit, submitted,
 };
 
 use crate::theme;
@@ -404,13 +404,30 @@ pub(super) fn card_tone(started: bool, phase: Option<CallPhase>, mode: CardMode)
 pub(super) enum LibraryAction {
     PreviewDance(Dance),
     UseDance(Dance),
-    RemoveDance(String),
-    MoveDance { id: String, folder: Option<String> },
+    RemoveDance {
+        provider: String,
+        id: String,
+    },
+    MoveDance {
+        provider: String,
+        id: String,
+        folder: Option<String>,
+    },
     PreviewTune(Tune),
     UseTune(Tune),
     RemoveTune(String),
-    MoveTune { id: String, folder: Option<String> },
+    MoveTune {
+        id: String,
+        folder: Option<String>,
+    },
     ToggleRotation(Tune),
+}
+
+/// The site name to show for a provider, for "Open on …" links and messages.
+pub(super) fn source_label(provider: &str) -> &'static str {
+    contra_sources::dance_provider(provider)
+        .map(|provider| provider.display_name())
+        .unwrap_or("the source")
 }
 
 /// A folder operation requested by the folder panel.
@@ -490,6 +507,11 @@ pub(super) struct SessionControlChanges {
 
 impl ContraApp {
     pub(super) fn pagination_ui(&mut self, ui: &mut egui::Ui, dance: bool) {
+        // A source with one capped result list explains the cap on the screen
+        // instead of offering Previous/Next that would repeat the same rows.
+        if dance && !self.dance_source().supports_pagination() {
+            return;
+        }
         let (page, page_size, total) = if dance {
             let results = self.picker.dance_results.as_ref();
             (
@@ -513,12 +535,11 @@ impl ContraApp {
             {
                 if dance {
                     self.picker.dance_query.page = page - 1;
-                    self.source.search_dances(self.picker.dance_query.clone());
+                    self.search_dances();
                 } else {
                     self.picker.tune_query.page = page - 1;
-                    self.source.search_tunes(self.picker.tune_query.clone());
+                    self.search_tunes();
                 }
-                self.picker.search_loading = true;
             }
             ui.label(format!("Page {page} of {}", pages.max(1)));
             if ui
@@ -527,12 +548,11 @@ impl ContraApp {
             {
                 if dance {
                     self.picker.dance_query.page = page + 1;
-                    self.source.search_dances(self.picker.dance_query.clone());
+                    self.search_dances();
                 } else {
                     self.picker.tune_query.page = page + 1;
-                    self.source.search_tunes(self.picker.tune_query.clone());
+                    self.search_tunes();
                 }
-                self.picker.search_loading = true;
             }
         });
     }
