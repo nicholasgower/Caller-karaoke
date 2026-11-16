@@ -9,6 +9,7 @@ mod defaults;
 mod files;
 mod library;
 mod media_keys;
+mod memory;
 mod sheet;
 mod source;
 mod theme;

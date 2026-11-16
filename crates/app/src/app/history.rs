@@ -91,6 +91,18 @@ impl History {
         if previous == *current {
             return false;
         }
+        // An edit that turns the last recorded edit into a no-op cancels it:
+        // toggling a checkbox off and on again must not leave two undo steps
+        // that walk through the value the user rejected.
+        if merge.is_none()
+            && self
+                .undo
+                .last()
+                .is_some_and(|entry| entry.merge.is_none() && entry.snapshot == *current)
+        {
+            self.undo.pop();
+            return false;
+        }
         self.redo.clear();
         if merge.is_some_and(|merge| {
             self.undo
@@ -128,8 +140,43 @@ impl History {
         !self.undo.is_empty()
     }
 
+    /// Number of steps on the undo stack.
+    #[cfg(test)]
+    pub(in crate::app) fn undo_len(&self) -> usize {
+        self.undo.len()
+    }
+
+    /// Number of steps on the redo stack.
+    #[cfg(test)]
+    pub(in crate::app) fn redo_len(&self) -> usize {
+        self.redo.len()
+    }
+
     pub(in crate::app) fn can_redo(&self) -> bool {
         !self.redo.is_empty()
+    }
+
+    /// Approximate bytes held by both stacks.
+    ///
+    /// Snapshots clone the preferences (including the alias table) and the
+    /// selected cards, so a full hundred-entry stack is a real, if modest,
+    /// consumer worth showing in the memory table.
+    pub(in crate::app) fn estimated_bytes(&self) -> u64 {
+        let snapshot = |snapshot: &Snapshot| {
+            std::mem::size_of::<Snapshot>() as u64
+                + serde_json::to_vec(&snapshot.prefs)
+                    .map(|json| json.len() as u64)
+                    .unwrap_or(0)
+                + (snapshot.dance.title.len()
+                    + snapshot.dance.choreographer.len()
+                    + snapshot.tune.title.len()
+                    + snapshot.tune.abc.len()) as u64
+        };
+        self.undo
+            .iter()
+            .chain(self.redo.iter())
+            .map(|entry| snapshot(&entry.snapshot))
+            .sum()
     }
 
     fn push_undo(&mut self, entry: Entry) {
@@ -189,6 +236,27 @@ mod tests {
     }
 
     #[test]
+    fn an_edit_changed_back_cancels_the_previous_step() {
+        let mut history = History::default();
+        let first = snapshot();
+        let second = with_melody(MelodyInstrument::Accordion);
+        assert!(history.record(first.clone(), &second, None));
+        assert_eq!(
+            history.undo(second.clone()),
+            Some(first.clone()),
+            "the first edit is one step"
+        );
+
+        // The same sequence without an undo in between: off and back on is
+        // not two steps that walk through the rejected value.
+        let mut history = History::default();
+        assert!(history.record(first.clone(), &second, None));
+        assert!(!history.record(second, &first, None));
+        assert!(!history.can_undo());
+        assert!(!history.can_redo());
+    }
+
+    #[test]
     fn undo_and_redo_walk_between_the_recorded_states() {
         let mut history = History::default();
         let first = snapshot();
@@ -233,14 +301,14 @@ mod tests {
     #[test]
     fn the_stack_is_capped_and_drops_the_oldest_step() {
         let mut history = History::new(3);
+        // Four distinct states: a sequence that returns exactly to an older
+        // state would legitimately cancel its pair (see the test above), so
+        // each step also moves the volume.
         let mut states = vec![snapshot()];
-        for melody in [
-            MelodyInstrument::Accordion,
-            MelodyInstrument::Fiddle,
-            MelodyInstrument::Accordion,
-            MelodyInstrument::Fiddle,
-        ] {
-            states.push(with_melody(melody));
+        for step in 1..=4 {
+            let mut state = snapshot();
+            state.prefs.melody_volume = 0.1 * step as f32;
+            states.push(state);
         }
         for pair in states.windows(2) {
             history.record(pair[0].clone(), &pair[1], None);

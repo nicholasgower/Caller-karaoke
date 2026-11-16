@@ -207,6 +207,11 @@ impl SourceClient {
         }
     }
 
+    /// Bytes of cached source responses held in RAM.
+    pub fn cache_memory_bytes(&self) -> usize {
+        self.cache.lock().map_or(0, |cache| cache.memory_bytes())
+    }
+
     pub fn set_proxy(&mut self, proxy: Option<String>, token: Option<String>) {
         self.proxy = proxy;
         self.proxy_token = token;

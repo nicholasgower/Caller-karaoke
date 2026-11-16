@@ -144,6 +144,10 @@ pub struct Speech {
     pending_rate: Option<Instant>,
     #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
     pending_kokoro_text: Option<String>,
+    /// Test-only stand-in for the neural working set, because the test build
+    /// uses the silent stub coordinator and never loads the real model.
+    #[cfg(test)]
+    neural_bytes_override: Option<u64>,
 }
 
 impl Speech {
@@ -181,6 +185,8 @@ impl Speech {
                 rate: 1.0,
                 tone: CallTone::default(),
                 last_calls: Vec::new(),
+                #[cfg(test)]
+                neural_bytes_override: None,
                 voice_id: DEFAULT_VOICE_ID.to_string(),
                 pending_rate: None,
                 pending_kokoro_text: None,
@@ -205,6 +211,8 @@ impl Speech {
                 rate: 1.0,
                 tone: CallTone::default(),
                 last_calls: Vec::new(),
+                #[cfg(test)]
+                neural_bytes_override: None,
                 voice_id: DEFAULT_VOICE_ID.to_string(),
             }
         }
@@ -212,7 +220,7 @@ impl Speech {
 
     /// A silent speech coordinator for headless screenshots.
     #[cfg(all(
-        feature = "headless",
+        any(feature = "headless", test),
         not(target_arch = "wasm32"),
         not(target_os = "android")
     ))]
@@ -230,6 +238,8 @@ impl Speech {
             rate: 1.0,
             tone: CallTone::default(),
             last_calls: Vec::new(),
+            #[cfg(test)]
+            neural_bytes_override: None,
             voice_id: DEFAULT_VOICE_ID.to_string(),
             pending_rate: None,
             pending_kokoro_text: None,
@@ -256,6 +266,8 @@ impl Speech {
             rate: 1.0,
             tone: CallTone::default(),
             last_calls: Vec::new(),
+            #[cfg(test)]
+            neural_bytes_override: None,
             voice_id: DEFAULT_VOICE_ID.to_string(),
             pending_rate: None,
             pending_kokoro_text: None,
@@ -273,6 +285,31 @@ impl Speech {
         }
     }
 
+    /// Estimated memory of the loaded neural voice, or zero when it is off.
+    ///
+    /// Enabling Speak calls starts the worker loading the quantized Kokoro
+    /// model into ONNX Runtime, which is by far the largest optional
+    /// allocation in the app. The platform voice uses no app memory.
+    pub fn neural_working_set_bytes(&self) -> u64 {
+        #[cfg(test)]
+        if let Some(bytes) = self.neural_bytes_override {
+            return if self.enabled { bytes } else { 0 };
+        }
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        {
+            if self.enabled && self.kokoro.is_some() {
+                return kokoro::working_set_bytes();
+            }
+        }
+        0
+    }
+
+    /// Stand in for a loaded neural model in memory-report tests.
+    #[cfg(test)]
+    pub fn set_neural_bytes_for_test(&mut self, bytes: u64) {
+        self.neural_bytes_override = Some(bytes);
+    }
+
     pub fn error(&self) -> Option<&str> {
         self.status
             .error
@@ -282,6 +319,24 @@ impl Speech {
 
     pub fn status(&self) -> &SpeechStatus {
         &self.status
+    }
+
+    /// Whether speech was switched on, for the state fingerprint.
+    #[cfg(test)]
+    pub fn enabled_for_test(&self) -> bool {
+        self.enabled
+    }
+
+    /// Number of prepared call texts.
+    #[cfg(test)]
+    pub fn prepared_calls(&self) -> usize {
+        self.last_calls.len()
+    }
+
+    /// Delivery rate and tone, for the state fingerprint.
+    #[cfg(test)]
+    pub fn rate_and_tone(&self) -> (f32, CallTone) {
+        (self.rate, self.tone)
     }
 
     pub fn can_retry(&self) -> bool {
@@ -491,7 +546,7 @@ struct PlatformSpeech {
     error: Option<String>,
     rate: f32,
     tone: CallTone,
-    #[cfg(feature = "headless")]
+    #[cfg(any(feature = "headless", test))]
     available_override: Option<bool>,
 }
 
@@ -502,7 +557,7 @@ impl PlatformSpeech {
             error: None,
             rate: 1.0,
             tone: CallTone::default(),
-            #[cfg(feature = "headless")]
+            #[cfg(any(feature = "headless", test))]
             available_override: None,
         };
         match tts::Tts::default() {
@@ -517,7 +572,7 @@ impl PlatformSpeech {
     }
 
     /// A no-op platform backend for headless screenshots.
-    #[cfg(feature = "headless")]
+    #[cfg(any(feature = "headless", test))]
     fn stub(available: bool, error: Option<&str>) -> Self {
         Self {
             tts: None,
@@ -529,7 +584,7 @@ impl PlatformSpeech {
     }
 
     fn available(&self) -> bool {
-        #[cfg(feature = "headless")]
+        #[cfg(any(feature = "headless", test))]
         if let Some(available) = self.available_override {
             return available;
         }

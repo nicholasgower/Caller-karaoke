@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
 use arc_swap::ArcSwapOption;
-#[cfg(feature = "headless")]
+#[cfg(any(feature = "headless", test))]
 use contra_core::COUNT_IN_BEATS;
 use contra_music::AudioBuffer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -72,7 +72,7 @@ impl AudioEngine {
     ///
     /// The headless renderer uses this so the real UI can seek to any beat
     /// without an audio device.
-    #[cfg(feature = "headless")]
+    #[cfg(any(feature = "headless", test))]
     pub fn headless_clock(sample_rate: u32, bpm: f64) -> Self {
         let samples_per_beat = sample_rate as f64 * 120.0 / bpm.max(1.0);
         let count_in_samples = (COUNT_IN_BEATS * samples_per_beat).round() as u64;
@@ -204,10 +204,46 @@ impl AudioEngine {
         self.shared.looping.store(looping, Ordering::Relaxed);
     }
 
+    /// Whether the transport loops at the end of the pass.
+    ///
+    /// Used by the state-fingerprint tests to prove that a reversed Loop
+    /// control restored the transport as well as the preference.
+    #[cfg(test)]
+    pub fn looping(&self) -> bool {
+        self.shared.looping.load(Ordering::Relaxed)
+    }
+
     pub fn set_volume(&self, volume: f32) {
         self.shared
             .volume
             .store(volume.clamp(0.0, 2.0).to_bits(), Ordering::Relaxed);
+    }
+
+    /// The volume handed to the audio callback, before clamping.
+    #[cfg(test)]
+    pub fn volume(&self) -> f32 {
+        f32::from_bits(self.shared.volume.load(Ordering::Relaxed))
+    }
+
+    /// Samples in the rendered music buffer, or zero before the first render.
+    ///
+    /// Reported by the memory use section; the buffer is the largest retained
+    /// allocation while a session is prepared.
+    pub fn buffer_samples(&self) -> usize {
+        self.shared
+            .buffer
+            .load()
+            .as_ref()
+            .map_or(0, |buffer| buffer.samples.len())
+    }
+
+    /// Samples in the speech buffer currently mixed by the callback.
+    pub fn speech_buffer_samples(&self) -> usize {
+        self.shared
+            .speech
+            .load()
+            .as_ref()
+            .map_or(0, |samples| samples.len())
     }
 
     pub fn is_playing(&self) -> bool {

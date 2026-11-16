@@ -352,6 +352,27 @@ pub struct ContraApp {
     /// Playback settings changed and need a render once the user stops
     /// adjusting the control.
     pending_audio: bool,
+    /// The preferences the current music buffer was rendered with.
+    ///
+    /// A preference edit only dirties the render while the net value differs
+    /// from this snapshot. Changing a control and changing it back before the
+    /// queued render runs therefore leaves no pending work behind.
+    music_prefs: Preferences,
+    /// The render is dirty because of a preference edit, rather than a new
+    /// dance, tune, or SoundFont. Only the preference part may be cleared by a
+    /// reversed edit.
+    prefs_audio_dirty: bool,
+    /// A dance, tune, or SoundFont change needs a render even when the
+    /// preferences match [`Self::music_prefs`].
+    render_dirty_other: bool,
+    /// The preferences that produced the current call timeline.
+    timeline_prefs: Preferences,
+    /// The alias seed used to build the current call timeline.
+    timeline_alias_seed: u64,
+    /// The timeline and call bookkeeping from before the current run of
+    /// timeline edits, kept so an edit that is changed back restores what was
+    /// already spoken.
+    timeline_basis: Option<TimelineBasis>,
     /// A custom role-term field has focus, so the timeline rebuild is deferred
     /// until the edit settles.
     role_edit_active: bool,
@@ -407,6 +428,15 @@ pub struct ContraApp {
     pending_history: Option<HistoryAction>,
     /// The result of the last undo or redo, shown under the Interface buttons.
     history_status: Option<String>,
+    /// The preference values last written to disk, so a preference pass that
+    /// changed nothing does not rewrite the file.
+    last_saved_prefs: Option<Preferences>,
+    /// The last memory table built for Preferences → Maintenance.
+    memory_report: Option<crate::memory::MemoryReport>,
+    /// Number of preference files actually written. Test-only so a
+    /// reversibility test can prove a no-op edit did not touch the file.
+    #[cfg(test)]
+    prefs_save_count: usize,
 }
 
 /// Transient state of the two download screens.
@@ -414,6 +444,7 @@ pub struct ContraApp {
 /// The dance and tune pickers have the same shape, so they share one struct: a
 /// new search or preview field belongs here instead of being threaded through
 /// the app struct and both constructors.
+#[derive(Clone, Debug, PartialEq)]
 pub(in crate::app) struct PickerState {
     dance_query: DanceQuery,
     tune_query: TuneQuery,
@@ -474,6 +505,21 @@ struct RotationState {
     rx: Option<Receiver<Result<PreparedTune, String>>>,
     /// A tune whose render failed; skip it until the set or settings change.
     failed_source: Option<String>,
+}
+
+/// The timeline and spoken-call bookkeeping from before a run of timeline
+/// edits.
+///
+/// Timeline settings are applied immediately, but a user who tries a value and
+/// changes it straight back should still hear the call that was already being
+/// spoken. Keeping one basis restores the old timeline instead of treating the
+/// round trip as two fresh timelines.
+struct TimelineBasis {
+    prefs: Preferences,
+    alias_seed: u64,
+    timeline: PracticeTimeline,
+    last_spoken: Option<f64>,
+    last_beat: f64,
 }
 
 /// The values a render needs, captured so a worker can render without the app.
@@ -660,6 +706,8 @@ impl ContraApp {
         let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
         speech.prewarm(call_texts(&timeline));
         let length_warning = length_warning_for(&dance, &tune);
+        let music_prefs = prefs.clone();
+        let timeline_prefs = prefs.clone();
 
         // A saved font that no longer loads must not be reported as active: the
         // bundled instruments take its place, so say why.
@@ -718,6 +766,12 @@ impl ContraApp {
             soundfont_error,
             needs_render: true,
             pending_audio: false,
+            music_prefs,
+            prefs_audio_dirty: false,
+            render_dirty_other: true,
+            timeline_prefs,
+            timeline_alias_seed: 0,
+            timeline_basis: None,
             role_edit_active: false,
             role_edit_pending: false,
             render_loading: false,
@@ -768,6 +822,10 @@ impl ContraApp {
             history: History::default(),
             pending_history: None,
             history_status: None,
+            last_saved_prefs: None,
+            memory_report: None,
+            #[cfg(test)]
+            prefs_save_count: 0,
         }
     }
 
@@ -1198,7 +1256,6 @@ impl ContraApp {
         self.custom_key.clear();
         self.custom_alias.clear();
         self.rebuild_timeline();
-        self.needs_render = true;
         self.save_prefs();
     }
 
@@ -1230,7 +1287,7 @@ impl ContraApp {
     /// Construct the real app without opening a window, audio device, TTS voice,
     /// network client, or user preference file. Used by `contra-headless` and
     /// screenshot tests.
-    #[cfg(feature = "headless")]
+    #[cfg(any(feature = "headless", test))]
     pub fn new_headless(cc: &eframe::CreationContext<'_>) -> Self {
         let (source_tx, source_rx): (Sender<SourceEvent>, Receiver<SourceEvent>) = channel();
         let mut prefs = Preferences::default();
@@ -1261,6 +1318,8 @@ impl ContraApp {
         tune_library.insert(tune.clone(), None, 0);
         let timeline = build_timeline(&dance, &prefs, 0).unwrap_or_else(|_| empty_timeline());
         let length_warning = length_warning_for(&dance, &tune);
+        let music_prefs = prefs.clone();
+        let timeline_prefs = prefs.clone();
 
         theme::apply(&cc.egui_ctx, prefs.theme, prefs.animations_enabled);
 
@@ -1291,6 +1350,12 @@ impl ContraApp {
             soundfont_error: None,
             needs_render: true,
             pending_audio: false,
+            music_prefs,
+            prefs_audio_dirty: false,
+            render_dirty_other: true,
+            timeline_prefs,
+            timeline_alias_seed: 0,
+            timeline_basis: None,
             role_edit_active: false,
             role_edit_pending: false,
             render_loading: false,
@@ -1341,10 +1406,21 @@ impl ContraApp {
             history: History::default(),
             pending_history: None,
             history_status: None,
+            last_saved_prefs: None,
+            memory_report: None,
+            #[cfg(test)]
+            prefs_save_count: 0,
         }
     }
 
-    fn save_prefs(&self) {
+    fn save_prefs(&mut self) {
+        // Preferences are saved after every preference frame. A round trip
+        // that ends on the value already on disk must not rewrite the file;
+        // flash storage and the web's localStorage both pay for pointless
+        // writes.
+        if self.last_saved_prefs.as_ref() == Some(&self.prefs) {
+            return;
+        }
         if let Ok(json) = self.prefs.to_json() {
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -1358,7 +1434,12 @@ impl ContraApp {
                     crate::web_store::write_prefs(&json);
                 }
             }
+            #[cfg(test)]
+            {
+                self.prefs_save_count += 1;
+            }
         }
+        self.last_saved_prefs = Some(self.prefs.clone());
     }
 
     /// The state an undo step restores.
@@ -1451,6 +1532,10 @@ impl ContraApp {
         self.tune = snapshot.tune;
         self.alias_seed = snapshot.alias_seed;
         self.error = None;
+        self.timeline_basis = None;
+        if dance_changed || tune_changed || soundfont_changed {
+            self.render_dirty_other = true;
+        }
 
         // Settings that apply immediately rather than through a rebuild. These
         // mirror the Preferences screen, so undo sounds like choosing the old
@@ -1478,7 +1563,7 @@ impl ContraApp {
             self.picker.tune_preview = None;
             self.picker.tune_selected = None;
             self.tune_sheet = None;
-            self.needs_render = true;
+            self.mark_render_pending_other();
             self.pending_audio = false;
             self.arrangement = None;
             self.audio.stop();
@@ -1488,17 +1573,13 @@ impl ContraApp {
             self.rotation.last_beat = 0.0;
             self.rotation_settings_changed();
             self.rebuild_timeline();
-            self.last_spoken = None;
-            self.last_beat = 0.0;
             self.length_warning = length_warning_for(&self.dance, &self.tune);
         } else if changes.any() {
             if changes.timeline {
                 self.rebuild_timeline();
-                self.last_spoken = None;
             }
             if changes.audio {
-                self.needs_render = true;
-                self.pending_audio = true;
+                self.refresh_render_flags();
                 // A started session applies the restored playback settings at
                 // once and keeps the beat. An unstarted one renders on the next
                 // Play, the way a preferences edit behaves.
@@ -1521,6 +1602,11 @@ impl ContraApp {
     fn reload_soundfont(&mut self) {
         self.soundfont = None;
         self.soundfont_error = None;
+        // The bundled font is parsed lazily on the next render. Dropping the
+        // parsed copy here keeps a user bank and the bundled subset from being
+        // resident at the same time.
+        self.bundled_soundfont = None;
+        self.bundled_soundfont_checked = false;
         // Web and Android cannot load a font file, so they keep the bundled
         // instruments. A stored path there can only come from a copied
         // preference file.
@@ -1552,10 +1638,119 @@ impl ContraApp {
         }
     }
 
+    /// Recompute the render flags from the preferences and the buffer.
+    ///
+    /// `needs_render` is the union of a preference edit and a new dance, tune,
+    /// or SoundFont. Only the preference part can be cleared by changing the
+    /// control back before the queued render runs.
+    fn refresh_render_flags(&mut self) {
+        self.prefs_audio_dirty = self.prefs.changes_since(&self.music_prefs).audio;
+        self.needs_render = self.prefs_audio_dirty || self.render_dirty_other;
+        self.pending_audio = self.prefs_audio_dirty;
+    }
+
+    /// Mark a render that no preference reversal can cancel.
+    fn mark_render_pending_other(&mut self) {
+        self.render_dirty_other = true;
+        self.needs_render = true;
+    }
+
+    /// The current buffer and preferences agree again.
+    fn clear_render_pending(&mut self) {
+        self.render_dirty_other = false;
+        self.prefs_audio_dirty = false;
+        self.needs_render = false;
+        self.pending_audio = false;
+    }
+
+    /// Apply the consequences of a Preferences-screen edit.
+    ///
+    /// The screen passes the preferences from before the frame; the test suite
+    /// calls this same method after changing a control directly, so the
+    /// reversibility tests exercise the production rule instead of a copy.
+    fn reconcile_preferences(&mut self, before: Preferences) {
+        self.prefs.validate();
+        if self.prefs == before {
+            return;
+        }
+        let changes = self.prefs.changes_since(&before);
+        if changes.timeline && !self.role_edit_active {
+            // A rebuild that returns to the previous timeline restores the
+            // spoken call itself (see `rebuild_timeline`).
+            self.rebuild_timeline();
+        }
+        // The timeline rebuild already reset the spoken call when the calls
+        // changed; when the round trip restored the old timeline, keep the
+        // restored bookkeeping instead of clearing it here.
+        self.refresh_render_flags();
+        if !self.prefs.tts_enabled {
+            self.speech.stop();
+        }
+        if self.prefs.tts_enabled != before.tts_enabled {
+            self.speech.set_enabled(self.prefs.tts_enabled);
+        }
+        if self.prefs.tts_rate != before.tts_rate {
+            self.speech.set_rate(self.prefs.speech_rate());
+        }
+        if self.prefs.tts_voice != before.tts_voice {
+            self.speech.set_voice(&self.prefs.tts_voice);
+        }
+        if self.prefs.tune_rotation != before.tune_rotation {
+            self.rotation_settings_changed();
+        }
+        if changes.tone {
+            self.speech.set_tone(self.prefs.tts_tone);
+        }
+        self.audio.set_looping(self.prefs.loop_enabled);
+        self.audio.set_volume(self.prefs.master_volume);
+        self.save_prefs();
+    }
+
     fn rebuild_timeline(&mut self) {
-        match build_timeline(&self.dance, &self.prefs, self.alias_seed) {
+        let prefs = self.prefs.clone();
+        let seed = self.alias_seed;
+        match build_timeline(&self.dance, &self.prefs, seed) {
             Ok(timeline) => {
+                if timeline == self.timeline {
+                    // The edit did not change any call, so the caller's
+                    // bookkeeping still describes this timeline exactly.
+                    self.timeline_prefs = prefs;
+                    self.timeline_alias_seed = seed;
+                    return;
+                }
+                let restore = self
+                    .timeline_basis
+                    .as_ref()
+                    .is_some_and(|basis| {
+                        basis.prefs == prefs && basis.alias_seed == seed && !self.audio.is_playing()
+                    })
+                    .then(|| self.timeline_basis.take())
+                    .flatten();
+                if let Some(basis) = restore {
+                    // The settings are back on the value that produced the
+                    // timeline before this run of edits. Restore that timeline
+                    // and what had already been spoken, instead of treating
+                    // the round trip as a fresh session.
+                    self.timeline = basis.timeline;
+                    self.timeline_prefs = prefs;
+                    self.timeline_alias_seed = seed;
+                    self.speech.prewarm(call_texts(&self.timeline));
+                    self.last_spoken = basis.last_spoken;
+                    self.last_beat = basis.last_beat;
+                    return;
+                }
+                if self.timeline_basis.is_none() {
+                    self.timeline_basis = Some(TimelineBasis {
+                        prefs: self.timeline_prefs.clone(),
+                        alias_seed: self.timeline_alias_seed,
+                        timeline: self.timeline.clone(),
+                        last_spoken: self.last_spoken,
+                        last_beat: self.last_beat,
+                    });
+                }
                 self.timeline = timeline;
+                self.timeline_prefs = prefs;
+                self.timeline_alias_seed = seed;
                 self.speech.prewarm(call_texts(&self.timeline));
                 self.last_spoken = None;
                 self.last_beat = 0.0;
@@ -1580,7 +1775,6 @@ impl ContraApp {
         self.role_edit_pending = false;
         self.role_edit_active = false;
         self.rebuild_timeline();
-        self.needs_render = true;
     }
 
     /// The font to render with: the user's file, else the bundled subset.
@@ -1700,8 +1894,9 @@ impl ContraApp {
         self.arrangement = Some(arrangement);
         self.audio.set_looping(self.prefs.loop_enabled);
         self.audio.set_volume(self.prefs.master_volume);
-        self.needs_render = false;
-        self.pending_audio = false;
+        self.music_prefs = self.prefs.clone();
+        self.clear_render_pending();
+        self.timeline_basis = None;
         self.status = "Music ready".into();
         if let Some(beat) = resume_beat {
             self.audio.seek_beat(beat);
@@ -2038,6 +2233,7 @@ impl ContraApp {
     }
 
     fn play(&mut self) {
+        self.timeline_basis = None;
         let from_finished = self.audio.is_finished();
         self.ensure_ready();
         if self.audio.has_buffer() {
@@ -2060,12 +2256,14 @@ impl ContraApp {
     }
 
     fn pause(&mut self) {
+        self.timeline_basis = None;
         self.audio.pause();
         self.speech.stop();
         self.status = "Paused".into();
     }
 
     fn restart(&mut self) {
+        self.timeline_basis = None;
         self.ensure_ready();
         self.last_spoken = None;
         self.last_beat = 0.0;
@@ -2086,7 +2284,7 @@ impl ContraApp {
         self.picker.dance_preview = None;
         self.picker.dance_selected = None;
         self.screen = Screen::Session;
-        self.needs_render = true;
+        self.mark_render_pending_other();
         self.arrangement = None;
         self.audio.stop();
         self.speech.stop();
@@ -2095,6 +2293,7 @@ impl ContraApp {
         self.rotation.last_beat = 0.0;
         // Give a newly selected dance a fresh shuffle of alternative aliases.
         self.alias_seed = self.alias_seed.wrapping_add(1);
+        self.timeline_basis = None;
         self.rebuild_timeline();
         self.save_prefs();
         self.status = "Dance selected".into();
@@ -2110,13 +2309,14 @@ impl ContraApp {
         self.tune_sheet = None;
         self.picker.tune_selected = None;
         self.screen = Screen::Session;
-        self.needs_render = true;
+        self.mark_render_pending_other();
         self.arrangement = None;
         self.audio.stop();
         self.speech.stop();
         self.started = false;
         self.rotation.passes = 0;
         self.rotation.last_beat = 0.0;
+        self.timeline_basis = None;
         self.rotation_settings_changed();
         self.save_prefs();
         self.status = "Tune selected".into();
@@ -2209,6 +2409,7 @@ impl ContraApp {
         ) {
             self.speech.speak(&call.call.text);
             self.last_spoken = Some(call.start_beat);
+            self.timeline_basis = None;
         }
     }
 
@@ -2303,14 +2504,11 @@ impl ContraApp {
                             .and_then(|name| name.to_str())
                             .unwrap_or("SoundFont")
                             .to_string();
-                        self.soundfont = Some(soundfont);
-                        self.prefs.soundfont = Some(contra_core::SoundFontSetting {
+                        self.install_user_soundfont(
+                            soundfont,
                             name,
-                            path: Some(path.to_string_lossy().to_string()),
-                        });
-                        self.needs_render = true;
-                        self.soundfont_error = None;
-                        self.save_prefs();
+                            Some(path.to_string_lossy().to_string()),
+                        );
                     }
                     Err(error) => self.soundfont_error = Some(error.to_string()),
                 },
@@ -2319,10 +2517,35 @@ impl ContraApp {
         }
     }
 
+    /// Install an already parsed user bank.
+    ///
+    /// Kept separate from the file dialog so tests can exercise the memory
+    /// consequences (the bundled font is dropped and reloaded lazily) without
+    /// opening a picker.
+    fn install_user_soundfont(
+        &mut self,
+        soundfont: Arc<SoundFont>,
+        name: String,
+        path: Option<String>,
+    ) {
+        self.soundfont = Some(soundfont);
+        self.prefs.soundfont = Some(contra_core::SoundFontSetting { name, path });
+        self.mark_render_pending_other();
+        // The bundled font is still lazily reloadable; keeping it parsed while
+        // a user bank is active would retain two sample sets in memory.
+        self.bundled_soundfont = None;
+        self.bundled_soundfont_checked = false;
+        self.soundfont_error = None;
+        self.save_prefs();
+    }
+
     fn remove_soundfont(&mut self) {
         self.soundfont = None;
         self.prefs.soundfont = None;
-        self.needs_render = true;
+        self.mark_render_pending_other();
+        // `active_soundfont` parses the bundled subset on the next render.
+        self.bundled_soundfont = None;
+        self.bundled_soundfont_checked = false;
         self.save_prefs();
     }
 }
@@ -2465,6 +2688,199 @@ impl ContraApp {
     fn shutdown(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.speech.stop();
         self.save_prefs();
+    }
+
+    /// Build the per-category memory table shown in Preferences → Maintenance.
+    ///
+    /// Everything the app can read a length from is measured; font atlases and
+    /// library serialization are labelled estimates. The table is cheap enough
+    /// to rebuild on demand, and is not rebuilt per frame.
+    pub fn memory_report(&self, ctx: Option<&egui::Context>) -> crate::memory::MemoryReport {
+        use crate::memory::{MemoryReport, sample_bytes, vec_bytes};
+
+        let mut report = MemoryReport::new();
+        report.add(
+            "bundled_soundfont_file",
+            crate::defaults::default_soundfont_bytes(),
+            false,
+            "Fluid R3 GM subset in the executable image",
+        );
+
+        let mut parsed_font = 0u64;
+        for font in [self.soundfont.as_ref(), self.bundled_soundfont.as_ref()]
+            .into_iter()
+            .flatten()
+        {
+            // rustysynth stores the sample data as i16 and keeps the decoded
+            // instrument/preset tables alongside it.
+            parsed_font += (font.get_wave_data().len() as u64) * 2;
+            parsed_font += (font.get_sample_headers().len() as u64)
+                * std::mem::size_of::<rustysynth::SampleHeader>() as u64;
+            parsed_font += (font.get_presets().len() as u64)
+                * std::mem::size_of::<rustysynth::Preset>() as u64;
+        }
+        report.add(
+            "soundfont_samples",
+            parsed_font,
+            false,
+            "decoded 16-bit samples and preset tables",
+        );
+
+        report.add(
+            "audio_buffer",
+            sample_bytes(self.audio.buffer_samples()),
+            false,
+            "count-in + variation passes, interleaved stereo f32",
+        );
+        report.add(
+            "prepared_tune",
+            self.rotation
+                .prepared
+                .as_ref()
+                .map_or(0, |prepared| sample_bytes(prepared.buffer.samples.len())),
+            false,
+            "next tune rendered ahead for Cycle tunes",
+        );
+        report.add(
+            "speech_audio",
+            sample_bytes(self.audio.speech_buffer_samples()),
+            false,
+            "the call currently mixed into playback",
+        );
+
+        let arrangement = self.arrangement.as_ref().map_or(0, |arrangement| {
+            vec_bytes(&arrangement.melody)
+                + vec_bytes(&arrangement.pickup)
+                + vec_bytes(&arrangement.chords)
+                + arrangement
+                    .warnings
+                    .iter()
+                    .map(|warning| warning.len() as u64)
+                    .sum::<u64>()
+        });
+        report.add(
+            "arrangement",
+            arrangement,
+            false,
+            "parsed notes and chords for the current tune",
+        );
+
+        let calls = &self.timeline.calls;
+        let timeline = vec_bytes(calls)
+            + calls
+                .iter()
+                .map(|call| (call.text.len() + call.original_text.len()) as u64)
+                .sum::<u64>()
+            + vec_bytes(&self.timeline.phrases)
+            + self
+                .timeline
+                .phrases
+                .iter()
+                .map(|phrase| phrase.label.len() as u64)
+                .sum::<u64>();
+        report.add(
+            "call_timeline",
+            timeline,
+            false,
+            "scheduled calls, phrases, and their text",
+        );
+
+        let library = serde_json::to_vec(&self.dance_library)
+            .map(|json| json.len() as u64)
+            .unwrap_or(0)
+            + serde_json::to_vec(&self.tune_library)
+                .map(|json| json.len() as u64)
+                .unwrap_or(0);
+        report.add(
+            "saved_libraries",
+            library,
+            true,
+            "serialized dance and tune cards; allocation overhead is not included",
+        );
+
+        let prefs = serde_json::to_vec(&self.prefs)
+            .map(|json| json.len() as u64)
+            .unwrap_or(0);
+        report.add(
+            "preferences",
+            prefs,
+            true,
+            "preferences and alias table, serialized size",
+        );
+
+        let picker = if self.picker.dance_results.is_some() {
+            u64::try_from(self.picker.dance_query.page_size).unwrap_or(0) * 256
+        } else {
+            0
+        } + if self.picker.tune_results.is_some() {
+            u64::try_from(self.picker.tune_query.page_size).unwrap_or(0) * 256
+        } else {
+            0
+        } + serde_json::to_vec(&self.picker.dance_preview)
+            .map(|json| json.len() as u64)
+            .unwrap_or(0)
+            + serde_json::to_vec(&self.picker.tune_preview)
+                .map(|json| json.len() as u64)
+                .unwrap_or(0);
+        report.add(
+            "picker_state",
+            picker,
+            true,
+            "search result summaries and the selected preview",
+        );
+
+        let mut fonts = 0u64;
+        if let Some(ctx) = ctx {
+            let (atlas, font_data) = ctx.fonts(|fonts| {
+                let [width, height] = fonts.font_image_size();
+                let data = fonts
+                    .definitions()
+                    .font_data
+                    .values()
+                    .map(|font| font.font.as_ref().as_ref().len() as u64)
+                    .sum::<u64>();
+                ((width as u64) * (height as u64) * 4, data)
+            });
+            fonts = atlas + font_data;
+        }
+        report.add(
+            "fonts",
+            fonts,
+            false,
+            "glyph atlas (RGBA) and embedded font files",
+        );
+
+        let sheet = self
+            .tune_sheet
+            .as_ref()
+            .and_then(|sheet| sheet.as_ref().ok())
+            .map_or(0, crate::sheet::SheetPreview::texture_bytes);
+        report.add(
+            "sheet_music_texture",
+            sheet,
+            false,
+            "rasterized preview of the selected tune",
+        );
+
+        report.add(
+            "undo_history",
+            self.history.estimated_bytes(),
+            true,
+            "preferences and card snapshots on the undo and redo stacks",
+        );
+        report.add(
+            "source_cache",
+            self.source.cache_memory_bytes() as u64,
+            false,
+            "in-memory source responses; the desktop file cache is disk",
+        );
+        report.add(
+            "neural_tts",
+            self.speech.neural_working_set_bytes(),
+            true,
+            "quantized Kokoro model, runtime, and per-inference arenas",
+        );
+        report
     }
 }
 
@@ -3062,10 +3478,16 @@ fn call_texts(timeline: &PracticeTimeline) -> Vec<String> {
 }
 
 #[cfg(test)]
+mod tests_layout;
+#[cfg(test)]
+mod tests_memory;
+#[cfg(test)]
+mod tests_state;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::app::ui::{CallPhase, CardMode, CardTone, card_state, card_tone};
-
     #[test]
     fn android_safe_area_removes_system_bars_in_points() {
         // Portrait on the test device: 1080x2400 at 2.5x, with the status bar

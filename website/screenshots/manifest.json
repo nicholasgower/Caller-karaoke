@@ -436,8 +436,8 @@
     },
     {
       "id": "prefs-maintenance",
-      "alt": "The Maintenance section with the Export MIDI button, the Clear source cache button, and the status line.",
-      "caption": "MIDI export is desktop-only in 0.1.0; clearing cache works on every platform.",
+      "alt": "The Maintenance section with the Export MIDI button, the Clear source cache button, the status line, and the Memory use table.",
+      "caption": "MIDI export is desktop-only in 0.1.0; clearing cache works on every platform, and Memory use lists the largest resident allocations.",
       "status": "ready",
       "width": 1280,
       "height": 2250

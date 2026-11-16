@@ -13,6 +13,11 @@ const DEFAULT_ABC: &str = include_str!("../../../assets/defaults/sandy_boys.abc"
 /// reads the keep-list in `scripts/soundfont-keep.txt`.
 const DEFAULT_SOUNDFONT: &[u8] = include_bytes!("../../../assets/defaults/fluid-r3-gm-subset.sf2");
 
+/// Size of the bundled SoundFont asset in the executable image.
+pub(crate) fn default_soundfont_bytes() -> u64 {
+    DEFAULT_SOUNDFONT.len() as u64
+}
+
 pub fn default_dance() -> Dance {
     serde_json::from_str(DEFAULT_DANCE_JSON).expect("bundled dance JSON is valid")
 }
