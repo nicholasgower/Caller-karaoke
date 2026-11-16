@@ -6,17 +6,29 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.view.KeyEvent;
 import android.view.WindowInsets;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Native activity whose class loader owns the Rust library.
@@ -46,12 +58,19 @@ public class MainActivity extends NativeActivity {
     private static final String CHANNEL_ID = "playback";
     private static final int NOTIFICATION_ID = 1;
     private static final int PERMISSION_REQUEST_NOTIFICATIONS = 1;
+    private static final int REQUEST_IMPORT = 2;
+    /** Largest file the document picker will read, in bytes. */
+    private static final int MAX_IMPORT_BYTES = 4 * 1024 * 1024;
     private static final String ACTION_PLAY = "org.contrakaraoke.app.action.PLAY";
     private static final String ACTION_PAUSE = "org.contrakaraoke.app.action.PAUSE";
     private static final String ACTION_TOGGLE = "org.contrakaraoke.app.action.TOGGLE";
 
     private static MediaSession mediaSession;
     private static Context appContext;
+    /** The live activity, used to start the document picker and the share sheet. */
+    private static MainActivity appActivity;
+    /** Import kind requested with {@link #openDocument}; 1 is ABC, 2 is dance JSON. */
+    private static int importKind;
     private static BroadcastReceiver notificationReceiver;
     private static boolean playing;
     private static String title = "Contra Karaoke";
@@ -62,6 +81,7 @@ public class MainActivity extends NativeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         appContext = getApplicationContext();
+        appActivity = this;
 
         // Publish this class to Rust before the native event loop starts using
         // it. The loop's thread is attached to the VM without the app class
@@ -85,6 +105,9 @@ public class MainActivity extends NativeActivity {
 
     @Override
     protected void onDestroy() {
+        if (appActivity == this) {
+            appActivity = null;
+        }
         if (notificationReceiver != null) {
             unregisterReceiver(notificationReceiver);
             notificationReceiver = null;
@@ -362,6 +385,174 @@ public class MainActivity extends NativeActivity {
         }
     }
 
+    /**
+     * Open the system document picker for the tune or dance importer.
+     *
+     * <p>Used by Rust through JNI when the user chooses Import. The activity
+     * result comes back in {@link #onActivityResult}, is read as UTF-8, and is
+     * handed to Rust through {@link #nativeImportedFile}.
+     */
+    public static void openDocument(final int kind, final String mimeType, final boolean allowMultiple) {
+        final MainActivity activity = appActivity;
+        if (activity == null) {
+            return;
+        }
+        importKind = kind;
+        // The JNI call arrives on the native event-loop thread; starting an
+        // activity must happen on the UI thread.
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType(mimeType);
+                if (allowMultiple) {
+                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                }
+                activity.startActivityForResult(intent, REQUEST_IMPORT);
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_IMPORT || resultCode != RESULT_OK || data == null) {
+            return;
+        }
+        if (data.getClipData() != null) {
+            int count = data.getClipData().getItemCount();
+            for (int index = 0; index < count; index++) {
+                deliverImport(data.getClipData().getItemAt(index).getUri());
+            }
+        } else if (data.getData() != null) {
+            deliverImport(data.getData());
+        }
+    }
+
+    private static void deliverImport(Uri uri) {
+        if (uri == null || appContext == null) {
+            return;
+        }
+        String name = queryDisplayName(uri);
+        String text = readText(uri);
+        if (text != null) {
+            nativeImportedFile(importKind, name, text);
+        }
+    }
+
+    private static String queryDisplayName(Uri uri) {
+        try (Cursor cursor = appContext
+                .getContentResolver()
+                .query(uri, new String[] {OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (column >= 0) {
+                    String name = cursor.getString(column);
+                    if (name != null && !name.isEmpty()) {
+                        return name;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // Fall through to the path-based name.
+        }
+        String path = uri.getPath();
+        return path != null ? path : "import";
+    }
+
+    private static String readText(Uri uri) {
+        try (InputStream input = appContext.getContentResolver().openInputStream(uri)) {
+            if (input == null) {
+                return null;
+            }
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                if (output.size() + read > MAX_IMPORT_BYTES) {
+                    return null;
+                }
+                output.write(buffer, 0, read);
+            }
+            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        } catch (Exception error) {
+            return null;
+        }
+    }
+
+    /**
+     * Share an exported text file through Android's share sheet.
+     *
+     * <p>On Android 10 and newer the text is first copied into Downloads
+     * through {@link MediaStore}, which returns a {@code content://} URI the
+     * receiving app can read with the grant flag. A FileProvider would need a
+     * provider declaration in the manifest, and cargo-apk does not support one;
+     * the MediaStore URI avoids that without exposing a {@code file://} URI.
+     * On Android 8 and 9, where the Downloads collection does not exist, the
+     * share carries {@link Intent#EXTRA_TEXT} only.
+     */
+    public static void shareText(final String name, final String mimeType, final String text) {
+        final MainActivity activity = appActivity;
+        if (activity == null) {
+            return;
+        }
+        // The JNI call arrives on the native event-loop thread; the chooser must
+        // be started on the UI thread.
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Uri uri = writeToDownloads(name, mimeType, text);
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType(mimeType);
+                send.putExtra(Intent.EXTRA_SUBJECT, name);
+                send.putExtra(Intent.EXTRA_TEXT, text);
+                if (uri != null) {
+                    send.putExtra(Intent.EXTRA_STREAM, uri);
+                    send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                }
+                activity.startActivity(Intent.createChooser(send, "Share " + name));
+            }
+        });
+    }
+
+    /** Copy a text file into Downloads and return its content URI, or null. */
+    private static Uri writeToDownloads(String name, String mimeType, String text) {
+        if (Build.VERSION.SDK_INT < 29 || appContext == null) {
+            return null;
+        }
+        ContentResolver resolver = appContext.getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+        values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
+        values.put(
+                MediaStore.MediaColumns.RELATIVE_PATH,
+                Environment.DIRECTORY_DOWNLOADS + "/Contra Karaoke");
+        values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+        Uri uri = null;
+        try {
+            uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+            if (uri == null) {
+                return null;
+            }
+            try (OutputStream output = resolver.openOutputStream(uri)) {
+                if (output == null) {
+                    return null;
+                }
+                output.write(text.getBytes(StandardCharsets.UTF_8));
+            }
+            values.clear();
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0);
+            resolver.update(uri, values, null, null);
+            return uri;
+        } catch (Exception error) {
+            if (uri != null) {
+                resolver.delete(uri, null, null);
+            }
+            return null;
+        }
+    }
+
     /** Publish this activity's class to the media bridge; see `media_keys.rs`. */
     private static native void nativeAttachActivity();
 
@@ -370,4 +561,7 @@ public class MainActivity extends NativeActivity {
 
     /** Transport command from the media session; see `media_keys.rs`. */
     private static native void nativeMediaCommand(int command);
+
+    /** A file chosen in the document picker; see `files.rs`. */
+    private static native void nativeImportedFile(int kind, String name, String text);
 }

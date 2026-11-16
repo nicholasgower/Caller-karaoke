@@ -6,6 +6,7 @@
 pub mod app;
 mod audio;
 mod defaults;
+mod files;
 mod library;
 mod media_keys;
 mod sheet;

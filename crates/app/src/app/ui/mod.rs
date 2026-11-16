@@ -5,6 +5,7 @@
 //! keeps its sections in `preferences.rs`, with the About section in
 //! `about.rs` as the last of them.
 
+mod abc_editor;
 mod about;
 mod aliases;
 mod dance_picker;
@@ -15,14 +16,14 @@ mod session;
 mod tune_picker;
 mod widgets;
 
+use crate::theme;
+pub(in crate::app) use abc_editor::{AbcEditorState, share_prompt};
+use contra_core::{Dance, FolderFilter, Tune};
+use eframe::egui;
 pub(in crate::app) use widgets::{
     action_width, block_button, block_selectable, combo_option, empty_label, row_button,
     row_menu_button, submit_text_edit, submitted,
 };
-
-use crate::theme;
-use contra_core::{Dance, FolderFilter, Tune};
-use eframe::egui;
 
 use super::*;
 
@@ -415,12 +416,22 @@ pub(super) enum LibraryAction {
     },
     PreviewTune(Tune),
     UseTune(Tune),
-    RemoveTune(String),
+    RemoveTune {
+        provider: String,
+        id: String,
+    },
     MoveTune {
+        provider: String,
         id: String,
         folder: Option<String>,
     },
     ToggleRotation(Tune),
+    /// Write this saved tune's ABC text to a file.
+    ExportTune(Tune),
+    /// Write this saved dance to a versioned JSON file.
+    ExportDance(Dance),
+    /// Open this saved tune in the ABC editor.
+    EditTuneAbc(Tune),
 }
 
 /// The site name to show for a provider, for "Open on …" links and messages.

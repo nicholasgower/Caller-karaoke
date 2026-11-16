@@ -52,6 +52,20 @@ development release. These are the limitations to know before relying on it.
 - **Cycle tunes** renders the next tune during the current tune's last time
   through on desktop and Android. The web build has no render worker and
   prepares the next tune at the change, which can pause briefly.
+- **File transfer** uses each platform's own mechanism. Desktop saves through a
+  native dialog and the browser downloads a file or opens a file input. Android
+  writes exports to the app's private export folder and offers the system share
+  sheet; on Android 10 and newer the shared copy is a `content://` Downloads URI,
+  while Android 8 and 9 share the text only because those releases have no
+  Downloads collection. There is no drag-and-drop target and no file manager
+  browser inside the app.
+- **Import** reads local files only. It does not fetch a URL, and it does not
+  merge a multi-tune ABC file: only the first tune is imported and the status
+  line reports the rest.
+- The **ABC editor** is a plain text area. It has no syntax highlighting, line
+  numbers, transpose control, part splitter, or edit history beyond the text
+  field's own undo. It changes the ABC text only; title, composer, key, meter,
+  and source are not re-read from the edited headers.
 
 ## Dance cards
 

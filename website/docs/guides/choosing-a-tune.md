@@ -68,6 +68,45 @@ Select **Download tune** at the top of **Select tune** to open the ABC Session
 Tunes search screen. Previewing a tune does not save it; use **Download tune**,
 or **Use this tune** to download and load it at once.
 
+## Import ABC files
+
+Select **Import ABC tune** at the top of **Select tune** to add tunes from your
+own `.abc` files. The desktop build opens a file dialog and accepts several
+files at once; the browser opens the browser's file picker; Android opens the
+system document picker.
+
+An imported tune is saved with the source `local` and an id derived from a hash
+of its ABC text, so importing the same file twice updates one entry instead of
+adding duplicates. Its title, composer, key, meter, and genre are read from the
+ABC headers. The **Open on ABC Session Tunes** link is omitted for imported
+tunes because they have no source page.
+
+A file can contain more than one tune (`X:` headers). Only the first tune is
+imported, and the status line says how many more the file holds. Split the file
+or import the remaining tunes separately. Import never changes the loaded tune
+until you select **Use**.
+
+If the ABC cannot be parsed, the red error panel explains why and nothing is
+added.
+
+## Export a saved tune
+
+Select a saved tune, then select **Export as ABC**. The file contains the tune's
+ABC text exactly as the preview shows it. On desktop the save dialog chooses the
+destination; the browser downloads the file; Android writes it to the app's
+export folder and offers **Share** so the file can be sent to another app.
+Exported file names are derived from the title and cleaned of characters that
+are unsafe on Windows, Linux, or Android.
+
+## Edit a saved tune's ABC
+
+**Edit ABC** in a saved tune's preview opens a plain text editor with a live
+sheet-music preview. Select **Save** to keep the draft, **Cancel** to discard
+it, or **Restore original** to put the downloaded ABC back. Saving changes only
+the ABC text; the title, composer, key, meter, and source stay as they were.
+Malformed ABC shows the parser error and cannot be saved, so the previous text
+stays in the library. See [Editing a saved tune's ABC](/docs/guides/abc-editor).
+
 The search form stays at the top, the **Previous** and **Next** row stays at the
 bottom, and the result list and sheet-music preview share the height in between.
 On a phone the form, results, and preview stack into one scrolling page.
