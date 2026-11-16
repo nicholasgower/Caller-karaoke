@@ -128,7 +128,7 @@ const TABS: [TabDef; 4] = [
         key: egui::Key::Num3,
     },
     TabDef {
-        screens: &[Screen::Preferences],
+        screens: &[Screen::Preferences, Screen::Aliases],
         label: "Preferences",
         short_label: "Prefs",
         hover: "Preferences",
@@ -218,6 +218,42 @@ fn screen_for_tab_key(key: egui::Key) -> Option<Screen> {
     TABS.iter()
         .find(|tab| tab.key == key)
         .map(|tab| tab.landing())
+}
+
+/// The top-row tab that contains `screen`.
+fn tab_index(screen: Screen) -> usize {
+    TABS.iter()
+        .position(|tab| tab.is_active(screen))
+        .unwrap_or(0)
+}
+
+/// The landing screen of the tab `step` places away from `current`.
+///
+/// The tab row wraps in both directions, so Left from Session reaches
+/// Preferences and Right from Preferences returns to Session. Detail screens
+/// (a download search, the alias editor) step from the tab that contains them.
+fn tab_step(current: Screen, step: isize) -> Screen {
+    let count = TABS.len() as isize;
+    let index = tab_index(current) as isize;
+    let next = (index + step).rem_euclid(count) as usize;
+    TABS[next].landing()
+}
+
+/// How far a horizontal swipe must travel before it changes tabs.
+const SWIPE_MIN_DISTANCE: f32 = 60.0;
+/// How much more horizontal than vertical a tab swipe must be.
+const SWIPE_AXIS_RATIO: f32 = 1.5;
+
+/// The screen a horizontal swipe selects, or `None` when it is not a swipe.
+///
+/// A swipe left (negative x) moves to the next tab and a swipe right moves to
+/// the previous one. A mostly vertical drag is a scroll, not a tab change, and
+/// a short drag is a tap or a slider adjustment.
+fn swipe_target(current: Screen, dx: f32, dy: f32) -> Option<Screen> {
+    if dx.abs() <= SWIPE_MIN_DISTANCE || dx.abs() < dy.abs() * SWIPE_AXIS_RATIO {
+        return None;
+    }
+    Some(tab_step(current, if dx < 0.0 { 1 } else { -1 }))
 }
 
 /// The screen selected by a tab shortcut pressed this frame, if any.
@@ -669,24 +705,31 @@ impl ContraApp {
     /// Handle app-wide keyboard shortcuts.
     ///
     /// Only called while no widget has keyboard focus, so typing in a text
-    /// field never triggers play, restart, or a tab change.
+    /// field never triggers play, restart, or a tab change, and the Left/Right
+    /// arrows still adjust a focused slider or list instead of switching tabs.
     fn handle_shortcuts(&mut self, ui: &egui::Ui) {
         // The About window is modal: let it handle Escape and ignore the
         // transport and tab shortcuts until it closes.
         if self.about_open {
             return;
         }
-        let (space, restart, escape, tab) = ui.input(|input| {
+        let (space, restart, escape, tab, previous_tab, next_tab) = ui.input(|input| {
             (
                 input.key_pressed(egui::Key::Space),
                 input.key_pressed(egui::Key::R),
                 input.key_pressed(egui::Key::Escape),
                 tab_shortcut(input),
+                input.key_pressed(egui::Key::ArrowLeft),
+                input.key_pressed(egui::Key::ArrowRight),
             )
         });
 
         if let Some(screen) = tab {
             self.screen = screen;
+        } else if next_tab {
+            self.screen = tab_step(self.screen, 1);
+        } else if previous_tab {
+            self.screen = tab_step(self.screen, -1);
         }
         if space {
             if self.audio.is_playing() {
@@ -700,6 +743,44 @@ impl ContraApp {
         }
         if escape && let Some(target) = self.screen.escape_target() {
             self.screen = target;
+        }
+    }
+
+    /// Switch tabs on a horizontal swipe in the screen content.
+    ///
+    /// The gesture is read from the raw pointer rather than from a widget, so
+    /// it works over labels, cards, and buttons without stealing their clicks.
+    /// A swipe that starts on a slider is left to the slider, a drag while a
+    /// text field has focus is a text selection, and the About window or an
+    /// open popup (a combo box, a menu) blocks the gesture. One press can
+    /// change tabs once; releasing the pointer arms the next swipe.
+    fn tab_swipe(&mut self, ui: &egui::Ui, content: egui::Rect) {
+        let fired_id = egui::Id::unique("tab-swipe-fired");
+        let gesture = ui.input(|input| {
+            let origin = input.pointer.press_origin()?;
+            let pointer = input.pointer.interact_pos()?;
+            input
+                .pointer
+                .primary_down()
+                .then_some((origin, pointer - origin))
+        });
+        let Some((origin, delta)) = gesture else {
+            ui.data_mut(|data| data.insert_temp(fired_id, false));
+            return;
+        };
+        if self.headless
+            || self.about_open
+            || ui.ctx().any_popup_open()
+            || ui.ctx().text_edit_focused()
+            || !content.contains(origin)
+            || ui::press_started_on_slider(ui, origin)
+            || ui.data(|data| data.get_temp::<bool>(fired_id).unwrap_or(false))
+        {
+            return;
+        }
+        if let Some(screen) = swipe_target(self.screen, delta.x, delta.y) {
+            self.screen = screen;
+            ui.data_mut(|data| data.insert_temp(fired_id, true));
         }
     }
 
@@ -1793,6 +1874,10 @@ impl ContraApp {
         }
         theme::apply(&ctx, self.prefs.theme, self.prefs.animations_enabled);
 
+        // The sliders redraw themselves every frame; this list lets a swipe
+        // tell content from a slider that already owns its drag.
+        ui::begin_slider_frame(ui);
+
         if !self.headless && !ctx.egui_wants_keyboard_input() {
             self.handle_shortcuts(ui);
         }
@@ -1823,7 +1908,9 @@ impl ContraApp {
         }
 
         let screen_progress = self.screen_transition(&ctx);
+        let mut content_rect = egui::Rect::NOTHING;
         egui::CentralPanel::default().show(ui, |ui| {
+            content_rect = ui.max_rect();
             if self.prefs.animations_enabled {
                 // Fade and slide the new screen in. The offset shrinks to zero
                 // as the progress approaches one.
@@ -1834,6 +1921,9 @@ impl ContraApp {
                 (def.draw)(self, ui, beat);
             }
         });
+        // Swipe navigation is read after the screen draws so the slider list
+        // for this frame is complete.
+        self.tab_swipe(ui, content_rect);
 
         // Playback settings are applied by `tick`, which runs before this ui on
         // every visible frame and also while the window is hidden.
@@ -2167,7 +2257,9 @@ fn tab(
         (galley.size().y + 16.0).max(ui.spacing().interact_size.y),
     );
     let (rect, response) = ui.allocate_exact_size(desired, egui::Sense::click());
-    let response = response.on_hover_text(format!("{hover} ({shortcut})"));
+    let response = response.on_hover_text(format!(
+        "{hover} ({shortcut}) · swipe or use ← → to change tabs"
+    ));
 
     let active_t = if animate {
         ctx.animate_bool_with_time(id, active, TAB_ANIM_SECONDS)
@@ -2500,6 +2592,46 @@ mod tests {
         );
         assert_eq!(screen_for_tab_key(egui::Key::Num5), None);
         assert_eq!(screen_for_tab_key(egui::Key::Space), None);
+    }
+
+    #[test]
+    fn arrow_keys_step_through_tabs_and_wrap() {
+        assert_eq!(tab_step(Screen::Session, 1), Screen::DancePicker);
+        assert_eq!(tab_step(Screen::DancePicker, 1), Screen::TunePicker);
+        assert_eq!(tab_step(Screen::TunePicker, 1), Screen::Preferences);
+        assert_eq!(tab_step(Screen::Preferences, 1), Screen::Session);
+        assert_eq!(tab_step(Screen::Session, -1), Screen::Preferences);
+        assert_eq!(tab_step(Screen::Preferences, -1), Screen::TunePicker);
+        // A detail screen steps from the tab that contains it.
+        assert_eq!(tab_step(Screen::DanceDownload, 1), Screen::TunePicker);
+        assert_eq!(tab_step(Screen::DanceDownload, -1), Screen::Session);
+        assert_eq!(tab_step(Screen::Aliases, 1), Screen::Session);
+    }
+
+    #[test]
+    fn a_horizontal_swipe_selects_an_adjacent_tab() {
+        // Swipe left goes forward, swipe right goes back, and both wrap.
+        assert_eq!(
+            swipe_target(Screen::Session, -100.0, 10.0),
+            Some(Screen::DancePicker)
+        );
+        assert_eq!(
+            swipe_target(Screen::Session, 100.0, 10.0),
+            Some(Screen::Preferences)
+        );
+        assert_eq!(
+            swipe_target(Screen::Preferences, -100.0, 10.0),
+            Some(Screen::Session)
+        );
+        assert_eq!(
+            swipe_target(Screen::TunePicker, 100.0, -10.0),
+            Some(Screen::DancePicker)
+        );
+        // A short drag is a tap or slider adjustment, not a swipe.
+        assert_eq!(swipe_target(Screen::Session, 60.0, 0.0), None);
+        assert_eq!(swipe_target(Screen::Session, 59.0, 0.0), None);
+        // A mostly vertical drag is a scroll.
+        assert_eq!(swipe_target(Screen::Session, 80.0, 60.0), None);
     }
 
     /// Run one egui frame with `raw_input` and read the tab shortcut it saw.
