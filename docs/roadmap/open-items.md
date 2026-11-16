@@ -18,3 +18,9 @@
   finish-before-the-figure checks at 224, 232, and 240 BPM (§17 C10).
 - Whether beat-aware TTS is worth the complexity or a visual rhythm strip plus
   a click track is enough (§17 C11).
+- Dancer sounds: the derived rhythms do not match what dancers actually do.
+  Claps (balance, figures that say "clap") and foot stomps (petronella, long
+  lines) are both disabled in 0.1.0 behind `DANCER_SOUNDS_ENABLED` in
+  `crates/core/src/dancer.rs`; foot stomps also keep `FOOT_STOMPS_ENABLED` off.
+  Collect the real per-move rhythms, cover them with timing tests, then
+  re-enable the layer (§6.3).

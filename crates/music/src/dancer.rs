@@ -1,7 +1,9 @@
 //! Dancer sounds: the stomps and claps the dancers make during a figure.
 //!
 //! The events come from the dance card (see `contra_core::dancer_sounds`) and
-//! are already on the dance-beat grid. This module only renders them, with
+//! are already on the dance-beat grid. The whole layer is temporarily disabled
+//! at the source in 0.1.0, but the voices stay here so it can be re-enabled
+//! without touching the renderer. This module only renders the events, with
 //! small procedural voices so no new asset or soundfont preset is needed. The
 //! layer is mixed after the effects chain, so reverb or echo cannot smear a
 //! clap past its beat.

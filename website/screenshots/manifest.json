@@ -305,7 +305,7 @@
     {
       "id": "prefs-instrument-mix",
       "alt": "Band & Sound showing the dancer sounds toggle and volume, the percussion and accompaniment rhythm menus, and the separate Caller volume and Band volume sliders.",
-      "caption": "The caller and the band have independent levels; the default dancer stomps and claps sit under the band.",
+      "caption": "The caller and the band have independent levels; dancer sounds are temporarily disabled while their rhythms are corrected.",
       "status": "ready",
       "width": 1280,
       "height": 2250

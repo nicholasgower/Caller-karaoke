@@ -115,17 +115,21 @@ Percussion is optional and comes from the band list:
   eighth note followed by two sixteenths. The count-in stays one clear note per
   beat.
 
-Dancer sounds are a separate, default-on layer derived from the dance card:
+Dancer sounds are a separate layer derived from the dance card:
 
-- A petronella or a long line gets a foot stomp at the figure's start and its
-  last beat; a balance or a figure that says "clap" gets hand claps on its first
-  two beats.
+- **The whole layer is temporarily disabled in 0.1.0.** The derived rhythms
+  (claps on a balance's first two beats; one stomp at a figure's start and one
+  on its last beat) do not match the sounds dancers actually make for the
+  figures. `contra_core::dancer_sounds` returns no events; the switch
+  `DANCER_SOUNDS_ENABLED` in `crates/core/src/dancer.rs` turns it back on once
+  the rhythms are corrected (see §16). Foot stomps have their own
+  `FOOT_STOMPS_ENABLED` because their timing is the known-wrong part.
 - The derivation takes the dance card only (`contra_core::dancer_sounds`) and
   returns `DancerSoundEvent`s on the dance-beat grid. A plain dance produces no
   events.
-- Render the stomps and claps with short procedural voices after the effect
-  chain, so reverb or echo cannot smear a clap past its beat. They never move
-  the grid and add nothing to the count-in.
+- Render the sounds with short procedural voices after the effect chain, so
+  reverb or echo cannot smear a clap past its beat. They never move the grid
+  and add nothing to the count-in.
 - The layer follows every loop pass and has its own level. It is mixed under
   the band and cannot create a silent bar.
 

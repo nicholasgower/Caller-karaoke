@@ -549,24 +549,12 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    ui.checkbox(
-        &mut app.prefs.dancer_sounds,
-        "Dancer sounds (stomps and claps)",
-    )
-    .on_hover_text(
-        "Adds stomps on petronellas and long lines, and claps on balances, from the dance card",
-    );
-    ui.label(
-        egui::RichText::new(
-            "Adds a foot stomp on petronellas and long lines, and hand claps on balances, taken \
-             from the dance card. The sounds sit under the band on the dance beat and follow every \
-             loop. This is on by default.",
+    ui.add_enabled_ui(false, |ui| {
+        ui.checkbox(
+            &mut app.prefs.dancer_sounds,
+            "Dancer sounds (stomps and claps)",
         )
-        .small()
-        .color(theme::muted(ui)),
-    );
-    let dancer_sounds = app.prefs.dancer_sounds;
-    ui.add_enabled_ui(dancer_sounds, |ui| {
+        .on_hover_text("Temporarily disabled while the dancer sound rhythms are corrected");
         slider_row(
             ui,
             compact,
@@ -575,6 +563,14 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
         );
     });
+    ui.label(
+        egui::RichText::new(
+            "Dancer sounds are temporarily disabled while their rhythms are corrected. The music, \
+             calls, and dance timing are unchanged.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     inline_field(ui, compact, "Percussion rhythm", |ui| {
         percussion_rhythm_combo(ui, compact, &mut app.prefs);
     });

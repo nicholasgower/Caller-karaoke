@@ -864,9 +864,9 @@ pub enum DancerSound {
 
 /// One dancer sound placed on the dance grid.
 ///
-/// The app derives these from the dance card (a petronella or a long line has a
-/// stomp, a balance has a clap) and the renderer mixes them under the band, so
-/// the music follows the dance rather than a fixed pattern.
+/// The app derives these from the dance card and the renderer mixes them under
+/// the band, so the music follows the dance rather than a fixed pattern. The
+/// layer is temporarily disabled in 0.1.0; see `contra_core::dancer_sounds`.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DancerSoundEvent {
     /// Dance beat where the sound starts. May repeat every pass.
@@ -1171,7 +1171,11 @@ pub struct Preferences {
     pub humanize_options: HumanizeOptions,
     /// Shape of the once-only ending; see [`EndingOptions`].
     pub ending_options: EndingOptions,
-    /// Include stomps and claps from the dancers on figures that call for them.
+    /// Include the dancer sound layer on figures that call for it.
+    ///
+    /// Temporarily disabled at the source in 0.1.0 while the derived rhythms
+    /// are corrected; the setting is kept so the layer can return without a
+    /// migration.
     pub dancer_sounds: bool,
     /// Level of the dancer sound layer.
     pub dancer_sound_volume: f32,

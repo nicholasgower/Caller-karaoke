@@ -39,7 +39,8 @@ pub struct RenderRequest {
     pub humanize_options: HumanizeOptions,
     /// Shape of the once-only ending.
     pub ending_options: EndingOptions,
-    /// Include stomps and claps from the dancers.
+    /// Include the dancer sound layer. Temporarily disabled at the source in
+    /// 0.1.0, so no events are produced.
     pub dancer_sounds: bool,
     /// Level of the dancer sound layer.
     pub dancer_sound_volume: f32,

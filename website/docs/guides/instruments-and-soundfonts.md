@@ -90,20 +90,11 @@ the built-in synth. Removing every percussion row leaves them out.
 
 ## Dancer sounds
 
-**Dancer sounds** is on by default and adds the noises the dancers make to the
-band. The layer is read from the dance card rather than from a fixed pattern:
-
-- a **petronella** or a **long line** gets a foot stomp at the start and the
-  last beat of the figure;
-- a **balance** or a figure that says **clap** gets hand claps on its first two
-  beats;
-- a plain figure such as a do si do gets nothing.
-
-The sounds land on the dance-beat grid and follow every loop. They are mixed
-under the band after the effects, so a clap stays tight on its beat instead of
-floating in reverb. **Dancer sound volume** balances the layer; it does not
-change the calls, the dance timing, or the 64-beat loop. Untick **Dancer sounds**
-to remove the layer entirely.
+**Dancer sounds** is temporarily disabled in 0.1.0 while its rhythms are
+corrected: the hand claps and foot stomps it derived from figure names did not
+match what dancers actually do. The preference stays in place, greyed out, so
+the layer can return in a later build without discarding saved settings. Nothing
+else changes: the music, calls, timing, and 64-beat loop are unaffected.
 
 ### Percussion rhythms
 
@@ -333,10 +324,10 @@ beat, so the guitar sounds strummed up and down rather than in one direction.
 The countermelody is derived from the melody and that chord track, so it
 never needs symbols of its own. The optional percussion follows the selected
 percussion rhythm, the meter, and the dance-beat grid, and the optional dancer
-sounds follow the stomp and clap cues in the dance card. When a chord tone would
-sit closer than a minor third to the melody note sounding at the same time, the
-arranger moves that accompaniment note down an octave so the tune stays clear of
-its backing. Short fades and peak normalization are applied to the rendered
-buffer.
+sounds (temporarily disabled) follow the sound cues in the dance card. When a
+chord tone would sit closer than a minor third to the melody note sounding at
+the same time, the arranger moves that accompaniment note down an octave so the
+tune stays clear of its backing. Short fades and peak normalization are applied
+to the rendered buffer.
 
 Next: [Timing and lead](/docs/guides/timing-and-lead).
