@@ -98,7 +98,7 @@ impl LaunchFocus {
 
         // The web canvas cannot take focus from the browser, and the backend
         // would only log an unhandled command.
-        if !cfg!(target_arch = "wasm32") {
+        if crate::platform() != "web" {
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
     }

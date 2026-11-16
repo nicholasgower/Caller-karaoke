@@ -939,7 +939,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    let neural = cfg!(all(not(target_arch = "wasm32"), not(target_os = "android")));
+    let neural = !matches!(crate::platform(), "web" | "android");
     inline_field(ui, compact, "Voice", |ui| {
         ui.add_enabled_ui(neural, |ui| {
             let selected = crate::tts::voice(&app.prefs.tts_voice);
