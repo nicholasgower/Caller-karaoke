@@ -72,6 +72,11 @@ better in the dark theme and dark text at 4.5:1 or better in the light theme.
 - The dance area scrolls; the current call stays visible. On short windows
   (under about 800 px of session height, including a landscape phone) the whole
   session page scrolls so the card stays reachable.
+- The dance card defaults to compact padding so a standard dance fits whole on a
+  desktop session tab. **Preferences → Appearance → Dance card padding** offers
+  **Sparse** for the earlier roomier rows; the pickers' card previews follow the
+  same setting. Beyond the space available, the card scrolls rather than
+  shrinking the text.
 - The call prompt is the first panel under the tab row on the Session tab;
   controls, the tune summary, the progress bar, and the dance card follow below
   it, so a caller always reads the prompt in the same place.

@@ -152,6 +152,12 @@ player. The dance card at the bottom of the session shows every figure with its
 phrase label and beat count. The active figure row is highlighted as the music
 moves.
 
+The card uses compact padding by default, so a standard dance fits whole on a
+desktop session tab without scrolling. **Preferences → Appearance → Dance card
+padding** switches to **Sparse** for the roomier rows the card used before. A
+longer card still scrolls inside its box, and the setting also spaces the card
+figures in the saved-dance and download previews.
+
 On a wide window the space below the controls is split into two boxes: the dance
 information and beat meter on the left, and the dance card on the right. The
 card scrolls inside its box, so a long card never pushes the prompt or the
@@ -246,12 +252,12 @@ volume** master.
 **Preferences** has six categories: **Calling** (role terms, lead timing, spoken
 calls), **Band & Sound** (the band list, output mode, SoundFont, effects),
 **Playback** (loop, count-in, tempo range, variations, human timing),
-**Appearance** (theme, motion, shortcuts, undo), **Data & Storage**
-(dance-source pointer, web proxy, cache, MIDI export, memory use), and **About**
-(version, credits, project links). A desktop shows the category list in a left
-frame and the selected category's settings beside it. A phone shows the list
-first and opens one category at a time; the back control, **Esc**, and the
-Android system back button return to the category list, and a second Back
+**Appearance** (theme, motion, dance card padding, shortcuts, undo), **Data &
+Storage** (dance-source pointer, web proxy, cache, MIDI export, memory use), and
+**About** (version, credits, project links). A desktop shows the category list
+in a left frame and the selected category's settings beside it. A phone shows
+the list first and opens one category at a time; the back control, **Esc**, and
+the Android system back button return to the category list, and a second Back
 returns to the session.
 
 ## Maintenance and memory

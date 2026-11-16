@@ -14,6 +14,8 @@
 - The remaining space is the dance area:
   - Title, choreographer, formation, source link.
   - Dance card grouped by A1/A2/B1/B2 with beat counts.
+  - The card's padding is configurable (**Compact**, the default, or
+    **Sparse**); compact fits a standard dance on a desktop tab.
   - Large "current call" prompt, next-call preview, and a lead countdown.
   - Karaoke states: *upcoming*, *call now*, *executing*. Once a figure is
     executing, the prompt becomes an *upcoming move* box naming the move to

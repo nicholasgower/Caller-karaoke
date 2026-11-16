@@ -2,7 +2,7 @@ use super::about::about;
 use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
 use crate::app::history::HistoryAction;
 use crate::app::*;
-use contra_core::{ChorusPreset, EchoPreset, ReverbPreset};
+use contra_core::{CardPadding, ChorusPreset, EchoPreset, ReverbPreset};
 use eframe::egui;
 
 /// The top-level groups of Preferences.
@@ -46,7 +46,7 @@ impl PreferencesCategory {
             Self::Calling => "Role terms, lead timing, and spoken calls",
             Self::BandAndSound => "Band list, soundfont, effects, and mix",
             Self::Playback => "Loop, count-in, tempo range, and variations",
-            Self::Appearance => "Theme, motion, keyboard shortcuts, undo",
+            Self::Appearance => "Theme, motion, dance card padding, shortcuts, undo",
             Self::DataAndStorage => "Web proxy, cache, MIDI export, and memory",
             Self::About => "Version, credits, and project links",
         }
@@ -787,6 +787,20 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 .small()
                 .color(theme::muted(ui)),
             );
+    form_row(ui, compact, "Dance card padding", |ui| {
+        ui.horizontal_wrapped(|ui| {
+            for option in CardPadding::ALL {
+                ui.selectable_value(&mut app.prefs.card_padding, option, option.label());
+            }
+        });
+    });
+    ui.label(
+        egui::RichText::new(
+            "Compact packs the figures in the session card and previews closer together; Sparse keeps the roomier rows.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     undo_redo_buttons(app, ui, compact);
     if let Some(message) = &app.history_status {
         ui.label(egui::RichText::new(message).small().color(theme::muted(ui)));
