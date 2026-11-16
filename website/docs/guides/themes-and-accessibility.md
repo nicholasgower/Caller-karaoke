@@ -77,6 +77,12 @@ control keeps the gesture: sliders adjust, folder rows reorder, and buttons
 activate instead of changing tabs. Tab swipes are also suspended while a text
 field has focus, a drop-down is open, or the **About** window is showing.
 
+Tapping a text field opens the system keyboard on Android and the browser. The
+field keeps focus while you type; Backspace, Enter, and the arrow keys belong to
+the field, and shortcuts such as **Space** and **1-3** stay suspended until it
+loses focus. Suggestions and autocorrect are off so typed aliases, searches, and
+ABC source are not rewritten.
+
 <Shot id="main-mobile" />
 
 The search and download screens use the same phone layout. Form labels sit

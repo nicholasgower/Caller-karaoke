@@ -402,6 +402,24 @@ mod platform {
         result.is_ok()
     }
 
+    /// Show or hide the activity's input field for the system keyboard.
+    ///
+    /// The activity owns the invisible `EditText` that gives a native activity
+    /// a working IME (see [`crate::android_ime`]). This only tells it
+    /// whether egui currently has a text field focused; the text itself comes
+    /// back through the `nativeImeText` and `nativeImeKey` callbacks.
+    pub(crate) fn set_text_input_active(active: bool) -> bool {
+        with_activity(|env, class| {
+            env.call_static_method(
+                class,
+                "setTextInputActive",
+                "(Z)V",
+                &[JValue::Bool(u8::from(active))],
+            )?;
+            Ok(())
+        })
+    }
+
     /// Rust's end of the Android media session.
     ///
     /// The session itself lives in `MainActivity`: only Java can register a
@@ -555,7 +573,7 @@ mod platform {
 }
 
 #[cfg(target_os = "android")]
-pub(crate) use platform::{request_repaint, with_activity};
+pub(crate) use platform::{request_repaint, set_text_input_active, with_activity};
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) use platform::request_repaint;

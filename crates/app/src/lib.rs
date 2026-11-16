@@ -3,6 +3,7 @@
 //! The desktop binary, Android native activity, and web entry point all share
 //! the same `ContraApp` state machine.
 
+mod android_ime;
 pub mod app;
 mod audio;
 mod defaults;
