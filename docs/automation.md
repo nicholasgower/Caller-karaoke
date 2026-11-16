@@ -149,6 +149,11 @@ Useful checks for this app:
   overflow.
 - `press_key` with `Space` toggles play/pause; `R` restarts; `Escape` leaves a
   picker or preferences screen (the alias editor returns to preferences).
+- Media keys are not MCP inputs: the operating system's media session sits
+  outside the app's widget tree, so no tool can press a hardware key.
+  `session_action` (`play`, `pause`, `restart`) drives the same app path the
+  session uses; use it when changing the media integration. The Android
+  session is a device feature and is not reachable from `contra-mcp`.
 - Number keys `1`–`4` switch tabs, and `Enter` in a search field starts the
   search or adds a custom or alternative alias.
 - After selecting a dance or tune, use `wait_for` on the result text before

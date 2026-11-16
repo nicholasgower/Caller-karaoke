@@ -6,8 +6,9 @@ sidebar_position: 1
 
 Contra Karaoke has a small keyboard shortcut set. Shortcuts are ignored while a
 text field or another control has keyboard focus, so typing a dance title does
-not start or stop the music. On desktop, the keyboard's media keys control the
-transport from any window; see [Media keys](#media-keys).
+not start or stop the music. On Windows, Linux, and Android, the operating
+system's media controls drive the transport from outside the app; see
+[Media keys](#media-keys).
 
 | Key | Action | Notes |
 | --- | --- | --- |
@@ -40,12 +41,17 @@ shortcut does not respond, check that a text field does not have focus.
 
 ## Media keys
 
-On Windows and Linux, the keyboard's **Play/Pause** media key controls the
-session even when another window is in front. The app registers with the
-operating system's media session (System Media Transport Controls on Windows,
-MPRIS on Linux), so the desktop routes the key to Contra Karaoke while it is the
-active player. The system media overlay shows the loaded dance as the title and
-the tune as the artist.
+On Windows, Linux, and Android, the operating system's media controls drive the
+session from outside the app. That covers the keyboard's **Play/Pause** key, the
+Windows media overlay, the media widget in a Linux panel (including the Cinnamon
+sound applet on Linux Mint), and on Android the headset and Bluetooth buttons,
+the lock screen, and the media notification.
+
+Contra Karaoke registers a media session with the platform — System Media
+Transport Controls on Windows, MPRIS on Linux, and `MediaSession` on Android —
+so the operating system routes the button to the app while it is the active
+player. The system media controls show the loaded dance as the title, the tune
+as the artist, and *Contra Karaoke* as the album.
 
 - **Play** starts or resumes the session.
 - **Pause** pauses it and stops speech. The beat is kept, so the next Play
@@ -53,9 +59,12 @@ the tune as the artist.
 - **Stop** pauses. **Next** and **Previous** are ignored.
 
 Media keys are not app shortcuts: they work without clicking the window, while a
-text field has focus, and while the window is minimized. The browser and Android
-builds do not handle media keys in 0.1.0. If another app is playing media, the
-operating system may send the key there instead; pause that app or use **Space**
-in Contra Karaoke.
+text field has focus, and while the window is minimized. On Android, denying the
+notification permission only hides the notification; the headset, Bluetooth,
+lock-screen, and system controls still work.
+
+If another app is playing media, the operating system may send the key there
+instead; pause that app or use **Space** in Contra Karaoke. The browser build
+does not register a media session in 0.1.0, so use **Space** in the page.
 
 Next: [How calls are timed](/docs/reference/how-calls-are-timed).

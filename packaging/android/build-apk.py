@@ -2,9 +2,10 @@
 """Build a signed Contra Karaoke APK.
 
 `cargo apk` produces the native APK, but it cannot compile Java. The `tts`
-crate's Android backend requires the `rs.tts.Bridge` class at runtime, so this
-script compiles that class, adds it to the APK as `classes.dex`, re-aligns the
-archive, and signs it.
+crate's Android backend requires the `rs.tts.Bridge` class at runtime, and the
+app's `MainActivity` owns the Android media session and its notification, so
+this script compiles both, adds every resulting class to the APK as
+`classes.dex`, re-aligns the archive, and signs it.
 
 The release profile is signed with the debug keystore unless
 `CARGO_APK_RELEASE_KEYSTORE` and `CARGO_APK_RELEASE_KEYSTORE_PASSWORD` are set,
@@ -29,7 +30,7 @@ MAIN_ACTIVITY = (
     REPO / "packaging" / "android" / "java" / "org" / "contrakaraoke" / "app" / "MainActivity.java"
 )
 TTS_PACKAGE = "rs/tts/Bridge.class"
-MAIN_ACTIVITY_CLASS = "org/contrakaraoke/app/MainActivity.class"
+MAIN_ACTIVITY_PACKAGE = "org/contrakaraoke/app"
 
 
 def run(args: list[str], *, env: dict[str, str] | None = None, cwd: Path = REPO) -> None:
@@ -212,10 +213,16 @@ def build_dex(env: dict[str, str], sdk: Path, java_home: Path, work: Path) -> Pa
         ],
         env=env,
     )
-    class_files = [classes / TTS_PACKAGE, classes / MAIN_ACTIVITY_CLASS]
-    for class_file in class_files:
+    class_files = [classes / TTS_PACKAGE]
+    # The media session's callback and notification receiver are anonymous
+    # classes, which javac emits as MainActivity$1.class and friends. Missing
+    # one of them makes the session fail with NoClassDefFoundError at runtime,
+    # so every class the activity compiles to is packaged.
+    app_classes = sorted((classes / MAIN_ACTIVITY_PACKAGE).glob("MainActivity*.class"))
+    for class_file in [*class_files, *app_classes]:
         if not class_file.is_file():
             raise SystemExit(f"{class_file} was not produced")
+    class_files.extend(app_classes)
     run(
         [
             str(build_tool(sdk, "d8")),
