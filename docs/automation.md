@@ -112,8 +112,9 @@ succeeds. Then work in an observe → act → verify loop:
 1. `widget_tree` — list widgets, roles, labels, values, and ids.
 2. `get_widget` — get full text and logical-point `bounds` for one widget.
 3. `click`, `hover`, `scroll`, `drag`, `type_text`, or `press_key` — act. The
-   generic input tools also cover the touch gestures: a horizontal `drag`
-   across the content emulates a tab swipe, and `press_key` with `ArrowLeft` or
+   generic input tools also cover the touch gestures: a horizontal `drag` on
+   empty content emulates a tab swipe (a drag that starts on a control is left
+   to that control), and `press_key` with `ArrowLeft` or
    `ArrowRight` moves to the previous or next tab. `session_state` reports the
    tab now in front.
 4. `screenshot` — look at the result (or pass `save_path`).

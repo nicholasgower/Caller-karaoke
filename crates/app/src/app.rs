@@ -284,6 +284,17 @@ const SWIPE_MIN_DISTANCE: f32 = 60.0;
 /// How much more horizontal than vertical a tab swipe must be.
 const SWIPE_AXIS_RATIO: f32 = 1.5;
 
+/// Whether a widget under the press owns the gesture instead of a tab swipe.
+///
+/// A clickable control (button, row, slider, checkbox, combo box) always owns
+/// the press. A drag-only surface normally does too, but a wide vertical
+/// `ScrollArea` also senses drags across its whole content; a horizontal drag
+/// there cannot scroll a vertical list, so it may still change tabs. Narrow
+/// drag handles (a pane splitter) keep the gesture.
+fn swipe_owns_press(sense: egui::Sense, width: f32) -> bool {
+    sense.senses_click() || (sense.senses_drag() && width <= 24.0)
+}
+
 /// The screen a horizontal swipe selects, or `None` when it is not a swipe.
 ///
 /// A swipe left (negative x) moves to the next tab and a swipe right moves to
@@ -990,13 +1001,40 @@ impl ContraApp {
     /// Switch tabs on a horizontal swipe in the screen content.
     ///
     /// The gesture is read from the raw pointer rather than from a widget, so
-    /// it works over labels, cards, and buttons without stealing their clicks.
-    /// A swipe that starts on a slider is left to the slider, a drag while a
-    /// text field has focus is a text selection, and the About window or an
-    /// open popup (a combo box, a menu) blocks the gesture. One press can
-    /// change tabs once; releasing the pointer arms the next swipe.
+    /// it works over plain labels and frames. It must never compete with a
+    /// control the user is actually using: a press that starts on any
+    /// interactive widget (a button, slider, folder row, text field, scroll
+    /// area, or popup) belongs to that widget, so the tab does not change even
+    /// if the finger then travels sideways. A press on empty content can still
+    /// swipe. One press can change tabs once; releasing the pointer arms the
+    /// next swipe.
     fn tab_swipe(&mut self, ui: &egui::Ui, content: egui::Rect) {
         let fired_id = egui::Id::unique("tab-swipe-fired");
+        let press_on_widget_id = egui::Id::unique("tab-swipe-press-on-widget");
+
+        // Record whether this press began on an interactive control. A scroll
+        // area's drag surface is deliberately not a control: a horizontal drag
+        // there does not scroll a vertical list, so it may still change tabs.
+        // A clickable widget, or a narrow drag handle such as a pane splitter,
+        // owns the press and must not be pre-empted.
+        if ui.input(|input| input.pointer.primary_pressed()) {
+            let hovered: Vec<egui::Id> = ui
+                .ctx()
+                .interaction_snapshot(|snapshot| snapshot.hovered.iter().copied().collect());
+            let on_control = hovered.iter().any(|id| {
+                ui.ctx().read_response(*id).is_some_and(|response| {
+                    response.enabled()
+                        && swipe_owns_press(response.sense, response.interact_rect.width())
+                })
+            });
+            ui.data_mut(|data| data.insert_temp(press_on_widget_id, on_control));
+        }
+        if !ui.input(|input| input.pointer.primary_down()) {
+            ui.data_mut(|data| data.remove::<bool>(press_on_widget_id));
+        }
+        let started_on_widget =
+            ui.data(|data| data.get_temp::<bool>(press_on_widget_id).unwrap_or(false));
+
         let gesture = ui.input(|input| {
             let origin = input.pointer.press_origin()?;
             let pointer = input.pointer.interact_pos()?;
@@ -1010,6 +1048,7 @@ impl ContraApp {
             return;
         };
         if self.headless
+            || started_on_widget
             || ui.ctx().any_popup_open()
             || ui.ctx().text_edit_focused()
             || !content.contains(origin)
@@ -4209,6 +4248,21 @@ mod tests {
         // The alias editor is reached from the Preferences gear, not a tab;
         // stepping from it starts at the first tab.
         assert_eq!(tab_step(Screen::Aliases, 1), Screen::DancePicker);
+    }
+
+    #[test]
+    fn a_press_on_a_control_owns_the_gesture() {
+        assert!(swipe_owns_press(egui::Sense::click(), 400.0));
+        assert!(swipe_owns_press(egui::Sense::click_and_drag(), 400.0));
+        assert!(
+            swipe_owns_press(egui::Sense::drag(), 10.0),
+            "a pane splitter keeps its drag"
+        );
+        assert!(
+            !swipe_owns_press(egui::Sense::drag(), 400.0),
+            "a wide scroll area still allows a horizontal tab swipe"
+        );
+        assert!(!swipe_owns_press(egui::Sense::hover(), 400.0));
     }
 
     #[test]

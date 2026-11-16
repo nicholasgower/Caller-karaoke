@@ -301,11 +301,11 @@ that page. On a taller phone the prompt stays put and only the dance card
 scrolls. The saved-content and download screens use a single scrolling column
 at phone width, with full-width fields and the preview below the results.
 
-On a touch screen, swipe left or right across the content to change tabs. The
-gesture ignores a swipe that starts on a slider, and a mostly vertical swipe on
-a slider scrolls the page instead of changing the value, so passing a thumb
-over the tempo or volume control while scrolling does not disturb it. Drag a
-slider sideways to change it on purpose.
+On a touch screen, swipe left or right across empty content to change tabs. A
+press that starts on a control — a button, slider, folder row, splitter, or
+open menu — belongs to that control, so dragging from it never changes tabs.
+A mostly vertical swipe scrolls instead. Drag a slider sideways to change it on
+purpose.
 
 <Shot id="session-mobile-controls" />
 

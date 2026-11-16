@@ -63,11 +63,11 @@ tempo, caller, and band sliders use the full width, and the transport buttons
 split the row evenly. On a short window the whole session page scrolls so the dance card is
 never pushed out of reach.
 
-Swipe left or right across the content to change tabs on a touch screen, or use
-the **←** and **→** keys with a hardware keyboard. A vertical swipe that starts
-on a slider scrolls the page instead of changing the value; drag the slider
-sideways to adjust it. Tab swipes are suspended while a text field has focus, a
-drop-down is open, or the **About** window is showing.
+Swipe left or right across empty content to change tabs on a touch screen, or
+use the **←** and **→** keys with a hardware keyboard. A press that starts on a
+control keeps the gesture: sliders adjust, folder rows reorder, and buttons
+activate instead of changing tabs. Tab swipes are also suspended while a text
+field has focus, a drop-down is open, or the **About** window is showing.
 
 <Shot id="main-mobile" />
 

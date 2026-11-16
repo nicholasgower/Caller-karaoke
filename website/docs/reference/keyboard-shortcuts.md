@@ -62,12 +62,12 @@ shortcut does not respond, check that a text field does not have focus.
 
 ## Touch screens
 
-On Android and other touch devices, **swipe left or right** across the screen
+On Android and other touch devices, **swipe left or right** across empty screen
 content to move to the next or previous tab. The gesture needs about 60 points
-of mostly horizontal travel and changes the tab once per swipe; it works over
-labels and cards but not while a text field has focus or a pop-up is open. A
-swipe that starts on a slider is treated as an adjustment, and a mostly
-vertical swipe on a slider scrolls the page instead of changing the value. The
+of mostly horizontal travel and changes the tab once per swipe. A press that
+starts on any control — a button, slider, folder row, resizable splitter, text
+field, or open menu — belongs to that control and never changes tabs. A mostly
+vertical swipe scrolls instead. The
 system back button follows the **Esc** path: a Preferences category returns to
 the category list, and the list, a picker, or a download screen returns as
 described above.

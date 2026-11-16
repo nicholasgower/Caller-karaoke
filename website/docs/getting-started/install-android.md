@@ -87,10 +87,11 @@ Android stops the app in the background, playback stops with it.
 ## Touch controls
 
 - **Tap a tab** at the top to switch between Session, Dance, Tune, and Prefs.
-- **Swipe left or right** across the content to move to the next or previous
+- **Swipe left or right** across empty content to move to the next or previous
   tab. The tab row wraps, so swiping right from Session opens Prefs and swiping
   left from Prefs returns to Session. A swipe needs roughly 60 points of
-  mostly horizontal travel and changes the tab once per gesture.
+  mostly horizontal travel and changes the tab once per gesture. A press that
+  starts on a button, slider, folder row, or splitter stays with that control.
 - **Drag a slider sideways** to change its value. A mostly vertical swipe that
   starts on a slider scrolls the page instead, so scrolling past the volume or
   tempo control does not knock it off its setting. A short tap on the rail still

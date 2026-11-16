@@ -274,6 +274,57 @@ fn phone_preferences_category_rows_share_one_left_edge() {
 }
 
 #[test]
+fn a_swipe_that_starts_on_a_control_does_not_change_tabs() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(800.0, 844.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.headless = false;
+            app.screen = Screen::Session;
+            app
+        });
+    harness.run_steps(3);
+
+    let play = harness
+        .query_all_by_label("Play")
+        .next()
+        .expect("the session has a Play button")
+        .rect()
+        .center();
+    harness.hover_at(play);
+    harness.run_steps(1);
+    harness.drag_at(play);
+    harness.run_steps(1);
+    let moved = play - egui::vec2(140.0, 0.0);
+    harness.hover_at(moved);
+    harness.run_steps(1);
+    harness.drop_at(moved);
+    harness.run_steps(2);
+    assert_eq!(
+        harness.state().screen,
+        Screen::Session,
+        "a drag that starts on a control belongs to that control"
+    );
+
+    // The gap between the two session boxes is not a widget, so a horizontal
+    // drag there still changes tabs.
+    let blank = egui::pos2(400.0, 700.0);
+    harness.hover_at(blank);
+    harness.run_steps(1);
+    harness.drag_at(blank);
+    harness.run_steps(1);
+    harness.hover_at(blank - egui::vec2(140.0, 0.0));
+    harness.run_steps(1);
+    harness.drop_at(blank - egui::vec2(140.0, 0.0));
+    harness.run_steps(2);
+    assert_eq!(harness.state().screen, Screen::DancePicker);
+}
+
+#[test]
 fn the_header_and_top_level_controls_stay_vertical_where_the_page_does_not_scroll() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(800.0, 844.0))
