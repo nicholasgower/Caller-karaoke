@@ -8,16 +8,7 @@ impl ContraApp {
         apply_phone_spacing(ui, compact);
         let mut open_download = false;
         if compact {
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
-                ui.heading("Select dance");
-            });
+            ui.heading("Select dance");
             // At phone width the heading and the action do not fit on one row.
             let width = ui.available_width();
             if ui
@@ -32,13 +23,6 @@ impl ContraApp {
             }
         } else {
             ui.horizontal(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
                 ui.heading("Select dance");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
@@ -340,16 +324,7 @@ impl ContraApp {
         apply_phone_spacing(ui, compact);
         let mut open_download = false;
         if compact {
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
-                ui.heading("Select tune");
-            });
+            ui.heading("Select tune");
             let width = ui.available_width();
             if ui
                 .add_sized(
@@ -363,13 +338,6 @@ impl ContraApp {
             }
         } else {
             ui.horizontal(|ui| {
-                if ui
-                    .button("< Back to session")
-                    .on_hover_text("Back to session (Esc)")
-                    .clicked()
-                {
-                    self.screen = Screen::Session;
-                }
                 ui.heading("Select tune");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
