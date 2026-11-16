@@ -192,6 +192,62 @@ fn assert_inside_horizontally(
     }
 }
 
+/// Every button is at least as tall as the session tab's Play button.
+///
+/// Play is the reference for an ordinary action button: 40 points on a desktop
+/// and the 44-point touch target in the phone layout. A button built with
+/// `small_button` (or any other shrunken size) is harder to hit and reads as a
+/// lesser control, so it must not ship. Deliberately taller rows — a
+/// multi-line search result, a phone Preferences category, a folder row — are
+/// fine; only shrinking below Play is the regression this catches.
+#[test]
+fn no_button_is_shorter_than_the_session_play_button() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(demo_app);
+
+    for size in [
+        egui::vec2(1280.0, 800.0),
+        egui::vec2(390.0, 844.0),
+        // The minimum window: the phone layout must hold its touch height even
+        // in the shortest supported window.
+        egui::vec2(360.0, 560.0),
+    ] {
+        harness.set_size(size);
+        harness.state_mut().screen = Screen::Session;
+        harness.run_steps(3);
+        let play_height = node_rects(&harness)
+            .into_iter()
+            .find(|(_, role, label)| *role == accesskit::Role::Button && label == "Play")
+            .map(|(rect, _, _)| rect.height())
+            .unwrap_or_else(|| panic!("the session has a Play button at {size:?}"));
+        assert!(
+            play_height >= 39.4,
+            "the Play button itself shrank to {play_height:.1} points at {size:?}"
+        );
+
+        for screen in SCREENS {
+            harness.state_mut().screen = screen;
+            harness.run_steps(3);
+            for (rect, role, label) in node_rects(&harness) {
+                if role != accesskit::Role::Button {
+                    continue;
+                }
+                assert!(
+                    rect.height() + 0.6 >= play_height,
+                    "{screen:?} at {size:?}: button {label:?} is {:.1} points tall, \
+                     shorter than the {play_height:.1}-point Play button",
+                    rect.height()
+                );
+            }
+        }
+    }
+}
+
 /// The bundled dance is what a caller sees first, so its whole card must fit
 /// on the desktop session tab without scrolling. The card pane hides its
 /// scroll bar when the figures fit, which makes the bar a direct check.

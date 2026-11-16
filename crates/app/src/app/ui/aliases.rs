@@ -93,11 +93,7 @@ impl ContraApp {
                 ui.label(egui::RichText::new(&key).monospace());
                 ui.label("→");
                 ui.label(&alias);
-                let remove = if compact {
-                    ui.button("Remove")
-                } else {
-                    ui.small_button("Remove")
-                };
+                let remove = ui.button("Remove");
                 if remove.clicked() {
                     self.prefs.aliases.remove_custom(&key);
                     self.rebuild_timeline();
@@ -189,11 +185,7 @@ impl ContraApp {
                         self.prefs.aliases.set_override(kind, value);
                         changed = true;
                     }
-                    let reset = if compact {
-                        ui.button("Reset to default")
-                    } else {
-                        ui.small_button("Reset to default")
-                    };
+                    let reset = ui.button("Reset to default");
                     if reset.clicked() {
                         self.prefs.aliases.reset(kind);
                         changed = true;
@@ -215,11 +207,7 @@ impl ContraApp {
                                         .small()
                                         .color(theme::muted(ui)),
                                 );
-                                let remove = if compact {
-                                    ui.button("Remove")
-                                } else {
-                                    ui.small_button("Remove")
-                                };
+                                let remove = ui.button("Remove");
                                 if is_added && remove.clicked() {
                                     self.prefs.aliases.remove_alternative(kind, template);
                                     changed = true;
@@ -256,7 +244,7 @@ impl ContraApp {
                             );
                             let submit = submitted(ui, &response);
                             let clicked = ui
-                                .small_button("Add alternative")
+                                .button("Add alternative")
                                 .on_hover_text("Add alternative (Enter)")
                                 .clicked();
                             if clicked || submit {

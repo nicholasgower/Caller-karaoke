@@ -296,7 +296,7 @@ impl ContraApp {
                         .hint_text("Filter by name or meaning")
                         .desired_width(260.0),
                 );
-                if !self.glossary_query.is_empty() && ui.small_button("Clear").clicked() {
+                if !self.glossary_query.is_empty() && ui.button("Clear").clicked() {
                     self.glossary_query.clear();
                 }
             });

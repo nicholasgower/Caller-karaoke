@@ -253,7 +253,7 @@ impl ContraApp {
         }
         if !compact
             && ui
-                .small_button("Reset panes")
+                .button("Reset panes")
                 .on_hover_text("Restore the results and preview widths")
                 .clicked()
         {

@@ -62,8 +62,10 @@ the buttons.
 
 Every control in the phone session layout — tab, slider, transport button, and
 toggle — uses a 44-pixel interaction height, and the app window has a minimum
-size of 360×560. Below about 640 pixels wide the **Session** tab switches to
-that phone layout: the wordmark and long tab labels give way to three short tabs
+size of 360×560. On a desktop every action button keeps the same 40-pixel height
+as the session **Play** button; no control is shrunk to the height of its text.
+Below about 640 pixels wide the **Session** tab switches to that phone layout:
+the wordmark and long tab labels give way to three short tabs
 beside the pinned Preferences gear, which keeps the same 44-pixel target, the
 tempo, caller, and band sliders use the full width, and the transport buttons
 split the row evenly. On a short window the whole session page scrolls so the dance card is
