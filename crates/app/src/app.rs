@@ -1800,67 +1800,13 @@ impl ContraApp {
         let beat = self.current_beat();
 
         let compact = compact_layout(ui.available_width());
-        egui::Panel::top("tabs")
-            .frame(
-                egui::Frame::default()
-                    // The panel paints nothing by default, which would show
-                    // the window's near-black clear colour behind the wordmark.
-                    .fill(theme::header_bg(ui))
-                    .inner_margin(egui::Margin::symmetric(12, 8)),
-            )
-            .show(ui, |ui| {
-                let animate = self.prefs.animations_enabled;
-                // The About button is pinned to the top-right corner; the
-                // heading and tabs share the remaining width. Center the row:
-                // an egui button inherits the surrounding layout's alignment
-                // for its label, so a top-aligned row lifts "About" a few
-                // points above the tab labels.
-                if compact {
-                    // Keep the phone header at the 44 pt touch minimum and
-                    // narrow the About button so four short tabs fit beside it.
-                    ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
-                    ui.spacing_mut().button_padding.x = 8.0;
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui
-                        .button("About")
-                        .on_hover_text("About Contra Karaoke")
-                        .clicked()
-                    {
-                        self.about_open = true;
-                    }
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            // At phone width the four tabs, not the wordmark, are
-                            // the useful part of the header. Dropping the heading
-                            // and the long tab labels keeps the navigation to one
-                            // row and leaves that height for the prompt and card.
-                            if !compact {
-                                ui.heading("Contra Karaoke");
-                                ui.add_space(12.0);
-                            }
-                            for tab_def in &TABS {
-                                let label = if compact {
-                                    tab_def.short_label
-                                } else {
-                                    tab_def.label
-                                };
-                                if tab(
-                                    ui,
-                                    tab_def.is_active(self.screen),
-                                    label,
-                                    tab_def.hover,
-                                    tab_def.shortcut,
-                                    animate,
-                                    compact,
-                                ) {
-                                    self.screen = tab_def.landing();
-                                }
-                            }
-                        });
-                    });
-                });
-            });
+        let header = header_ui(ui, self.screen, self.prefs.animations_enabled, compact);
+        if let Some(screen) = header.screen {
+            self.screen = screen;
+        }
+        if header.about {
+            self.about_open = true;
+        }
 
         if let Some(error) = self.error.clone() {
             egui::Panel::bottom("error").show(ui, |ui| {
@@ -2066,6 +2012,133 @@ fn lerp_color(from: egui::Color32, to: egui::Color32, t: f32) -> egui::Color32 {
     from.lerp_to_gamma(to, t.clamp(0.0, 1.0))
 }
 
+/// What the header asked for this frame.
+#[derive(Clone, Debug)]
+struct HeaderResponse {
+    /// The screen a tab click selected.
+    screen: Option<Screen>,
+    /// The About button was pressed.
+    about: bool,
+    /// The rect the header panel occupies, including its margins.
+    rect: egui::Rect,
+    /// The rect the wordmark occupies, if it was drawn.
+    ///
+    /// Kept for the resize regression test, which compares the header against a
+    /// fresh launch at the same size; production reads nothing but `rect`.
+    #[cfg_attr(not(test), allow(dead_code))]
+    heading: Option<egui::Rect>,
+    /// One rect per tab, in `TABS` order. Test-only, because collecting them
+    /// would allocate every frame.
+    #[cfg(test)]
+    tabs: Vec<egui::Rect>,
+}
+
+impl Default for HeaderResponse {
+    fn default() -> Self {
+        Self {
+            screen: None,
+            about: false,
+            rect: egui::Rect::NOTHING,
+            heading: None,
+            #[cfg(test)]
+            tabs: Vec::new(),
+        }
+    }
+}
+
+/// Draw the tab row: the pinned About button, the wordmark, and the tabs.
+///
+/// The header is a top panel sized by its contents, and egui starts that
+/// content-driven layout from the panel's rect on the *previous* frame.
+/// Content-driven sizing therefore only works while the contents report their
+/// natural height, so every row here is aligned to its **top** edge: a row
+/// aligned to `Align::Center` stretches to the height it is offered (egui
+/// expands a ui to the frame a centered widget was laid out in), the panel then
+/// stores that stretched height, and the next frame offers it again. One narrow
+/// window - where the tabs wrap onto a second row - was enough to leave the
+/// header permanently taller, even after the window was widened again.
+///
+/// Wrapping itself is unchanged: at intermediate widths the wordmark and tabs
+/// still flow onto a second row, and the panel grows to fit both rows.
+fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) -> HeaderResponse {
+    let mut header = HeaderResponse::default();
+    let panel = egui::Panel::top("tabs")
+        .frame(
+            egui::Frame::default()
+                // The panel paints nothing by default, which would show
+                // the window's near-black clear colour behind the wordmark.
+                .fill(theme::header_bg(ui))
+                .inner_margin(egui::Margin::symmetric(12, 8)),
+        )
+        .show(ui, |ui| {
+            if compact {
+                // Keep the phone header at the 44 pt touch minimum and narrow
+                // the About button so four short tabs fit beside it. This is
+                // the panel's own ui, so the tweak ends with the header.
+                ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
+                ui.spacing_mut().button_padding.x = 8.0;
+            }
+            // About is pinned to the top-right corner and the wordmark and tabs
+            // share the remaining width.
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                if ui
+                    .button("About")
+                    .on_hover_text("About Contra Karaoke")
+                    .clicked()
+                {
+                    header.about = true;
+                }
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        // At phone width the four tabs, not the wordmark, are
+                        // the useful part of the header. Dropping the heading
+                        // and the long tab labels keeps the navigation to one
+                        // row and leaves that height for the prompt and card.
+                        if !compact {
+                            let heading = ui.heading("Contra Karaoke");
+                            header.heading = Some(heading.rect);
+                            ui.add_space(12.0);
+                        }
+                        for tab_def in &TABS {
+                            let label = if compact {
+                                tab_def.short_label
+                            } else {
+                                tab_def.label
+                            };
+                            let response = tab(
+                                ui,
+                                tab_def.is_active(active),
+                                label,
+                                tab_def.hover,
+                                tab_def.shortcut,
+                                animate,
+                                compact,
+                            );
+                            if response.clicked {
+                                header.screen = Some(tab_def.landing());
+                            }
+                            #[cfg(test)]
+                            header.tabs.push(response.rect);
+                        }
+                    });
+                });
+            });
+        });
+    header.rect = panel.response.rect;
+    header
+}
+
+/// A tab's click state and the rect it was drawn in.
+#[derive(Clone, Copy, Debug)]
+struct TabResponse {
+    clicked: bool,
+    /// Only the resize regression test reads the rect; it checks that a round
+    /// trip through a narrow window leaves every tab where a fresh launch at the
+    /// same size puts it.
+    #[cfg(test)]
+    rect: egui::Rect,
+}
+
 /// A top-row tab with an animated selected background and text colour.
 ///
 /// `tab()` is used instead of `selectable_label` so the selected state can
@@ -2080,7 +2153,7 @@ fn tab(
     shortcut: &str,
     animate: bool,
     compact: bool,
-) -> bool {
+) -> TabResponse {
     let ctx = ui.ctx().clone();
     let id = ui.make_persistent_id(("tab", hover));
     let font = egui::TextStyle::Button.resolve(ui.style());
@@ -2152,7 +2225,11 @@ fn tab(
     if response.hovered() {
         ctx.set_cursor_icon(egui::CursorIcon::PointingHand);
     }
-    response.clicked()
+    TabResponse {
+        clicked: response.clicked(),
+        #[cfg(test)]
+        rect,
+    }
 }
 
 fn load_prefs(path: &Path) -> Option<Preferences> {
@@ -2874,6 +2951,119 @@ mod tests {
         app.audio.seek_beat(next + 0.5);
         app.tick(&ctx);
         assert_eq!(app.last_spoken, Some(next), "the caller carries on");
+    }
+
+    /// Run `frames` header frames at `size` and collect what each frame
+    /// reported.
+    ///
+    /// This drives the real header through a plain [`egui::Context`], so the
+    /// test sees egui's own panel sizing rather than a stand-in for it.
+    fn run_header(ctx: &egui::Context, size: egui::Vec2, frames: usize) -> Vec<HeaderResponse> {
+        let mut headers = Vec::with_capacity(frames);
+        for _ in 0..frames {
+            let input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                ..Default::default()
+            };
+            let mut output = ctx.run_ui(input, |ui| {
+                headers.push(header_ui(
+                    ui,
+                    Screen::Session,
+                    false,
+                    compact_layout(size.x),
+                ));
+            });
+            // Nothing renders in this test, but epaint insists its texture
+            // updates are acknowledged before they are dropped.
+            output.textures_delta.clear();
+        }
+        headers
+    }
+
+    #[test]
+    fn a_window_resize_does_not_grow_the_header() {
+        let ctx = egui::Context::default();
+        theme::apply(&ctx, Theme::Dark, false);
+
+        let launch = egui::vec2(1280.0, 800.0);
+        let fresh = run_header(&ctx, launch, 2);
+        let fresh = &fresh[1];
+
+        // The phone layout, then an intermediate width where the wordmark and
+        // tabs wrap onto a second row and the header really is taller.
+        run_header(&ctx, egui::vec2(390.0, 844.0), 2);
+        let wrapped = run_header(&ctx, egui::vec2(700.0, 800.0), 2);
+        assert!(
+            wrapped[1].rect.height() > fresh.rect.height(),
+            "the wrapped header is taller: {} vs {}",
+            wrapped[1].rect.height(),
+            fresh.rect.height()
+        );
+
+        // Back at the launch size, the header and every control inside it must
+        // sit exactly where a fresh launch puts them. A content-sized panel
+        // starts from the size it stored on the previous frame, so before the
+        // header rows were top-aligned, the wrapped height fed itself back and
+        // the header stayed tall until the app restarted.
+        let again = run_header(&ctx, launch, 2);
+        assert_eq!(again[1].rect, fresh.rect, "the header kept its old height");
+        assert_eq!(again[1].tabs, fresh.tabs, "the tabs moved");
+        assert_eq!(again[1].heading, fresh.heading, "the wordmark moved");
+    }
+
+    #[test]
+    fn the_header_shows_every_tab_at_every_supported_width() {
+        let ctx = egui::Context::default();
+        theme::apply(&ctx, Theme::Dark, false);
+
+        // The minimum window is 360 points; 390 is the phone reference size and
+        // 640-800 the widths where the desktop row wraps.
+        for width in [360.0, 390.0, 640.0, 700.0, 800.0, 1280.0] {
+            let frames = run_header(&ctx, egui::vec2(width, 800.0), 3);
+            let header = &frames[2];
+            assert_eq!(header.tabs.len(), TABS.len(), "{width}px: a tab is missing");
+            for (rect, def) in header.tabs.iter().zip(TABS.iter()) {
+                assert!(
+                    header.rect.contains_rect(*rect),
+                    "{width}px: the {} tab is clipped: {rect:?} in {:?}",
+                    def.hover,
+                    header.rect
+                );
+                assert!(
+                    rect.left() >= 0.0 && rect.right() <= width,
+                    "{width}px: the {} tab overflows the window: {rect:?}",
+                    def.hover
+                );
+            }
+            if let Some(heading) = header.heading {
+                assert!(
+                    header.rect.contains_rect(heading),
+                    "{width}px: the wordmark is clipped: {heading:?} in {:?}",
+                    header.rect
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_phone_header_keeps_its_touch_sizing_to_itself() {
+        let ctx = egui::Context::default();
+        theme::apply(&ctx, Theme::Dark, false);
+
+        let frames = run_header(&ctx, egui::vec2(390.0, 844.0), 2);
+        assert!(
+            frames[1]
+                .tabs
+                .iter()
+                .all(|tab| tab.height() >= theme::TOUCH_TARGET),
+            "the phone header keeps 44-point tabs: {:?}",
+            frames[1].tabs
+        );
+        assert_eq!(
+            ctx.global_style().spacing.interact_size.y,
+            40.0,
+            "the phone header's row height leaked into the rest of the UI"
+        );
     }
 }
 
