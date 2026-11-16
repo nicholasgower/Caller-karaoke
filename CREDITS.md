@@ -118,11 +118,17 @@ See the `egui`/`epaint` source for the exact font files and notices.
   2008 Frank Wen; © 2008 Toby Smithe. MIT licensed. Contra Karaoke bundles a
   **subset** (`assets/defaults/fluid-r3-gm-subset.sf2`) containing only the GM
   programs the instrument preferences use: Acoustic Grand Piano (0), Accordion
-  (21), Acoustic Guitar (steel, 25) and Violin (40). The subset is produced with
-  `scripts/soundfont-subset.py`; it keeps the selected presets' generators,
-  modulators and sample data unchanged, so it renders identically to the full
-  bank for those programs. The full 141 MB bank is not redistributed, and a user
-  can still load any other `.sf2`.
+  (21), Acoustic Guitar (steel, 25), Violin (40), Alto Sax (65), Tenor Sax (66)
+  and Clarinet (71). The subset is produced from the official MIT-licensed
+  release
+  (`https://github.com/Jacalz/fluid-soundfont/releases/download/v1.0/GM-and-SF3.tar.bz2`)
+  by `scripts/rebuild-soundfont.py`, which verifies the pinned SHA-256 of both
+  the archive and the extracted `FluidR3_GM.sf2`, and keeps the selected
+  presets' generators, modulators and sample data unchanged, so it renders
+  identically to the full bank for those programs. The program list lives in
+  `scripts/soundfont-keep.txt`; `scripts/soundfont-subset.py` is the low-level
+  editor it calls. The full 141 MB bank is not redistributed, and a user can
+  still load any other `.sf2`.
 
   ```text
   Fluid (R3) SoundFont

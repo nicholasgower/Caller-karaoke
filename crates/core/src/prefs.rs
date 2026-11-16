@@ -26,20 +26,39 @@ pub const MIN_TTS_RATE: f32 = 0.4;
 /// 1.25, rounded to one decimal place.
 pub const MAX_TTS_RATE: f32 = 1.3;
 
+/// The instrument that plays the tune.
+///
+/// The two original contra voices (fiddle and accordion) are joined by the
+/// single-reed winds a pickup band often brings: alto sax, tenor sax, and
+/// clarinet. Every choice has a General MIDI program in the bundled subset, so
+/// the list only grows when the font carries the new program; the keep-list in
+/// `scripts/soundfont-keep.txt` is the other half of that change.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MelodyInstrument {
     #[default]
     Fiddle,
     Accordion,
+    AltoSax,
+    TenorSax,
+    Clarinet,
 }
 
 impl MelodyInstrument {
-    pub const ALL: [Self; 2] = [Self::Fiddle, Self::Accordion];
+    pub const ALL: [Self; 5] = [
+        Self::Fiddle,
+        Self::Accordion,
+        Self::AltoSax,
+        Self::TenorSax,
+        Self::Clarinet,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::Fiddle => "Fiddle",
             Self::Accordion => "Accordion",
+            Self::AltoSax => "Alto sax",
+            Self::TenorSax => "Tenor sax",
+            Self::Clarinet => "Clarinet",
         }
     }
 
@@ -48,6 +67,9 @@ impl MelodyInstrument {
         match self {
             Self::Fiddle => 40,    // Violin
             Self::Accordion => 21, // Accordion
+            Self::AltoSax => 65,   // Alto Sax
+            Self::TenorSax => 66,  // Tenor Sax
+            Self::Clarinet => 71,  // Clarinet
         }
     }
 }
@@ -1536,8 +1558,41 @@ mod tests {
     #[test]
     fn instrument_gm_programs_are_sensible() {
         assert_eq!(MelodyInstrument::Fiddle.gm_program(), 40);
+        assert_eq!(MelodyInstrument::Accordion.gm_program(), 21);
+        assert_eq!(MelodyInstrument::AltoSax.gm_program(), 65);
+        assert_eq!(MelodyInstrument::TenorSax.gm_program(), 66);
+        assert_eq!(MelodyInstrument::Clarinet.gm_program(), 71);
         assert_eq!(AccompanimentInstrument::Piano.gm_program(), 0);
         assert_eq!(AccompanimentInstrument::Guitar.gm_program(), 25);
+    }
+
+    /// Every melody choice must offer a distinct label and a distinct General
+    /// MIDI program, and survive a preferences round trip: the picker shows the
+    /// label, the renderer sends the program.
+    #[test]
+    fn every_melody_instrument_round_trips_with_its_own_label_and_program() {
+        let mut labels = BTreeSet::new();
+        let mut programs = BTreeSet::new();
+        for melody in MelodyInstrument::ALL {
+            let label = melody.label();
+            assert!(!label.trim().is_empty());
+            assert!(labels.insert(label), "duplicate label {label:?}");
+            assert!(
+                programs.insert(melody.gm_program()),
+                "duplicate program {} for {label:?}",
+                melody.gm_program()
+            );
+
+            let prefs = Preferences {
+                melody,
+                ..Preferences::default()
+            };
+            let json = prefs.to_json().expect("serialize");
+            let restored = Preferences::from_json(&json).expect("deserialize");
+            assert_eq!(restored.melody, melody);
+            assert_eq!(restored.melody.label(), label);
+        }
+        assert_eq!(labels.len(), MelodyInstrument::ALL.len());
     }
 
     #[test]

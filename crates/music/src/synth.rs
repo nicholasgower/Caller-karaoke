@@ -1,9 +1,9 @@
 //! Small built-in synthesizer.
 //!
 //! This is not a sampled instrument library. It provides recognisable fiddle,
-//! accordion, piano, and guitar timbres from procedural oscillators, and acts as
-//! the fallback when the bundled Fluid R3 GM subset or a user-supplied SF2
-//! cannot be loaded (see `soundfont.rs`).
+//! accordion, sax, clarinet, piano, and guitar timbres from procedural
+//! oscillators, and acts as the fallback when the bundled Fluid R3 GM subset or
+//! a user-supplied SF2 cannot be loaded (see `soundfont.rs`).
 
 use std::f32::consts::TAU;
 
@@ -17,6 +17,10 @@ use crate::score::NoteEvent;
 enum Timbre {
     Fiddle,
     Accordion,
+    /// Bright single reed: a square wave with the odd harmonics dominant.
+    Sax,
+    /// Hollow single reed: a darker square wave with no vibrato.
+    Clarinet,
     Piano,
     Guitar,
 }
@@ -228,6 +232,8 @@ fn melody_timbre(instrument: MelodyInstrument) -> Timbre {
     match instrument {
         MelodyInstrument::Fiddle => Timbre::Fiddle,
         MelodyInstrument::Accordion => Timbre::Accordion,
+        MelodyInstrument::AltoSax | MelodyInstrument::TenorSax => Timbre::Sax,
+        MelodyInstrument::Clarinet => Timbre::Clarinet,
     }
 }
 
@@ -429,6 +435,26 @@ fn render_note(
             right_gain,
             sample_rate,
         ),
+        Timbre::Sax => render_sax(
+            out,
+            start,
+            duration,
+            freq,
+            gain,
+            left_gain,
+            right_gain,
+            sample_rate,
+        ),
+        Timbre::Clarinet => render_clarinet(
+            out,
+            start,
+            duration,
+            freq,
+            gain,
+            left_gain,
+            right_gain,
+            sample_rate,
+        ),
         Timbre::Piano => render_piano(
             out,
             start,
@@ -518,6 +544,84 @@ fn render_accordion(
             0.08,
         );
         let sample = saw * gain * envelope * tremolo * 0.45;
+        out[(start + index) * 2] += sample * left_gain;
+        out[(start + index) * 2 + 1] += sample * right_gain;
+    }
+}
+
+/// A bright single reed: a square wave softened by a one-pole lowpass, with a
+/// little vibrato and a hint of the octave above for the saxophone's edge.
+///
+/// The timbre stands in for both sax choices; the alto and tenor differ by
+/// register in the arrangement, and the built-in voice is only the fallback
+/// when no soundfont is available.
+#[allow(clippy::too_many_arguments)]
+fn render_sax(
+    out: &mut [f32],
+    start: usize,
+    duration: usize,
+    freq: f32,
+    gain: f32,
+    left_gain: f32,
+    right_gain: f32,
+    sample_rate: f32,
+) {
+    let mut phase = 0.0f32;
+    let mut lowpass = 0.0f32;
+    for index in 0..duration {
+        let t = index as f32 / sample_rate;
+        let vibrato = 1.0 + 0.004 * (TAU * 5.0 * t).sin() * (t * 6.0).min(1.0);
+        phase += freq * vibrato / sample_rate;
+        phase -= phase.floor();
+        let square = if phase < 0.5 { 1.0 } else { -1.0 };
+        lowpass += 0.30 * (square - lowpass);
+        let edge = 0.12 * (TAU * freq * 2.0 * t).sin();
+        let envelope = adsr(
+            index as f32 / sample_rate,
+            duration as f32 / sample_rate,
+            0.025,
+            0.05,
+            0.86,
+            0.10,
+        );
+        let sample = (lowpass + edge) * gain * envelope * 0.34;
+        out[(start + index) * 2] += sample * left_gain;
+        out[(start + index) * 2 + 1] += sample * right_gain;
+    }
+}
+
+/// A hollow single reed: the odd harmonics of a square wave behind a stronger
+/// lowpass, with no vibrato. That is enough to read as a clarinet next to the
+/// fiddle's bowed saw and the accordion's detuned reeds.
+#[allow(clippy::too_many_arguments)]
+fn render_clarinet(
+    out: &mut [f32],
+    start: usize,
+    duration: usize,
+    freq: f32,
+    gain: f32,
+    left_gain: f32,
+    right_gain: f32,
+    sample_rate: f32,
+) {
+    let mut phase = 0.0f32;
+    let mut lowpass = 0.0f32;
+    for index in 0..duration {
+        let t = index as f32 / sample_rate;
+        phase += freq / sample_rate;
+        phase -= phase.floor();
+        let square = if phase < 0.5 { 1.0 } else { -1.0 };
+        lowpass += 0.12 * (square - lowpass);
+        let body = 0.08 * (TAU * freq * 3.0 * t).sin();
+        let envelope = adsr(
+            index as f32 / sample_rate,
+            duration as f32 / sample_rate,
+            0.045,
+            0.06,
+            0.88,
+            0.12,
+        );
+        let sample = (lowpass + body) * gain * envelope * 0.38;
         out[(start + index) * 2] += sample * left_gain;
         out[(start + index) * 2 + 1] += sample * right_gain;
     }
@@ -824,7 +928,7 @@ mod tests {
 
     #[test]
     fn all_instruments_render() {
-        for melody in [MelodyInstrument::Fiddle, MelodyInstrument::Accordion] {
+        for melody in MelodyInstrument::ALL {
             for accompaniment in [
                 AccompanimentInstrument::Piano,
                 AccompanimentInstrument::Guitar,
@@ -836,6 +940,45 @@ mod tests {
                 let buffer = render_builtin(&request);
                 assert!(buffer.samples.iter().any(|sample| sample.abs() > 0.001));
             }
+        }
+    }
+
+    /// The winds must not silently fall back to the fiddle's bowed saw or the
+    /// accordion's reeds: each one gets its own procedural voice.
+    #[test]
+    fn winds_have_their_own_fallback_timbre() {
+        assert_eq!(melody_timbre(MelodyInstrument::AltoSax), Timbre::Sax);
+        assert_eq!(melody_timbre(MelodyInstrument::TenorSax), Timbre::Sax);
+        assert_eq!(melody_timbre(MelodyInstrument::Clarinet), Timbre::Clarinet);
+        assert_ne!(melody_timbre(MelodyInstrument::Clarinet), Timbre::Sax);
+
+        let render = |melody| {
+            let mut request = request();
+            request.melody = melody;
+            render_builtin(&request)
+        };
+        let fiddle = render(MelodyInstrument::Fiddle);
+        for melody in [
+            MelodyInstrument::AltoSax,
+            MelodyInstrument::TenorSax,
+            MelodyInstrument::Clarinet,
+        ] {
+            let buffer = render(melody);
+            let peak = buffer
+                .samples
+                .iter()
+                .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+            assert!(peak > 0.02, "{melody:?} rendered at peak {peak}");
+            assert!(buffer.samples.iter().all(|sample| sample.is_finite()));
+            let difference = buffer
+                .samples
+                .iter()
+                .zip(&fiddle.samples)
+                .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+            assert!(
+                difference > 1e-3,
+                "{melody:?} should not sound like the fiddle ({difference})"
+            );
         }
     }
 }

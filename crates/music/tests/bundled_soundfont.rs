@@ -1,8 +1,10 @@
 //! Regression tests for the bundled Fluid R3 GM subset.
 //!
 //! The app ships a trimmed FluidR3_GM (MIT) so the default playback uses
-//! sampled instruments. `scripts/soundfont-subset.py` produces the file; these
-//! tests fail if it is regenerated without the programs the preferences offer.
+//! sampled instruments. `scripts/rebuild-soundfont.py` produces the file from
+//! the keep-list in `scripts/soundfont-keep.txt`; these tests fail if it is
+//! regenerated without the programs the preferences offer, or if the keep-list
+//! and the instrument enums drift apart.
 //!
 //! `bundled_font_matches_the_reference` is ignored because it needs the full
 //! 141 MB source bank. Run it after regenerating the subset:
@@ -12,6 +14,7 @@
 //!     cargo test -p contra-music --test bundled_soundfont -- --ignored
 //! ```
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use contra_core::{
@@ -24,10 +27,42 @@ use rustysynth::SoundFont;
 
 const FONT: &[u8] = include_bytes!("../../../assets/defaults/fluid-r3-gm-subset.sf2");
 
-/// Programs the preferences can select, as (bank, program).
-const REQUIRED_PROGRAMS: [(i32, i32); 4] = [(0, 0), (0, 21), (0, 25), (0, 40)];
+/// The keep-list that `scripts/rebuild-soundfont.py` regenerates the font from.
+const KEEP_LIST: &str = include_str!("../../../scripts/soundfont-keep.txt");
 
 const TUNE: &str = "X:1\nT:Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n";
+
+/// Programs the preferences can select, sorted and deduplicated.
+fn required_programs() -> BTreeSet<i32> {
+    MelodyInstrument::ALL
+        .iter()
+        .map(|instrument| i32::from(instrument.gm_program()))
+        .chain(
+            AccompanimentInstrument::ALL
+                .iter()
+                .map(|instrument| i32::from(instrument.gm_program())),
+        )
+        .chain(
+            Countermelody::ALL
+                .iter()
+                .filter_map(|instrument| instrument.gm_program())
+                .map(i32::from),
+        )
+        .collect()
+}
+
+/// Numbers in `scripts/soundfont-keep.txt`, ignoring comments and blank lines.
+fn keep_list_programs() -> BTreeSet<i32> {
+    KEEP_LIST
+        .lines()
+        .map(|line| line.split('#').next().unwrap_or_default().trim())
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            line.parse::<i32>()
+                .unwrap_or_else(|_| panic!("soundfont-keep.txt has a bad entry: {line:?}"))
+        })
+        .collect()
+}
 
 fn request() -> RenderRequest {
     let score = parse_abc(TUNE).expect("test tune parses");
@@ -59,16 +94,29 @@ fn bundled() -> Arc<SoundFont> {
 #[test]
 fn bundled_font_has_the_programs_the_preferences_offer() {
     let font = bundled();
-    for (bank, program) in REQUIRED_PROGRAMS {
+    for program in required_programs() {
         let found = font
             .get_presets()
             .iter()
-            .any(|preset| preset.get_bank_number() == bank && preset.get_patch_number() == program);
+            .any(|preset| preset.get_bank_number() == 0 && preset.get_patch_number() == program);
         assert!(
             found,
-            "bundled font is missing bank {bank} program {program}"
+            "bundled font is missing bank 0 program {program}; \
+             regenerate it with `python scripts/rebuild-soundfont.py`"
         );
     }
+}
+
+/// The keep-list is the one place that says which programs the bundled font
+/// carries. If the preferences gain an instrument without that list (or the
+/// other way round), the font and the picker drift apart.
+#[test]
+fn keep_list_matches_the_instrument_enums() {
+    assert_eq!(
+        keep_list_programs(),
+        required_programs(),
+        "scripts/soundfont-keep.txt no longer matches the instrument enums"
+    );
 }
 
 #[test]

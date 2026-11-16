@@ -78,7 +78,7 @@ Listed in this order:
    alias templates, live previews, reset-to-default, and custom aliases for
    unmatched figures.
 3. **Instrument preferences**
-   - Melody: Fiddle (default), Accordion.
+   - Melody: Fiddle (default), Accordion, Alto sax, Tenor sax, Clarinet.
    - Accompaniment: Piano (default), Guitar, Accordion.
    - Accompaniment rhythm: match instrument (default), block chords,
      boom-chuck, offbeat stabs, arpeggio, shuffle, strum, sustained.

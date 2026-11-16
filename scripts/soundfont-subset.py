@@ -6,13 +6,20 @@ uses sampled instruments without shipping the whole 141 MB bank. Nothing in the
 Rust crates can write an SF2, and the usual editors (Polyphone, Swami) are
 GPL GUI tools, so this dependency-free script does the edit.
 
+This is the low-level editor. Contributors normally run the wrapper instead,
+which downloads and verifies the source bank:
+
+    python scripts/rebuild-soundfont.py
+
 Usage:
-    py -3 scripts/soundfont-subset.py FluidR3_GM.sf2 out.sf2 --keep 0,21,24,25,40
+    py -3 scripts/soundfont-subset.py FluidR3_GM.sf2 out.sf2 --keep 0,21,25,40
 
 `--keep` is a comma-separated list of General MIDI program numbers (bank 0).
-The output keeps every sample the selected presets reach, rewrites the preset,
-instrument, bag, generator and sample-header tables, and copies the modulator
-tables unchanged (their indices stay valid because zones keep their order).
+Without it, the list is read from `scripts/soundfont-keep.txt`, the same file
+the wrapper uses. The output keeps every sample the selected presets reach,
+rewrites the preset, instrument, bag, generator and sample-header tables, and
+copies the modulator tables unchanged (their indices stay valid because zones
+keep their order).
 
 The result renders identically to the source for those programs: the same
 generators, the same sample data, the same modulators. It is a derived work, so
@@ -24,6 +31,11 @@ from __future__ import annotations
 import argparse
 import struct
 import sys
+from pathlib import Path
+
+# The keep-list lives next to this script so the wrapper, this editor, and the
+# Rust regression test all read one file.
+KEEP_LIST_PATH = Path(__file__).resolve().with_name("soundfont-keep.txt")
 
 PHDR = 38
 PBAG = 4
@@ -310,18 +322,40 @@ def subset(source: SoundFont, keep_programs: set[int]) -> bytes:
     return b"RIFF" + struct.pack("<I", len(body)) + body
 
 
+def read_keep_list(path: Path = KEEP_LIST_PATH) -> list[int]:
+    """Parse the keep-list file: one bank-0 GM program per line, `#` comments."""
+    programs: list[int] = []
+    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        try:
+            programs.append(int(line))
+        except ValueError:
+            raise SystemExit(f"{path}:{number}: not a program number: {raw!r}")
+    if not programs:
+        raise SystemExit(f"{path}: the keep-list is empty")
+    return sorted(set(programs))
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", help="input .sf2")
     parser.add_argument("output", help="output .sf2")
     parser.add_argument(
         "--keep",
-        default="0,21,25,40",
-        help="comma-separated bank-0 GM programs to keep (default: %(default)s)",
+        default=None,
+        help=(
+            "comma-separated bank-0 GM programs to keep "
+            f"(default: read {KEEP_LIST_PATH.name})"
+        ),
     )
     args = parser.parse_args(argv[1:])
 
-    keep = {int(value) for value in args.keep.split(",") if value.strip()}
+    if args.keep is None:
+        keep = set(read_keep_list())
+    else:
+        keep = {int(value) for value in args.keep.split(",") if value.strip()}
     data = open(args.source, "rb").read()
     font = SoundFont(data)
     out = subset(font, keep)
@@ -331,9 +365,10 @@ def main(argv: list[str]) -> int:
 
     # Read the result back with the same parser so a malformed file fails here.
     check = SoundFont(open(args.output, "rb").read())
+    kept = sorted(preset[1] for preset in check.phdr[:-1] if preset[2] == 0)
     print(
         f"{args.output}: {len(out):,} bytes, "
-        f"{len(check.phdr) - 1} presets, {len(check.shdr) - 1} samples, "
+        f"{len(check.phdr) - 1} presets {kept}, {len(check.shdr) - 1} samples, "
         f"{check.smpl_size:,} sample bytes"
     )
     return 0
