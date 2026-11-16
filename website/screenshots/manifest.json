@@ -420,15 +420,15 @@
     },
     {
       "id": "prefs-theme-light",
-      "alt": "The Theme section with Light selected and the surrounding Preferences screen rendered in light grey.",
-      "caption": "The light theme keeps the same grey structure with inverted values.",
+      "alt": "The Theme section with Light selected and the surrounding Preferences screen rendered in warm cream.",
+      "caption": "The light theme keeps the same neutral structure in a warm cream palette.",
       "status": "ready",
       "width": 1280,
       "height": 1000
     },
     {
       "id": "main-light",
-      "alt": "The session screen in the light theme, with dark text on a light grey background and the current call highlighted.",
+      "alt": "The session screen in the light theme, with dark text on a warm cream background and the current call highlighted.",
       "caption": "The light theme is available for bright rooms and projectors.",
       "status": "ready",
       "width": 1280,

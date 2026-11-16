@@ -22,9 +22,13 @@ count-in, dancing, and completion. The label text still says **CALL NOW** or
   </Step>
 </Steps>
 
-The light theme uses the same structure with its own light card and text palette:
-a light grey page, near-black text, and muted secondary text. It is intended for
-bright rooms and projectors.
+The light theme uses the same structure with its own warm cream palette: a
+paper-toned page (`#ece7d6`), near-black text (`#26241c`), muted brown-grey
+secondary text, and off-white call cards. It follows the ContraDB site's cream
+background rather than pure white, which glares under stage lights. Every light
+surface keeps body and muted text at 4.5:1 or better, including the **Contra
+Karaoke** wordmark and tab labels in the header. It is intended for bright rooms
+and projectors.
 
 <Shot id="main-light" />
 

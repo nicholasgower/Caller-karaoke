@@ -1772,7 +1772,13 @@ impl ContraApp {
 
         let compact = compact_layout(ui.available_width());
         egui::Panel::top("tabs")
-            .frame(egui::Frame::default().inner_margin(egui::Margin::symmetric(12, 8)))
+            .frame(
+                egui::Frame::default()
+                    // The panel paints nothing by default, which would show
+                    // the window's near-black clear colour behind the wordmark.
+                    .fill(theme::header_bg(ui))
+                    .inner_margin(egui::Margin::symmetric(12, 8)),
+            )
             .show(ui, |ui| {
                 let animate = self.prefs.animations_enabled;
                 // The About button is pinned to the top-right corner; the
