@@ -303,6 +303,7 @@ mod platform {
 
 #[cfg(target_os = "android")]
 mod platform {
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Mutex, OnceLock};
 
     use jni::JNIEnv;
@@ -312,11 +313,15 @@ mod platform {
     use super::MediaCommand;
     use super::android_bridge::{self, CommandQueue};
 
-    /// The activity that owns the media session and its notification.
+    /// The activity class as a raw global reference, published at startup.
     ///
-    /// The name must match the Java package and the class the APK ships; it is
-    /// also the prefix of the `nativeMediaCommand` JNI symbol.
-    const ACTIVITY: &str = "org/contrakaraoke/app/MainActivity";
+    /// `find_class` only sees app classes on a thread the app class loader
+    /// belongs to. The native event-loop thread is attached to the VM without
+    /// that loader, so the lookup there raises `ClassNotFoundException`, and
+    /// the pending exception aborts the process when the thread detaches. The
+    /// activity therefore hands its class over from `onCreate` (see
+    /// [`attach_activity`]), and every later call re-wraps this handle.
+    static ACTIVITY_CLASS: AtomicUsize = AtomicUsize::new(0);
 
     /// The UI context, so a media key that arrives while the app is idle still
     /// produces a frame promptly.
@@ -337,28 +342,57 @@ mod platform {
         }
     }
 
+    /// Keep the activity class for later calls from native threads.
+    ///
+    /// The activity calls this from `onCreate`, on a Java thread whose class
+    /// loader is the app's, so `NewGlobalRef` here pins a handle that stays
+    /// valid on every thread until the process exits. A failure leaves the
+    /// app without a media session rather than raising on the caller.
+    pub(super) fn attach_activity(env: &mut JNIEnv<'_>, class: JClass<'_>) {
+        if ACTIVITY_CLASS.load(Ordering::Relaxed) != 0 {
+            return;
+        }
+        let Ok(global) = env.new_global_ref(&class) else {
+            let _ = env.exception_clear();
+            return;
+        };
+        let raw = global.as_obj().as_raw() as usize;
+        // Deliberate leak: the class must stay pinned for the life of the
+        // process, and there is nothing to release at shutdown.
+        std::mem::forget(global);
+        let _ = ACTIVITY_CLASS.compare_exchange(0, raw, Ordering::Relaxed, Ordering::Relaxed);
+    }
+
     /// Run `call` against the activity class, ignoring any failure.
     ///
     /// The media session is optional: a missing VM or a Java exception must not
-    /// stop the in-app transport. `find_class` resolves the class through the
-    /// app class loader because the library is loaded from `MainActivity`.
-    fn with_activity(call: impl FnOnce(&mut JNIEnv<'_>, JClass<'_>) -> jni::errors::Result<()>) {
+    /// stop the in-app transport. Returns `false` while the activity has not
+    /// published its class yet, so the caller can retry on the next frame.
+    fn with_activity(
+        call: impl FnOnce(&mut JNIEnv<'_>, &JClass<'_>) -> jni::errors::Result<()>,
+    ) -> bool {
+        let raw = ACTIVITY_CLASS.load(Ordering::Relaxed);
+        if raw == 0 {
+            return false;
+        }
         let context = ndk_context::android_context();
         // SAFETY: ndk-context holds the JavaVM the activity runs on; the
         // pointer is valid for as long as the process lives.
         let Ok(vm) = (unsafe { JavaVM::from_raw(context.vm().cast()) }) else {
-            return;
+            return false;
         };
         let Ok(mut env) = vm.attach_current_thread() else {
-            return;
+            return false;
         };
-        let Ok(class) = env.find_class(ACTIVITY) else {
-            return;
-        };
-        if call(&mut env, class).is_err() {
+        // SAFETY: the handle is a global reference the activity created, so it
+        // stays valid on this thread until the process exits.
+        let class = unsafe { JClass::from_raw(raw as jni::sys::jclass) };
+        let result = call(&mut env, &class);
+        if result.is_err() {
             // Leave no pending exception behind for the next JNI call.
             let _ = env.exception_clear();
         }
+        result.is_ok()
     }
 
     /// Rust's end of the Android media session.
@@ -394,11 +428,15 @@ mod platform {
         }
 
         /// Publish whether the transport is running to the media session.
+        ///
+        /// The state is only remembered once Java accepted it, so a frame that
+        /// runs before the activity published its class retries instead of
+        /// leaving the session stuck on the default state.
         pub fn set_playback(&mut self, playing: bool) {
             if self.playback == Some(playing) {
                 return;
             }
-            with_activity(|env, class| {
+            let published = with_activity(|env, class| {
                 env.call_static_method(
                     class,
                     "setMediaPlaybackState",
@@ -407,7 +445,9 @@ mod platform {
                 )?;
                 Ok(())
             });
-            self.playback = Some(playing);
+            if published {
+                self.playback = Some(playing);
+            }
         }
 
         /// Publish the loaded dance and tune as the current media item.
@@ -419,7 +459,7 @@ mod platform {
             {
                 return;
             }
-            with_activity(|env, class| {
+            let published = with_activity(|env, class| {
                 let title = env.new_string(dance)?;
                 let artist = env.new_string(tune)?;
                 let album = env.new_string("Contra Karaoke")?;
@@ -435,9 +475,25 @@ mod platform {
                 )?;
                 Ok(())
             });
-            self.track = Some((dance.to_owned(), tune.to_owned()));
+            if published {
+                self.track = Some((dance.to_owned(), tune.to_owned()));
+            }
         }
     }
+}
+
+/// Called by `MainActivity.onCreate` to publish its class to the media bridge.
+///
+/// The activity is still on a Java thread here, so its class loader sees the
+/// app's classes; the native event-loop thread cannot look the class up itself
+/// (see [`platform::attach_activity`]).
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeAttachActivity(
+    mut env: jni::JNIEnv<'_>,
+    class: jni::objects::JClass<'_>,
+) {
+    platform::attach_activity(&mut env, class);
 }
 
 /// Called by `MainActivity` when the media session receives a command.

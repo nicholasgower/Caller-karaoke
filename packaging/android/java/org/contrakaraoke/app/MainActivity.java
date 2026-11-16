@@ -63,6 +63,12 @@ public class MainActivity extends NativeActivity {
         super.onCreate(savedInstanceState);
         appContext = getApplicationContext();
 
+        // Publish this class to Rust before the native event loop starts using
+        // it. The loop's thread is attached to the VM without the app class
+        // loader, so FindClass there cannot see this activity (see
+        // media_keys.rs).
+        nativeAttachActivity();
+
         // Feed the actual status/navigation bar insets to Rust. The native
         // content rectangle also includes the gesture area on some devices,
         // which leaves too much empty space above the tabs.
@@ -355,6 +361,9 @@ public class MainActivity extends NativeActivity {
                     insets.getSystemWindowInsetBottom());
         }
     }
+
+    /** Publish this activity's class to the media bridge; see `media_keys.rs`. */
+    private static native void nativeAttachActivity();
 
     private static native void nativeSetSystemBarInsets(
             int left, int top, int right, int bottom);

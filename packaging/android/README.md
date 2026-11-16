@@ -59,6 +59,13 @@ from `crates/app/src/media_keys.rs`. The command codes are shared between
 `MainActivity.java` (`COMMAND_*`) and `media_keys.rs` (`android_bridge`), so a
 change on one side must change the other.
 
+`MainActivity` calls `nativeAttachActivity()` in `onCreate`, and Rust keeps the
+class as a global reference. The event loop runs on a native thread attached
+without the app class loader, so `FindClass` there raises
+`ClassNotFoundException` for `org.contrakaraoke.app.MainActivity`, and the
+pending exception aborts the process when the thread detaches. Every later
+media call goes through the handle the activity published instead.
+
 The callback and the broadcast receiver are anonymous classes, so `javac`
 emits `MainActivity$1.class`, `MainActivity$2.class`, and so on. `build-apk.py`
 packages every `MainActivity*.class` into `classes.dex`; packaging only the
