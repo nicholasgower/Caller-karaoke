@@ -16,7 +16,7 @@ like a band on first launch without any downloads.
 <Steps>
   <Step shot="prefs-instrument-melody">
     Open **Preferences** and find **Instruments**. Set **Melody** to **Fiddle**
-    (default) or **Accordion**.
+    (default), **Accordion**, **Alto sax**, **Tenor sax**, or **Clarinet**.
   </Step>
   <Step shot="prefs-instrument-accompaniment">
     Set **Accompaniment** to **Piano** (default), **Guitar**, or **Accordion**,
@@ -186,11 +186,10 @@ Session **Volume** changes apply immediately to the existing buffer.
 
 **Bundled: Fluid R3 GM** is the default. It is a trimmed subset of Frank Wen's
 Fluid R3 General MIDI soundfont, which is MIT licensed; `CREDITS.md` records the
-full notice. The subset contains only the four programs in the table below (the
-melody and countermelody choices share two of them), which is why it is
-about 15 MB instead of the 141 MB full bank. Percussion is generated separately,
-so it needs no drum preset. It needs no network access and is available on every
-platform, including the browser and Android builds.
+full notice. The subset contains only the seven programs in the table below,
+which is why it is about 22 MB instead of the 141 MB full bank. Percussion is
+generated separately, so it needs no drum preset. It needs no network access and
+is available on every platform, including the browser and Android builds.
 
 If you have a `.sf2` file on Windows or Linux, you can load it to replace the
 bundled instruments for the session. The browser and Android builds cannot load
@@ -215,6 +214,9 @@ The chosen instruments map to General MIDI programs in either font:
 | --- | --- | --- |
 | Fiddle (melody) | 40 — Violin | Yes |
 | Accordion (melody) | 21 — Accordion | Yes |
+| Alto sax (melody) | 65 — Alto Sax | Yes |
+| Tenor sax (melody) | 66 — Tenor Sax | Yes |
+| Clarinet (melody) | 71 — Clarinet | Yes |
 | Piano (accompaniment) | 0 — Acoustic Grand Piano | Yes |
 | Guitar (accompaniment) | 25 — Acoustic Guitar (steel) | Yes |
 | Accordion (accompaniment) | 21 — Accordion | Yes |

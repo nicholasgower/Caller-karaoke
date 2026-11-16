@@ -265,7 +265,7 @@
     {
       "id": "prefs-instrument-melody",
       "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment, rhythm, countermelody, and percussion menus below it, a Copies stepper beside each part, and the volume sliders visible.",
-      "caption": "Fiddle is the default melody instrument; Accordion is the alternative.",
+      "caption": "Fiddle is the default melody instrument; Accordion, Alto sax, Tenor sax, and Clarinet are the alternatives.",
       "status": "ready",
       "width": 1280,
       "height": 2250

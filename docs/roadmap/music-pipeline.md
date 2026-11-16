@@ -110,10 +110,11 @@ Rendering uses `rustysynth` (MIT) with one of two voice sets:
 
 1. **Bundled Fluid R3 GM subset (default):**
    - `assets/defaults/fluid-r3-gm-subset.sf2` — FluidR3_GM by Frank Wen, MIT.
-   - Trimmed with `scripts/soundfont-subset.py` to the programs the
-     preferences offer: Violin (GM 40), Accordion (GM 21), Acoustic Grand
-     Piano (GM 0) and Acoustic Guitar steel (GM 25).
-   - ~15 MB. The subset keeps the selected presets' generators, modulators and
+   - Regenerated with `scripts/rebuild-soundfont.py` from the pinned official
+     bank, keeping the keep-list in `scripts/soundfont-keep.txt`: Acoustic Grand
+     Piano (GM 0), Accordion (GM 21), Acoustic Guitar steel (GM 25), Violin
+     (GM 40), Alto Sax (GM 65), Tenor Sax (GM 66) and Clarinet (GM 71).
+   - ~22 MB. The subset keeps the selected presets' generators, modulators and
      sample data unchanged, so it renders identically to the full 141 MB bank
      for those programs (`crates/music/tests/bundled_soundfont.rs`).
    - Attribution lives in `CREDITS.md` and the About section of Preferences.
@@ -123,6 +124,9 @@ Rendering uses `rustysynth` (MIT) with one of two voice sets:
 3. **Built-in procedural synth (fallback):**
    - Fiddle: band-limited bowed saw, vibrato, body filter, bowed envelope.
    - Accordion: detuned reeds, tremolo, fast attack.
+   - Sax (alto/tenor): square wave through a one-pole lowpass with vibrato and an
+     octave edge.
+   - Clarinet: hollow odd-harmonic square wave behind a darker lowpass.
    - Piano: additive partials, inharmonicity, exponential decay, hammer noise.
    - Guitar: Karplus-Strong pluck and strum.
    - Used when neither font is available, so the app still plays.

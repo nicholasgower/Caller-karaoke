@@ -293,7 +293,7 @@ documentation and is not published verbatim.
 | `session-controls.md` | Session header/controls | Session tab, tempo, Play/Pause/Restart, Loop, Count-in, Speak calls, Volume, tune summary, dance card |
 | `role-terms.md` | **Preferences** → Role terms | Presets (Larks/Robins default), custom singular/plural terms, live example |
 | `aliases.md` | **Preferences** → **Dance move aliases** | Filter, per-move template, Reset to default, Reset all, placeholders, custom aliases |
-| `instruments-and-soundfonts.md` | Preferences → Instruments/Soundfont | Fiddle/Accordion melody, Piano/Guitar/Accordion accompaniment, volumes, bundled Fluid R3 GM, Load/Use bundled `.sf2` |
+| `instruments-and-soundfonts.md` | Preferences → Instruments/Soundfont | Fiddle/Accordion/sax/clarinet melody, Piano/Guitar/Accordion accompaniment, volumes, bundled Fluid R3 GM, Load/Use bundled `.sf2` |
 | `timing-and-lead.md` | Preferences → Calling lead; Session | Auto/manual, min/max, speech rate, Rebuild call timing, count-in, call countdown |
 | `text-to-speech.md` | Preferences → Text to speech; Session | Speak calls, rate, unavailable message, stop on pause |
 | `cache-and-offline.md` | Preferences → Maintenance; error panel | Clear source cache (confirm), automatic stale fallback (no banner), error dismiss |
