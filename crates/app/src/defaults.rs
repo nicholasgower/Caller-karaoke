@@ -58,7 +58,7 @@ mod tests {
                     .map(|instrument| instrument.gm_program()),
             )
             .chain(
-                contra_core::SecondAccompaniment::ALL
+                contra_core::Countermelody::ALL
                     .iter()
                     .filter_map(|instrument| instrument.gm_program()),
             )

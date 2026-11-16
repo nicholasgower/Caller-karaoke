@@ -126,7 +126,7 @@ The arranger turns the tune into a **32-bar, 64-dance-beat loop**:
   the ABC has no chord symbols, using the selected rhythm;
 - the accompaniment stays out of the melody's register: a chord tone closer
   than a minor third to the tune is moved down an octave;
-- the second accompaniment adds a countermelody derived from the melody and that
+- the countermelody adds a countermelody derived from the melody and that
   chord track.
 
 The UI does not show an extended/trimmed warning in the tune preview. The

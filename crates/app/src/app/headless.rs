@@ -97,7 +97,13 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         app.prefs.tempo_bpm = 240.0;
         app.prefs.melody = contra_core::MelodyInstrument::Accordion;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Fiddle;
+        app.prefs.instrument_copies = contra_core::InstrumentCopies {
+            melody: 2,
+            accompaniment: 2,
+            countermelody: 2,
+            percussion: 2,
+        };
         app.prefs.percussion = contra_core::Percussion::Drumset;
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
     }
@@ -106,7 +112,8 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         let app = harness.state_mut();
         app.prefs.melody = contra_core::MelodyInstrument::Fiddle;
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Piano;
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Accordion;
+        app.prefs.instrument_copies = contra_core::InstrumentCopies::default();
         app.prefs.percussion = contra_core::Percussion::Off;
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Auto;
         app.prefs.master_volume = 0.5;
@@ -554,28 +561,36 @@ fn preference_shots(
         app.status = "Ready".into();
         app.prefs.web_proxy_url = None;
         app.prefs.web_proxy_token = None;
+        // Show a section in the first instrument shot; the shots after it add
+        // the other parts, and the mix shot returns to the single-player
+        // default.
+        app.prefs.instrument_copies.melody = 2;
     }
     capture(harness, out, "prefs-instrument-melody")?;
     {
         let app = harness.state_mut();
         app.prefs.accompaniment = contra_core::AccompanimentInstrument::Guitar;
         app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::BoomChuck;
+        app.prefs.instrument_copies.accompaniment = 2;
     }
     capture(harness, out, "prefs-instrument-accompaniment")?;
     {
         let app = harness.state_mut();
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Fiddle;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Fiddle;
+        app.prefs.instrument_copies.countermelody = 2;
     }
     capture(harness, out, "prefs-instrument-second")?;
     {
         let app = harness.state_mut();
         app.prefs.percussion = contra_core::Percussion::FootTaps;
         app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Gallop;
+        app.prefs.instrument_copies.percussion = 2;
     }
     capture(harness, out, "prefs-instrument-percussion")?;
     {
         let app = harness.state_mut();
-        app.prefs.second_accompaniment = contra_core::SecondAccompaniment::Accordion;
+        app.prefs.second_accompaniment = contra_core::Countermelody::Accordion;
+        app.prefs.instrument_copies = contra_core::InstrumentCopies::default();
         app.prefs.melody_volume = 0.5;
         app.prefs.accompaniment_volume = 0.5;
         app.prefs.percussion_volume = 0.5;

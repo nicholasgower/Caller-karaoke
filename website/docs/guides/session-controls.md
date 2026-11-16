@@ -25,10 +25,10 @@ volume settings.
 
 <Shot id="transport-tempo" />
 
-Changing tempo, count-in, an instrument, second-accompaniment, or percussion
-choice, a percussion rhythm, an accompaniment rhythm,
-melody/accompaniment/percussion volume, or a SoundFont marks the music for a
-rebuild. Playback settings apply without
+Changing tempo, count-in, an instrument, countermelody, or percussion
+choice, a percussion rhythm, an accompaniment rhythm, a copy count,
+melody/accompaniment/percussion volume, or a SoundFont marks the music for
+a rebuild. Playback settings apply without
 restarting the music: release the control and the app re-renders the loop and
 keeps the current beat. The session master **Volume** applies immediately. If
 the session is not playing, it shows:
@@ -115,7 +115,8 @@ the count-in, the panel shows **CALL NOW** and the call text instead of
 ## The tune summary and dance card
 
 Below the prompt, the tune line shows the tune title, key, rhythm, melody,
-accompaniment, second accompaniment, and any enabled percussion. The dance card
+accompaniment, countermelody, and any enabled percussion, with a copy count such
+as `×2` when a part has more than one player. The dance card
 at the bottom of the session shows every figure with its phrase label and beat
 count. The active figure row is highlighted as the music moves.
 
@@ -189,8 +190,9 @@ See [Text to speech](/docs/guides/text-to-speech) for availability and rate.
 ## Volume
 
 The session **Volume** slider is the master level. The melody, accompaniment,
-and percussion balances live in **Preferences → Instruments**; the second
-accompaniment follows the accompaniment balance. They are separate controls; a
+and percussion balances live in **Preferences → Instruments**; the
+countermelody follows the accompaniment balance, and the **Copies** steppers in
+that section set how many players each part has. They are separate controls; a
 quiet master with a loud melody is still quiet overall.
 
 <Shot id="transport-volume" />

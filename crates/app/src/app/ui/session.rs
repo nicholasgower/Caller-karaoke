@@ -6,6 +6,54 @@ use crate::tts::Speech;
 use contra_core::{COUNT_IN_BEATS, Preferences};
 use eframe::egui;
 
+/// The instrument line under the tune.
+///
+/// Copy counts appear only when a part has more than one player, so the
+/// default trio line keeps its old length. `×2` reads as two players on that
+/// part, which is how a band describes a section.
+fn instrument_summary(prefs: &Preferences) -> String {
+    let copies = prefs.instrument_copies;
+    let mut parts = vec![
+        part_summary("Melody", prefs.melody.label(), copies.melody_count()),
+        part_summary(
+            "Accompaniment",
+            prefs.accompaniment.label(),
+            copies.accompaniment_count(),
+        ),
+    ];
+    if let Some(countermelody) = prefs.second_accompaniment.instrument() {
+        parts.push(part_summary(
+            "Countermelody",
+            countermelody.label(),
+            copies.countermelody_count(),
+        ));
+    }
+    if prefs.percussion.is_enabled() {
+        let mut percussion = part_summary(
+            "Percussion",
+            prefs.percussion.label(),
+            copies.percussion_count(),
+        );
+        if prefs.percussion_rhythm != PercussionRhythm::Auto {
+            percussion.push_str(&format!(" ({})", prefs.percussion_rhythm.label()));
+        }
+        parts.push(percussion);
+    }
+    parts.join(" · ")
+}
+
+fn part_summary(part: &str, instrument: &str, copies: usize) -> String {
+    format!("{part}: {}", part_copy_label(instrument, copies))
+}
+
+fn part_copy_label(instrument: &str, copies: usize) -> String {
+    if copies > 1 {
+        format!("{instrument} ×{copies}")
+    } else {
+        instrument.to_string()
+    }
+}
+
 /// The tempo, transport, loop/count-in/speech, and volume controls.
 ///
 /// On a phone the controls are stacked so each row owns the full width: a
@@ -535,20 +583,7 @@ impl ContraApp {
             ))
             .color(theme::muted(ui)),
         );
-        let mut instruments = format!(
-            "Melody: {} · Accompaniment: {}",
-            self.prefs.melody.label(),
-            self.prefs.accompaniment.label()
-        );
-        if let Some(second) = self.prefs.second_accompaniment.instrument() {
-            instruments.push_str(&format!(" · Second: {}", second.label()));
-        }
-        if self.prefs.percussion.is_enabled() {
-            instruments.push_str(&format!(" · Percussion: {}", self.prefs.percussion.label()));
-            if self.prefs.percussion_rhythm != PercussionRhythm::Auto {
-                instruments.push_str(&format!(" ({})", self.prefs.percussion_rhythm.label()));
-            }
-        }
+        let instruments = instrument_summary(&self.prefs);
         if compact {
             // Two deliberate lines instead of one wrapped line, so the tune
             // and the instrument summary never break mid-phrase at phone width.
@@ -1065,6 +1100,39 @@ impl ContraApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use contra_core::{Countermelody, InstrumentCopies, Percussion, PercussionRhythm};
+
+    #[test]
+    fn the_tune_summary_names_every_player_and_the_copy_counts() {
+        let prefs = Preferences::default();
+        assert_eq!(
+            instrument_summary(&prefs),
+            "Melody: Fiddle · Accompaniment: Piano · Countermelody: Accordion"
+        );
+
+        let mut prefs = prefs;
+        prefs.instrument_copies = InstrumentCopies {
+            melody: 2,
+            accompaniment: 3,
+            countermelody: 2,
+            percussion: 2,
+        };
+        prefs.percussion = Percussion::Drumset;
+        prefs.percussion_rhythm = PercussionRhythm::Shuffle;
+        assert_eq!(
+            instrument_summary(&prefs),
+            "Melody: Fiddle ×2 · Accompaniment: Piano ×3 · Countermelody: Accordion ×2 · \
+             Percussion: Drumset ×2 (Shuffle)"
+        );
+
+        // Turning the countermelody off leaves the duo line, without a count.
+        prefs.second_accompaniment = Countermelody::Off;
+        prefs.percussion = Percussion::Off;
+        assert_eq!(
+            instrument_summary(&prefs),
+            "Melody: Fiddle ×2 · Accompaniment: Piano ×3"
+        );
+    }
 
     /// One scheduled call, for the card-footer tests.
     fn scheduled(

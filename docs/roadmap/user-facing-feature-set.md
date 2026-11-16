@@ -81,15 +81,19 @@ Listed in this order:
    - Accompaniment: Piano (default), Guitar, Accordion.
    - Accompaniment rhythm: match instrument (default), block chords,
      boom-chuck, offbeat stabs, arpeggio, shuffle, strum, sustained.
-   - Second accompaniment: Accordion countermelody (default), Fiddle
-     countermelody, or Off for a duo. Melody plus both accompaniments is the
+   - Countermelody: Accordion countermelody (default), Fiddle
+     countermelody, or Off for a duo. Melody plus the accompaniment is the
      default trio.
+   - Copies: 1-4 players on the melody, accompaniment, and countermelody, and
+     1-3 on percussion. Each copy is a separate player with its own pan, a few
+     milliseconds of spread, and a slight detune or velocity difference; one
+     is the previous single instrument.
    - Percussion: Off (default), Foot taps on each dance beat, or Drumset.
    - Percussion rhythm: match style (default), basic, on the beat, offbeats,
      half time, double time, shuffle, gallop, triplet, or train beat. Match
      style gives foot taps a gallop: one group per dance beat, an eighth note
      followed by two sixteenths.
-   - Melody/accompaniment volume; the second accompaniment follows the
+   - Melody/accompaniment volume; the countermelody follows the
      accompaniment volume. Percussion has its own volume.
    - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.
 4. **Application theme** — Dark (default) or Light.

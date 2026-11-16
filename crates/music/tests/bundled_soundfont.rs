@@ -15,8 +15,8 @@
 use std::sync::Arc;
 
 use contra_core::{
-    AccompanimentInstrument, AccompanimentRhythm, COUNT_IN_BEATS, MelodyInstrument,
-    SecondAccompaniment,
+    AccompanimentInstrument, AccompanimentRhythm, COUNT_IN_BEATS, Countermelody, InstrumentCopies,
+    MelodyInstrument,
 };
 use contra_music::soundfont::{load_soundfont, render_soundfont};
 use contra_music::{Arrangement, RenderRequest, parse_abc};
@@ -37,7 +37,8 @@ fn request() -> RenderRequest {
         melody: MelodyInstrument::Fiddle,
         accompaniment: AccompanimentInstrument::Piano,
         accompaniment_rhythm: AccompanimentRhythm::Auto,
-        second_accompaniment: SecondAccompaniment::Accordion,
+        second_accompaniment: Countermelody::Accordion,
+        copies: InstrumentCopies::default(),
         percussion: contra_core::Percussion::Off,
         percussion_rhythm: contra_core::PercussionRhythm::Auto,
         melody_volume: 0.75,
@@ -82,9 +83,9 @@ fn bundled_font_is_small() {
 }
 
 #[test]
-fn every_second_accompaniment_choice_is_audible() {
+fn every_countermelody_choice_is_audible() {
     let font = bundled();
-    for second in SecondAccompaniment::ALL {
+    for second in Countermelody::ALL {
         let mut request = request();
         request.second_accompaniment = second;
         let buffer =
@@ -95,6 +96,67 @@ fn every_second_accompaniment_choice_is_audible() {
             .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
         assert!(peak > 0.05, "{second:?} rendered at peak {peak}");
     }
+}
+
+/// A full section uses twelve of the fifteen non-drum General MIDI channels.
+/// This is the renderer's test that the channel plan fits a real SoundFont.
+#[test]
+fn bundled_font_renders_a_section_of_every_copy() {
+    let font = bundled();
+    let mut request = request();
+    request.copies = InstrumentCopies {
+        melody: 4,
+        accompaniment: 4,
+        countermelody: 4,
+        percussion: 3,
+    };
+    request.percussion = contra_core::Percussion::Drumset;
+    let section = render_soundfont(&request, &font).expect("renders the full section");
+    let peak = section
+        .samples
+        .iter()
+        .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+    assert!(peak > 0.005, "the section rendered at peak {peak}");
+    assert!(section.samples.iter().all(|sample| sample.is_finite()));
+    assert!(section.samples.iter().all(|sample| sample.abs() <= 1.0));
+    assert_eq!(
+        section.loop_pass_samples,
+        request_loop_pass_samples(&request)
+    );
+    assert_eq!(
+        section.loop_end_sample - section.loop_start_sample,
+        section.loop_pass_samples
+    );
+
+    // The copies are separate players, so the section is not the single-player
+    // render at a higher level.
+    let mut single = request.clone();
+    single.copies = InstrumentCopies::default();
+    let one = render_soundfont(&single, &font).expect("renders one player");
+    assert_eq!(section.frames(), one.frames());
+    let one_peak = one
+        .samples
+        .iter()
+        .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+    assert!(
+        peak > one_peak * 0.25,
+        "a section of four players should stay audible next to one ({peak} vs {one_peak})"
+    );
+    let difference = section
+        .samples
+        .iter()
+        .zip(&one.samples)
+        .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+    assert!(
+        difference > 1e-3,
+        "the copy plan must change the sampled render, not {difference}"
+    );
+}
+
+fn request_loop_pass_samples(request: &RenderRequest) -> u64 {
+    let beat_seconds = 120.0 / request.bpm;
+    let samples_per_beat = beat_seconds * f64::from(request.sample_rate.max(16_000));
+    (request.arrangement.loop_beats * samples_per_beat).round() as u64
 }
 
 #[test]

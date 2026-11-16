@@ -393,20 +393,24 @@ pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
         .max(1) as u32;
     let volume = request.percussion_volume.clamp(0.0, 2.0);
     let count_in_beats = request.count_in_beats.round().clamp(0.0, 8.0) as usize;
+    let voices = crate::copies::voices(0.0, request.copies.percussion_count(), buffer.sample_rate);
     for note in count_in_notes(request.percussion, count_in_beats) {
-        let start = (note.start_beat * buffer.samples_per_beat).round() as u64;
+        let beat_start = (note.start_beat * buffer.samples_per_beat).round() as u64;
         let duration = (note.duration_beats * buffer.samples_per_beat)
             .round()
             .max(1.0) as usize;
-        render_note(
-            &mut buffer.samples,
-            start as usize,
-            duration,
-            note.midi,
-            note.velocity,
-            volume,
-            buffer.sample_rate,
-        );
+        for voice in &voices {
+            render_note(
+                &mut buffer.samples,
+                (beat_start + voice.delay_samples) as usize,
+                duration,
+                note.midi,
+                note.velocity,
+                volume * voice.gain,
+                buffer.sample_rate,
+                voice.pan,
+            );
+        }
     }
     for pass in 0..passes {
         let offset = buffer.loop_start_sample + pass as u64 * pass_samples;
@@ -415,18 +419,31 @@ pub(crate) fn mix(buffer: &mut AudioBuffer, request: &RenderRequest) {
             let duration = (note.duration_beats * buffer.samples_per_beat)
                 .round()
                 .max(1.0) as usize;
-            render_note(
-                &mut buffer.samples,
-                start as usize,
-                duration,
-                note.midi,
-                note.velocity,
-                volume,
-                buffer.sample_rate,
-            );
+            for voice in &voices {
+                render_note(
+                    &mut buffer.samples,
+                    (start + voice.delay_samples) as usize,
+                    duration,
+                    note.midi,
+                    note.velocity,
+                    volume * voice.gain,
+                    buffer.sample_rate,
+                    voice.pan,
+                );
+            }
         }
     }
     normalize(&mut buffer.samples);
+}
+
+/// Pan gains for the percussion voices.
+///
+/// Linear rather than constant-power so that a centred, single player keeps
+/// exactly the level it had before copies existed. A panned copy only ever
+/// lowers one side, which cannot add headroom pressure.
+fn pan_gains(pan: f32) -> (f32, f32) {
+    let pan = pan.clamp(-1.0, 1.0);
+    (1.0 - pan.max(0.0), 1.0 + pan.min(0.0))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -438,12 +455,14 @@ fn render_note(
     velocity: u8,
     volume: f32,
     sample_rate: u32,
+    pan: f32,
 ) {
     let frames = out.len() / 2;
     if duration == 0 || start >= frames {
         return;
     }
     let duration = duration.min(frames - start);
+    let (left_gain, right_gain) = pan_gains(pan);
     let sample_rate = sample_rate.max(8_000) as f32;
     let velocity = (velocity.max(1) as f32 / 127.0).clamp(0.05, 1.0);
     let gain = volume * velocity;
@@ -499,8 +518,8 @@ fn render_note(
             }
         };
         let value = sample * gain * style_gain * envelope * 0.55;
-        out[start * 2 + index * 2] += value;
-        out[start * 2 + index * 2 + 1] += value;
+        out[start * 2 + index * 2] += value * left_gain;
+        out[start * 2 + index * 2 + 1] += value * right_gain;
     }
 }
 
@@ -713,7 +732,8 @@ mod tests {
             melody: contra_core::MelodyInstrument::Fiddle,
             accompaniment: contra_core::AccompanimentInstrument::Piano,
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::SecondAccompaniment::Off,
+            second_accompaniment: contra_core::Countermelody::Off,
+            copies: contra_core::InstrumentCopies::default(),
             percussion: Percussion::FootTaps,
             percussion_rhythm: PercussionRhythm::Beat,
             melody_volume: 0.0,
@@ -751,7 +771,8 @@ mod tests {
             melody: contra_core::MelodyInstrument::Fiddle,
             accompaniment: contra_core::AccompanimentInstrument::Piano,
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::SecondAccompaniment::Accordion,
+            second_accompaniment: contra_core::Countermelody::Accordion,
+            copies: contra_core::InstrumentCopies::default(),
             percussion: Percussion::FootTaps,
             percussion_rhythm: PercussionRhythm::Auto,
             melody_volume: 0.75,
@@ -775,5 +796,58 @@ mod tests {
         assert!(difference > 1e-3, "percussion did not change the mix");
         assert!(with.samples.iter().all(|sample| sample.is_finite()));
         assert!(with.samples.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn percussion_copies_add_players_without_moving_the_grid() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let request = RenderRequest {
+            arrangement,
+            bpm: 240.0,
+            melody: contra_core::MelodyInstrument::Fiddle,
+            accompaniment: contra_core::AccompanimentInstrument::Piano,
+            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
+            second_accompaniment: contra_core::Countermelody::Off,
+            copies: contra_core::InstrumentCopies {
+                percussion: 2,
+                ..contra_core::InstrumentCopies::default()
+            },
+            percussion: Percussion::Drumset,
+            percussion_rhythm: PercussionRhythm::Basic,
+            melody_volume: 0.0,
+            accompaniment_volume: 0.0,
+            percussion_volume: 0.6,
+            effects: contra_core::AudioEffects::default(),
+            count_in_beats: 4.0,
+            sample_rate: 24_000,
+            variation_passes: 1,
+            ending: false,
+        };
+        let mut single = request.clone();
+        single.copies.percussion = 1;
+        let two = crate::render::render(&request, None).expect("render two players");
+        let one = crate::render::render(&single, None).expect("render one player");
+
+        assert_eq!(two.frames(), one.frames());
+        assert_eq!(two.loop_pass_samples, one.loop_pass_samples);
+        assert!(two.samples.iter().all(|sample| sample.is_finite()));
+        assert!(two.samples.iter().all(|sample| sample.abs() <= 1.0));
+        let difference = two
+            .samples
+            .iter()
+            .zip(&one.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-4,
+            "a second percussion player must change the mix"
+        );
+        // The two players are panned apart, so the channels differ.
+        let left: f32 = two.samples.iter().step_by(2).map(|s| s.abs()).sum();
+        let right: f32 = two.samples.iter().skip(1).step_by(2).map(|s| s.abs()).sum();
+        assert!(
+            (left - right).abs() > 1.0,
+            "the percussion copies should not sit dead centre together"
+        );
     }
 }

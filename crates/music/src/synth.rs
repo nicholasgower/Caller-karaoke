@@ -54,10 +54,11 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
 
     let melody_voice = melody_timbre(request.melody);
     let accompaniment_timbre = accompaniment_timbre(request.accompaniment);
+    let copies = request.copies;
     for pass in 0..passes {
         let offset = count_in_samples as i64 + pass as i64 * pass_samples as i64;
         if pass == 0 {
-            render_notes(
+            render_section(
                 &mut samples,
                 &request.arrangement.pickup,
                 melody_voice,
@@ -66,10 +67,11 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 samples_per_beat,
                 sample_rate,
                 -0.10,
+                copies.melody_count(),
             );
         }
         let melody = request.arrangement.melody_notes_for_pass(pass);
-        render_notes(
+        render_section(
             &mut samples,
             &melody,
             melody_voice,
@@ -78,6 +80,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             samples_per_beat,
             sample_rate,
             -0.10,
+            copies.melody_count(),
         );
 
         let accompaniment = request
@@ -87,7 +90,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 request.accompaniment_rhythm,
                 pass,
             );
-        render_notes(
+        render_section(
             &mut samples,
             &accompaniment,
             accompaniment_timbre,
@@ -96,28 +99,30 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             samples_per_beat,
             sample_rate,
             0.10,
+            copies.accompaniment_count(),
         );
 
-        // Second accompaniment: a countermelody on a melody instrument, mixed a
-        // little quieter and to the other side so the trio stays legible.
-        if let Some(second) = request.second_accompaniment.instrument() {
-            let countermelody = request.arrangement.countermelody_notes_for_pass(pass);
-            render_notes(
+        // Countermelody: a countermelody on a melody instrument, mixed a little
+        // quieter and to the other side so the trio stays legible.
+        if let Some(countermelody) = request.second_accompaniment.instrument() {
+            let notes = request.arrangement.countermelody_notes_for_pass(pass);
+            render_section(
                 &mut samples,
-                &countermelody,
-                melody_timbre(second),
+                &notes,
+                melody_timbre(countermelody),
                 request.accompaniment_volume * 0.8,
                 offset,
                 samples_per_beat,
                 sample_rate,
                 0.30,
+                copies.countermelody_count(),
             );
         }
     }
 
     if let Some(ending) = &ending {
         let offset = (count_in_samples + loop_samples) as i64;
-        render_ending_notes(
+        render_ending_section(
             &mut samples,
             &ending.melody,
             melody_voice,
@@ -125,8 +130,9 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             offset,
             sample_rate,
             -0.10,
+            copies.melody_count(),
         );
-        render_ending_notes(
+        render_ending_section(
             &mut samples,
             &ending.accompaniment,
             accompaniment_timbre,
@@ -134,6 +140,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             offset,
             sample_rate,
             0.10,
+            copies.accompaniment_count(),
         );
         apply_ending_fade(
             &mut samples,
@@ -180,31 +187,39 @@ fn render_count_in(
     let chord_notes = chord.voicing(55);
     let duration = (0.40 * samples_per_beat) as usize;
     let count = request.count_in_beats.round().clamp(0.0, 4.0) as usize;
+    // The count-in is accompaniment, so it gets the accompaniment section: a
+    // two-piano band counts in with both pianos.
+    let voices = crate::copies::voices(0.10, request.copies.accompaniment_count(), sample_rate);
     for beat in 0..count {
-        let start = (beat as f64 * samples_per_beat).round() as usize;
-        render_note(
-            samples,
-            start,
-            duration,
-            chord.bass_midi(),
-            62,
-            timbre,
-            sample_rate as f32,
-            request.accompaniment_volume * 0.8,
-            0.10,
-        );
-        for midi in &chord_notes {
+        let beat_start = (beat as f64 * samples_per_beat).round() as usize;
+        for voice in &voices {
+            let start = beat_start + voice.delay_samples as usize;
             render_note(
                 samples,
                 start,
                 duration,
-                *midi,
-                55,
+                chord.bass_midi(),
+                62,
                 timbre,
                 sample_rate as f32,
-                request.accompaniment_volume * 0.6,
-                0.10,
+                request.accompaniment_volume * 0.8 * voice.gain,
+                voice.pan,
+                voice.detune,
             );
+            for midi in &chord_notes {
+                render_note(
+                    samples,
+                    start,
+                    duration,
+                    *midi,
+                    55,
+                    timbre,
+                    sample_rate as f32,
+                    request.accompaniment_volume * 0.6 * voice.gain,
+                    voice.pan,
+                    voice.detune,
+                );
+            }
         }
     }
 }
@@ -213,6 +228,37 @@ fn melody_timbre(instrument: MelodyInstrument) -> Timbre {
     match instrument {
         MelodyInstrument::Fiddle => Timbre::Fiddle,
         MelodyInstrument::Accordion => Timbre::Accordion,
+    }
+}
+
+/// Render one part's notes once per copy.
+///
+/// A single copy goes through the same code as before copies existed, with
+/// unity gain, the part's base pan, and no latency or detune.
+#[allow(clippy::too_many_arguments)]
+fn render_section(
+    samples: &mut [f32],
+    notes: &[NoteEvent],
+    timbre: Timbre,
+    volume: f32,
+    offset: i64,
+    samples_per_beat: f64,
+    sample_rate: u32,
+    base_pan: f32,
+    copies: usize,
+) {
+    for voice in crate::copies::voices(base_pan, copies, sample_rate) {
+        render_notes(
+            samples,
+            notes,
+            timbre,
+            volume * voice.gain,
+            offset + voice.delay_samples as i64,
+            samples_per_beat,
+            sample_rate,
+            voice.pan,
+            voice.detune,
+        );
     }
 }
 
@@ -226,6 +272,7 @@ fn render_notes(
     samples_per_beat: f64,
     sample_rate: u32,
     pan: f32,
+    detune: f32,
 ) {
     for note in notes {
         let start = offset + (note.start_beat * samples_per_beat).round() as i64;
@@ -243,6 +290,34 @@ fn render_notes(
             sample_rate as f32,
             volume,
             pan,
+            detune,
+        );
+    }
+}
+
+/// Render the ending's notes once per copy, timed in seconds because the
+/// ending deliberately leaves the dance-beat grid.
+#[allow(clippy::too_many_arguments)]
+fn render_ending_section(
+    samples: &mut [f32],
+    notes: &[EndingNote],
+    timbre: Timbre,
+    volume: f32,
+    offset: i64,
+    sample_rate: u32,
+    base_pan: f32,
+    copies: usize,
+) {
+    for voice in crate::copies::voices(base_pan, copies, sample_rate) {
+        render_ending_notes(
+            samples,
+            notes,
+            timbre,
+            volume * voice.gain,
+            offset + voice.delay_samples as i64,
+            sample_rate,
+            voice.pan,
+            voice.detune,
         );
     }
 }
@@ -258,6 +333,7 @@ fn render_ending_notes(
     offset: i64,
     sample_rate: u32,
     pan: f32,
+    detune: f32,
 ) {
     for note in notes {
         let start = offset + (note.start_seconds * sample_rate as f64).round() as i64;
@@ -277,6 +353,7 @@ fn render_ending_notes(
             sample_rate as f32,
             volume,
             pan,
+            detune,
         );
     }
 }
@@ -318,13 +395,14 @@ fn render_note(
     sample_rate: f32,
     gain: f32,
     pan: f32,
+    detune: f32,
 ) {
     if duration == 0 || start >= out.len() / 2 {
         return;
     }
     let velocity = (velocity.max(1) as f32 / 127.0).clamp(0.05, 1.0);
     let gain = gain * velocity;
-    let freq = midi_frequency(midi);
+    let freq = midi_frequency(midi) * detune;
     let pan = pan.clamp(-1.0, 1.0);
     let left_gain = (0.5 * (1.0 - pan)).sqrt();
     let right_gain = (0.5 * (1.0 + pan)).sqrt();
@@ -568,7 +646,8 @@ mod tests {
             melody: MelodyInstrument::Fiddle,
             accompaniment: AccompanimentInstrument::Piano,
             accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::SecondAccompaniment::Accordion,
+            second_accompaniment: contra_core::Countermelody::Accordion,
+            copies: contra_core::InstrumentCopies::default(),
             percussion: contra_core::Percussion::Off,
             percussion_rhythm: contra_core::PercussionRhythm::Auto,
             melody_volume: 0.75,
@@ -654,10 +733,10 @@ mod tests {
     }
 
     #[test]
-    fn second_accompaniment_adds_a_third_voice() {
+    fn the_countermelody_adds_a_third_voice() {
         let mut trio = request();
         let with = render_builtin(&trio);
-        trio.second_accompaniment = contra_core::SecondAccompaniment::Off;
+        trio.second_accompaniment = contra_core::Countermelody::Off;
         let without = render_builtin(&trio);
 
         assert_eq!(with.frames(), without.frames());
@@ -668,10 +747,39 @@ mod tests {
             .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
         assert!(
             difference > 1e-3,
-            "the second accompaniment should change the mix, not {difference}"
+            "the countermelody should change the mix, not {difference}"
         );
         assert!(with.samples.iter().all(|sample| sample.is_finite()));
         assert!(with.samples.iter().all(|sample| sample.abs() <= 1.0));
+    }
+
+    #[test]
+    fn extra_copies_thicken_the_section_without_moving_the_grid() {
+        let single = render_builtin(&request());
+        let mut section = request();
+        section.copies = contra_core::InstrumentCopies {
+            melody: 2,
+            accompaniment: 3,
+            countermelody: 2,
+            percussion: 1,
+        };
+        let thicker = render_builtin(&section);
+
+        assert_eq!(single.frames(), thicker.frames());
+        assert_eq!(single.loop_pass_samples, thicker.loop_pass_samples);
+        assert_eq!(single.loop_start_sample, thicker.loop_start_sample);
+        assert_eq!(single.loop_end_sample, thicker.loop_end_sample);
+        let difference = single
+            .samples
+            .iter()
+            .zip(&thicker.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-3,
+            "copies must change the rendered section, not {difference}"
+        );
+        assert!(thicker.samples.iter().all(|sample| sample.is_finite()));
+        assert!(thicker.samples.iter().all(|sample| sample.abs() <= 1.0));
     }
 
     #[test]

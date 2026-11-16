@@ -184,42 +184,88 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         inline_field(ui, true, "Melody", |ui| {
             melody_combo(ui, true, &mut app.prefs);
         });
+        copies_field(
+            ui,
+            true,
+            "Melody",
+            &mut app.prefs.instrument_copies.melody,
+            InstrumentCopies::MAX,
+        );
         inline_field(ui, true, "Accompaniment", |ui| {
             accompaniment_combo(ui, true, &mut app.prefs);
         });
         inline_field(ui, true, "Rhythm", |ui| {
             rhythm_combo(ui, true, &mut app.prefs);
         });
-        inline_field(ui, true, "Second accompaniment", |ui| {
-            second_accompaniment_combo(ui, true, &mut app.prefs);
+        copies_field(
+            ui,
+            true,
+            "Accompaniment",
+            &mut app.prefs.instrument_copies.accompaniment,
+            InstrumentCopies::MAX,
+        );
+        inline_field(ui, true, "Countermelody", |ui| {
+            countermelody_combo(ui, true, &mut app.prefs);
         });
+        copies_field(
+            ui,
+            true,
+            "Countermelody",
+            &mut app.prefs.instrument_copies.countermelody,
+            InstrumentCopies::MAX,
+        );
         inline_field(ui, true, "Percussion", |ui| {
             percussion_combo(ui, true, &mut app.prefs);
         });
         inline_field(ui, true, "Percussion rhythm", |ui| {
             percussion_rhythm_combo(ui, true, &mut app.prefs);
         });
+        copies_field(
+            ui,
+            true,
+            "Percussion",
+            &mut app.prefs.instrument_copies.percussion,
+            InstrumentCopies::MAX_PERCUSSION,
+        );
     } else {
         egui::Grid::new("instruments")
             .num_columns(2)
             .show(ui, |ui| {
                 ui.label("Melody");
-                melody_combo(ui, false, &mut app.prefs);
+                ui.horizontal(|ui| {
+                    melody_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Melody",
+                        &mut app.prefs.instrument_copies.melody,
+                        InstrumentCopies::MAX,
+                    );
+                });
                 ui.end_row();
                 ui.label("Accompaniment");
                 ui.horizontal(|ui| {
                     accompaniment_combo(ui, false, &mut app.prefs);
                     ui.label("Rhythm");
                     rhythm_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Accompaniment",
+                        &mut app.prefs.instrument_copies.accompaniment,
+                        InstrumentCopies::MAX,
+                    );
                 });
                 ui.end_row();
-                ui.label("Second accompaniment");
+                ui.label("Countermelody");
                 ui.horizontal(|ui| {
-                    second_accompaniment_combo(ui, false, &mut app.prefs);
-                    ui.label(
-                        egui::RichText::new("countermelody")
-                            .small()
-                            .color(theme::muted(ui)),
+                    countermelody_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Countermelody",
+                        &mut app.prefs.instrument_copies.countermelody,
+                        InstrumentCopies::MAX,
                     );
                 });
                 ui.end_row();
@@ -228,6 +274,13 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                     percussion_combo(ui, false, &mut app.prefs);
                     ui.label("Rhythm");
                     percussion_rhythm_combo(ui, false, &mut app.prefs);
+                    copies_field(
+                        ui,
+                        false,
+                        "Percussion",
+                        &mut app.prefs.instrument_copies.percussion,
+                        InstrumentCopies::MAX_PERCUSSION,
+                    );
                 });
                 ui.end_row();
             });
@@ -236,6 +289,16 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         egui::RichText::new(
             "The melody, the chordal accompaniment, and a countermelody make the default trio. \
              Choose Off for a duo; the countermelody follows the accompaniment volume.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    ui.label(
+        egui::RichText::new(
+            "Copies add players to a part, up to four (three for percussion). Every copy is a \
+             separate player with its own pan, a few milliseconds of spread, and a slight tuning \
+             difference, so the section sounds wider instead of just louder. One copy is the \
+             single player and sounds exactly as before.",
         )
         .small()
         .color(theme::muted(ui)),
@@ -309,15 +372,58 @@ fn rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
         });
 }
 
-fn second_accompaniment_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
+fn countermelody_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
     let combo = egui::ComboBox::from_id_salt("second_accompaniment");
     responsive_combo(combo, ui, compact)
         .selected_text(prefs.second_accompaniment.label())
         .show_ui(ui, |ui| {
-            for option in SecondAccompaniment::ALL {
+            for option in Countermelody::ALL {
                 ui.selectable_value(&mut prefs.second_accompaniment, option, option.label());
             }
         });
+}
+
+/// A labelled copies stepper: `Copies  −  1  +`.
+///
+/// Every part gets its own stepper; the buttons carry the part's name in their
+/// accessible label ("Fewer melody copies") so an agent can tell the four
+/// apart in the widget tree. On a phone both buttons are full 44-point touch
+/// targets.
+fn copies_field(ui: &mut egui::Ui, compact: bool, part: &str, copies: &mut u8, max: u8) {
+    inline_field(ui, compact, "Copies", |ui| {
+        copies_stepper(ui, compact, part, copies, max);
+    });
+}
+
+fn copies_stepper(ui: &mut egui::Ui, compact: bool, part: &str, copies: &mut u8, max: u8) {
+    let name = format!("{} copies", part.to_lowercase());
+    let fewer = format!("Fewer {name}");
+    let more = format!("More {name}");
+    let size = if compact {
+        egui::vec2(theme::TOUCH_TARGET, theme::TOUCH_TARGET)
+    } else {
+        egui::vec2(28.0, 20.0)
+    };
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 6.0;
+        let decrease = ui
+            .add_enabled(*copies > 1, egui::Button::new("−").min_size(size))
+            .accessible_name(&fewer);
+        if decrease.clicked() {
+            *copies = (*copies).saturating_sub(1).max(1);
+        }
+        ui.add_sized(
+            [size.x, size.y],
+            egui::Label::new(egui::RichText::new(copies.to_string()).monospace()),
+        )
+        .accessible_name(format!("{name}: {copies}"));
+        let increase = ui
+            .add_enabled(*copies < max, egui::Button::new("+").min_size(size))
+            .accessible_name(&more);
+        if increase.clicked() {
+            *copies = (*copies + 1).min(max);
+        }
+    });
 }
 
 fn percussion_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
