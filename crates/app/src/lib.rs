@@ -10,6 +10,7 @@ mod files;
 mod library;
 mod media_keys;
 mod memory;
+mod platform;
 mod sheet;
 mod source;
 mod theme;
@@ -20,6 +21,7 @@ mod web_store;
 mod window;
 
 pub use app::ContraApp;
+pub use platform::platform;
 
 /// System-bar insets reported by the Android activity.
 ///

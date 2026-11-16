@@ -240,6 +240,8 @@ separately.
   migration when a field changes.
 - Public items in library crates get doc comments. Explain "why" in comments,
   not "what".
+- Runtime platform checks use `contra_app::platform()`; `cfg!` is not the
+  default for them. See §11 for when `#[cfg]` is still required.
 - Keep functions small enough to test; extract pure helpers from UI code.
 - Use `tracing`/`log` for diagnostics. Do not log ABC bodies, tokens, or user
   file contents.
@@ -401,6 +403,19 @@ engine.
   app; fall back to the bundled instruments (then the built-in synth).
 - Keep platform-specific code in `app`, behind `cfg` or small traits. Do not
   sprinkle `cfg` through domain logic.
+- Runtime platform decisions go through `contra_app::platform()`
+  (`crates/app/src/platform.rs`). It returns `"web"` for the browser build and
+  the target OS otherwise: `"windows"`, `"linux"`, `"android"`, `"macos"`, and
+  so on. Use it when the code compiles on every target and only the behavior,
+  default, or visible control differs. "Desktop" means
+  `!matches!(platform(), "web" | "android")`.
+- `#[cfg]` remains the tool for code that must not be *compiled* on a target:
+  `std::fs`, file dialogs, `cpal`, the Android insets module, the TTS bridge.
+  The helper cannot replace it, because the other branch still has to compile.
+  A platform-only import or type is a `cfg` question, not a `platform()` one.
+- Do not add new `cfg!` platform checks outside `crates/app/src/platform.rs`.
+  Route them through the helper so the platform names and the web/Android
+  distinction live in one place.
 - macOS/iOS are not release targets yet, but avoid choices that make them
   impossible.
 
