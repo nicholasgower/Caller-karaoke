@@ -24,6 +24,7 @@ and build tools used by the project.
 | `url` | MIT OR Apache-2.0 | Source URL construction |
 | `percent-encoding` | MIT OR Apache-2.0 | Proxy URL encoding |
 | `directories` | MIT OR Apache-2.0 | Platform data/cache directories |
+| `web-time` | MIT OR Apache-2.0 | Wall clock and instants on WASM (where `std::time` panics) |
 | `rfd` | MIT | Native file dialogs |
 | `tts` | MIT | Platform text-to-speech fallback (desktop, web, Android) |
 | `misaki-rs` | MIT | Kokoro grapheme-to-phoneme (desktop neural voice) |

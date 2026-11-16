@@ -6,7 +6,10 @@
 //! not discard content the user downloaded.
 
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+
+// `std::time::SystemTime` panics on `wasm32-unknown-unknown`; `web-time` reads
+// the browser clock there and re-exports `std` everywhere else.
+use web_time::{SystemTime, UNIX_EPOCH};
 
 use contra_core::{Dance, Library, Tune};
 

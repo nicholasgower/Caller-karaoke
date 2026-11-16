@@ -985,6 +985,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "web-time",
  "winit",
  "winres",
  "zip",
@@ -1039,6 +1040,7 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 2.0.21",
  "url",
+ "web-time",
 ]
 
 [[package]]

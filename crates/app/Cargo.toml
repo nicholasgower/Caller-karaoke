@@ -50,6 +50,7 @@ rustysynth.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tts.workspace = true
+web-time.workspace = true
 
 [target.'cfg(all(windows, not(target_arch = "wasm32")))'.dependencies]
 misaki-rs.workspace = true

@@ -2,9 +2,11 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use sha2::{Digest, Sha256};
+// `std::time::SystemTime` panics on `wasm32-unknown-unknown`; `web-time` reads
+// the browser clock there and re-exports `std` everywhere else.
+use web_time::{SystemTime, UNIX_EPOCH};
 
 pub trait CacheStore: Send {
     fn read(&self, key: &str) -> Option<Vec<u8>>;
