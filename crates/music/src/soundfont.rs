@@ -58,6 +58,7 @@ pub fn render_soundfont(
             request.bpm,
             request.accompaniment,
             request.accompaniment_rhythm,
+            &request.ending_options,
         )
     });
     let ending_samples = ending
@@ -111,7 +112,9 @@ pub fn render_soundfont(
     let humanizer = Humanizer::new(request);
     for pass in 0..passes {
         let offset = count_in_samples + pass as u64 * pass_samples;
-        let melody = request.arrangement.melody_notes_for_pass(pass);
+        let melody = request
+            .arrangement
+            .melody_notes_for_pass_with_options(pass, &request.variations);
         schedule_part(
             &mut scheduled,
             &melody,
@@ -136,10 +139,11 @@ pub fn render_soundfont(
         }
         let accompaniment = request
             .arrangement
-            .accompaniment_notes_for_pass_with_rhythm(
+            .accompaniment_notes_for_pass_with_options(
                 request.accompaniment,
                 request.accompaniment_rhythm,
                 pass,
+                &request.variations,
             );
         schedule_part(
             &mut scheduled,
@@ -153,7 +157,9 @@ pub fn render_soundfont(
         );
 
         if request.second_accompaniment.instrument().is_some() {
-            let countermelody = request.arrangement.countermelody_notes_for_pass(pass);
+            let countermelody = request
+                .arrangement
+                .countermelody_notes_for_pass_with_options(pass, &request.variations);
             schedule_part(
                 &mut scheduled,
                 &countermelody,

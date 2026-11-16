@@ -6,6 +6,7 @@
 
 pub mod alias;
 pub mod dance;
+pub mod dancer;
 pub mod effects;
 pub mod library;
 pub mod prefs;
@@ -18,6 +19,7 @@ pub mod tune;
 
 pub use alias::{Actor, ActorRef, AliasTable, ClassifiedMove, MoveKind, MoveParams, RenderedCall};
 pub use dance::{Dance, Figure, SourceRef};
+pub use dancer::dancer_sounds;
 pub use effects::{AudioEffects, ChorusPreset, EchoPreset, ReverbPreset};
 pub use library::{
     FolderError, FolderFilter, LIBRARY_SCHEMA_VERSION, Library, LibraryEntry, LibraryItem,

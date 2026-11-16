@@ -6,6 +6,7 @@ pub mod abc;
 pub mod arrange;
 pub mod chord;
 pub mod copies;
+pub mod dancer;
 pub mod effects;
 pub mod humanize;
 pub mod midi;
@@ -22,6 +23,6 @@ pub use humanize::{
     CHORD_ASYNCHRONY_LIMIT_SECONDS, Humanizer, ONSET_OFFSET_LIMIT_SECONDS, TEMPO_DEVIATION_LIMIT,
     VoiceTiming,
 };
-pub use midi::{apply_effects, export_midi, export_midi_with_passes};
+pub use midi::{apply_effects, export_midi, export_midi_with_options, export_midi_with_passes};
 pub use render::{AudioBuffer, RenderError, RenderRequest, render};
 pub use score::{ChordEvent, Key, Meter, Mode, NoteEvent, Score};

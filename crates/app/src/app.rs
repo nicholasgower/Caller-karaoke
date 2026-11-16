@@ -10,10 +10,10 @@ use contra_core::{
     COUNT_IN_BEATS, Countermelody, DEFAULT_DANCE_SOURCE, Dance, DancerSoundEvent, EndingOptions,
     FolderFilter, HumanizeOptions, InstrumentCopies, Library, MelodyInstrument, MoveKind,
     OutputMode, Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset,
-    ScheduledCall, Theme, TimelineConfig, Tune, VariationOptions,
+    ScheduledCall, Theme, TimelineConfig, Tune, VariationOptions, dancer_sounds,
 };
 use contra_music::{
-    Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
+    Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_options, parse_abc,
     render,
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -1458,7 +1458,11 @@ impl ContraApp {
             ending_options: self.prefs.ending_options.clone(),
             dancer_sounds: self.prefs.dancer_sounds,
             dancer_sound_volume: self.prefs.dancer_sound_volume,
-            dancer_sound_events: Vec::new(),
+            dancer_sound_events: if self.prefs.dancer_sounds {
+                dancer_sounds(&self.dance)
+            } else {
+                Vec::new()
+            },
             percussion: self.prefs.percussion,
             percussion_rhythm: self.prefs.percussion_rhythm,
             melody_volume: self.prefs.melody_volume,
@@ -2068,7 +2072,7 @@ impl ContraApp {
     fn export_midi(&mut self) {
         #[cfg(any(target_arch = "wasm32", target_os = "android"))]
         {
-            let _ = export_midi_with_passes;
+            let _ = export_midi_with_options;
             self.error = Some("MIDI export is not available in this build yet.".into());
         }
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
@@ -2094,7 +2098,7 @@ impl ContraApp {
             } else {
                 1
             };
-            let bytes = export_midi_with_passes(
+            let bytes = export_midi_with_options(
                 &arrangement,
                 self.prefs.melody,
                 self.prefs.accompaniment,
@@ -2104,6 +2108,7 @@ impl ContraApp {
                 self.prefs.percussion_rhythm,
                 self.prefs.tempo_bpm,
                 variation_passes,
+                &self.prefs.variation_options,
                 self.prefs.effects,
                 self.prefs.instrument_copies,
             );

@@ -19,7 +19,7 @@ use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, T
 
 use contra_core::{
     AccompanimentInstrument, AccompanimentRhythm, AudioEffects, Countermelody, InstrumentCopies,
-    MelodyInstrument, Percussion, PercussionRhythm,
+    MelodyInstrument, Percussion, PercussionRhythm, VariationOptions,
 };
 
 use crate::arrange::Arrangement;
@@ -89,6 +89,41 @@ pub fn export_midi_with_passes(
     effects: AudioEffects,
     copies: InstrumentCopies,
 ) -> Vec<u8> {
+    export_midi_with_options(
+        arrangement,
+        melody,
+        accompaniment,
+        accompaniment_rhythm,
+        second_accompaniment,
+        percussion,
+        percussion_rhythm,
+        bpm,
+        variation_passes,
+        &VariationOptions::default(),
+        effects,
+        copies,
+    )
+}
+
+/// Build a Standard MIDI File with explicit variation choices.
+///
+/// This mirrors [`crate::RenderRequest::variations`] so an exported file matches
+/// what playback renders when individual variation kinds are turned off.
+#[allow(clippy::too_many_arguments)]
+pub fn export_midi_with_options(
+    arrangement: &Arrangement,
+    melody: MelodyInstrument,
+    accompaniment: AccompanimentInstrument,
+    accompaniment_rhythm: AccompanimentRhythm,
+    second_accompaniment: Countermelody,
+    percussion: Percussion,
+    percussion_rhythm: PercussionRhythm,
+    bpm: f64,
+    variation_passes: u32,
+    variations: &VariationOptions,
+    effects: AudioEffects,
+    copies: InstrumentCopies,
+) -> Vec<u8> {
     let passes = variation_passes.max(1);
     let mut melody_notes = Vec::new();
     let mut accompaniment_notes = Vec::new();
@@ -98,20 +133,25 @@ pub fn export_midi_with_passes(
         let offset = pass as f64 * arrangement.loop_beats;
         melody_notes.extend(
             arrangement
-                .melody_notes_for_pass(pass)
+                .melody_notes_for_pass_with_options(pass, variations)
                 .into_iter()
                 .map(|note| shifted(note, offset)),
         );
         accompaniment_notes.extend(
             arrangement
-                .accompaniment_notes_for_pass_with_rhythm(accompaniment, accompaniment_rhythm, pass)
+                .accompaniment_notes_for_pass_with_options(
+                    accompaniment,
+                    accompaniment_rhythm,
+                    pass,
+                    variations,
+                )
                 .into_iter()
                 .map(|note| shifted(note, offset)),
         );
         if second_accompaniment.instrument().is_some() {
             countermelody_notes.extend(
                 arrangement
-                    .countermelody_notes_for_pass(pass)
+                    .countermelody_notes_for_pass_with_options(pass, variations)
                     .into_iter()
                     .map(|note| shifted(note, offset)),
             );
@@ -616,6 +656,54 @@ mod tests {
             mean(&accompaniment)
         );
         assert!(melody.iter().filter(|velocity| **velocity >= 92).count() > melody.len() / 2);
+    }
+
+    #[test]
+    fn variation_options_change_the_exported_notes() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let quiet = VariationOptions {
+            chord_stabs: false,
+            ..VariationOptions::default()
+        };
+        let all = export_midi_with_options(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            Countermelody::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            4,
+            &VariationOptions::default(),
+            AudioEffects::default(),
+            InstrumentCopies::default(),
+        );
+        let without = export_midi_with_options(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            Countermelody::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            4,
+            &quiet,
+            AudioEffects::default(),
+            InstrumentCopies::default(),
+        );
+        assert_ne!(
+            all, without,
+            "the export should follow the variation choices"
+        );
+        let all = Smf::parse(&all).expect("parse midi");
+        let without = Smf::parse(&without).expect("parse midi");
+        assert!(
+            note_velocities(&all, 1).len() > note_velocities(&without, 1).len(),
+            "chord stabs add accompaniment notes"
+        );
     }
 
     #[test]

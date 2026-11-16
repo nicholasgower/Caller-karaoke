@@ -59,7 +59,13 @@ Generate a backing track from the chord track:
 - Lift the melody above the accompaniment and accent it on the dance pulse.
 - When variations are enabled, later passes add deterministic melody ornaments
   (diatonic grace notes, chord-tone doubles, occasional octave lifts) alongside
-  the accompaniment variations. Existing note starts stay on the 64-beat grid.
+  the accompaniment variations. Each kind is a preference and can be turned off
+  on its own: note-length articulation, double stops, grace notes, octave lifts,
+  chord stabs, and the melody-alone bar. Existing note starts stay on the 64-beat
+  grid.
+- The melody-alone bar is only chosen where the tune itself has enough sounding
+  notes to carry it. A variation must never turn a written rest into a silent
+  measure.
 - Keep the chordal accompaniment out of the melody's register: a chord tone
   closer than a minor third to the tune is moved down an octave. The bass and
   the countermelody already sit below the melody and are left alone.
@@ -96,6 +102,20 @@ An optional percussion layer is off by default:
   Match style gives foot taps a gallop by default: one group per dance beat, an
   eighth note followed by two sixteenths. The count-in stays one clear note per
   beat.
+
+Dancer sounds are a separate, default-on layer derived from the dance card:
+
+- A petronella or a long line gets a foot stomp at the figure's start and its
+  last beat; a balance or a figure that says "clap" gets hand claps on its first
+  two beats.
+- The derivation takes the dance card only (`contra_core::dancer_sounds`) and
+  returns `DancerSoundEvent`s on the dance-beat grid. A plain dance produces no
+  events.
+- Render the stomps and claps with short procedural voices after the effect
+  chain, so reverb or echo cannot smear a clap past its beat. They never move
+  the grid and add nothing to the count-in.
+- The layer follows every loop pass and has its own level. It is mixed under
+  the band and cannot create a silent bar.
 
 ### 6.4 Count-in
 
@@ -170,9 +190,13 @@ Soundfont file selection:
 
 - The rendered buffer appends a once-only ending after the loop passes, so the
   transport can request it without another render.
-- Requesting the ending splices into it at the start of the tune's last bar;
-  that bar is stretched with a falling tempo (a ritardando) and the final
-  harmony is held for eight dance beats before a short fade.
+- By default the ending is gradual: the transport splices in four dance beats
+  before the loop end, the accompaniment thins to a single bass line, the tempo
+  eases, and the final melody note rings into a held final chord. Turning the
+  gradual option off restores the older shape, where only the last bar is
+  replaced and stretched.
+- The final chord resolves a perfect fifth below the written final chord by
+  default. A separate option keeps the written chord.
 - The ending leaves the 64-beat grid. The UI reports the loop end, stops calls,
   and shows a slow-finish state while it plays.
 - With looping off, the ending replaces the abrupt stop at the loop boundary.
@@ -199,7 +223,9 @@ Soundfont file selection:
 - A percussion track on the General MIDI drum channel when percussion is on.
 - Include tempo, meter, key, and program changes.
 - Write the same variation passes as playback: one plain 64-beat pass when
-  variations are off, four varied passes when they are on.
+  variations are off, four varied passes when they are on. The individual
+  variation choices are applied too, so an exported file matches the loop the
+  user hears.
 - Add General MIDI effect sends (reverb 91, chorus 93, delay/echo 94) to every
   channel track. The default is a medium-room reverb with no chorus or echo.
   A GM2 reverb-type message selects the requested room, and the sends are
@@ -211,7 +237,9 @@ Soundfont file selection:
 ### 6.10 Human timing
 
 Playback can humanize the band slightly; the preference is
-`humanize_timing`, on by default. MIDI export is deliberately not humanized.
+`humanize_timing`, on by default. The separate options are a tempo-drift switch,
+a chord-spread switch, and an amount from 0 to 1 that scales both. MIDI export
+is deliberately not humanized.
 
 - **Per-voice deviation.** Melody, accompaniment, and countermelody each get
   their own slow tempo deviation, and every copy of a part gets its own

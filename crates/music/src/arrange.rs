@@ -1,7 +1,7 @@
 //! Turn a parsed score into a dance-length music loop and generate the
 //! accompaniment.
 
-use contra_core::{AccompanimentInstrument, AccompanimentRhythm};
+use contra_core::{AccompanimentInstrument, AccompanimentRhythm, EndingOptions, VariationOptions};
 
 use crate::chord::{Chord, resolve_chords};
 use crate::score::{ChordEvent, Key, Meter, NoteEvent, Score};
@@ -16,6 +16,16 @@ pub const VARIATION_PASSES: u32 = 4;
 /// subtle easing.
 pub const ENDING_LAST_BAR_STRETCH: f64 = 3.0;
 
+/// Number of beats before the loop end that the gradual ending begins.
+///
+/// Four beats is the last two bars: enough time for the accompaniment to thin
+/// and the tempo to ease before the final chord, without making the ending so
+/// long that it reads as a separate section.
+pub const ENDING_GRADUAL_BEATS: f64 = 4.0;
+
+/// How much longer the four-beat gradual region takes than at session tempo.
+pub const ENDING_GRADUAL_STRETCH: f64 = 2.0;
+
 /// Shape of the ritardando inside the ending's last bar. Above 1 the bar starts
 /// at the session tempo and the following beats stretch more and more, so the
 /// ending eases into the slowdown instead of lurching.
@@ -23,6 +33,13 @@ pub const ENDING_SLOWDOWN_CURVE: f64 = 2.0;
 
 /// Dance beats the final harmony is held before the audio fades out.
 pub const ENDING_LINGER_BEATS: f64 = 8.0;
+
+/// Minimum melody coverage, in dance beats, for a bar to be left to the melody.
+///
+/// A two-beat bar needs a real tune line to carry it. Requiring this much
+/// sounding melody means a variation rest never turns a written rest into a
+/// silent measure.
+pub const MIN_MELODY_ALONE_BEATS: f64 = 0.75;
 
 /// Smallest interval, in semitones, the chordal accompaniment keeps from any
 /// melody note it sounds against.
@@ -55,10 +72,11 @@ pub struct EndingNote {
 pub struct Ending {
     /// The stretched closing melody.
     pub melody: Vec<EndingNote>,
-    /// The closing bar's backing plus the held final chord.
+    /// The ending region's backing plus the held final chord.
     pub accompaniment: Vec<EndingNote>,
     /// Beat in a normal 64-beat pass where the ending replaces the remaining
-    /// music. It is the start of the tune's last bar.
+    /// music. It is four beats before the loop end for a gradual ending, and
+    /// the start of the tune's last bar otherwise.
     pub from_beat: f64,
     /// When the held final chord begins, in seconds from the ending's start.
     pub linger_start_seconds: f64,
@@ -277,37 +295,56 @@ impl Arrangement {
 
     /// Build the once-only slow ending.
     ///
-    /// The last bar is replayed at a falling tempo and the final harmony is
-    /// held. The ending replaces that bar when the transport reaches
-    /// [`Ending::from_beat`], so the tune's own closing bar is not heard twice:
-    /// the caller hears the normal tune up to the last bar, then the same bar
-    /// stretched into a cadence.
+    /// With [`EndingOptions::gradual`] the ending begins
+    /// [`ENDING_GRADUAL_BEATS`] before the loop end, so the last two bars are
+    /// replaced by a thinning accompaniment and an easing tempo instead of the
+    /// transport jumping into a stretched final bar. Turning the option off
+    /// keeps the older shape: only the last bar is replaced and it is stretched
+    /// three times. [`EndingOptions::final_chord_down_fifth`] resolves the final
+    /// harmony a perfect fifth below the written chord.
+    ///
+    /// The ending replaces its region when the transport reaches
+    /// [`Ending::from_beat`], so the tune's own closing music is not heard
+    /// twice.
     pub fn ending(
         &self,
         bpm: f64,
         instrument: AccompanimentInstrument,
         rhythm: AccompanimentRhythm,
+        options: &EndingOptions,
     ) -> Ending {
         let beat_seconds = 120.0 / bpm.max(1.0);
         let bar_beats = self.meter.bar_dance_beats().clamp(1.0, self.loop_beats);
-        let bar_start = (self.loop_beats - bar_beats).max(0.0);
-        let normal_bar_seconds = bar_beats * beat_seconds;
-        let ritard_seconds = normal_bar_seconds * ENDING_LAST_BAR_STRETCH;
+        let region_beats = if options.gradual {
+            ENDING_GRADUAL_BEATS
+                .min(self.loop_beats)
+                .max(bar_beats.min(self.loop_beats))
+        } else {
+            bar_beats
+        };
+        let region_start = (self.loop_beats - region_beats).max(0.0);
+        let normal_seconds = region_beats * beat_seconds;
+        let stretch = if options.gradual {
+            ENDING_GRADUAL_STRETCH
+        } else {
+            ENDING_LAST_BAR_STRETCH
+        };
+        let ritard_seconds = normal_seconds * stretch;
         let linger_seconds = ENDING_LINGER_BEATS * beat_seconds;
         // Start at the session tempo, then stretch each beat more than the one
-        // before: the linear term keeps the opening of the bar honest and the
-        // power term supplies the ritardando.
-        let slowdown = (ritard_seconds - normal_bar_seconds).max(0.0);
+        // before: the linear term keeps the opening of the region honest and
+        // the power term supplies the ritardando.
+        let slowdown = (ritard_seconds - normal_seconds).max(0.0);
         let warp = |beat: f64| {
-            let progress = ((beat - bar_start) / bar_beats).clamp(0.0, 1.0);
-            normal_bar_seconds * progress + slowdown * progress.powf(ENDING_SLOWDOWN_CURVE)
+            let progress = ((beat - region_start) / region_beats).clamp(0.0, 1.0);
+            normal_seconds * progress + slowdown * progress.powf(ENDING_SLOWDOWN_CURVE)
         };
 
         let mut melody = Vec::new();
         for note in self
             .melody
             .iter()
-            .filter(|note| note.start_beat >= bar_start - 1e-9)
+            .filter(|note| note.start_beat >= region_start - 1e-9)
         {
             let start = warp(note.start_beat);
             let end = warp(note.end_beat());
@@ -320,8 +357,8 @@ impl Arrangement {
         }
         melody.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
 
-        // A tune can rest through its written last bar. Hold the last pitch it
-        // did play, under the final chord, rather than ending with no melody.
+        // A tune can rest through its written last region. Hold the last pitch
+        // it did play, under the final chord, rather than ending with no melody.
         if melody.is_empty()
             && let Some(note) = self.melody.last()
         {
@@ -343,7 +380,10 @@ impl Arrangement {
         }
 
         let mut accompaniment =
-            self.ending_bar_accompaniment(instrument, rhythm, bar_start, bar_beats);
+            self.ending_region_accompaniment(instrument, rhythm, region_start, region_beats);
+        if options.gradual {
+            thin_ending_texture(&mut accompaniment, region_beats);
+        }
         for note in &mut accompaniment {
             let start = warp(note.start_seconds);
             let end = warp(note.start_seconds + note.duration_seconds);
@@ -354,6 +394,7 @@ impl Arrangement {
             &self.chord_at((self.loop_beats - 1e-6).max(0.0)),
             ritard_seconds,
             linger_seconds,
+            options.final_chord_down_fifth,
         ));
         separate_ending_accompaniment(&melody, &mut accompaniment);
         accompaniment.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
@@ -361,34 +402,34 @@ impl Arrangement {
         Ending {
             melody,
             accompaniment,
-            from_beat: bar_start,
+            from_beat: region_start,
             linger_start_seconds: ritard_seconds,
             seconds: ritard_seconds + linger_seconds,
         }
     }
 
-    /// The last bar's backing notes, expressed in beats from the bar start.
-    fn ending_bar_accompaniment(
+    /// The ending region's backing notes, expressed in beats from its start.
+    fn ending_region_accompaniment(
         &self,
         instrument: AccompanimentInstrument,
         rhythm: AccompanimentRhythm,
-        bar_start: f64,
-        bar_beats: f64,
+        region_start: f64,
+        region_beats: f64,
     ) -> Vec<EndingNote> {
         let rhythm = resolve_rhythm(instrument, rhythm);
-        let chord = self.chord_at(bar_start);
+        let chord = self.chord_at(region_start);
         let mut notes = Vec::new();
         self.render_rhythm(
             &mut notes,
             rhythm,
             &chord,
-            bar_start,
-            (bar_start + bar_beats).min(self.loop_beats),
+            region_start,
+            (region_start + region_beats).min(self.loop_beats),
         );
         notes
             .into_iter()
             .map(|note| EndingNote {
-                start_seconds: note.start_beat - bar_start,
+                start_seconds: note.start_beat - region_start,
                 duration_seconds: note.duration_beats,
                 midi: note.midi,
                 velocity: note.velocity,
@@ -428,19 +469,36 @@ impl Arrangement {
     /// `rhythm` chooses how the chord track is realised. `Auto` keeps each
     /// instrument's signature pattern (boom-chuck piano, strummed guitar,
     /// sustained accordion). Pass 0 is the plain pattern. Later passes are the
-    /// same pattern with deterministic variations: a few extra chord stabs for
-    /// emphasis, and now and then one bar where the accompaniment drops out so
-    /// the melody plays alone. The variations never move existing notes, so the
-    /// pulse and the 64-beat grid are unchanged.
+    /// same pattern with deterministic variations allowed by `options`: a few
+    /// extra chord stabs for emphasis, and now and then one bar where the
+    /// accompaniment drops out so the melody plays alone. The variations never
+    /// move existing notes, so the pulse and the 64-beat grid are unchanged.
     pub fn accompaniment_notes_for_pass_with_rhythm(
         &self,
         instrument: AccompanimentInstrument,
         rhythm: AccompanimentRhythm,
         pass: u32,
     ) -> Vec<NoteEvent> {
+        self.accompaniment_notes_for_pass_with_options(
+            instrument,
+            rhythm,
+            pass,
+            &VariationOptions::default(),
+        )
+    }
+
+    /// Generate the backing track for one loop pass with explicit variation
+    /// choices.
+    pub fn accompaniment_notes_for_pass_with_options(
+        &self,
+        instrument: AccompanimentInstrument,
+        rhythm: AccompanimentRhythm,
+        pass: u32,
+        options: &VariationOptions,
+    ) -> Vec<NoteEvent> {
         let mut notes = self.plain_accompaniment(instrument, rhythm);
         if pass > 0 {
-            self.vary_accompaniment(&mut notes, pass);
+            self.vary_accompaniment(&mut notes, pass, options);
         }
         self.separate_accompaniment_from_melody(&mut notes);
         notes.sort_by(|a, b| {
@@ -467,10 +525,19 @@ impl Arrangement {
     /// When the accompaniment rests a bar on a variation pass, the
     /// countermelody rests with it so the melody really is alone.
     pub fn countermelody_notes_for_pass(&self, pass: u32) -> Vec<NoteEvent> {
+        self.countermelody_notes_for_pass_with_options(pass, &VariationOptions::default())
+    }
+
+    /// The countermelody for one loop pass with explicit variation choices.
+    pub fn countermelody_notes_for_pass_with_options(
+        &self,
+        pass: u32,
+        options: &VariationOptions,
+    ) -> Vec<NoteEvent> {
         if self.melody.is_empty() {
             return Vec::new();
         }
-        let rest_bar = self.variation_rest_bar(pass);
+        let rest_bar = self.variation_rest_bar(pass, options);
         let mut notes = Vec::new();
         let mut previous = None;
         let mut beat = 0.0;
@@ -594,11 +661,21 @@ impl Arrangement {
     /// The melody for one loop pass.
     ///
     /// The plain tune is lifted above the accompaniment and accented on the
-    /// dance pulse. Later passes add deterministic melody variation: a little
-    /// articulation, chord-tone harmony doubles on strong beats, diatonic grace
-    /// notes, and an occasional octave lift. Existing note starts never move,
-    /// so the dance timing and the 64-beat loop are unchanged.
+    /// dance pulse. Later passes add deterministic melody variation allowed by
+    /// `options`: a little articulation, chord-tone harmony doubles on strong
+    /// beats, diatonic grace notes, and an occasional octave lift. Existing note
+    /// starts never move, so the dance timing and the 64-beat loop are
+    /// unchanged.
     pub fn melody_notes_for_pass(&self, pass: u32) -> Vec<NoteEvent> {
+        self.melody_notes_for_pass_with_options(pass, &VariationOptions::default())
+    }
+
+    /// The melody for one loop pass with explicit variation choices.
+    pub fn melody_notes_for_pass_with_options(
+        &self,
+        pass: u32,
+        options: &VariationOptions,
+    ) -> Vec<NoteEvent> {
         let mut notes = Vec::with_capacity(self.melody.len());
         for (index, note) in self.melody.iter().enumerate() {
             notes.push(NoteEvent {
@@ -607,7 +684,7 @@ impl Arrangement {
             });
         }
         if pass > 0 {
-            self.vary_melody(&mut notes, pass);
+            self.vary_melody(&mut notes, pass, options);
         }
         notes.sort_by(|a, b| {
             a.start_beat
@@ -742,14 +819,14 @@ impl Arrangement {
     ///
     /// Additions sit behind the plain melody and use their own seed stream, so
     /// they do not change which accompaniment variation a pass receives.
-    fn vary_melody(&self, notes: &mut Vec<NoteEvent>, pass: u32) {
+    fn vary_melody(&self, notes: &mut Vec<NoteEvent>, pass: u32, options: &VariationOptions) {
         let mut rng = VariationRng::new(self.variation_seed(), pass ^ 0x5EED_1234);
         let mut additions = Vec::new();
 
         for note in notes.iter_mut() {
             // Alternate passes are a touch more detached; the others stay
             // legato. This changes articulation without moving any start.
-            if pass % 2 == 1 && note.duration_beats >= 0.75 {
+            if options.articulation && pass % 2 == 1 && note.duration_beats >= 0.75 {
                 note.duration_beats = (note.duration_beats * 0.82).max(0.25);
             }
 
@@ -758,7 +835,8 @@ impl Arrangement {
             }
 
             let strong = is_pulse(note.start_beat);
-            if strong
+            if options.double_stops
+                && strong
                 && rng.chance(3)
                 && let Some(harmony) =
                     self.chord_tone_below(&self.chord_at(note.start_beat), note.midi)
@@ -772,7 +850,11 @@ impl Arrangement {
             }
 
             // A short diatonic grace note leads into some longer notes.
-            if note.duration_beats >= 0.75 && note.start_beat >= 0.25 && rng.chance(5) {
+            if options.grace_notes
+                && note.duration_beats >= 0.75
+                && note.start_beat >= 0.25
+                && rng.chance(5)
+            {
                 let up = rng.chance(2);
                 if let Some(pitch) = diatonic_neighbor(note.midi, &self.key, up) {
                     additions.push(NoteEvent {
@@ -786,7 +868,12 @@ impl Arrangement {
 
             // Later passes occasionally lift a held note an octave, which adds
             // sparkle without disturbing the underlying line.
-            if pass >= 2 && note.duration_beats >= 1.0 && note.midi + 12 <= 100 && rng.chance(4) {
+            if options.octave_lift
+                && pass >= 2
+                && note.duration_beats >= 1.0
+                && note.midi + 12 <= 100
+                && rng.chance(4)
+            {
                 additions.push(NoteEvent {
                     start_beat: note.start_beat,
                     duration_beats: note.duration_beats,
@@ -808,11 +895,16 @@ impl Arrangement {
     /// The seed comes from the arrangement itself, so a given tune always
     /// produces the same variations and the audio, like the rest of `music`,
     /// stays deterministic and offline.
-    fn vary_accompaniment(&self, notes: &mut Vec<NoteEvent>, pass: u32) {
+    fn vary_accompaniment(
+        &self,
+        notes: &mut Vec<NoteEvent>,
+        pass: u32,
+        options: &VariationOptions,
+    ) {
         let mut rng = VariationRng::new(self.variation_seed(), pass);
         let bars = self.bars().floor() as i64;
 
-        let rest_bar = self.variation_rest_bar(pass);
+        let rest_bar = self.variation_rest_bar(pass, options);
         if let Some(bar) = rest_bar {
             let rest_start = bar as f64 * 2.0;
             let rest_end = (rest_start + 2.0).min(self.loop_beats);
@@ -821,6 +913,9 @@ impl Arrangement {
 
         // A few short chord stabs on the back half of the bar, above the
         // regular pattern, add emphasis without disturbing the pulse.
+        if !options.chord_stabs {
+            return;
+        }
         for bar in 0..bars {
             if rest_bar == Some(bar) {
                 continue;
@@ -846,9 +941,15 @@ impl Arrangement {
     /// The bar whose accompaniment drops out on `pass`, if any.
     ///
     /// Rarely leave one bar to the melody. Skip the opening bars so the
-    /// dancers always get a clear start. The choice is deterministic and shared
-    /// by the accompaniment and the countermelody.
-    fn variation_rest_bar(&self, pass: u32) -> Option<i64> {
+    /// dancers always get a clear start, and only consider bars where the tune
+    /// itself has enough notes to carry the bar alone. A rest bar chosen over a
+    /// written rest would leave a silent measure, which is the one thing a
+    /// dance cannot use. The choice is deterministic and shared by the
+    /// accompaniment and the countermelody.
+    fn variation_rest_bar(&self, pass: u32, options: &VariationOptions) -> Option<i64> {
+        if !options.melody_alone_bar {
+            return None;
+        }
         let bars = self.bars().floor() as i64;
         if pass < 2 || bars <= 7 {
             return None;
@@ -859,7 +960,41 @@ impl Arrangement {
         }
         let first = 4;
         let last = bars - 3;
-        Some(first + rng.below((last - first + 1) as u64) as i64)
+        let candidates: Vec<i64> = (first..=last)
+            .filter(|bar| {
+                let start = *bar as f64 * 2.0;
+                self.melody_coverage(start, start + 2.0) >= MIN_MELODY_ALONE_BEATS
+            })
+            .collect();
+        if candidates.is_empty() {
+            return None;
+        }
+        Some(candidates[rng.below(candidates.len() as u64) as usize])
+    }
+
+    /// How much of `[start, end)` the melody fills, in dance beats.
+    ///
+    /// Overlapping and adjacent notes are merged, so a rest in the written
+    /// tune is measured as a rest rather than as part of the surrounding notes.
+    fn melody_coverage(&self, start: f64, end: f64) -> f64 {
+        let mut spans: Vec<(f64, f64)> = self
+            .melody
+            .iter()
+            .map(|note| (note.start_beat.max(start), note.end_beat().min(end)))
+            .filter(|(note_start, note_end)| *note_end > *note_start + 1e-9)
+            .collect();
+        spans.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let mut covered = 0.0;
+        let mut cursor = start;
+        for (span_start, span_end) in spans {
+            if span_end <= cursor + 1e-9 {
+                continue;
+            }
+            let span_start = span_start.max(cursor);
+            covered += span_end - span_start;
+            cursor = span_end;
+        }
+        covered.min(end - start).max(0.0)
     }
 
     fn chord_at(&self, beat: f64) -> Chord {
@@ -1006,7 +1141,28 @@ fn resolve_rhythm(
 }
 
 /// The held final harmony: a low bass note plus a full close-position chord.
-fn final_chord_notes(chord: &Chord, start: f64, linger_seconds: f64) -> Vec<EndingNote> {
+///
+/// With `down_fifth` the whole chord is resolved a perfect fifth below the
+/// written final chord (root minus seven semitones). The written slash bass is
+/// dropped, because the resolving chord's own root is the bass the cadence
+/// wants.
+fn final_chord_notes(
+    chord: &Chord,
+    start: f64,
+    linger_seconds: f64,
+    down_fifth: bool,
+) -> Vec<EndingNote> {
+    let resolving;
+    let chord = if down_fifth {
+        resolving = Chord {
+            root: (chord.root - 7).rem_euclid(12),
+            quality: chord.quality,
+            bass: None,
+        };
+        &resolving
+    } else {
+        chord
+    };
     let duration_seconds = (linger_seconds * 0.96).max(0.3);
     let mut notes = vec![EndingNote {
         start_seconds: start,
@@ -1031,6 +1187,34 @@ fn final_chord_notes(chord: &Chord, start: f64, linger_seconds: f64) -> Vec<Endi
         });
     }
     notes
+}
+
+/// Thin the ending's accompaniment as it approaches the final chord.
+///
+/// This is what makes the gradual ending read as an ending rather than a
+/// sudden swap: the upper chord tones leave first, then the bass pulse, so the
+/// tune is left alone before the final chord arrives. Notes that have already
+/// started keep their full length; nothing is cut off mid-sustain.
+fn thin_ending_texture(notes: &mut Vec<EndingNote>, region_beats: f64) {
+    let region = region_beats.max(1e-9);
+    let original = notes.clone();
+    notes.retain(|note| {
+        let progress = (note.start_seconds / region).clamp(0.0, 1.0);
+        if progress >= 0.75 {
+            return false;
+        }
+        if progress >= 0.5 {
+            // Keep only the lowest note of each attack: the chord thins to a
+            // single walking bass line.
+            let lowest = original
+                .iter()
+                .filter(|other| (other.start_seconds - note.start_seconds).abs() < 1e-9)
+                .map(|other| other.midi)
+                .min();
+            return lowest == Some(note.midi);
+        }
+        true
+    });
 }
 
 /// Apply the melody-separation rule to the once-only ending.
@@ -1130,6 +1314,13 @@ fn fill_chord_gaps(chords: &mut Vec<ChordEvent>, loop_beats: f64, key: &Key) {
 mod tests {
     use super::*;
     use crate::score::Meter;
+
+    fn legacy_ending() -> EndingOptions {
+        EndingOptions {
+            gradual: false,
+            final_chord_down_fifth: false,
+        }
+    }
 
     fn simple_score() -> Score {
         let mut notes = Vec::new();
@@ -1281,7 +1472,7 @@ mod tests {
                 first.countermelody_notes_for_pass(pass),
                 second.countermelody_notes_for_pass(pass),
             );
-            let Some(bar) = first.variation_rest_bar(pass) else {
+            let Some(bar) = first.variation_rest_bar(pass, &VariationOptions::default()) else {
                 continue;
             };
             saw_rest = true;
@@ -1446,6 +1637,7 @@ mod tests {
             240.0,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
+            &legacy_ending(),
         );
         for note in &ending.accompaniment {
             let note_end = note.start_seconds + note.duration_seconds;
@@ -1830,6 +2022,7 @@ mod tests {
             240.0,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
+            &legacy_ending(),
         );
 
         // A two-beat bar at 240 BPM lasts 1 s; stretched three times, then an
@@ -1896,6 +2089,7 @@ mod tests {
             240.0,
             AccompanimentInstrument::Piano,
             AccompanimentRhythm::Auto,
+            &legacy_ending(),
         );
 
         let mut starts: Vec<f64> = ending
@@ -1921,11 +2115,13 @@ mod tests {
             120.0,
             AccompanimentInstrument::Guitar,
             AccompanimentRhythm::Auto,
+            &legacy_ending(),
         );
         let fast = arrangement.ending(
             240.0,
             AccompanimentInstrument::Guitar,
             AccompanimentRhythm::Auto,
+            &legacy_ending(),
         );
         assert!((slow.seconds - fast.seconds * 2.0).abs() < 1e-9);
         assert!(slow.melody[0].duration_seconds > fast.melody[0].duration_seconds);
@@ -1940,7 +2136,8 @@ mod tests {
             AccompanimentInstrument::Accordion,
         ] {
             for rhythm in AccompanimentRhythm::ALL {
-                let ending = arrangement.ending(240.0, instrument, rhythm);
+                let ending =
+                    arrangement.ending(240.0, instrument, rhythm, &EndingOptions::default());
                 assert!(!ending.melody.is_empty());
                 assert!(
                     !ending.accompaniment.is_empty(),
@@ -1984,10 +2181,314 @@ mod tests {
             240.0,
             AccompanimentInstrument::Accordion,
             AccompanimentRhythm::Auto,
+            &legacy_ending(),
         );
         assert!((ending.from_beat - 62.0).abs() < 1e-9);
         assert!((ending.seconds - 7.0).abs() < 1e-9);
         assert!(!ending.melody.is_empty());
         assert!(!ending.accompaniment.is_empty());
+    }
+
+    #[test]
+    fn the_gradual_ending_starts_four_beats_before_the_loop_end() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            &EndingOptions::default(),
+        );
+        assert!((ending.from_beat - 60.0).abs() < 1e-9);
+        // Four beats at 240 BPM are 2 s; doubled by the easing, then an
+        // eight-beat (4 s) hold.
+        assert!((ending.linger_start_seconds - 4.0).abs() < 1e-9);
+        assert!((ending.seconds - 8.0).abs() < 1e-9);
+        assert!(ending.seconds.is_finite() && ending.seconds > 0.0);
+    }
+
+    #[test]
+    fn the_gradual_ending_thins_before_the_final_chord() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            &EndingOptions::default(),
+        );
+        // Notes are in seconds; the region is four beats (2 s at 240 BPM).
+        let region_seconds = 2.0;
+        let before_final: Vec<&EndingNote> = ending
+            .accompaniment
+            .iter()
+            .filter(|note| note.start_seconds < ending.linger_start_seconds - 1e-9)
+            .collect();
+        assert!(
+            !before_final.is_empty(),
+            "the ending must still have backing"
+        );
+        assert!(
+            before_final
+                .iter()
+                .all(|note| { note.start_seconds / region_seconds < 0.75 + 1e-9 }),
+            "the backing should drop out before the final chord: {:?}",
+            before_final
+                .iter()
+                .map(|note| note.start_seconds)
+                .collect::<Vec<_>>()
+        );
+        // In the last half of the region only the lowest note of each attack
+        // remains.
+        let late: Vec<&EndingNote> = before_final
+            .iter()
+            .copied()
+            .filter(|note| note.start_seconds / region_seconds >= 0.5)
+            .collect();
+        for note in late {
+            let lowest = before_final
+                .iter()
+                .filter(|other| (other.start_seconds - note.start_seconds).abs() < 1e-9)
+                .map(|other| other.midi)
+                .min();
+            assert_eq!(lowest, Some(note.midi));
+        }
+        for note in ending.melody.iter().chain(ending.accompaniment.iter()) {
+            assert!(note.start_seconds.is_finite() && note.duration_seconds.is_finite());
+            assert!(note.start_seconds >= 0.0);
+            assert!(note.start_seconds + note.duration_seconds <= ending.seconds + 1e-9);
+            assert!(note.midi <= 108);
+        }
+    }
+
+    #[test]
+    fn the_final_chord_resolves_a_fifth_below_by_default() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let written_root = arrangement.chord_at(arrangement.loop_beats - 1e-6).root;
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            &EndingOptions::default(),
+        );
+        let bass = ending
+            .accompaniment
+            .iter()
+            .filter(|note| (note.start_seconds - ending.linger_start_seconds).abs() < 1e-9)
+            .map(|note| note.midi)
+            .min()
+            .expect("the final chord has a bass note");
+        assert_eq!(
+            i32::from(bass).rem_euclid(12),
+            (written_root - 7).rem_euclid(12),
+            "the final bass should be a perfect fifth below the written root"
+        );
+    }
+
+    #[test]
+    fn turning_the_ending_options_off_restores_the_previous_shape() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let written_root = arrangement.chord_at(arrangement.loop_beats - 1e-6).root;
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            &legacy_ending(),
+        );
+        assert!((ending.from_beat - 62.0).abs() < 1e-9);
+        assert!((ending.linger_start_seconds - 3.0).abs() < 1e-9);
+        assert!((ending.seconds - 7.0).abs() < 1e-9);
+        let bass = ending
+            .accompaniment
+            .iter()
+            .filter(|note| (note.start_seconds - ending.linger_start_seconds).abs() < 1e-9)
+            .map(|note| note.midi)
+            .min()
+            .expect("the final chord has a bass note");
+        assert_eq!(i32::from(bass).rem_euclid(12), written_root.rem_euclid(12));
+    }
+
+    /// A varied pass may not turn a written rest into an extra silent bar.
+    #[test]
+    fn varied_passes_never_leave_a_silent_bar() {
+        const SILENT_BELOW_BEATS: f64 = 0.5;
+        let bundled = include_str!("../../../assets/defaults/sandy_boys.abc");
+        let bundled = crate::abc::parse_abc(bundled).expect("parse bundled tune");
+        let short = short_resting_score();
+        for score in [bundled, short] {
+            let arrangement = Arrangement::from_score(&score, 64.0);
+            let options = VariationOptions::default();
+            let plain = pass_notes(&arrangement, 0, &options);
+            let bars = arrangement.bars().floor() as i64;
+            let plain_silent: Vec<bool> = (0..bars)
+                .map(|bar| {
+                    let start = bar as f64 * 2.0;
+                    sounding_coverage(&plain, start, start + 2.0) < SILENT_BELOW_BEATS
+                })
+                .collect();
+            for pass in 1..VARIATION_PASSES {
+                let notes = pass_notes(&arrangement, pass, &options);
+                for bar in 0..bars {
+                    if plain_silent[bar as usize] {
+                        continue;
+                    }
+                    let start = bar as f64 * 2.0;
+                    let coverage = sounding_coverage(&notes, start, start + 2.0);
+                    assert!(
+                        coverage >= SILENT_BELOW_BEATS,
+                        "pass {pass} leaves bar {bar} silent ({coverage:.2} beats sound)"
+                    );
+                }
+            }
+        }
+    }
+
+    fn short_resting_score() -> Score {
+        let mut score = simple_score();
+        score.duration_beats = 16.0;
+        score.notes.retain(|note| note.start_beat < 16.0);
+        // A written four-beat rest in the middle of the short tune. Repeating
+        // it fills the 64-beat loop with rests that a variation must not
+        // extend.
+        score
+            .notes
+            .retain(|note| !(8.0..12.0).contains(&note.start_beat));
+        score.chords = vec![ChordEvent {
+            start_beat: 0.0,
+            duration_beats: 16.0,
+            symbol: "D".into(),
+        }];
+        score
+    }
+
+    fn pass_notes(
+        arrangement: &Arrangement,
+        pass: u32,
+        options: &VariationOptions,
+    ) -> Vec<NoteEvent> {
+        let mut notes = arrangement.melody_notes_for_pass_with_options(pass, options);
+        notes.extend(arrangement.accompaniment_notes_for_pass_with_options(
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            pass,
+            options,
+        ));
+        notes.extend(arrangement.countermelody_notes_for_pass_with_options(pass, options));
+        notes
+    }
+
+    fn sounding_coverage(notes: &[NoteEvent], start: f64, end: f64) -> f64 {
+        let mut spans: Vec<(f64, f64)> = notes
+            .iter()
+            .map(|note| (note.start_beat.max(start), note.end_beat().min(end)))
+            .filter(|(note_start, note_end)| *note_end > *note_start + 1e-9)
+            .collect();
+        spans.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let mut covered = 0.0;
+        let mut cursor = start;
+        for (span_start, span_end) in spans {
+            if span_end <= cursor + 1e-9 {
+                continue;
+            }
+            let span_start = span_start.max(cursor);
+            covered += span_end - span_start;
+            cursor = span_end;
+        }
+        covered.min(end - start).max(0.0)
+    }
+
+    #[test]
+    fn every_variation_option_gates_its_own_variation() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let all = VariationOptions::default();
+        let variants = [
+            (
+                "articulation",
+                VariationOptions {
+                    articulation: false,
+                    ..all.clone()
+                },
+            ),
+            (
+                "double_stops",
+                VariationOptions {
+                    double_stops: false,
+                    ..all.clone()
+                },
+            ),
+            (
+                "grace_notes",
+                VariationOptions {
+                    grace_notes: false,
+                    ..all.clone()
+                },
+            ),
+            (
+                "octave_lift",
+                VariationOptions {
+                    octave_lift: false,
+                    ..all.clone()
+                },
+            ),
+            (
+                "chord_stabs",
+                VariationOptions {
+                    chord_stabs: false,
+                    ..all.clone()
+                },
+            ),
+            (
+                "melody_alone_bar",
+                VariationOptions {
+                    melody_alone_bar: false,
+                    ..all.clone()
+                },
+            ),
+        ];
+        let plain_melody = arrangement.melody_notes_for_pass_with_options(0, &all);
+        for (name, off) in variants {
+            let mut changed = false;
+            for pass in 1..12 {
+                let with = pass_notes(&arrangement, pass, &all);
+                let without = pass_notes(&arrangement, pass, &off);
+                assert!(
+                    with.iter()
+                        .all(|note| note.start_beat >= 0.0 && note.end_beat() <= 64.0 + 1e-6),
+                    "{name} pass {pass} left the loop"
+                );
+                assert!(
+                    plain_melody.iter().all(|base| without.iter().any(|note| {
+                        (note.start_beat - base.start_beat).abs() < 1e-9 && note.midi == base.midi
+                    })),
+                    "disabling {name} must keep every plain melody note"
+                );
+                changed |= with != without;
+            }
+            assert!(
+                changed,
+                "disabling {name} must change at least one variation pass"
+            );
+        }
+    }
+
+    #[test]
+    fn disabling_the_melody_alone_bar_keeps_the_countermelody_playing() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let all = VariationOptions::default();
+        let off = VariationOptions {
+            melody_alone_bar: false,
+            ..all.clone()
+        };
+        assert!(
+            (0..16).any(|pass| arrangement.variation_rest_bar(pass, &all).is_some()),
+            "the default options should reserve a melody-alone bar"
+        );
+        for pass in 0..16 {
+            assert!(arrangement.variation_rest_bar(pass, &off).is_none());
+            assert!(
+                !arrangement
+                    .countermelody_notes_for_pass_with_options(pass, &off)
+                    .is_empty(),
+                "pass {pass} should keep the countermelody"
+            );
+        }
     }
 }

@@ -159,6 +159,9 @@ pub fn render(
     };
     crate::percussion::mix(&mut buffer, request);
     crate::effects::apply(&mut buffer.samples, buffer.sample_rate, request.effects);
+    // Dancer sounds go on last, dry: a clap must land on its beat, not swim
+    // through the room or echo.
+    crate::dancer::mix(&mut buffer, request);
     if buffer.samples.is_empty() {
         return Err(RenderError::Empty);
     }

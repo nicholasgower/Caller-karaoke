@@ -39,6 +39,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
             request.bpm,
             request.accompaniment,
             request.accompaniment_rhythm,
+            &request.ending_options,
         )
     });
     let ending_samples = ending
@@ -78,7 +79,9 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 &humanizer,
             );
         }
-        let melody = request.arrangement.melody_notes_for_pass(pass);
+        let melody = request
+            .arrangement
+            .melody_notes_for_pass_with_options(pass, &request.variations);
         render_section(
             &mut samples,
             &melody,
@@ -95,10 +98,11 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
 
         let accompaniment = request
             .arrangement
-            .accompaniment_notes_for_pass_with_rhythm(
+            .accompaniment_notes_for_pass_with_options(
                 request.accompaniment,
                 request.accompaniment_rhythm,
                 pass,
+                &request.variations,
             );
         render_section(
             &mut samples,
@@ -117,7 +121,9 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
         // Countermelody: a countermelody on a melody instrument, mixed a little
         // quieter and to the other side so the trio stays legible.
         if let Some(countermelody) = request.second_accompaniment.instrument() {
-            let notes = request.arrangement.countermelody_notes_for_pass(pass);
+            let notes = request
+                .arrangement
+                .countermelody_notes_for_pass_with_options(pass, &request.variations);
             render_section(
                 &mut samples,
                 &notes,
@@ -1019,10 +1025,10 @@ mod tests {
         let start = ended.ending_start_sample.expect("ending region");
         assert_eq!(start, ended.loop_end_sample);
 
-        // The ending is a three-second ritardando plus a four-second hold at
-        // 240 BPM, and it is added after the unchanged loop.
+        // The gradual ending is a four-beat easing doubled in length plus a
+        // four-second hold at 240 BPM, and it is added after the unchanged loop.
         let added = ended.frames() - plain.frames();
-        let expected = (7.0 * 24_000.0) as usize;
+        let expected = (8.0 * 24_000.0) as usize;
         assert!(
             added.abs_diff(expected) < 100,
             "added {added} frames, expected about {expected}"
@@ -1040,6 +1046,14 @@ mod tests {
         // The hold decays instead of stopping at a hard buffer edge.
         let tail = &ended.samples[ended.samples.len() - 200..];
         assert!(tail.iter().all(|sample| sample.abs() < 0.02));
+        assert!(
+            ended.samples.iter().all(|sample| sample.is_finite()),
+            "the ending must not produce NaN"
+        );
+        assert!(
+            ended.samples.iter().all(|sample| sample.abs() <= 1.0),
+            "the ending must stay inside full scale"
+        );
         assert!(
             ended.samples[ended.samples.len() - 2..]
                 .iter()

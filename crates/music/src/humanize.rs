@@ -140,6 +140,9 @@ pub struct Humanizer {
     seconds_per_beat: f64,
     loop_beats: f64,
     enabled: bool,
+    tempo_drift: bool,
+    chord_spread: bool,
+    amount: f64,
 }
 
 impl Humanizer {
@@ -151,6 +154,13 @@ impl Humanizer {
             seconds_per_beat: (120.0 / request.bpm.max(1.0)).max(1e-6),
             loop_beats: request.arrangement.loop_beats.max(1.0),
             enabled: request.humanize_timing,
+            tempo_drift: request.humanize_options.tempo_drift,
+            chord_spread: request.humanize_options.chord_spread,
+            amount: if request.humanize_options.amount.is_finite() {
+                f64::from(request.humanize_options.amount.clamp(0.0, 1.0))
+            } else {
+                0.0
+            },
         }
     }
 
@@ -159,17 +169,25 @@ impl Humanizer {
         self.enabled
     }
 
-    /// The timing for one copy of a voice, or `None` when the setting is off.
+    /// The timing for one copy of a voice, or `None` when no human timing
+    /// applies.
     pub fn voice(&self, voice: Voice, copy: usize) -> Option<VoiceTiming> {
-        if !self.enabled {
+        if !self.enabled || self.amount <= 0.0 || (!self.tempo_drift && !self.chord_spread) {
             return None;
         }
         let seed = voice_seed(self.seed, voice, copy);
+        let offsets = if self.tempo_drift {
+            build_offsets(seed, self.seconds_per_beat, self.loop_beats, self.amount)
+        } else {
+            vec![0.0; ((self.loop_beats * STEPS_PER_BEAT as f64).ceil() as usize) + 1]
+        };
         Some(VoiceTiming {
-            offsets: build_offsets(seed, self.seconds_per_beat, self.loop_beats),
+            offsets,
             seconds_per_beat: self.seconds_per_beat,
             loop_beats: self.loop_beats,
             seed,
+            chord_spread: self.chord_spread,
+            amount: self.amount,
         })
     }
 }
@@ -182,6 +200,8 @@ pub struct VoiceTiming {
     seconds_per_beat: f64,
     loop_beats: f64,
     seed: u64,
+    chord_spread: bool,
+    amount: f64,
 }
 
 impl VoiceTiming {
@@ -203,7 +223,7 @@ impl VoiceTiming {
             return 0.0;
         }
         let mut seconds = self.base_offset_seconds(start_beat);
-        if in_chord {
+        if in_chord && self.chord_spread {
             seconds += self.chord_asynchrony_seconds(start_beat, midi);
         }
         let mut beats = seconds / self.seconds_per_beat;
@@ -239,10 +259,13 @@ impl VoiceTiming {
     /// every player spreads the same chord a little differently without any
     /// state or randomness at render time.
     pub fn chord_asynchrony_seconds(&self, start_beat: f64, midi: u8) -> f64 {
+        if !self.chord_spread || self.amount <= 0.0 {
+            return 0.0;
+        }
         let beat_key = (start_beat.max(0.0) * 1_000_000.0).round() as u64;
         let hash = splitmix64(self.seed ^ beat_key.rotate_left(17) ^ (u64::from(midi) << 40));
         let unit = (hash >> 11) as f64 / (1u64 << 53) as f64;
-        (unit * 2.0 - 1.0) * CHORD_ASYNCHRONY_LIMIT_SECONDS
+        (unit * 2.0 - 1.0) * CHORD_ASYNCHRONY_LIMIT_SECONDS * self.amount
     }
 }
 
@@ -267,18 +290,20 @@ pub fn chord_members(notes: &[NoteEvent]) -> Vec<bool> {
 }
 
 /// Build the per-voice offset table for one loop pass.
-fn build_offsets(seed: u64, seconds_per_beat: f64, loop_beats: f64) -> Vec<f64> {
+fn build_offsets(seed: u64, seconds_per_beat: f64, loop_beats: f64, amount: f64) -> Vec<f64> {
     let steps = ((loop_beats.max(1.0) * STEPS_PER_BEAT as f64).ceil() as usize) + 1;
     let dt = 1.0 / STEPS_PER_BEAT as f64;
     // Two slow, seeded sines per voice. Their periods are roughly 4 and 8
     // bars at 240 BPM, which is the timescale a player's tempo wanders on.
     let (first_phase, second_phase, first_rate, second_rate) = seeded_phases(seed);
+    let amount = amount.clamp(0.0, 1.0);
     let mut controller = TempoController::default();
     let mut offsets = Vec::with_capacity(steps);
     let limit_beats = ONSET_OFFSET_LIMIT_SECONDS / seconds_per_beat.max(1e-6);
     for step in 0..steps {
         let time = step as f64 * dt;
         let deviation = TEMPO_DEVIATION_LIMIT
+            * amount
             * (0.65 * (TAU * first_rate * time + first_phase).sin()
                 + 0.35 * (TAU * second_rate * time + second_phase).sin());
         let offset = controller.advance(deviation, dt);
@@ -355,6 +380,9 @@ mod tests {
             seconds_per_beat: 0.5,
             loop_beats: 64.0,
             enabled: true,
+            tempo_drift: true,
+            chord_spread: true,
+            amount: 1.0,
         }
     }
 
@@ -508,5 +536,73 @@ mod tests {
         let mut humanizer = humanizer();
         humanizer.enabled = false;
         assert!(humanizer.voice(Voice::Melody, 0).is_none());
+    }
+
+    #[test]
+    fn disabling_tempo_drift_leaves_only_chord_spread() {
+        let mut humanizer = humanizer();
+        humanizer.tempo_drift = false;
+        let timing = humanizer.voice(Voice::Melody, 0).expect("spread only");
+        for beat in [0.0, 1.0, 8.0, 31.5, 63.0] {
+            assert_eq!(timing.base_offset_seconds(beat), 0.0);
+        }
+        assert!(
+            (0..8).any(|midi| timing.chord_asynchrony_seconds(4.0, 60 + midi) != 0.0),
+            "chord spread should still move notes"
+        );
+    }
+
+    #[test]
+    fn disabling_chord_spread_removes_chord_asynchrony() {
+        let mut humanizer = humanizer();
+        humanizer.chord_spread = false;
+        let timing = humanizer
+            .voice(Voice::Accompaniment, 0)
+            .expect("drift only");
+        for midi in 55..75 {
+            assert_eq!(timing.chord_asynchrony_seconds(4.0, midi), 0.0);
+        }
+        // The slow voice offset remains.
+        assert!(timing.base_offset_seconds(8.0).abs() > 0.0);
+    }
+
+    #[test]
+    fn amount_zero_is_identical_to_off() {
+        let mut humanizer = humanizer();
+        humanizer.amount = 0.0;
+        assert!(humanizer.voice(Voice::Melody, 0).is_none());
+    }
+
+    #[test]
+    fn amount_scales_the_calibrated_offsets() {
+        let full = humanizer().voice(Voice::Melody, 0).expect("full");
+        let mut half_humanizer = humanizer();
+        half_humanizer.amount = 0.5;
+        let half = half_humanizer.voice(Voice::Melody, 0).expect("half");
+        for beat in [0.0, 1.0, 8.0, 31.5, 63.0] {
+            let full_offset = full.base_offset_seconds(beat);
+            let half_offset = half.base_offset_seconds(beat);
+            assert!(
+                (half_offset - full_offset * 0.5).abs() < 1e-12,
+                "half amount should halve the drift at beat {beat}"
+            );
+        }
+        for midi in 55..75 {
+            assert!(
+                (half.chord_asynchrony_seconds(4.0, midi)
+                    - full.chord_asynchrony_seconds(4.0, midi) * 0.5)
+                    .abs()
+                    < 1e-12
+            );
+        }
+    }
+
+    #[test]
+    fn amount_one_keeps_the_calibrated_output() {
+        let humanizer = humanizer();
+        let timing = humanizer.voice(Voice::Melody, 0).expect("timing");
+        assert!(timing.base_offset_seconds(8.0).abs() > 0.0);
+        assert!(timing.base_offset_seconds(8.0).abs() <= ONSET_OFFSET_LIMIT_SECONDS);
+        assert_eq!(humanizer.amount, 1.0);
     }
 }

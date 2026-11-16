@@ -39,6 +39,8 @@ The export contains:
 - the arranged 64-beat loop. When **Vary the music on each loop** is enabled,
   the file contains the same four variation passes as playback, so the melody
   and accompaniment change from pass to pass instead of repeating identically.
+  The variation switches are applied as well, so turning off, say, chord stabs
+  removes them from both playback and the file.
 
 The melody is lifted above the accompaniment and accented on the dance pulse.
 Later passes add deterministic melody ornaments, chord-tone harmony doubles,

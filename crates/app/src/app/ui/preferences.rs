@@ -322,6 +322,19 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
+    ui.checkbox(
+        &mut app.prefs.dancer_sounds,
+        "Dancer sounds (stomps and claps)",
+    );
+    ui.label(
+        egui::RichText::new(
+            "Adds a foot stomp on petronellas and long lines, and hand claps on balances, taken \
+             from the dance card. The sounds sit under the band on the dance beat and follow every \
+             loop. This is on by default.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     slider_row(
         ui,
         compact,
@@ -343,6 +356,16 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             compact,
             "Percussion volume",
             &mut app.prefs.percussion_volume,
+            |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+        );
+    });
+    let dancer_sounds = app.prefs.dancer_sounds;
+    ui.add_enabled_ui(dancer_sounds, |ui| {
+        slider_row(
+            ui,
+            compact,
+            "Dancer sound volume",
+            &mut app.prefs.dancer_sound_volume,
             |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
         );
     });
@@ -710,7 +733,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     }
 }
 
-fn playback(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
+fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.checkbox(&mut app.prefs.loop_enabled, "Loop the dance and music");
     ui.checkbox(&mut app.prefs.count_in_enabled, "Four-beat count-in");
     ui.checkbox(
@@ -724,6 +747,21 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
+    let variations = app.prefs.accompaniment_variations;
+    ui.add_enabled_ui(variations, |ui| {
+        ui.indent("variation_options", |ui| {
+            let options = &mut app.prefs.variation_options;
+            ui.checkbox(&mut options.articulation, "Vary note lengths");
+            ui.checkbox(&mut options.double_stops, "Add chord-tone double stops");
+            ui.checkbox(&mut options.grace_notes, "Add grace notes");
+            ui.checkbox(&mut options.octave_lift, "Lift held notes an octave");
+            ui.checkbox(&mut options.chord_stabs, "Add chord stabs");
+            ui.checkbox(
+                &mut options.melody_alone_bar,
+                "Let the melody play a bar alone",
+            );
+        });
+    });
     ui.checkbox(&mut app.prefs.show_original, "Show original card text");
     ui.checkbox(&mut app.prefs.humanize_timing, "Humanize timing");
     ui.label(
@@ -731,6 +769,35 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
             "Each player drifts by a fraction of a percent and a controller gently settles it back on \
              the tempo; chord notes start a few milliseconds apart. The count-in, the 64-beat grid, \
              and the calls stay exact.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    let humanize = app.prefs.humanize_timing;
+    ui.add_enabled_ui(humanize, |ui| {
+        ui.indent("humanize_options", |ui| {
+            let options = &mut app.prefs.humanize_options;
+            ui.checkbox(&mut options.tempo_drift, "Tempo drift per player");
+            ui.checkbox(&mut options.chord_spread, "Spread chord notes");
+            slider_row(
+                ui,
+                compact,
+                "Human timing amount",
+                &mut options.amount,
+                |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.0).fixed_decimals(2)),
+            );
+        });
+    });
+    ui.checkbox(&mut app.prefs.ending_options.gradual, "Gradual ending");
+    ui.checkbox(
+        &mut app.prefs.ending_options.final_chord_down_fifth,
+        "Resolve the final chord a fifth lower",
+    );
+    ui.label(
+        egui::RichText::new(
+            "The last four dance beats ease and thin into a held final chord. Turning gradual ending \
+             off replaces only the final bar. The final chord is a perfect fifth below the written \
+             one unless the second option is off.",
         )
         .small()
         .color(theme::muted(ui)),

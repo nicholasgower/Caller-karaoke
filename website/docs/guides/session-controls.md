@@ -160,13 +160,19 @@ beats left.
 ## Ending the tune
 
 Select **End tune** while music is playing (or paused) to finish the way a band
-would. At the start of the tune's last bar the arranger splices into a rendered
-ending: the closing bar slows down, the final melody note rings, and the last
-chord is held for a few seconds before the audio fades out. The prompt shows
-**SLOW FINISH** while the ending plays, and **Dance complete** when it is over.
+would. Four dance beats before the end of the loop the arranger splices into a
+rendered ending: the accompaniment thins, the tempo eases, the final melody
+note rings, and the final chord is held for a few seconds before the audio
+fades out. The final chord resolves a perfect fifth below the written chord by
+default. The prompt shows **SLOW FINISH** while the ending plays, and **Dance
+complete** when it is over.
+
+In **Preferences → Playback**, **Gradual ending** turns the four-beat reveal
+off, so only the final bar is replaced and stretched. **Resolve the final chord
+a fifth lower** keeps the written chord when it is off.
 
 The ending is prepared with the music, so it starts without a delay. Press
-**Cancel ending** before the last bar begins to keep playing normally. With
+**Cancel ending** before the ending begins to keep playing normally. With
 **Loop** off, **End tune** still plays the slow ending instead of stopping
 abruptly.
 

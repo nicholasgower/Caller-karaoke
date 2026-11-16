@@ -167,7 +167,7 @@
     {
       "id": "session-ending",
       "alt": "The session screen during the slow ending, showing SLOW FINISH, the tune title, the message Slowing down and holding the last note, and a full progress bar.",
-      "caption": "End tune slows the last bar, holds the final chord, and then stops.",
+      "caption": "End tune eases the last four beats, thins the band, holds the final chord a fifth below, and then stops.",
       "status": "pending"
     },
     {
@@ -292,16 +292,16 @@
     },
     {
       "id": "prefs-instrument-mix",
-      "alt": "The Instruments section showing the Melody volume, Accompaniment volume, and Percussion volume sliders below the Copies steppers.",
-      "caption": "Balance the melody against the accompaniment and the optional percussion; the countermelody follows the accompaniment volume.",
+      "alt": "The Instruments section showing the Melody volume, Accompaniment volume, Percussion volume, and Dancer sound volume sliders below the Copies steppers.",
+      "caption": "Balance the melody, accompaniment, percussion, and default dancer stomps and claps; the countermelody follows the accompaniment volume.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-accompaniment-variations",
-      "alt": "The Playback section showing the Humanize timing and Vary the music on each loop checkboxes with their descriptive notes.",
-      "caption": "Humanize timing gives every player a tiny independent drift; music variations add ornaments, emphasis notes, and melody-only bars.",
+      "alt": "The Playback section showing the master Vary the music and Humanize timing checkboxes with their per-kind options, amount slider, and the gradual-ending checkboxes.",
+      "caption": "Humanize timing and music variations each expose their parts; the ending eases in over four beats and resolves a fifth below.",
       "status": "ready",
       "width": 1280,
       "height": 2250
