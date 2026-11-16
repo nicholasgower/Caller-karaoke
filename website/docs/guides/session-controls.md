@@ -315,8 +315,14 @@ at phone width, with full-width fields and the preview below the results.
 On a touch screen, swipe left or right across empty content to change tabs. A
 press that starts on a control — a button, slider, folder row, splitter, or
 open menu — belongs to that control, so dragging from it never changes tabs.
-A mostly vertical swipe scrolls instead. Drag a slider sideways to change it on
-purpose.
+A mostly vertical swipe scrolls instead. Sliders are guarded on a touch screen:
+tap the rail (a padlock and rounded outline mark it) to unlock the level, then
+drag sideways to change it. The padlock goes away while a slider is unlocked,
+tapping or swiping anywhere outside it puts the padlock back, and the page does
+not scroll while you drag an unlocked level. A swipe that starts on a locked
+slider still scrolls. On a desktop with a touch screen the guard follows the
+input you used last: touching the screen guards the sliders, and moving or
+clicking with the mouse releases them again.
 
 <Shot id="session-mobile-controls" />
 

@@ -536,6 +536,36 @@ fn touch_drag(harness: &mut Harness<'_, ContraApp>, from: egui::Pos2, to: egui::
     harness.run_steps(2);
 }
 
+/// Tap once with a finger, the way a touch screen reports it.
+fn touch_tap(harness: &mut Harness<'_, ContraApp>, pos: egui::Pos2) {
+    let touch = |phase, pos| egui::Event::Touch {
+        device_id: egui::TouchDeviceId(1),
+        id: egui::TouchId(1),
+        phase,
+        pos,
+        force: None,
+    };
+    let button = |pos, pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+
+    harness.input_mut().events.extend([
+        touch(egui::TouchPhase::Start, pos),
+        egui::Event::PointerMoved(pos),
+        button(pos, true),
+    ]);
+    harness.run_steps(1);
+    harness.input_mut().events.extend([
+        touch(egui::TouchPhase::End, pos),
+        button(pos, false),
+        egui::Event::PointerGone,
+    ]);
+    harness.run_steps(2);
+}
+
 /// A swipe that starts on a control belongs to that control, and a mouse drag
 /// is never a tab swipe.
 #[test]
@@ -590,6 +620,54 @@ fn only_a_finger_swipe_on_empty_content_changes_tabs() {
     // An empty gap is not a control, so a finger swipe there changes tabs.
     touch_drag(&mut harness, blank, blank - egui::vec2(140.0, 0.0));
     assert_eq!(harness.state().screen, Screen::DancePicker);
+}
+
+/// On a touch screen, a level control ignores a drag until it has been tapped.
+#[test]
+fn phone_sliders_are_guarded_until_tapped() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(390.0, 844.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Session;
+            app
+        });
+    harness.run_steps(3);
+
+    let tempo = node_rects(&harness)
+        .into_iter()
+        .find(|(_, role, label)| *role == accesskit::Role::Slider && label == "Tempo")
+        .map(|(rect, _, _)| rect)
+        .expect("the session has a Tempo slider");
+    let start = egui::pos2(tempo.left() + tempo.width() * 0.3, tempo.center().y);
+    let end = start + egui::vec2(80.0, 0.0);
+    let before = harness.state().prefs.tempo_bpm;
+
+    // A finger drag that starts on the locked slider leaves the tempo alone.
+    touch_drag(&mut harness, start, end);
+    assert_eq!(
+        harness.state().prefs.tempo_bpm,
+        before,
+        "a locked slider changed the tempo"
+    );
+
+    // A tap arms it; the drag that follows adjusts the level.
+    touch_tap(&mut harness, start);
+    assert_eq!(
+        harness.state().prefs.tempo_bpm,
+        before,
+        "the arming tap changed the tempo"
+    );
+
+    touch_drag(&mut harness, start, end);
+    assert!(
+        harness.state().prefs.tempo_bpm > before,
+        "the armed slider ignored the drag"
+    );
 }
 
 #[test]

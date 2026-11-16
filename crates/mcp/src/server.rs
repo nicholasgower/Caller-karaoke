@@ -317,11 +317,13 @@ impl ContraServer {
     /// `loop_enabled`, `cycle_tunes`, `count_in`, and `speak_calls` toggles.
     /// Omitted fields are left alone.
     ///
-    /// Sliders are dragged from their current handle, because a click on the
-    /// rail does nothing in egui. egui snaps a dragged slider to a nearby
-    /// convenient value and the rail is quantised to a pixel, so the applied
-    /// tempo or volume can differ from the request; the returned state reports
-    /// the value the app actually adopted. Returns the state after the changes.
+    /// Sliders are tapped at their handle and then dragged from it. A touch
+    /// build guards a slider until it is tapped; the tap is at the current
+    /// handle so it does not jump the level. egui snaps a dragged slider to a
+    /// nearby convenient value and the rail is quantised to a pixel, so the
+    /// applied tempo or volume can differ from the request; the returned state
+    /// reports the value the app actually adopted. Returns the state after the
+    /// changes.
     #[tool(
         title = "Set session controls",
         annotations(
@@ -413,7 +415,7 @@ Getting started:
 Testing the session tab:
 - `session_state` reports the tab in front, the transport state and beat, tempo, volume, and the Loop/Cycle tunes/Count-in/Speak calls toggles as data.
 - `session_action` presses Play, Pause, Restart, End, or Cancel ending through the real buttons and returns the resulting state. `undo` and `redo` press the app's Ctrl/Cmd+Z and Ctrl/Cmd+Y chords instead, so they work on any screen and do not switch tabs.
-- `session_set` drags the tempo and volume sliders and clicks the toggles. Sliders are quantised by the rail width: read the returned value, not the requested one.
+- `session_set` taps each slider handle and then drags it, because a touch build guards a slider until it is tapped. Sliders are quantised by the rail width: read the returned value, not the requested one.
 - `session_wait` polls until a transport state or a displayed beat is reached, which is how to inspect a specific point in the dance without sleeping. Play starts with a four-beat count-in, so wait for `transport: "playing"` or `min_beat: 0` before checking a call.
 - `swipe` changes tabs with a finger, the way a phone or tablet does. A tab swipe is a touch gesture only, so `drag` does not emulate one.
 - The session controls are located by accessible name, so both the desktop and the phone layout work; `resize` to 390×844 to test the phone layout.

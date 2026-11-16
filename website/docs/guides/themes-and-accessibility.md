@@ -73,8 +73,13 @@ never pushed out of reach.
 
 Swipe left or right across empty content to change tabs on a touch screen, or
 use the **←** and **→** keys with a hardware keyboard. A press that starts on a
-control keeps the gesture: sliders adjust, folder rows reorder, and buttons
-activate instead of changing tabs. Tab swipes are also suspended while a text
+control keeps the gesture: folder rows reorder and buttons activate instead of
+changing tabs. A slider starts guarded, with a padlock and a rounded outline:
+tap it, then drag sideways to adjust the level. The guard returns when you tap
+or swipe anywhere outside the slider, and the page does not scroll while you are
+dragging an unlocked slider. On a hybrid desktop the guard follows the last
+input: touching the screen guards the sliders, and moving or clicking with the
+mouse releases them. Tab swipes are also suspended while a text
 field has focus, a drop-down is open, or the **About** window is showing.
 
 <Shot id="main-mobile" />

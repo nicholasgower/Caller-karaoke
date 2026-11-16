@@ -92,10 +92,12 @@ Android stops the app in the background, playback stops with it.
   left from Prefs returns to Session. A swipe needs roughly 60 points of
   mostly horizontal travel and changes the tab once per gesture. A press that
   starts on a button, slider, folder row, or splitter stays with that control.
-- **Drag a slider sideways** to change its value. A mostly vertical swipe that
-  starts on a slider scrolls the page instead, so scrolling past the volume or
-  tempo control does not knock it off its setting. A short tap on the rail still
-  jumps to that position.
+- **Tap a slider, then drag it sideways** to change its value. Every slider
+  shows a padlock and a rounded outline until it is tapped, so a thumb that lands
+  on the tempo or volume control while scrolling does not knock it off its
+  setting. Tapping or swiping anywhere outside the slider puts the padlock
+  back. While an unlocked slider is being dragged the page does not scroll; a
+  swipe that starts on a locked slider still scrolls.
 - Swipe tab changes are ignored while a text field has focus, while a drop-down
   is open, and while the **About** window is showing, so they cannot interrupt
   typing, a menu, or a dialog.
