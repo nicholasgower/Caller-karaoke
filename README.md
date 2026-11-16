@@ -97,9 +97,9 @@ alias control shows its shortcut.
 
 On Windows and Linux, **Speak calls** uses a local Kokoro-82M neural voice. The
 default is **Heart** (US female); Preferences also offers **Bella** and
-**Nicole** (US female), and **Michael** and **Fenrir** (US male). The first
-use of a voice downloads the model and that voice’s style file into the app
-cache; later runs use the cache. The shared model is about 92 MB and each voice
+**Sarah** (US female), and **Michael**, **Fenrir**, and **Onyx** (US male). The
+first use of a voice downloads the model and that voice’s style file into the
+app cache; later runs use the cache. The shared model is about 92 MB and each voice
 style is about 0.5 MB; Linux also fetches the ONNX Runtime library (about
 11 MB). The voice is phonemized with Misaki's pure-Rust
 G2P, and the dance terms that the model mispronounced are corrected with a

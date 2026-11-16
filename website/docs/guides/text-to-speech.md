@@ -34,13 +34,13 @@ if a long call is still being spoken.
 <Steps>
   <Step shot="prefs-tts-rate">
     Open **Preferences → Text to speech**. On desktop, choose **Voice** from
-    Heart, Bella, Nicole, Michael, or Fenrir. The description below the menu
+    Heart, Bella, Sarah, Michael, Fenrir, or Onyx. The description below the menu
     summarises the selected voice. Web and Android show the selector disabled
     because they use the platform voice.
   </Step>
 </Steps>
 
-The default is **Heart (US female)**. All five voices use the same Kokoro model
+The default is **Heart (US female)**. All six voices use the same Kokoro model
 and differ only in the downloaded style file. On first use, the section shows a
 progress bar while the voice is prepared; later runs load it from the cache. If
 preparation fails, desktop shows **Retry neural voice** and continues with the
