@@ -113,8 +113,9 @@ The default is **240 BPM**, which gives a 0.5-second dance beat and a 32-second
   <Step shot="session-call-now">
     Follow the call prompt at the top of the session. It turns green for
     **CALL NOW**, then red for **UPCOMING MOVE** as the figure executes and it
-    previews the next call. The **Next:** line below it previews the following
-    call.
+    previews the next call. The **NEXT:** footer inside the card previews the
+    call after the one it names, and the card keeps the same height in both
+    states.
   </Step>
   <Step shot="session-changes-pending">
     Change a setting such as tempo or an instrument. The music stops and the
