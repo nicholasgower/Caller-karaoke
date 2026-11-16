@@ -30,11 +30,11 @@ pub struct RenderRequest {
     pub percussion_volume: f32,
     pub count_in_beats: f64,
     pub sample_rate: u32,
-    /// Number of 64-beat accompaniment passes to render back to back.
+    /// Number of 64-beat passes to render back to back.
     ///
-    /// One pass is the plain loop. With [`crate::VARIATION_PASSES`] the
-    /// melody repeats unchanged while the accompaniment varies on each pass,
-    /// and the transport simply loops the whole region.
+    /// One pass is the plain loop. With [`crate::VARIATION_PASSES`] the melody
+    /// and the accompaniment both vary on later passes, and the transport
+    /// simply loops the whole region.
     pub variation_passes: u32,
     /// Append the once-only slow ending after the loop.
     ///

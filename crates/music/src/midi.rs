@@ -2,7 +2,9 @@
 //!
 //! The exported file is the arranged 64-beat loop (not the count-in), with a
 //! melody track, an accompaniment track, and — when the second accompaniment
-//! is on — a countermelody track.
+//! is on — a countermelody track. When variations are enabled the file contains
+//! the same passes as playback, so the melody is accented and varied instead of
+//! repeated identically.
 
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
@@ -18,7 +20,7 @@ use crate::score::NoteEvent;
 pub const TICKS_PER_QUARTER: u16 = 480;
 pub const TICKS_PER_DANCE_BEAT: u64 = TICKS_PER_QUARTER as u64 * 2;
 
-/// Build a Standard MIDI File for the arranged loop.
+/// Build a Standard MIDI File with the default set of variation passes.
 #[allow(clippy::too_many_arguments)]
 pub fn export_midi(
     arrangement: &Arrangement,
@@ -30,18 +32,88 @@ pub fn export_midi(
     percussion_rhythm: PercussionRhythm,
     bpm: f64,
 ) -> Vec<u8> {
-    let accompaniment_notes =
-        arrangement.accompaniment_notes_with_rhythm(accompaniment, accompaniment_rhythm);
+    export_midi_with_passes(
+        arrangement,
+        melody,
+        accompaniment,
+        accompaniment_rhythm,
+        second_accompaniment,
+        percussion,
+        percussion_rhythm,
+        bpm,
+        crate::VARIATION_PASSES,
+    )
+}
+
+/// Build a Standard MIDI File for the arranged loop.
+///
+/// `variation_passes` is the number of 64-beat passes to write back to back,
+/// matching [`crate::RenderRequest::variation_passes`]. One pass is the plain
+/// loop; later passes carry the melody and accompaniment variations.
+#[allow(clippy::too_many_arguments)]
+pub fn export_midi_with_passes(
+    arrangement: &Arrangement,
+    melody: MelodyInstrument,
+    accompaniment: AccompanimentInstrument,
+    accompaniment_rhythm: AccompanimentRhythm,
+    second_accompaniment: SecondAccompaniment,
+    percussion: Percussion,
+    percussion_rhythm: PercussionRhythm,
+    bpm: f64,
+    variation_passes: u32,
+) -> Vec<u8> {
+    let passes = variation_passes.max(1);
+    let mut melody_notes = Vec::new();
+    let mut accompaniment_notes = Vec::new();
+    let mut countermelody_notes = Vec::new();
+    let mut percussion_notes = Vec::new();
+    for pass in 0..passes {
+        let offset = pass as f64 * arrangement.loop_beats;
+        melody_notes.extend(
+            arrangement
+                .melody_notes_for_pass(pass)
+                .into_iter()
+                .map(|note| shifted(note, offset)),
+        );
+        accompaniment_notes.extend(
+            arrangement
+                .accompaniment_notes_for_pass_with_rhythm(accompaniment, accompaniment_rhythm, pass)
+                .into_iter()
+                .map(|note| shifted(note, offset)),
+        );
+        if second_accompaniment.instrument().is_some() {
+            countermelody_notes.extend(
+                arrangement
+                    .countermelody_notes_for_pass(pass)
+                    .into_iter()
+                    .map(|note| shifted(note, offset)),
+            );
+        }
+        if percussion.is_enabled() {
+            percussion_notes.extend(
+                crate::percussion::notes(
+                    arrangement.loop_beats,
+                    arrangement.meter,
+                    percussion,
+                    percussion_rhythm,
+                )
+                .into_iter()
+                .map(|note| shifted(note, offset)),
+            );
+        }
+    }
+    let end_beats = arrangement.loop_beats * passes as f64;
 
     let mut tracks = vec![
         build_track(
             0,
             melody.gm_program(),
             "Melody",
-            &arrangement.melody,
+            &melody_notes,
             true,
             bpm,
             arrangement,
+            end_beats,
         ),
         build_track(
             1,
@@ -51,6 +123,7 @@ pub fn export_midi(
             false,
             bpm,
             arrangement,
+            end_beats,
         ),
     ];
     if let Some(instrument) = second_accompaniment.instrument() {
@@ -58,10 +131,11 @@ pub fn export_midi(
             2,
             instrument.gm_program(),
             "Second accompaniment",
-            &arrangement.countermelody_notes(),
+            &countermelody_notes,
             false,
             bpm,
             arrangement,
+            end_beats,
         ));
     }
     if percussion.is_enabled() {
@@ -69,15 +143,11 @@ pub fn export_midi(
             9,
             0,
             "Percussion",
-            &crate::percussion::notes(
-                arrangement.loop_beats,
-                arrangement.meter,
-                percussion,
-                percussion_rhythm,
-            ),
+            &percussion_notes,
             false,
             bpm,
             arrangement,
+            end_beats,
         ));
     }
 
@@ -94,6 +164,14 @@ pub fn export_midi(
     bytes
 }
 
+fn shifted(mut note: NoteEvent, offset_beats: f64) -> NoteEvent {
+    note.start_beat += offset_beats;
+    note
+}
+
+// One argument per independent track property; grouping them into a struct
+// would obscure the call sites more than it helps.
+#[allow(clippy::too_many_arguments)]
 fn build_track(
     channel: u8,
     program: u8,
@@ -102,6 +180,7 @@ fn build_track(
     include_metadata: bool,
     bpm: f64,
     arrangement: &Arrangement,
+    end_beats: f64,
 ) -> Vec<TrackEvent<'static>> {
     let mut events: Vec<(u64, u8, TrackEventKind<'static>)> = Vec::new();
     let channel = u4::new(channel);
@@ -183,7 +262,7 @@ fn build_track(
     }
 
     events.push((
-        (arrangement.loop_beats * TICKS_PER_DANCE_BEAT as f64).round() as u64,
+        (end_beats * TICKS_PER_DANCE_BEAT as f64).round() as u64,
         2,
         TrackEventKind::Meta(MetaMessage::EndOfTrack),
     ));
@@ -254,6 +333,95 @@ mod tests {
             })
             .count();
         assert!(note_on_count > 0);
+    }
+
+    fn note_velocities(smf: &Smf, track: usize) -> Vec<u8> {
+        smf.tracks[track]
+            .iter()
+            .filter_map(|event| match event.kind {
+                TrackEventKind::Midi {
+                    message: MidiMessage::NoteOn { vel, .. },
+                    ..
+                } if vel.as_int() > 0 => Some(vel.as_int()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn track_end_tick(smf: &Smf, track: usize) -> u64 {
+        smf.tracks[track]
+            .iter()
+            .map(|event| event.delta.as_int() as u64)
+            .sum()
+    }
+
+    #[test]
+    fn melody_carries_more_velocity_than_the_accompaniment() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let bytes = export_midi_with_passes(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            1,
+        );
+        let smf = Smf::parse(&bytes).expect("parse midi");
+        let melody = note_velocities(&smf, 0);
+        let accompaniment = note_velocities(&smf, 1);
+        assert!(!melody.is_empty() && !accompaniment.is_empty());
+        let mean = |values: &[u8]| {
+            values.iter().map(|value| *value as f64).sum::<f64>() / values.len() as f64
+        };
+        assert!(
+            mean(&melody) > mean(&accompaniment) + 20.0,
+            "melody mean {:.1} should sit well above accompaniment mean {:.1}",
+            mean(&melody),
+            mean(&accompaniment)
+        );
+        assert!(melody.iter().filter(|velocity| **velocity >= 92).count() > melody.len() / 2);
+    }
+
+    #[test]
+    fn variation_passes_extend_the_export() {
+        let score = parse_abc(TUNE).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let plain = export_midi_with_passes(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            1,
+        );
+        let varied = export_midi_with_passes(
+            &arrangement,
+            MelodyInstrument::Fiddle,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            SecondAccompaniment::Off,
+            Percussion::Off,
+            PercussionRhythm::Auto,
+            240.0,
+            4,
+        );
+        let plain = Smf::parse(&plain).expect("parse midi");
+        let varied = Smf::parse(&varied).expect("parse midi");
+        let pass_ticks = 64 * TICKS_PER_DANCE_BEAT;
+        assert_eq!(track_end_tick(&plain, 0), pass_ticks);
+        assert_eq!(track_end_tick(&varied, 0), pass_ticks * 4);
+        assert_eq!(track_end_tick(&varied, 1), pass_ticks * 4);
+        assert!(
+            note_velocities(&varied, 0).len() > note_velocities(&plain, 0).len() * 3,
+            "the varied export should keep the tune and add ornaments"
+        );
     }
 
     #[test]

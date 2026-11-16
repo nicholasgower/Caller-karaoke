@@ -107,9 +107,10 @@ Advanced settings:
   partner”. The chosen wording is shown and spoken, and its lead is computed
   from it. Callers can add their own alternatives per move type.
 - Count-in on/off (default on), loop (default on).
-- Accompaniment variations on each loop (default on): a few added emphasis
-  notes and an occasional bar of melody alone, chosen deterministically from
-  the tune.
+- Music variations on each loop (default on): melody ornaments, harmony
+  doubles, a few added accompaniment emphasis notes, and an occasional bar of
+  melody alone, chosen deterministically from the tune. The plain melody is
+  lifted and accented so it carries over the accompaniment.
 - Cache size, clear cache, refresh cached content.
 - Web data proxy URL and token (web build only).
 

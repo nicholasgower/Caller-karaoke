@@ -11,7 +11,8 @@ use contra_core::{
     Preferences, RolePreset, RoleTerms, SecondAccompaniment, Theme, TimelineConfig, Tune,
 };
 use contra_music::{
-    Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi, parse_abc, render,
+    Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
+    render,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use contra_sources::FileCache;
@@ -1607,7 +1608,7 @@ impl ContraApp {
     fn export_midi(&mut self) {
         #[cfg(any(target_arch = "wasm32", target_os = "android"))]
         {
-            let _ = export_midi;
+            let _ = export_midi_with_passes;
             self.error = Some("MIDI export is not available in this build yet.".into());
         }
         #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
@@ -1628,7 +1629,12 @@ impl ContraApp {
             else {
                 return;
             };
-            let bytes = export_midi(
+            let variation_passes = if self.prefs.accompaniment_variations {
+                contra_music::VARIATION_PASSES
+            } else {
+                1
+            };
+            let bytes = export_midi_with_passes(
                 &arrangement,
                 self.prefs.melody,
                 self.prefs.accompaniment,
@@ -1637,6 +1643,7 @@ impl ContraApp {
                 self.prefs.percussion,
                 self.prefs.percussion_rhythm,
                 self.prefs.tempo_bpm,
+                variation_passes,
             );
             match std::fs::write(&path, bytes) {
                 Ok(()) => self.status = format!("Saved MIDI to {}", path.display()),

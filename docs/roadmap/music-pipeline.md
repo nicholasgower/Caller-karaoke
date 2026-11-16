@@ -56,6 +56,10 @@ Generate a backing track from the chord track:
 - 2/2: half-note bass/chord pattern.
 - 3/4: one chord per bar with a bass note on beat 1.
 - Respect melody/accompaniment volume settings; percussion has its own volume.
+- Lift the melody above the accompaniment and accent it on the dance pulse.
+- When variations are enabled, later passes add deterministic melody ornaments
+  (diatonic grace notes, chord-tone doubles, occasional octave lifts) alongside
+  the accompaniment variations. Existing note starts stay on the 64-beat grid.
 - Keep the chordal accompaniment out of the melody's register: a chord tone
   closer than a minor third to the tune is moved down an octave. The bass and
   the countermelody already sit below the melody and are left alone.
@@ -176,10 +180,12 @@ Soundfont file selection:
 
 ### 6.9 MIDI export
 
-- Export the arranged 64-beat loop as a Standard MIDI File using `midly`.
+- Export the arranged loop as a Standard MIDI File using `midly`.
 - The once-only slow ending is a live transport action and is not exported.
 - Melody and accompaniment tracks, plus a countermelody track when the second
   accompaniment is on.
 - A percussion track on the General MIDI drum channel when percussion is on.
 - Include tempo, meter, key, and program changes.
+- Write the same variation passes as playback: one plain 64-beat pass when
+  variations are off, four varied passes when they are on.
 - The export must match what the synth plays.

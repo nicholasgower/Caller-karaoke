@@ -115,23 +115,25 @@ progression when the ABC has none. Only its rhythm changes.
 
 The session **Volume** control is a master level applied on top of this mix.
 
-## Vary the accompaniment
+## Vary the music
 
 <Steps>
   <Step shot="prefs-accompaniment-variations">
-    In **Preferences → Text to speech**, enable **Vary the accompaniment on
-    each loop**. The arranger adds small emphasis notes and the occasional bar
-    with melody alone.
+    In **Preferences → Playback**, enable **Vary the music on each loop**. The
+    arranger adds melody ornaments and harmony doubles, small accompaniment
+    emphasis notes, and the occasional bar with melody alone.
   </Step>
 </Steps>
 
-The variation is deterministic for a given tune and arrangement; it builds on
-the selected rhythm and does not change the dance timing or the 64-beat loop
-length. On a melody-alone bar the second accompaniment rests too.
+The melody is also lifted in velocity and accented on the dance pulse so it
+stays clearly above the accompaniment. The variation is deterministic for a
+given tune and arrangement; it keeps the selected rhythm and does not change
+the dance timing or the 64-beat loop length. On a melody-alone bar the second
+accompaniment rests too.
 
 ## Apply the change
 
-Instrument, rhythm, volume, and accompaniment-variation changes apply without
+Instrument, rhythm, volume, and music-variation changes apply without
 restarting the music. Release the control and the app re-renders the loop,
 keeping the current beat. If the session is not playing, press **Play** to
 render and start.
@@ -191,17 +193,20 @@ screenshots. The screenshots show the resulting Preferences state.
 
 ## What the arranger plays
 
-The melody follows the ABC note stream. The accompaniment follows quoted chord
-symbols when the ABC has them; otherwise a simple progression is inferred from
-the key and strong-beat melody notes. The selected rhythm decides which notes
-sound on which part of the beat. The strum rhythm alternates a full downstroke
-on the beat with a lighter upstroke off the beat, so the guitar sounds strummed
-up and down rather than in one direction. The second accompaniment is derived
-from the melody and that chord track, so it never needs symbols of its own. The
-optional percussion follows the selected percussion rhythm, the meter, and the
-dance-beat grid. When a chord tone would sit closer than a minor third to the
-melody note sounding at the same time, the arranger moves that accompaniment
-note down an octave so the tune stays clear of its backing. Short fades and peak
-normalization are applied to the rendered buffer.
+The melody follows the ABC note stream, lifted and accented so it carries over
+the accompaniment. With variations enabled, later passes add diatonic grace
+notes, chord-tone doubles on strong beats, and an occasional octave lift. The
+accompaniment follows quoted chord symbols when the ABC has them; otherwise a
+simple progression is inferred from the key and strong-beat melody notes. The
+selected rhythm decides which notes sound on which part of the beat. The strum
+rhythm alternates a full downstroke on the beat with a lighter upstroke off the
+beat, so the guitar sounds strummed up and down rather than in one direction.
+The second accompaniment is derived from the melody and that chord track, so it
+never needs symbols of its own. The optional percussion follows the selected
+percussion rhythm, the meter, and the dance-beat grid. When a chord tone would
+sit closer than a minor third to the melody note sounding at the same time, the
+arranger moves that accompaniment note down an octave so the tune stays clear of
+its backing. Short fades and peak normalization are applied to the rendered
+buffer.
 
 Next: [Timing and lead](/docs/guides/timing-and-lead).

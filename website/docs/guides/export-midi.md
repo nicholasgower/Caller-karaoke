@@ -1,6 +1,6 @@
 ---
 title: Export MIDI
-description: Export the arranged 64-beat loop as a Standard MIDI File from the desktop app.
+description: Export the arranged loop and its variations as a Standard MIDI File from the desktop app.
 sidebar_position: 11
 ---
 
@@ -30,8 +30,14 @@ The export contains:
   second accompaniment (countermelody) — or two tracks when it is **Off**;
 - a fourth track on the General MIDI drum channel when percussion is on;
 - the selected accompaniment rhythm;
-- the tempo, meter, key, and program changes;
-- the arranged 64-beat loop.
+- the arranged 64-beat loop. When **Vary the music on each loop** is enabled,
+  the file contains the same four variation passes as playback, so the melody
+  and accompaniment change from pass to pass instead of repeating identically.
+
+The melody is lifted above the accompaniment and accented on the dance pulse.
+Later passes add deterministic melody ornaments, chord-tone harmony doubles,
+and an occasional octave lift. Existing note timing is unchanged, so the
+64-beat grid still lines up with the dance.
 
 The MIDI does **not** include the four-beat count-in, the pickup notes, or the
 live slow ending. It is the arranged loop, not the full playback buffer. Because

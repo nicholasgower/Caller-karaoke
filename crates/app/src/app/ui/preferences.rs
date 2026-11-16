@@ -493,12 +493,14 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.checkbox(&mut app.prefs.count_in_enabled, "Four-beat count-in");
     ui.checkbox(
         &mut app.prefs.accompaniment_variations,
-        "Vary the accompaniment on each loop",
+        "Vary the music on each loop",
     );
     ui.label(
-        egui::RichText::new("Adds small emphasis notes and the occasional bar with melody alone.")
-            .small()
-            .color(theme::muted(ui)),
+        egui::RichText::new(
+            "Adds melody ornaments, emphasis notes, and the occasional bar with melody alone.",
+        )
+        .small()
+        .color(theme::muted(ui)),
     );
     ui.checkbox(&mut app.prefs.show_original, "Show original card text");
     ui.separator();

@@ -6,9 +6,9 @@ use contra_core::{AccompanimentInstrument, AccompanimentRhythm};
 use crate::chord::{Chord, resolve_chords};
 use crate::score::{ChordEvent, Key, Meter, NoteEvent, Score};
 
-/// Number of distinct accompaniment passes rendered back to back for one
-/// practice tune. Pass 0 is the plain pattern; the others carry small
-/// variations so a looping session does not repeat note for note.
+/// Number of distinct passes rendered back to back for one practice tune. Pass
+/// 0 is the plain pattern; the others carry small variations so a looping
+/// session does not repeat note for note.
 pub const VARIATION_PASSES: u32 = 4;
 
 /// How much longer the tune's last bar takes in the slow ending than at the
@@ -65,6 +65,12 @@ pub struct Ending {
     /// Total length of the ending in seconds.
     pub seconds: f64,
 }
+
+/// The melody is lifted to at least this velocity so it sits above the
+/// accompaniment, whose notes are written in the 46-60 range.
+const MELODY_VELOCITY_FLOOR: u8 = 92;
+/// Leave a little headroom below full velocity.
+const MELODY_VELOCITY_CEILING: u8 = 124;
 
 /// The music for one practice loop.
 #[derive(Clone, Debug)]
@@ -309,7 +315,7 @@ impl Arrangement {
                 start_seconds: start,
                 duration_seconds: (end - start).max(beat_seconds * 0.12),
                 midi: note.midi,
-                velocity: note.velocity,
+                velocity: melody_velocity(note, false),
             });
         }
         melody.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
@@ -323,7 +329,7 @@ impl Arrangement {
                 start_seconds: ritard_seconds,
                 duration_seconds: linger_seconds * 0.96,
                 midi: note.midi,
-                velocity: note.velocity,
+                velocity: melody_velocity(note, false),
             });
         }
 
@@ -585,6 +591,32 @@ impl Arrangement {
         }
     }
 
+    /// The melody for one loop pass.
+    ///
+    /// The plain tune is lifted above the accompaniment and accented on the
+    /// dance pulse. Later passes add deterministic melody variation: a little
+    /// articulation, chord-tone harmony doubles on strong beats, diatonic grace
+    /// notes, and an occasional octave lift. Existing note starts never move,
+    /// so the dance timing and the 64-beat loop are unchanged.
+    pub fn melody_notes_for_pass(&self, pass: u32) -> Vec<NoteEvent> {
+        let mut notes = Vec::with_capacity(self.melody.len());
+        for (index, note) in self.melody.iter().enumerate() {
+            notes.push(NoteEvent {
+                velocity: melody_velocity(note, index == 0),
+                ..*note
+            });
+        }
+        if pass > 0 {
+            self.vary_melody(&mut notes, pass);
+        }
+        notes.sort_by(|a, b| {
+            a.start_beat
+                .total_cmp(&b.start_beat)
+                .then(a.midi.cmp(&b.midi))
+        });
+        notes
+    }
+
     fn plain_accompaniment(
         &self,
         instrument: AccompanimentInstrument,
@@ -706,6 +738,71 @@ impl Arrangement {
         }
     }
 
+    /// Apply one pass of melody variations in place.
+    ///
+    /// Additions sit behind the plain melody and use their own seed stream, so
+    /// they do not change which accompaniment variation a pass receives.
+    fn vary_melody(&self, notes: &mut Vec<NoteEvent>, pass: u32) {
+        let mut rng = VariationRng::new(self.variation_seed(), pass ^ 0x5EED_1234);
+        let mut additions = Vec::new();
+
+        for note in notes.iter_mut() {
+            // Alternate passes are a touch more detached; the others stay
+            // legato. This changes articulation without moving any start.
+            if pass % 2 == 1 && note.duration_beats >= 0.75 {
+                note.duration_beats = (note.duration_beats * 0.82).max(0.25);
+            }
+
+            if note.duration_beats < 0.4 {
+                continue;
+            }
+
+            let strong = is_pulse(note.start_beat);
+            if strong
+                && rng.chance(3)
+                && let Some(harmony) =
+                    self.chord_tone_below(&self.chord_at(note.start_beat), note.midi)
+            {
+                additions.push(NoteEvent {
+                    start_beat: note.start_beat,
+                    duration_beats: note.duration_beats,
+                    midi: harmony,
+                    velocity: (note.velocity as u16).saturating_sub(18).max(72) as u8,
+                });
+            }
+
+            // A short diatonic grace note leads into some longer notes.
+            if note.duration_beats >= 0.75 && note.start_beat >= 0.25 && rng.chance(5) {
+                let up = rng.chance(2);
+                if let Some(pitch) = diatonic_neighbor(note.midi, &self.key, up) {
+                    additions.push(NoteEvent {
+                        start_beat: note.start_beat - 0.125,
+                        duration_beats: 0.125,
+                        midi: pitch,
+                        velocity: 84,
+                    });
+                }
+            }
+
+            // Later passes occasionally lift a held note an octave, which adds
+            // sparkle without disturbing the underlying line.
+            if pass >= 2 && note.duration_beats >= 1.0 && note.midi + 12 <= 100 && rng.chance(4) {
+                additions.push(NoteEvent {
+                    start_beat: note.start_beat,
+                    duration_beats: note.duration_beats,
+                    midi: note.midi + 12,
+                    velocity: (note.velocity as u16).saturating_sub(24).max(68) as u8,
+                });
+            }
+        }
+
+        for note in additions {
+            if note.start_beat >= 0.0 && note.end_beat() <= self.loop_beats + 1e-9 {
+                notes.push(note);
+            }
+        }
+    }
+
     /// Apply one pass of variations in place.
     ///
     /// The seed comes from the arrangement itself, so a given tune always
@@ -805,6 +902,52 @@ fn chord_tone_classes(chord: &Chord) -> Vec<i32> {
         .iter()
         .map(|interval| (chord.root + interval).rem_euclid(12))
         .collect()
+}
+
+/// Lift a melody note above the accompaniment and accent the dance pulse.
+///
+/// A bar is two dance beats: the bar start gets the strongest accent, the
+/// second beat a smaller one. The first melody note gets a little extra so the
+/// tune announces itself.
+fn melody_velocity(note: &NoteEvent, first: bool) -> u8 {
+    let beat_in_bar = note.start_beat.rem_euclid(2.0);
+    let accent = if beat_in_bar < 0.01 {
+        14
+    } else if (beat_in_bar - 1.0).abs() < 0.01 {
+        5
+    } else {
+        0
+    };
+    let lift = if first { 4 } else { 0 };
+    (note.velocity.max(MELODY_VELOCITY_FLOOR) as u16 + accent + lift)
+        .min(MELODY_VELOCITY_CEILING as u16) as u8
+}
+
+/// True for notes that begin on one of the two dance beats in a bar.
+fn is_pulse(beat: f64) -> bool {
+    let in_bar = beat.rem_euclid(2.0);
+    in_bar < 0.01 || (in_bar - 1.0).abs() < 0.01
+}
+
+/// The nearest scale note above or below `midi`, used for grace notes.
+fn diatonic_neighbor(midi: u8, key: &Key, up: bool) -> Option<u8> {
+    let scale: Vec<i32> = key
+        .mode
+        .intervals()
+        .iter()
+        .map(|interval| (key.tonic_pitch_class + interval).rem_euclid(12))
+        .collect();
+    let direction = if up { 1 } else { -1 };
+    for step in 1..=2 {
+        let candidate = midi as i32 + direction * step;
+        if !(24..=108).contains(&candidate) {
+            return None;
+        }
+        if scale.contains(&candidate.rem_euclid(12)) {
+            return Some(candidate as u8);
+        }
+    }
+    None
 }
 
 /// Add one accompaniment note, clipped to the harmony's end.
@@ -1155,6 +1298,75 @@ mod tests {
     }
 
     #[test]
+    fn melody_is_lifted_and_accented_on_the_pulse() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let plain = arrangement.melody_notes_for_pass(0);
+        assert_eq!(plain.len(), arrangement.melody.len());
+        assert!(
+            plain.iter().all(|note| note.velocity >= 92),
+            "the melody must sit above the accompaniment"
+        );
+        assert!(
+            plain
+                .iter()
+                .zip(arrangement.melody.iter())
+                .all(|(lifted, source)| lifted.velocity >= source.velocity)
+        );
+        let bar_start = plain
+            .iter()
+            .find(|note| note.start_beat.abs() < 1e-9)
+            .expect("opening note");
+        let second_beat = plain
+            .iter()
+            .find(|note| (note.start_beat - 1.0).abs() < 1e-9)
+            .expect("second dance beat");
+        assert!(
+            bar_start.velocity > second_beat.velocity,
+            "the bar start should carry the strongest accent"
+        );
+    }
+
+    #[test]
+    fn melody_variation_keeps_the_tune_and_the_loop_grid() {
+        let arrangement = Arrangement::from_score(&simple_score(), 64.0);
+        let plain = arrangement.melody_notes_for_pass(0);
+        let mut seen = Vec::new();
+        for pass in 1..VARIATION_PASSES {
+            let varied = arrangement.melody_notes_for_pass(pass);
+            assert!(
+                varied.len() >= plain.len(),
+                "pass {pass} should add ornaments, not remove the tune"
+            );
+            for base in &plain {
+                assert!(
+                    varied.iter().any(|note| {
+                        (note.start_beat - base.start_beat).abs() < 1e-9 && note.midi == base.midi
+                    }),
+                    "pass {pass} moved or removed a melody note at beat {}",
+                    base.start_beat
+                );
+            }
+            assert!(
+                varied
+                    .iter()
+                    .all(|note| note.start_beat >= 0.0 && note.end_beat() <= 64.0 + 1e-6),
+                "pass {pass} must stay inside the loop"
+            );
+            assert_ne!(varied, plain, "pass {pass} must vary the melody");
+            assert_eq!(
+                varied,
+                arrangement.melody_notes_for_pass(pass),
+                "melody variation must be deterministic"
+            );
+            assert!(
+                !seen.contains(&varied),
+                "variation passes should differ from one another"
+            );
+            seen.push(varied);
+        }
+    }
+
+    #[test]
     fn accompaniment_is_generated() {
         let arrangement = Arrangement::from_score(&simple_score(), 64.0);
         for instrument in [
@@ -1501,6 +1713,22 @@ mod tests {
                     note.start_beat >= 0.0 && note.end_beat() <= arrangement.loop_beats + 1e-6
                 }));
             }
+        }
+    }
+
+    #[test]
+    fn bundled_melody_variations_stay_on_the_grid() {
+        let abc = include_str!("../../../assets/defaults/sandy_boys.abc");
+        let score = crate::abc::parse_abc(abc).expect("parse bundled tune");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        for pass in 0..VARIATION_PASSES {
+            let notes = arrangement.melody_notes_for_pass(pass);
+            assert!(!notes.is_empty(), "pass {pass} must keep the melody");
+            assert!(notes.iter().all(|note| {
+                note.start_beat >= 0.0
+                    && note.end_beat() <= arrangement.loop_beats + 1e-6
+                    && note.velocity <= 124
+            }));
         }
     }
 

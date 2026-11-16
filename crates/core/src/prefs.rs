@@ -470,8 +470,9 @@ pub struct Preferences {
     pub shuffle_alternatives: bool,
     pub loop_enabled: bool,
     pub count_in_enabled: bool,
-    /// Add small, deterministic variations to the accompaniment on later loop
-    /// passes (extra emphasis notes; now and then one bar of melody alone).
+    /// Add small, deterministic variations to the melody and accompaniment on
+    /// later loop passes (ornaments, emphasis notes; now and then one bar of
+    /// melody alone).
     pub accompaniment_variations: bool,
     pub show_original: bool,
     pub melody_volume: f32,

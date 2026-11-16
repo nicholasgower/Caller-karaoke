@@ -99,13 +99,8 @@ pub fn render_soundfont(
     let mut scheduled = Vec::new();
     for pass in 0..passes {
         let offset = count_in_samples + pass as u64 * pass_samples;
-        schedule_notes(
-            &mut scheduled,
-            &request.arrangement.melody,
-            0,
-            offset,
-            samples_per_beat,
-        );
+        let melody = request.arrangement.melody_notes_for_pass(pass);
+        schedule_notes(&mut scheduled, &melody, 0, offset, samples_per_beat);
         if pass == 0 {
             schedule_notes(
                 &mut scheduled,

@@ -68,9 +68,10 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 -0.10,
             );
         }
+        let melody = request.arrangement.melody_notes_for_pass(pass);
         render_notes(
             &mut samples,
-            &request.arrangement.melody,
+            &melody,
             melody_voice,
             request.melody_volume,
             offset,

@@ -19,14 +19,16 @@ Android. Version **0.1.0** is the current development version.
 - ABC → score → 64-beat arrangement → sampled playback with the bundled
   Fluid R3 GM subset (MIT), or a user-supplied `.sf2`.
 - Four-beat accompaniment count-in built from the tune's first chord.
-- On by default: small accompaniment variations each time the loop repeats —
-  extra emphasis notes and, now and then, a bar left to the melody alone.
+- On by default: music variations each time the loop repeats — the melody is
+  lifted and accented, with ornaments and harmony doubles on later passes,
+  while the accompaniment adds emphasis notes and now and then leaves a bar to
+  the melody alone.
 - Call timeline with syllable-based early calls, aliases, and role terms.
 - Local Kokoro-82M neural voice on desktop, with a platform TTS fallback on
   web/Android and a reviewed dance-term pronunciation lexicon.
 - User-supplied `.sf2` soundfont support via `rustysynth`; the bundled Fluid R3
   GM subset is the default voice.
-- MIDI export of the arranged loop.
+- MIDI export of the arranged loop and its variation passes.
 - Source cache with TTLs and offline fallback.
 - Bundled defaults: *Another Last Dance* and *Sandy Boys*.
 
@@ -73,7 +75,7 @@ being device-tested.
   and add tunes to the **tune set** for **Cycle tunes**. **Download tune**
   searches ABC Session Tunes and previews the sheet music (or the ABC source).
 - **Preferences** — role terms, aliases, instruments, theme, animations, lead
-  settings, TTS, soundfont, proxy, cache tools, and accompaniment variations.
+  settings, TTS, soundfont, proxy, cache tools, and music variations.
 
 ### Keyboard shortcuts
 

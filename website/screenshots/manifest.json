@@ -300,8 +300,8 @@
     },
     {
       "id": "prefs-accompaniment-variations",
-      "alt": "The Text to speech section showing the Vary the accompaniment on each loop checkbox and its descriptive note.",
-      "caption": "Accompaniment variations add small emphasis notes and the occasional melody-only bar.",
+      "alt": "The Playback section showing the Vary the music on each loop checkbox and its descriptive note.",
+      "caption": "Music variations add melody ornaments, emphasis notes, and the occasional melody-only bar.",
       "status": "ready",
       "width": 1280,
       "height": 2250
