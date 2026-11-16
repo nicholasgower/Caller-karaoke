@@ -264,36 +264,36 @@
     },
     {
       "id": "prefs-instrument-melody",
-      "alt": "The Instruments section with the Melody menu set to Fiddle, the accompaniment, rhythm, countermelody, and percussion menus below it, a Copies stepper beside each part, and the volume sliders visible.",
-      "caption": "Fiddle is the default melody instrument; Accordion, Alto sax, Tenor sax, and Clarinet are the alternatives.",
+      "alt": "Band & Sound showing the default band list: Melody · Fiddle with two players, Accompaniment · Piano, Countermelody · Fiddle with two players, and Percussion · Foot taps with three players, each row with its part, instrument, players, direction, volume, and Remove/Up/Down controls, with Add instrument below.",
+      "caption": "The default band is two melody fiddles, a piano, two countermelody fiddles, and three foot taps.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-instrument-accompaniment",
-      "alt": "The Instruments section with the Accompaniment menu set to Guitar and the Rhythm menu beside it, above the Countermelody and Percussion rows, with a Copies stepper on each row.",
-      "caption": "Piano, Guitar, and Accordion are the chordal accompaniment voices; the Rhythm menu chooses the backing pattern.",
+      "alt": "Band & Sound with the Accompaniment row changed to Guitar and two players, above the Countermelody and Percussion rows, with the Boom-chuck accompaniment rhythm below the list.",
+      "caption": "Any voice can take any part: a guitar accompaniment is its own row with its own players, level, and place.",
       "status": "ready",
       "width": 1280,
       "height": 2250
     },
     {
       "id": "prefs-instrument-second",
-      "alt": "The Instruments section with the Countermelody menu set to Fiddle and its Copies stepper showing two players, above the Percussion row.",
-      "caption": "The default trio adds an accordion countermelody; Fiddle gives a second fiddle, and Off leaves a duo.",
+      "alt": "Band & Sound with the Countermelody row set to Fiddle and two players, above the Percussion row.",
+      "caption": "A countermelody row adds a second line without copying the melody row; the default is two countermelody fiddles.",
       "status": "pending"
     },
     {
       "id": "prefs-instrument-percussion",
-      "alt": "The Instruments section with the Percussion menu set to Foot taps, the Percussion rhythm menu set to Gallop, its Copies stepper showing two players, and the optional note beside them.",
-      "caption": "Percussion is optional; Foot taps play a one-and-a gallop, Drumset adds a full kit, and the rhythm menu changes the pattern.",
+      "alt": "Band & Sound with the Percussion row set to Foot taps and two players, the Percussion rhythm menu set to Gallop, and the optional note below the band list.",
+      "caption": "Percussion is a band row: Foot taps play a one-and-a gallop, Drumset adds a full kit, and the rhythm menu changes the pattern.",
       "status": "pending"
     },
     {
       "id": "prefs-instrument-mix",
-      "alt": "The Instruments section showing the Melody volume, Accompaniment volume, Percussion volume, and Dancer sound volume sliders below the Copies steppers.",
-      "caption": "Balance the melody, accompaniment, percussion, and default dancer stomps and claps; the countermelody follows the accompaniment volume.",
+      "alt": "Band & Sound showing the dancer sounds toggle and volume, the percussion and accompaniment rhythm menus, and the separate Caller volume and Band volume sliders.",
+      "caption": "The caller and the band have independent levels; the default dancer stomps and claps sit under the band.",
       "status": "ready",
       "width": 1280,
       "height": 2250

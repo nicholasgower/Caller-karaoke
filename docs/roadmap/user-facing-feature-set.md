@@ -29,7 +29,8 @@ The saved-dance library, available offline:
 - Flat user folders: create, rename, delete, and move cards; deleting a folder
   keeps its cards as unfiled.
 - A **Download dance** submenu opens the search screen for the source selected
-  in Preferences → Data sources (ContraDB by default, or The Caller's Box):
+  at the top of the **Download dance** screen (ContraDB by default, or The
+  Caller's Box):
   - Text filters follow the source's `FilterSpec`: title and choreographer on
     both; user and hook on ContraDB only.
   - ContraDB adds a verified filter, formation presets, a move selector, and

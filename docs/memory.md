@@ -30,7 +30,7 @@ the table above.
 
 ## What the app reports
 
-**Preferences → Maintenance → Memory use** shows the categories for the running
+**Preferences → Data & Storage → Memory use** shows the categories for the running
 app and has a **Refresh memory use** button. The same table is printed by:
 
 ```sh

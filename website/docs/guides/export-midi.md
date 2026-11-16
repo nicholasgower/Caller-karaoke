@@ -87,7 +87,7 @@ not affect the app's playback.
 ## Native dialog
 
 The save dialog is provided by the operating system and is not part of the
-Docusaurus screenshots. The screenshot shows the Maintenance section where the
-export starts.
+Docusaurus screenshots. The screenshot shows the Data & Storage section where
+the export starts.
 
 Next: [How calls are timed](/docs/reference/how-calls-are-timed).

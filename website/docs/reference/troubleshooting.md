@@ -21,7 +21,7 @@ message in Preferences.
 | Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, the number keys 1-4, and Enter are ignored while a text field has focus. |
 | A media key does nothing | The operating system sends the key to the active media player. Pause any other player, or use **Space** in Contra Karaoke. On Android, check that the app is still running; the media session is not a foreground service, so Android can stop playback in the background. The browser build has no media session in 0.1.0. |
 | Search returns an error | Dismiss it and retry. Cached content may still be available. In a browser, check the web proxy URL/token. |
-| Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from Maintenance. |
+| Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from **Preferences → Data & Storage**. |
 | No spoken calls | Check the **Speak calls** toggle, **Rate**, the selected **Voice**, and that the music is playing. On desktop, wait for the first voice preparation or select **Retry neural voice**. |
 | SoundFont sounds wrong or silent | On desktop, choose **Use bundled** to return to the packaged instruments; check the GM programs required by your file. |
 | SoundFont loading is unavailable | The browser and Android builds cannot load `.sf2` in 0.1.0; they play the bundled Fluid R3 GM subset. |

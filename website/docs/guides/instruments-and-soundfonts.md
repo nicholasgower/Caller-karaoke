@@ -14,7 +14,7 @@ download is needed.
 
 <Steps>
   <Step shot="prefs-instrument-melody">
-    Open **Preferences** and find **Instruments**. Each row is one instrument:
+    Open **Preferences → Band & Sound**. Each row is one instrument:
     its **Part** chooses the notes (**Melody**, **Countermelody**,
     **Accompaniment**, or **Percussion**), its **Instrument** chooses the voice,
     its **Players** stepper creates a section, and its **Direction** places it
