@@ -196,9 +196,9 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     );
     ui.label(
         egui::RichText::new(
-            "Percussion is optional: foot taps play a one-and-a gallop, or a simple drum kit adds \
-             kick, snare, and hi-hat. The rhythm menu changes the pattern; it starts with the \
-             count-in.",
+            "Percussion is optional: foot taps play a one-and-a gallop (eighth + two sixteenths), \
+             or a simple drum kit adds kick, snare, and hi-hat. The rhythm menu changes the \
+             pattern; it starts with the count-in.",
         )
         .small()
         .color(theme::muted(ui)),

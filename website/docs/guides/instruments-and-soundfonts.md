@@ -51,10 +51,10 @@ During a variation pass it rests in the same bar as the accompaniment, so a
 ## Percussion
 
 Percussion is optional and off by default. **Foot taps** play a one-and-a
-gallop by default (“one and a two and a…”), accented at the start of each beat.
-**Drumset** adds a basic kick, snare, and hi-hat pattern: the hats subdivide each
-beat in half for reels and in thirds for compound meters such as jigs. The
-rhythm menu can change either pattern.
+gallop by default: an eighth note and two sixteenth notes, repeated
+(“one and a two and a…”). **Drumset** adds a basic kick, snare, and hi-hat
+pattern: the hats subdivide each beat in half for reels and in thirds for
+compound meters such as jigs. The rhythm menu can change either pattern.
 
 Percussion starts with the count-in when enabled and sits on the same 64-beat
 grid. It does not change the dance timing or the calls. **Percussion volume**
@@ -76,7 +76,8 @@ soundfont, a user-supplied font, and the built-in synth.
 | Half time | One accent per bar, with a sparse kit. |
 | Double time | Two accents per dance beat. |
 | Shuffle | A swung long-short feel. |
-| Gallop | A one-and-a triplet gallop: “one and a two and a…”. |
+| Gallop | An eighth note and two sixteenths, repeated (“one and a”). |
+| Triplet | Three even taps on every dance beat. |
 | Train beat | Alternating accents in steady eighth notes. |
 
 The count-in stays one clear note per beat regardless of the selected rhythm.

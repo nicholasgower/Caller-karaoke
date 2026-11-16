@@ -170,6 +170,29 @@ fn foot_taps(notes: &mut Vec<NoteEvent>, loop_beats: f64, rhythm: PercussionRhyt
             }
         }
         PercussionRhythm::Gallop => {
+            // One and a: an eighth note and two sixteenths, repeated on every
+            // quarter-note pulse. A dance beat is two quarter notes, so the
+            // group starts every half dance beat.
+            let mut beat = 0.0;
+            while beat < loop_beats - 1e-9 {
+                for (index, offset) in [0.0, 0.25, 0.375].into_iter().enumerate() {
+                    push(
+                        notes,
+                        beat + offset,
+                        if index == 0 { 0.18 } else { 0.08 },
+                        SIDE_STICK,
+                        match index {
+                            0 => 92,
+                            1 => 72,
+                            _ => 60,
+                        },
+                        loop_beats,
+                    );
+                }
+                beat += 0.5;
+            }
+        }
+        PercussionRhythm::Triplet => {
             let mut beat = 0.0;
             while beat < loop_beats - 1e-9 {
                 for (index, offset) in [0.0, 1.0 / 3.0, 2.0 / 3.0].into_iter().enumerate() {
@@ -260,6 +283,25 @@ fn drumset(notes: &mut Vec<NoteEvent>, loop_beats: f64, meter: Meter, rhythm: Pe
                 }
             }
             PercussionRhythm::Gallop => {
+                let mut pulse = bar;
+                while pulse < bar_end - 1e-9 {
+                    push(notes, pulse, 0.14, KICK, 106, bar_end);
+                    push(notes, pulse + 0.25, 0.08, SNARE, 88, bar_end);
+                    push(notes, pulse + 0.375, 0.08, SNARE, 92, bar_end);
+                    for (index, offset) in [0.0, 0.25, 0.375].into_iter().enumerate() {
+                        push(
+                            notes,
+                            pulse + offset,
+                            0.04,
+                            CLOSED_HAT,
+                            if index == 0 { 52 } else { 40 },
+                            bar_end,
+                        );
+                    }
+                    pulse += 0.5;
+                }
+            }
+            PercussionRhythm::Triplet => {
                 for base in [0.0, 1.0] {
                     push(notes, bar + base, 0.14, KICK, 106, bar_end);
                     push(notes, bar + base + 1.0 / 3.0, 0.08, SNARE, 88, bar_end);
@@ -596,13 +638,31 @@ mod tests {
             PercussionRhythm::Gallop,
         );
         let positions = notes.iter().map(|note| note.start_beat).collect::<Vec<_>>();
-        let expected = [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0, 4.0 / 3.0, 5.0 / 3.0];
+        let expected = [
+            0.0, 0.25, 0.375, 0.5, 0.75, 0.875, 1.0, 1.25, 1.375, 1.5, 1.75, 1.875,
+        ];
         assert_eq!(positions.len(), expected.len());
         for (position, expected) in positions.iter().zip(expected) {
             assert!(
                 (position - expected).abs() < 1e-9,
                 "gallop tap at {position}, expected {expected}"
             );
+        }
+    }
+
+    #[test]
+    fn triplet_is_three_even_taps_per_dance_beat() {
+        let notes = notes(
+            2.0,
+            Meter::default(),
+            Percussion::FootTaps,
+            PercussionRhythm::Triplet,
+        );
+        let positions = notes.iter().map(|note| note.start_beat).collect::<Vec<_>>();
+        let expected = [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0, 4.0 / 3.0, 5.0 / 3.0];
+        assert_eq!(positions.len(), expected.len());
+        for (position, expected) in positions.iter().zip(expected) {
+            assert!((position - expected).abs() < 1e-9);
         }
     }
 

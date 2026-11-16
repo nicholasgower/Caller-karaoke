@@ -86,8 +86,9 @@ Listed in this order:
      default trio.
    - Percussion: Off (default), Foot taps on each dance beat, or Drumset.
    - Percussion rhythm: match style (default), basic, on the beat, offbeats,
-     half time, double time, shuffle, gallop, or train beat. Match style gives
-     foot taps a one-and-a gallop.
+     half time, double time, shuffle, gallop, triplet, or train beat. Match
+     style gives foot taps a gallop: an eighth note and two sixteenths,
+     repeated.
    - Melody/accompaniment volume; the second accompaniment follows the
      accompaniment volume. Percussion has its own volume.
    - Soundfont: Bundled Fluid R3 GM (default) or a user-loaded `.sf2`.

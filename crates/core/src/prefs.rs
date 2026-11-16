@@ -181,14 +181,16 @@ pub enum PercussionRhythm {
     DoubleTime,
     /// A swung long-short feel.
     Shuffle,
-    /// A one-and-a triplet gallop.
+    /// A one-and-a gallop: an eighth note and two sixteenths, repeated.
     Gallop,
+    /// Three even taps on every dance beat.
+    Triplet,
     /// Alternating accents in steady eighth notes.
     Train,
 }
 
 impl PercussionRhythm {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Auto,
         Self::Basic,
         Self::Beat,
@@ -197,6 +199,7 @@ impl PercussionRhythm {
         Self::DoubleTime,
         Self::Shuffle,
         Self::Gallop,
+        Self::Triplet,
         Self::Train,
     ];
 
@@ -210,6 +213,7 @@ impl PercussionRhythm {
             Self::DoubleTime => "Double time",
             Self::Shuffle => "Shuffle",
             Self::Gallop => "Gallop",
+            Self::Triplet => "Triplet",
             Self::Train => "Train beat",
         }
     }
