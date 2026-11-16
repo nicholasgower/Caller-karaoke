@@ -122,7 +122,7 @@ impl ContraApp {
     /// Whether this screen scrolls as one page at this size.
     fn screen_scrolls(&self, size: egui::Vec2) -> bool {
         match self.screen {
-            Screen::Preferences | Screen::Aliases => true,
+            Screen::Preferences | Screen::Aliases | Screen::AbcEditor => true,
             Screen::Session => session_layout(size.x, size.y).page_scroll,
             // The saved-content pickers switch to a single scrolling column
             // below 760 points; above it the panes are fixed.
@@ -143,7 +143,7 @@ impl ContraApp {
             Screen::TunePicker => &["Download tune"],
             Screen::DanceDownload => &["< Back to saved dances"],
             Screen::TuneDownload => &["< Back to saved tunes"],
-            Screen::Preferences | Screen::Aliases => &[],
+            Screen::Preferences | Screen::Aliases | Screen::AbcEditor => &[],
         }
     }
 }
