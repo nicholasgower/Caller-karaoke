@@ -63,11 +63,12 @@ does not rescale either one. Prefer 64-beat cards.
 
 ## Accessibility
 
-The app is keyboard-operable for Space, R, Esc, 1–4, and Enter, and responds to
-the keyboard's play/pause media key from any window on desktop. The
-accessibility tree is still being audited. Several search, alias, and slider
-controls are visually labelled without a formal accessible-name association.
-Screen-reader support is incomplete.
+The app is keyboard-operable for Space, R, Esc, 1–4, the Left/Right arrows,
+and Enter, and responds to the keyboard's play/pause media key from any window
+on desktop. On a touch screen, swipe left or right across the content to change
+tabs. The accessibility tree is still being audited. Several search, alias, and
+slider controls are visually labelled without a formal accessible-name
+association. Screen-reader support is incomplete.
 
 ## Data and privacy
 

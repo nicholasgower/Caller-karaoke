@@ -26,11 +26,13 @@ fn session_controls(
             ui.label("Tempo");
             // Leave room for the value box and the " BPM" suffix.
             ui.spacing_mut().slider_width = (ui.available_width() - 100.0).max(96.0);
-            let response = ui.add(
-                egui::Slider::new(&mut prefs.tempo_bpm, 120.0..=320.0)
-                    .fixed_decimals(0)
-                    .suffix(" BPM"),
-            );
+            let response = scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
+                ui.add(
+                    egui::Slider::new(tempo, 120.0..=320.0)
+                        .fixed_decimals(0)
+                        .suffix(" BPM"),
+                )
+            });
             // A stable accessible name, so the slider can be found by name in
             // every layout (and by the MCP session tools).
             let response = response.accessible_name("Tempo");
@@ -115,8 +117,9 @@ fn session_controls(
         ui.horizontal(|ui| {
             ui.label("Volume");
             ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
-            let response =
-                ui.add(egui::Slider::new(&mut prefs.master_volume, 0.0..=1.0).max_decimals(2));
+            let response = scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
+                ui.add(egui::Slider::new(volume, 0.0..=1.0).max_decimals(2))
+            });
             let response = response.accessible_name("Volume");
             if response.changed() {
                 audio.set_volume(prefs.master_volume);
@@ -126,14 +129,15 @@ fn session_controls(
     } else {
         ui.horizontal_wrapped(|ui| {
             ui.label("Tempo");
-            if ui
-                .add(
-                    egui::Slider::new(&mut prefs.tempo_bpm, 120.0..=320.0)
+            if scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
+                ui.add(
+                    egui::Slider::new(tempo, 120.0..=320.0)
                         .text("BPM")
                         .fixed_decimals(0),
                 )
-                .accessible_name("Tempo")
-                .changed()
+            })
+            .accessible_name("Tempo")
+            .changed()
             {
                 changes.timeline_dirty = true;
                 changes.music_dirty = true;
@@ -195,10 +199,11 @@ fn session_controls(
                 changes.save = true;
             }
             ui.label("Volume");
-            if ui
-                .add(egui::Slider::new(&mut prefs.master_volume, 0.0..=1.0))
-                .accessible_name("Volume")
-                .changed()
+            if scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
+                ui.add(egui::Slider::new(volume, 0.0..=1.0))
+            })
+            .accessible_name("Volume")
+            .changed()
             {
                 audio.set_volume(prefs.master_volume);
                 changes.save = true;
@@ -511,16 +516,22 @@ impl ContraApp {
             if tunes.len() >= 2 {
                 // On a phone the label goes above the rail: a one-row label,
                 // slider, value, and "times through" is wider than 360 points.
-                let response = slider_row(ui, compact, "Change tune every", |ui| {
-                    ui.add(
-                        egui::Slider::new(
-                            &mut self.prefs.tune_rotation.passes_per_tune,
-                            contra_core::TuneRotation::MIN_PASSES
-                                ..=contra_core::TuneRotation::MAX_PASSES,
+                let response = slider_row(
+                    ui,
+                    compact,
+                    "Change tune every",
+                    &mut self.prefs.tune_rotation.passes_per_tune,
+                    |ui, passes| {
+                        ui.add(
+                            egui::Slider::new(
+                                passes,
+                                contra_core::TuneRotation::MIN_PASSES
+                                    ..=contra_core::TuneRotation::MAX_PASSES,
+                            )
+                            .text("times through"),
                         )
-                        .text("times through"),
-                    )
-                });
+                    },
+                );
                 if response.changed() {
                     rotation_changed = true;
                 }

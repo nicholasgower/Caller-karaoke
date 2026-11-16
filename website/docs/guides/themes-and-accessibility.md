@@ -55,6 +55,12 @@ beside the pinned **About** button, the tempo and volume sliders use the full
 width, and the transport buttons split the row evenly. On a short window the
 whole session page scrolls so the dance card is never pushed out of reach.
 
+Swipe left or right across the content to change tabs on a touch screen, or use
+the **←** and **→** keys with a hardware keyboard. A vertical swipe that starts
+on a slider scrolls the page instead of changing the value; drag the slider
+sideways to adjust it. Tab swipes are suspended while a text field has focus, a
+drop-down is open, or the **About** window is showing.
+
 <Shot id="main-mobile" />
 
 The search and download screens use the same phone layout. Form labels sit
@@ -72,10 +78,12 @@ full-width target that previews that dance or tune.
 - **Esc** closes the **About** window or returns to **Session** from a picker,
   Preferences, or the alias editor.
 - **1–4** switch tabs.
+- **← / →** move to the previous or next tab.
 - **Enter** submits a search or adds a custom alias.
 
-Shortcuts are ignored while a text field has focus. The keyboard's play/pause
-media key works even when another window is in front. See
+Shortcuts are ignored while a text field has focus, and the arrow keys stay with
+a focused slider or list. The keyboard's play/pause media key works even when
+another window is in front. See
 [Keyboard shortcuts](/docs/reference/keyboard-shortcuts) for details.
 
 ## Screen readers and labels

@@ -249,23 +249,29 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    slider_row(ui, compact, "Melody volume", |ui| {
-        ui.add(egui::Slider::new(&mut app.prefs.melody_volume, 0.0..=1.5))
-    });
-    slider_row(ui, compact, "Accompaniment volume", |ui| {
-        ui.add(egui::Slider::new(
-            &mut app.prefs.accompaniment_volume,
-            0.0..=1.5,
-        ))
-    });
+    slider_row(
+        ui,
+        compact,
+        "Melody volume",
+        &mut app.prefs.melody_volume,
+        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+    );
+    slider_row(
+        ui,
+        compact,
+        "Accompaniment volume",
+        &mut app.prefs.accompaniment_volume,
+        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+    );
     let percussion_enabled = app.prefs.percussion.is_enabled();
     ui.add_enabled_ui(percussion_enabled, |ui| {
-        slider_row(ui, compact, "Percussion volume", |ui| {
-            ui.add(egui::Slider::new(
-                &mut app.prefs.percussion_volume,
-                0.0..=1.5,
-            ))
-        });
+        slider_row(
+            ui,
+            compact,
+            "Percussion volume",
+            &mut app.prefs.percussion_volume,
+            |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+        );
     });
     ui.separator();
 }
@@ -354,7 +360,7 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
             );
     ui.label(
                 egui::RichText::new(
-                    "Keyboard: Space play/pause · R restart · Esc back · 1–4 switch tabs · Enter starts a search, creates a folder, or adds an alias.",
+                    "Keyboard: Space play/pause · R restart · Esc back · 1–4 switch tabs · ←/→ previous or next tab · Enter starts a search, creates a folder, or adds an alias.",
                 )
                 .small()
                 .color(theme::muted(ui)),
@@ -366,34 +372,53 @@ fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Calling lead");
     ui.checkbox(&mut app.prefs.lead.auto, "Automatic syllable-based lead");
     if app.prefs.lead.auto {
-        slider_row(ui, compact, "Minimum speech lead", |ui| {
-            ui.add(egui::Slider::new(&mut app.prefs.lead.min_beats, 0.5..=4.0).text("beats"))
-        });
-        slider_row(ui, compact, "Maximum speech lead", |ui| {
-            ui.add(egui::Slider::new(&mut app.prefs.lead.max_beats, 1.0..=6.0).text("beats"))
-        });
-        slider_row(ui, compact, "Speech rate", |ui| {
-            ui.add(
-                egui::Slider::new(&mut app.prefs.lead.syllables_per_second, 3.0..=10.0)
-                    .text("syllables/s"),
-            )
-        });
+        slider_row(
+            ui,
+            compact,
+            "Minimum speech lead",
+            &mut app.prefs.lead.min_beats,
+            |ui, value| ui.add(egui::Slider::new(value, 0.5..=4.0).text("beats")),
+        );
+        slider_row(
+            ui,
+            compact,
+            "Maximum speech lead",
+            &mut app.prefs.lead.max_beats,
+            |ui, value| ui.add(egui::Slider::new(value, 1.0..=6.0).text("beats")),
+        );
+        slider_row(
+            ui,
+            compact,
+            "Speech rate",
+            &mut app.prefs.lead.syllables_per_second,
+            |ui, value| ui.add(egui::Slider::new(value, 3.0..=10.0).text("syllables/s")),
+        );
     } else {
-        slider_row(ui, compact, "Manual speech lead", |ui| {
-            ui.add(egui::Slider::new(&mut app.prefs.lead.manual_beats, 0.5..=6.0).text("beats"))
-        });
+        slider_row(
+            ui,
+            compact,
+            "Manual speech lead",
+            &mut app.prefs.lead.manual_beats,
+            |ui, value| ui.add(egui::Slider::new(value, 0.5..=6.0).text("beats")),
+        );
     }
-    slider_row(ui, compact, "Safety padding", |ui| {
-        ui.add(
-            egui::Slider::new(
-                &mut app.prefs.lead.padding_seconds,
-                contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+    slider_row(
+        ui,
+        compact,
+        "Safety padding",
+        &mut app.prefs.lead.padding_seconds,
+        |ui, value| {
+            ui.add(
+                egui::Slider::new(
+                    value,
+                    contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+                )
+                .step_by(0.1)
+                .fixed_decimals(1)
+                .text("s"),
             )
-            .step_by(0.1)
-            .fixed_decimals(1)
-            .text("s"),
-        )
-    });
+        },
+    );
     ui.label(
         egui::RichText::new(
             "Added to every call after the speech-lead clamp. Zero removes the buffer.",
@@ -458,20 +483,16 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    slider_row(ui, compact, "Rate", |ui| {
-        let response = ui.add(
-            egui::Slider::new(
-                &mut app.prefs.tts_rate,
-                contra_core::MIN_TTS_RATE..=contra_core::MAX_TTS_RATE,
-            )
-            .step_by(0.1)
-            .fixed_decimals(1),
-        );
-        if response.changed() {
-            app.speech.set_rate(app.prefs.speech_rate());
-        }
-        response
+    let rate_response = slider_row(ui, compact, "Rate", &mut app.prefs.tts_rate, |ui, rate| {
+        ui.add(
+            egui::Slider::new(rate, contra_core::MIN_TTS_RATE..=contra_core::MAX_TTS_RATE)
+                .step_by(0.1)
+                .fixed_decimals(1),
+        )
     });
+    if rate_response.changed() {
+        app.speech.set_rate(app.prefs.speech_rate());
+    }
     ui.horizontal(|ui| {
         ui.label("Tone");
         egui::ComboBox::from_id_salt("tts_tone")

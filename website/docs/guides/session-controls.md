@@ -57,12 +57,14 @@ the window is in the background.
 - **Esc** returns from a download screen to its saved-content list, and from a
   picker or Preferences to the session.
 - **1–4** switch between Session, Select dance, Select tune, and Preferences.
+- **← / →** switch to the previous or next tab, wrapping at the ends.
 - **Enter** starts a search from a search field, creates a folder, or adds a
   custom alias.
 
-Shortcuts are ignored while a text field has focus. On desktop, the keyboard's
-play/pause media key controls the transport even when the window is in the
-background. See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
+Shortcuts are ignored while a text field has focus, and the arrow keys are left
+to a focused slider or list. On desktop, the keyboard's play/pause media key
+controls the transport even when the window is in the background. See
+[Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 ## The call prompt
 
@@ -215,6 +217,12 @@ card together, the whole session page scrolls; the prompt stays at the top of
 that page. On a taller phone the prompt stays put and only the dance card
 scrolls. The saved-content and download screens use a single scrolling column
 at phone width, with full-width fields and the preview below the results.
+
+On a touch screen, swipe left or right across the content to change tabs. The
+gesture ignores a swipe that starts on a slider, and a mostly vertical swipe on
+a slider scrolls the page instead of changing the value, so passing a thumb
+over the tempo or volume control while scrolling does not disturb it. Drag a
+slider sideways to change it on purpose.
 
 <Shot id="session-mobile-controls" />
 

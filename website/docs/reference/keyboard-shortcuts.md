@@ -15,6 +15,7 @@ transport from any window; see [Media keys](#media-keys).
 | **R** | Restart | Returns to the count-in and resets the call state. |
 | **Esc** | Close About, go back, or return to **Session** | Closes the **About** window. Otherwise returns **Download dance** and **Download tune** to their saved-content lists, the alias editor to **Preferences**, and **Select dance**, **Select tune**, and **Preferences** to **Session**. |
 | **1–4** | Switch tabs | 1 Session, 2 Select dance, 3 Select tune, 4 Preferences. |
+| **← / →** | Previous or next tab | The tab row wraps: Left from Session reaches Preferences, Right from Preferences returns to Session. Ignored while a control has keyboard focus. |
 | **Enter** | Submit | Starts a search from a search field, creates a folder from the folder-name field, or adds the custom alias when the alias fields are filled. |
 
 ## Details
@@ -29,6 +30,11 @@ transport from any window; see [Media keys](#media-keys).
   **About** window; the other shortcuts are suspended while that window is open.
 - **1–4** are ignored while a text field has focus, so typing a number does not
   change tabs.
+- **← / →** are ignored whenever any control has keyboard focus. A focused
+  slider still moves with the arrow keys, and a focused list still scrolls, so
+  the shortcuts never steal an arrow key from the control you are using. On a
+  detail screen, such as **Download dance**, the arrows step from the tab that
+  contains it.
 - **Enter** in a search field submits the current filters; in the folder-name
   field it creates the folder; in the custom alias or alternative-call fields it
   adds the entry when both fields are filled.
@@ -37,6 +43,15 @@ transport from any window; see [Media keys](#media-keys).
 
 The shortcuts are implemented in the application, not in the docs site. If a
 shortcut does not respond, check that a text field does not have focus.
+
+## Touch screens
+
+On Android and other touch devices, **swipe left or right** across the screen
+content to move to the next or previous tab. The gesture needs about 60 points
+of mostly horizontal travel and changes the tab once per swipe; it works over
+labels and cards but not while a text field has focus or a pop-up is open. A
+swipe that starts on a slider is treated as an adjustment, and a mostly
+vertical swipe on a slider scrolls the page instead of changing the value.
 
 ## Media keys
 
