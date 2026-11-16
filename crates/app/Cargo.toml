@@ -67,6 +67,12 @@ souvlaki = { workspace = true, features = ["use_zbus"] }
 tar = "0.4"
 ureq.workspace = true
 
+# Tests drive the real app through egui_kittest without the `headless`
+# feature. The screenshot renderer keeps the wgpu renderer; unit tests only
+# need the eframe harness, so they do not pull in a GPU backend.
+[dev-dependencies]
+egui_kittest = { version = "0.37", default-features = false, features = ["eframe"] }
+
 [build-dependencies]
 sha2.workspace = true
 ureq.workspace = true

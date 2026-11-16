@@ -13,6 +13,12 @@ pub trait CacheStore: Send {
     fn write(&mut self, key: &str, value: &[u8]) -> Result<(), String>;
     fn remove(&mut self, key: &str);
     fn clear(&mut self);
+
+    /// Bytes this store keeps in RAM. A file-backed cache reports zero: its
+    /// entries are disk, not resident memory.
+    fn memory_bytes(&self) -> usize {
+        0
+    }
 }
 
 #[derive(Default)]
@@ -36,6 +42,13 @@ impl CacheStore for MemoryCache {
 
     fn clear(&mut self) {
         self.values.clear();
+    }
+
+    fn memory_bytes(&self) -> usize {
+        self.values
+            .iter()
+            .map(|(key, value)| key.len() + value.len())
+            .sum()
     }
 }
 
@@ -130,6 +143,11 @@ impl Cache {
     pub fn clear(&mut self) {
         self.store.clear();
     }
+
+    /// Bytes the cache store keeps in RAM. A file cache returns zero.
+    pub fn memory_bytes(&self) -> usize {
+        self.store.memory_bytes()
+    }
 }
 
 fn split_entry(bytes: &[u8]) -> Option<(u64, &[u8])> {
@@ -163,6 +181,16 @@ mod tests {
         );
         cache.clear();
         assert_eq!(cache.get("dance/contradb/2409", 60), None);
+    }
+
+    #[test]
+    fn memory_cache_reports_its_resident_bytes() {
+        let mut cache = Cache::new(MemoryCache::default());
+        assert_eq!(cache.memory_bytes(), 0);
+        cache.put("key", b"value").unwrap();
+        assert!(cache.memory_bytes() >= 8, "{}", cache.memory_bytes());
+        cache.clear();
+        assert_eq!(cache.memory_bytes(), 0);
     }
 
     #[test]

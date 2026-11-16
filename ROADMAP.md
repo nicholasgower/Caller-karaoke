@@ -34,3 +34,12 @@ number, so a reference such as "ROADMAP.md §7" still points at the same text.
 15. [Decision log](docs/roadmap/decision-log.md)
 16. [Open items](docs/roadmap/open-items.md)
 17. [Calling and teaching](docs/roadmap/calling-and-teaching.md)
+
+---
+
+## Developer references
+
+- [Memory use](docs/memory.md) — where the process memory goes and how to
+  reduce it, with the in-app memory table.
+- [Automation](docs/automation.md) — driving the running app through the MCP
+  server for UI testing.

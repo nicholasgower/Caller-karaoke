@@ -213,6 +213,22 @@ quiet master with a loud melody is still quiet overall.
 
 <Shot id="transport-volume" />
 
+## Maintenance and memory
+
+**Preferences → Maintenance** has **Export MIDI…**, **Clear source cache**, and
+a **Memory use** section. The memory table measures the bundled and decoded
+SoundFont, the rendered music buffer, the prepared rotation buffer, fonts, the
+sheet-music texture, saved libraries, caches, undo snapshots, and the optional
+neural voice, and gives a total. **Refresh memory use** rebuilds the table after
+a setting or a session changes.
+
+The biggest optional consumers are the neural voice (turn **Speak calls** off
+to release it; it reloads from the cache when enabled again) and the four music
+variation passes per render (turn **Vary the music on each loop** off for one
+pass). Cycling tunes also keeps the next rendered tune in memory. See the
+[memory notes](https://github.com/storytold/Contra-karaoke/blob/dev/docs/memory.md)
+for the measured numbers and the remaining options.
+
 ## About and project links
 
 The About text is the last section of **Preferences**, below Maintenance. It

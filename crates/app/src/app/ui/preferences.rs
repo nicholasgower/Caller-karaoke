@@ -52,31 +52,9 @@ impl ContraApp {
         });
 
         // One place applies a change to the subsystem it belongs to; see
-        // Preferences::changes_since.
-        self.prefs.validate();
-        if self.prefs != before {
-            let changes = self.prefs.changes_since(&before);
-            if changes.timeline && !self.role_edit_active {
-                self.rebuild_timeline();
-                self.last_spoken = None;
-            }
-            if changes.audio {
-                // Apply on the next frame once the user releases the control.
-                // Keep playing the old buffer in the meantime so changing a
-                // setting never restarts playback.
-                self.needs_render = true;
-                self.pending_audio = true;
-            }
-            if !self.prefs.tts_enabled {
-                self.speech.stop();
-            }
-            if changes.tone {
-                self.speech.set_tone(self.prefs.tts_tone);
-            }
-            self.audio.set_looping(self.prefs.loop_enabled);
-            self.audio.set_volume(self.prefs.master_volume);
-            self.save_prefs();
-        }
+        // Preferences::changes_since. A value changed and changed back before
+        // the queued render runs leaves no pending work.
+        self.reconcile_preferences(before);
     }
 }
 
@@ -99,14 +77,12 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             }
         });
     if preset != app.prefs.role_preset {
-        let before = app.prefs.role_terms.clone();
         app.prefs.select_role_preset(preset);
         // A named preset replaces the terms, so the change is complete now.
-        // Custom keeps the current words and waits for an edit.
+        // Custom keeps the current words and waits for an edit. Role terms
+        // change the calls and the spoken text, never the music; the frame's
+        // timeline reconciliation is the whole effect.
         app.role_edit_pending = false;
-        if app.prefs.role_terms != before {
-            app.needs_render = true;
-        }
     }
     if app.prefs.role_preset == RolePreset::Custom {
         egui::Grid::new("custom-roles")
@@ -949,4 +925,60 @@ fn maintenance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
             .small()
             .color(theme::muted(ui)),
     );
+    ui.add_space(8.0);
+    memory_use(app, ui);
+}
+
+/// The measured memory table, with an explicit refresh.
+///
+/// The report walks the libraries and buffers, so it is built on demand rather
+/// than every frame. It is a diagnostic: nothing in the session depends on it.
+fn memory_use(app: &mut ContraApp, ui: &mut egui::Ui) {
+    ui.label(egui::RichText::new("Memory use").strong());
+    ui.label(
+        egui::RichText::new(
+            "Measured and estimated resident memory by category. Numbers vary by platform and \
+             by which optional features have loaded.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    let mut refresh = app.memory_report.is_none();
+    if ui.button("Refresh memory use").clicked() {
+        refresh = true;
+    }
+    if refresh {
+        let ctx = ui.ctx().clone();
+        app.memory_report = Some(app.memory_report(Some(&ctx)));
+    }
+    if let Some(report) = &app.memory_report {
+        let mut total = 0u64;
+        // One category per block rather than a two-column grid: at 360 points
+        // the category name and the long source note would otherwise force the
+        // grid wider than the page.
+        for (name, bytes, estimated, note) in report.rows() {
+            total = total.saturating_add(bytes);
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(name.replace('_', " ")).small().strong());
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{:.1} MiB{}",
+                        crate::memory::mebibytes(bytes),
+                        if estimated { " (est.)" } else { "" }
+                    ))
+                    .small()
+                    .color(theme::muted(ui)),
+                );
+            });
+            if !note.is_empty() {
+                ui.label(egui::RichText::new(note).small().color(theme::muted(ui)));
+            }
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new("Total").strong());
+            ui.label(
+                egui::RichText::new(format!("{:.1} MiB", crate::memory::mebibytes(total))).strong(),
+            );
+        });
+    }
 }

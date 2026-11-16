@@ -8,6 +8,7 @@ mod audio;
 mod defaults;
 mod library;
 mod media_keys;
+mod memory;
 mod sheet;
 mod source;
 mod theme;

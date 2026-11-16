@@ -51,6 +51,12 @@ impl SheetPreview {
         Ok(Self { texture, size })
     }
 
+    /// Bytes the rasterized texture occupies in the GPU/CPU texture store.
+    pub fn texture_bytes(&self) -> u64 {
+        let [width, height] = self.texture.size();
+        (width as u64) * (height as u64) * 4
+    }
+
     /// Draw the sheet at the panel width, preserving its aspect ratio.
     pub fn ui(&self, ui: &mut egui::Ui) {
         let width = ui.available_width().min(self.size.x).max(1.0);

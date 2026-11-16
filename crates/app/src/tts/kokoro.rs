@@ -47,13 +47,38 @@ const MODEL: Asset = Asset {
     sha256: "fbae9257e1e05ffc727e951ef9b9c98418e6d79f1c9b6b13bd59f5c9028a1478",
     size: 92_361_116,
 };
-
 const CONFIG: Asset = Asset {
     name: "config.json",
     url: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/config.json",
     sha256: "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f",
     size: 2_351,
 };
+
+/// Estimated resident memory of a loaded neural voice.
+///
+/// The quantized model file is loaded into an ONNX Runtime session; the runtime
+/// keeps the weights plus per-inference arenas. 1.5× the file is a deliberately
+/// conservative estimate for the session, and the one-hot voice row and the
+/// runtime library are counted at their measured sizes.
+pub(crate) fn working_set_bytes() -> u64 {
+    MODEL.size + MODEL.size / 2 + 522_240 + runtime_bytes()
+}
+
+/// Size of the ONNX Runtime library this build loads.
+pub(crate) fn runtime_bytes() -> u64 {
+    #[cfg(windows)]
+    {
+        include_bytes!(concat!(env!("OUT_DIR"), "/onnxruntime.dll")).len() as u64
+    }
+    #[cfg(target_os = "linux")]
+    {
+        ONNX_RUNTIME_SO_SIZE
+    }
+    #[cfg(all(unix, not(target_os = "linux")))]
+    {
+        0
+    }
+}
 
 #[cfg(target_os = "linux")]
 const ONNX_RUNTIME: Asset = Asset {
@@ -200,7 +225,7 @@ impl Worker {
         while let Ok(command) = commands.recv() {
             match command {
                 Command::Enable(enabled) => {
-                    self.enabled = enabled;
+                    self.set_enabled(enabled);
                     if enabled {
                         self.ensure_ready(&events);
                         self.prewarm(&commands, &events, &generation);
@@ -289,6 +314,24 @@ impl Worker {
             && generation.load(Ordering::Relaxed) == asked
         {
             let _ = events.send(KokoroEvent::Audio(samples));
+        }
+    }
+
+    /// Turn the voice on or off.
+    ///
+    /// Turning it off releases the quantized model and the synthesized-call
+    /// cache. ONNX Runtime otherwise keeps roughly a hundred megabytes of
+    /// session state alive for the rest of the process, even though nothing
+    /// will speak until the control is switched on again; re-enabling reloads
+    /// the already-cached files.
+    fn set_enabled(&mut self, enabled: bool) -> PrewarmAction {
+        self.enabled = enabled;
+        if enabled {
+            PrewarmAction::Restart
+        } else {
+            self.engine = None;
+            self.cache.clear();
+            PrewarmAction::Abort
         }
     }
 
@@ -454,14 +497,7 @@ impl Worker {
                 self.last_calls = calls;
                 PrewarmAction::Restart
             }
-            Command::Enable(enabled) => {
-                self.enabled = enabled;
-                if enabled {
-                    PrewarmAction::Restart
-                } else {
-                    PrewarmAction::Abort
-                }
-            }
+            Command::Enable(enabled) => self.set_enabled(enabled),
             Command::Retry { enabled, calls } => {
                 self.failed = None;
                 self.enabled = enabled;
@@ -1270,6 +1306,22 @@ mod tests {
     fn phones(text: &str) -> String {
         let (raw, _) = G2P.g2p(&pronounce::kokoro_text(text)).expect("phonemes");
         to_kokoro_phonemes(&raw)
+    }
+
+    #[test]
+    fn disabling_the_voice_releases_its_cache() {
+        let mut worker = Worker::new(std::env::temp_dir(), 48_000);
+        worker.engine = None;
+        worker.cache.insert("a call".into(), vec![0.25; 1_024]);
+        worker.enabled = true;
+
+        assert!(matches!(worker.set_enabled(false), PrewarmAction::Abort));
+        assert!(!worker.enabled);
+        assert!(worker.engine.is_none());
+        assert!(
+            worker.cache.is_empty(),
+            "synthesized calls must not stay resident after speech is turned off"
+        );
     }
 
     #[test]

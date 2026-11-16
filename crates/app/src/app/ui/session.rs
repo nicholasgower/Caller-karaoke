@@ -711,8 +711,9 @@ impl ContraApp {
         if music_dirty {
             // Re-render on the next frame after the control is released; the
             // old buffer keeps playing until then so playback does not restart.
-            self.needs_render = true;
-            self.pending_audio = true;
+            // A value dragged and dragged back before that frame leaves no
+            // pending render.
+            self.refresh_render_flags();
         }
         match action {
             Some("play") => self.play(),
