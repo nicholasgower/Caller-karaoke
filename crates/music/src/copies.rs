@@ -87,16 +87,18 @@ const TAPER: [f32; MAX_COPIES] = [1.0, 0.85, 0.75, 0.65];
 ///
 /// `base_pan` is the pan the part had as a single player. With one copy the
 /// result is exactly that player. With more, the copies are spread around it
-/// and every level is scaled by `1/sqrt(n)`, which keeps the section's loudness
-/// close to the single player instead of doubling it. The final peak limiter
+/// and every level is scaled so the taper's power sum is one: the section keeps
+/// the single player's loudness instead of doubling it. The final peak limiter
 /// still protects the mix.
 pub fn voices(base_pan: f32, count: usize, sample_rate: u32) -> Vec<CopyVoice> {
     let count = count.clamp(1, MAX_COPIES);
-    let section = if count == 1 {
-        1.0
-    } else {
-        1.0 / (count as f32).sqrt()
-    };
+    // Divide by the power sum, not by the player count. Copies are deliberately
+    // decorrelated by pan, latency, and detune, so their levels add as powers:
+    // `1/sqrt(count)` alone would leave a four-player section about 1.7 dB
+    // quieter than one player. Human timing exposes that because it removes the
+    // coherent part of the sum, and turning humanize off only partly masks it.
+    let power: f32 = TAPER[..count].iter().map(|taper| taper * taper).sum();
+    let section = 1.0 / power.sqrt();
     (0..count)
         .map(|index| {
             let (pan_offset, seconds, cents, velocity_offset) = SPREAD[index];
@@ -157,11 +159,16 @@ mod tests {
             section[1..].iter().any(|voice| voice.detune != 1.0),
             "later copies are detuned for a section beat"
         );
-        let total: f32 = section.iter().map(|voice| voice.gain).sum();
-        assert!(
-            total <= 2.0 && total > 1.0,
-            "four copies must not quadruple the level, got {total}"
-        );
+        for count in 1..=MAX_COPIES {
+            let power: f32 = voices(0.0, count, SAMPLE_RATE)
+                .iter()
+                .map(|voice| voice.gain * voice.gain)
+                .sum();
+            assert!(
+                (power - 1.0).abs() < 1e-6,
+                "{count} copies must keep the single player's power, got {power}"
+            );
+        }
     }
 
     #[test]
