@@ -15,6 +15,7 @@ driver overhead that the app does not own.
 | Consumer | Approximate resident memory | How it gets there |
 | --- | ---: | --- |
 | Neural voice (Kokoro + ONNX Runtime) | ~155 MiB | Optional; loaded when **Speak calls** is on. 92 MiB quantized model plus session arenas and the 16.5 MiB runtime |
+| Prepared call deliveries | ~8 MiB for the default card, 20–28 MiB for a long card | Optional; four deliveries per call text at 48 kHz mono f32. The same audio is cached on disk as 16-bit PCM (about 4–14 MB per card) |
 | Rendered music, four variation passes | ~50 MiB | Count-in + 4 × 64-beat passes + ending, interleaved stereo f32 at 48 kHz |
 | RAM render cache | shares the rendered music allocation | The cache and the audio callback hold the same `Arc`; a settings change can briefly hold the old loop and the new one |
 | Next tune prepared for **Cycle tunes** | ~50 MiB | A second rendered pass held until the rotation boundary |
@@ -25,10 +26,11 @@ driver overhead that the app does not own.
 | Runtime, GPU driver, allocator, thread stacks | remainder | eframe/wgpu/GL, the OS, and allocator arenas; not controlled by this app |
 
 A cold session with speech off is therefore around 120–150 MiB. Using speech
-once adds the model; cycling tunes adds the prepared buffer, and a settings
-change can briefly hold the previous loop while the replacement renders. The
-reported 540 MB suggests speech on, cycling on, and platform/driver overhead on
-top of the table above.
+once adds the model and, at the default four deliveries, roughly ten megabytes
+of prepared calls; cycling tunes adds the prepared buffer, and a settings change
+can briefly hold the previous loop while the replacement renders. The reported
+540 MB suggests speech on, cycling on, and platform/driver overhead on top of
+the table above.
 
 ## What the app reports
 
@@ -49,6 +51,7 @@ soundfont_samples                 0.0  measured
 audio_buffer                     49.8  measured
 prepared_tune                     0.0  measured
 speech_audio                      0.0  measured
+speech_cache                      0.0  estimated
 arrangement                       0.0  measured
 call_timeline                     0.0  measured
 saved_libraries                   0.0  estimated
@@ -91,6 +94,14 @@ app uses 1.5× the file size plus the runtime library as a labelled estimate.
   is loaded into ONNX Runtime, with session arenas and the 16.5 MiB runtime.
   Turning **Speak calls** off releases the model and the synthesized-call
   cache; turning it back on reloads the already-cached files.
+- **Prepared call deliveries.** With **Deliveries per call** above one (the
+  default is four), the worker keeps every prepared delivery in RAM so a
+  repeated call can rotate without synthesizing during the dance. Each delivery
+  is about 190 KiB per second of speech at 48 kHz f32. The same audio is written
+  to the TTS cache as 16-bit PCM, keyed by voice, tone, rate, output rate, call
+  text, and delivery index; the on-disk copy is capped at 64 MiB and pruned
+  least-recently-used, so later launches load it instead of running the model
+  again.
 - **Fonts.** egui's default fonts are a few hundred KiB of font data; the glyph
   atlas is a rasterized texture that grows with the characters actually drawn.
 - **Libraries and caches.** Saved dances and tunes are JSON cards, typically a
@@ -108,17 +119,20 @@ app uses 1.5× the file size plus the runtime library as a labelled estimate.
 These are already possible from the UI:
 
 1. **Turn off Speak calls** when the session does not need spoken prompts.
-   This releases the neural model (the next enable reloads it from the cache).
-2. **Turn off Vary the music on each loop** in **Preferences → Playback**. The
+   This releases the neural model and the prepared deliveries (the next enable
+   reloads them from the disk cache).
+2. **Set Deliveries per call to 1** in **Preferences → Calling** to keep a
+   single rendering and skip the extra inference and storage entirely.
+3. **Turn off Vary the music on each loop** in **Preferences → Playback**. The
    next render has one pass instead of four, cutting the music buffer to about
    one quarter.
-3. **Leave Cycle tunes off**, or keep the tune set small. Cycling keeps a second
+4. **Leave Cycle tunes off**, or keep the tune set small. Cycling keeps a second
    rendered buffer ready.
-4. **Use one SoundFont.** A user bank replaces the bundled sample data; the
+5. **Use one SoundFont.** A user bank replaces the bundled sample data; the
    bundled file remains in the executable image but is not decoded.
-5. **Clear the source cache** if the web build has accumulated responses. The
+6. **Clear the source cache** if the web build has accumulated responses. The
    desktop cache is already on disk.
-6. **Close a picker preview.** The sheet texture is released when the preview is
+7. **Close a picker preview.** The sheet texture is released when the preview is
    cleared or another tune is selected.
 
 ## Changes made for this report
@@ -131,6 +145,9 @@ These are already possible from the UI:
   synthesized-call cache in the worker; enabling it loads from the cached files.
 - Preference writes are skipped when the values on disk are already current,
   so a control changed and changed back does not rewrite the file.
+- The neural voice now prepares four deliveries per call and caches the audio
+  as 16-bit PCM on disk, so the table reports the RAM copy and later launches
+  avoid re-running the model.
 
 ## Possible future reductions
 

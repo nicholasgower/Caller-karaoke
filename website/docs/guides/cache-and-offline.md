@@ -13,8 +13,11 @@ and `localStorage` in the browser. The two bundled defaults are in the library
 from first launch.
 
 On desktop, the Kokoro neural voice is cached separately: the model and the
-selected voice style file are downloaded once and reused offline. The platform
-voice is used if the neural voice is not ready.
+selected voice style file are downloaded once and reused offline. Synthesized
+call deliveries are also cached on disk, so later launches reuse the audio
+instead of running the model again; the copy is limited to 64 MiB and pruned
+least-recently-used. The platform voice is used if the neural voice is not
+ready.
 
 ## Cache lifetimes
 
@@ -63,7 +66,7 @@ from the **Download dance** or **Download tune** screen.
 
 Clearing the cache does not remove preferences, saved dances and tunes, the
 bundled defaults and bundled soundfont, a SoundFont you loaded, or the cached
-neural voice files.
+neural voice files and synthesized call audio.
 
 There is no cache-size display or manual refresh button in the current UI. Use
 the normal search action to fetch fresh content after clearing. To refresh a

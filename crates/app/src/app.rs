@@ -866,6 +866,7 @@ impl ContraApp {
         speech.set_rate(prefs.speech_rate());
         speech.set_voice(&prefs.tts_voice);
         speech.set_tone(prefs.tts_tone);
+        speech.set_deliveries(prefs.tts_deliveries);
         if prefs.tts_enabled {
             speech.set_enabled(true);
         }
@@ -1843,6 +1844,7 @@ impl ContraApp {
         self.speech.set_rate(self.prefs.speech_rate());
         self.speech.set_voice(&self.prefs.tts_voice);
         self.speech.set_tone(self.prefs.tts_tone);
+        self.speech.set_deliveries(self.prefs.tts_deliveries);
         self.speech.set_enabled(self.prefs.tts_enabled);
         if !self.prefs.tts_enabled {
             self.speech.stop();
@@ -2005,6 +2007,9 @@ impl ContraApp {
         }
         if changes.tone {
             self.speech.set_tone(self.prefs.tts_tone);
+        }
+        if changes.deliveries {
+            self.speech.set_deliveries(self.prefs.tts_deliveries);
         }
         self.audio.set_looping(self.prefs.loop_enabled);
         self.audio.set_volume(self.prefs.master_volume);
@@ -2899,6 +2904,11 @@ impl ContraApp {
             self.audio.play();
             self.started = true;
             self.status = "Playing".into();
+            if self.prefs.tts_enabled {
+                // Pausing cancels the hidden delivery passes; resume them now
+                // that the session is running again. Prepared calls are reused.
+                self.speech.prewarm(call_texts(&self.timeline));
+            }
             if from_finished {
                 // A finished run may have spoken the wrapped first call just
                 // before the ending; that call belongs to a pass that never
@@ -3496,6 +3506,12 @@ impl ContraApp {
             sample_bytes(self.audio.speech_buffer_samples()),
             false,
             "the call currently mixed into playback",
+        );
+        report.add(
+            "speech_cache",
+            self.speech.speech_cache_bytes(),
+            true,
+            "prepared deliveries for repeated calls; the disk copy is separate",
         );
 
         let arrangement = self.arrangement.as_ref().map_or(0, |arrangement| {
