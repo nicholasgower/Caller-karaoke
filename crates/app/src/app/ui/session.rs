@@ -425,10 +425,10 @@ fn prompt_card_min_height(
 /// UPCOMING MOVE already names its call in the main line, so its footer stays
 /// empty instead of repeating the words; when no call follows the card, the
 /// footer stays empty too and never echoes the call already on the card.
-fn card_footer<'a>(
+fn card_footer(
     mode: CardMode,
-    next: Option<&'a contra_core::ScheduledCall>,
-) -> Option<&'a contra_core::ScheduledCall> {
+    next: Option<&contra_core::ScheduledCall>,
+) -> Option<&contra_core::ScheduledCall> {
     if mode == CardMode::UpcomingMove {
         return None;
     }
@@ -777,12 +777,12 @@ impl ContraApp {
         } else {
             None
         };
-        // While a run is active the card reserves the same rows in every state,
-        // so CALL NOW, UPCOMING MOVE, the count-in, and the finished card all
-        // keep the controls below in place. The idle READY card is left
-        // content-sized: reserving two call lines there would be half an empty
-        // box, and nothing is moving yet.
-        let min_height = if self.started {
+        // While a run is live the card reserves the same rows in every state,
+        // so the count-in, CALL NOW, UPCOMING MOVE, and the slow ending all keep
+        // the controls below in place. The idle READY card and the completed
+        // card are left content-sized: reserving two call lines there would be
+        // half an empty box, and nothing is moving.
+        let min_height = if self.started && !self.audio.is_finished() {
             let call_row = ui
                 .ctx()
                 .fonts_mut(|fonts| fonts.row_height(&egui::FontId::proportional(call_size)));

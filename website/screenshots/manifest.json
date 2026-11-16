@@ -126,8 +126,8 @@
     },
     {
       "id": "session-call-now",
-      "alt": "The session screen during a figure, showing the CALL NOW prompt, the executes-in countdown, the next call, and the active dance-card row.",
-      "caption": "The large prompt is the call to say now; the next call is previewed below it.",
+      "alt": "The session screen during a figure, showing the CALL NOW prompt, the executes-in countdown, the NEXT footer naming the following call inside the same card, and the active dance-card row.",
+      "caption": "The large prompt is the call to say now; its footer previews the next call, so the panel keeps one height.",
       "status": "ready",
       "width": 1280,
       "height": 800

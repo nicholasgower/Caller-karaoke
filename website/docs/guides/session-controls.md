@@ -80,12 +80,18 @@ karaoke prompt. It moves through these states:
 | --- | --- | --- |
 | Ready | `READY`, `Press Play to begin` | Press **Play** to build the music. |
 | Count-in | `COUNT-IN`, a large number, and either **CALL NOW** or `Listen for the first chord` | Wait for the loop, or say the first call if it is already due. |
-| Calling | `CALL NOW`, green card | Say the words now. The line below counts down to the execute beat. |
+| Calling | `CALL NOW`, green card | Say the words now. The detail line counts down to the execute beat, and the **NEXT:** footer previews the following call. |
 | Executing | `UPCOMING MOVE`, red card, the next call, and `call in N beats` | The figure is happening; prepare to say the next call. The dance card still highlights the figure in progress. |
 | Finished | `Dance complete` | Press **Restart** to run again. End tune also finishes here. |
 
 While a figure executes, the prompt switches to the move you must say next. The
-**Next:** line remains below the prompt for the following call.
+call that follows it stays inside the same card as a **NEXT:** footer — it is
+part of the prompt, not a separate line under it. The card therefore keeps one
+height while the session runs, so switching between **CALL NOW**, **UPCOMING
+MOVE**, and the final figure never moves the controls below. The card reserves
+room for two lines of call text and the footer; a longer call wraps and makes
+the card taller instead of clipping the words. The idle `READY` card and the
+completed card stay content-sized.
 
 <Shot id="session-upcoming-move" />
 
