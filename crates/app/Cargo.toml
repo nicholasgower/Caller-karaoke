@@ -25,6 +25,11 @@ name = "contra-headless"
 path = "src/bin/contra-headless.rs"
 required-features = ["headless"]
 
+[[bin]]
+name = "contra-perf"
+path = "src/bin/contra-perf.rs"
+required-features = ["headless"]
+
 [features]
 # Development-only: lets `contra-mcp` attach to a running app and drive it.
 # Off by default so release artifacts do not carry the inspection listener.

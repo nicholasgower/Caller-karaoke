@@ -114,8 +114,21 @@ impl AudioEngine {
         self.sample_rate
     }
 
+    /// Install a buffer by value. Tests and the headless clock use this; the
+    /// app itself installs a shared buffer so its cache and the callback point
+    /// at the same allocation.
+    #[cfg_attr(not(any(feature = "headless", test)), allow(dead_code))]
     pub fn set_buffer(&self, buffer: AudioBuffer) {
-        self.shared.buffer.store(Some(Arc::new(buffer)));
+        self.set_buffer_shared(Arc::new(buffer));
+    }
+
+    /// Install a buffer that is already shared with a cache.
+    ///
+    /// The audio callback and the render cache can hold the same allocation, so
+    /// a cached take does not copy several megabytes of samples on the UI
+    /// thread.
+    pub fn set_buffer_shared(&self, buffer: Arc<AudioBuffer>) {
+        self.shared.buffer.store(Some(buffer));
         self.shared.position.store(0, Ordering::Relaxed);
         self.shared.finished.store(false, Ordering::Relaxed);
         self.shared.ending.store(false, Ordering::Relaxed);
