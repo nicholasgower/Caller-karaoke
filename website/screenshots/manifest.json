@@ -192,8 +192,8 @@
     },
     {
       "id": "prefs-roles-presets",
-      "alt": "The Role terms section with the Larks / Robins preset selected and the live role-replacement example below it.",
-      "caption": "Larks / Robins is the default; the example updates as the terms change.",
+      "alt": "The Role terms section with the Larks / Robins preset selected (presets read left side first) and the live role-replacement example below it.",
+      "caption": "Presets name the left side first; Larks / Robins is the default and the example updates as the terms change.",
       "status": "ready",
       "width": 1280,
       "height": 800

@@ -8,8 +8,7 @@ use std::time::Duration;
 use contra_core::{
     AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, COUNT_IN_BEATS, Dance,
     FolderFilter, Library, MelodyInstrument, MoveKind, Percussion, PercussionRhythm,
-    PracticeTimeline, Preferences, RolePreset, RoleTerms, SecondAccompaniment, Theme,
-    TimelineConfig, Tune,
+    PracticeTimeline, Preferences, RolePreset, SecondAccompaniment, Theme, TimelineConfig, Tune,
 };
 use contra_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_passes, parse_abc,
@@ -274,6 +273,12 @@ pub struct ContraApp {
     /// Playback settings changed and need a render once the user stops
     /// adjusting the control.
     pending_audio: bool,
+    /// A custom role-term field has focus, so the timeline rebuild is deferred
+    /// until the edit settles.
+    role_edit_active: bool,
+    /// Custom role terms changed while the field was focused and still need
+    /// the deferred rebuild.
+    role_edit_pending: bool,
     render_loading: bool,
     started: bool,
     /// Transient state of the dance and tune download screens.
@@ -582,6 +587,8 @@ impl ContraApp {
             soundfont_error,
             needs_render: true,
             pending_audio: false,
+            role_edit_active: false,
+            role_edit_pending: false,
             render_loading: false,
             started: false,
             picker: PickerState {
@@ -918,6 +925,8 @@ impl ContraApp {
             soundfont_error: None,
             needs_render: true,
             pending_audio: false,
+            role_edit_active: false,
+            role_edit_pending: false,
             render_loading: false,
             started: false,
             picker: PickerState {
@@ -993,6 +1002,23 @@ impl ContraApp {
                 self.error = Some(error);
             }
         }
+    }
+
+    /// Commit a custom role-term edit that was deferred while typing.
+    ///
+    /// The text fields save every keystroke, but the timeline (and with it the
+    /// speech pre-synthesis) waits until the field loses focus or the user
+    /// leaves Preferences, so a long word does not rebuild on each letter. The
+    /// session's music is marked pending like every other role and alias
+    /// change.
+    fn commit_role_terms(&mut self) {
+        if !self.role_edit_pending {
+            return;
+        }
+        self.role_edit_pending = false;
+        self.role_edit_active = false;
+        self.rebuild_timeline();
+        self.needs_render = true;
     }
 
     /// The font to render with: the user's file, else the bundled subset.
@@ -1835,6 +1861,13 @@ impl ContraApp {
             self.apply_audio_settings();
         }
 
+        // A tab click can leave Preferences while a custom role field still
+        // has focus; commit the deferred rebuild here so the session never
+        // keeps the previous calls.
+        if self.screen != Screen::Preferences {
+            self.commit_role_terms();
+        }
+
         self.about_ui(&ctx);
         self.sync_media_session();
 
@@ -2240,6 +2273,36 @@ mod tests {
         let dance = crate::defaults::default_dance();
         let tune = crate::defaults::default_tune();
         assert!(length_warning_for(&dance, &tune).is_none());
+    }
+
+    #[test]
+    fn custom_role_terms_reach_the_rendered_calls() {
+        let dance = crate::defaults::default_dance();
+        let mut prefs = Preferences::default();
+        prefs.select_role_preset(RolePreset::Custom);
+        prefs.role_terms = contra_core::RoleTerms {
+            left_singular: "port".into(),
+            left_plural: "ports".into(),
+            right_singular: "starboard".into(),
+            right_plural: "starboards".into(),
+        };
+        let timeline = build_timeline(&dance, &prefs, 0).expect("timeline");
+        assert!(
+            timeline
+                .calls
+                .iter()
+                .any(|call| call.text.contains("ports allemande")),
+            "{:?}",
+            call_texts(&timeline)
+        );
+        assert!(
+            !timeline
+                .calls
+                .iter()
+                .any(|call| call.text.contains("larks")),
+            "{:?}",
+            call_texts(&timeline)
+        );
     }
 
     #[test]

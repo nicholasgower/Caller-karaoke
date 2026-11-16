@@ -25,6 +25,9 @@ impl ContraApp {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
         let before = self.prefs.clone();
+        // Recomputed by the custom role fields each frame. While a field is
+        // focused the timeline rebuild is deferred; see `role_terms`.
+        self.role_edit_active = false;
         ui.heading("Preferences");
         ui.label(
             egui::RichText::new("Changes are saved automatically. Playback settings are applied without restarting the music; role and alias changes rebuild the call timeline.")
@@ -43,7 +46,7 @@ impl ContraApp {
         self.prefs.validate();
         if self.prefs != before {
             let changes = self.prefs.changes_since(&before);
-            if changes.timeline {
+            if changes.timeline && !self.role_edit_active {
                 self.rebuild_timeline();
                 self.last_spoken = None;
             }
@@ -69,7 +72,10 @@ impl ContraApp {
 
 fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Role terms");
-    let mut preset = RolePreset::detect(&app.prefs.role_terms);
+    // The stored selection, not an inference from the terms: choosing Custom
+    // keeps the editable fields on screen even when the words still match a
+    // named preset.
+    let mut preset = app.prefs.role_preset;
     let combo = if compact {
         egui::ComboBox::from_id_salt("role-terms")
     } else {
@@ -82,33 +88,44 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 ui.selectable_value(&mut preset, option, option.label());
             }
         });
-    if preset != RolePreset::detect(&app.prefs.role_terms) {
-        app.prefs.role_terms = RoleTerms::preset(preset);
-        app.rebuild_timeline();
-        app.needs_render = true;
-        app.save_prefs();
+    if preset != app.prefs.role_preset {
+        let before = app.prefs.role_terms.clone();
+        app.prefs.select_role_preset(preset);
+        // A named preset replaces the terms, so the change is complete now.
+        // Custom keeps the current words and waits for an edit.
+        app.role_edit_pending = false;
+        if app.prefs.role_terms != before {
+            app.needs_render = true;
+        }
     }
-    if preset == RolePreset::Custom {
+    if app.prefs.role_preset == RolePreset::Custom {
         egui::Grid::new("custom-roles")
             .num_columns(if compact { 1 } else { 2 })
             .show(ui, |ui| {
                 form_row(ui, compact, "Left singular", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.left_singular);
+                    edit_role_term(app, ui, RoleField::LeftSingular);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Left plural", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.left_plural);
+                    edit_role_term(app, ui, RoleField::LeftPlural);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Right singular", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.right_singular);
+                    edit_role_term(app, ui, RoleField::RightSingular);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Right plural", |ui| {
-                    ui.text_edit_singleline(&mut app.prefs.role_terms.right_plural);
+                    edit_role_term(app, ui, RoleField::RightPlural);
                 });
                 ui.end_row();
             });
+        // The example below and the next session frame read the edited terms
+        // immediately, but the deferred rebuild waits until the field loses
+        // focus so typing a long word does not rebuild the timeline and
+        // restart speech on every keystroke.
+        if app.role_edit_pending && !app.role_edit_active {
+            app.commit_role_terms();
+        }
     }
     ui.label(
         egui::RichText::new(
@@ -123,6 +140,42 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         app.screen = Screen::Aliases;
     }
     ui.separator();
+}
+
+/// One editable custom role term.
+///
+/// Editing a term always means Custom: it marks the selection, remembers that
+/// a rebuild is pending, and lets the field lose focus before the timeline is
+/// rebuilt. The active flag is cleared at the start of every preferences
+/// frame, so a stale focus state cannot defer the rebuild forever.
+fn edit_role_term(app: &mut ContraApp, ui: &mut egui::Ui, field: RoleField) {
+    let terms = &mut app.prefs.role_terms;
+    let buffer = match field {
+        RoleField::LeftSingular => &mut terms.left_singular,
+        RoleField::LeftPlural => &mut terms.left_plural,
+        RoleField::RightSingular => &mut terms.right_singular,
+        RoleField::RightPlural => &mut terms.right_plural,
+    };
+    let response = ui.text_edit_singleline(buffer);
+    if response.changed() {
+        app.prefs.role_preset = RolePreset::Custom;
+        app.role_edit_pending = true;
+        app.role_edit_active = true;
+    }
+    if response.has_focus() || response.lost_focus() {
+        app.role_edit_active = true;
+    }
+    if response.lost_focus() {
+        app.commit_role_terms();
+    }
+}
+
+#[derive(Clone, Copy)]
+enum RoleField {
+    LeftSingular,
+    LeftPlural,
+    RightSingular,
+    RightPlural,
 }
 
 fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
