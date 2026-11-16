@@ -89,8 +89,9 @@ An optional percussion layer is off by default:
 - Give it its own volume setting; it never changes the grid or the calls.
 - Give it a rhythm menu like the accompaniment: match style, basic, on the beat,
   offbeats, half time, double time, shuffle, gallop, triplet, and train beat.
-  Match style gives foot taps a gallop by default: an eighth note and two
-  sixteenths, repeated. The count-in stays one clear note per beat.
+  Match style gives foot taps a gallop by default: one group per dance beat, an
+  eighth note followed by two sixteenths. The count-in stays one clear note per
+  beat.
 
 ### 6.4 Count-in
 

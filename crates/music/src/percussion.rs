@@ -637,7 +637,7 @@ mod tests {
             PercussionRhythm::Gallop,
         );
         let positions = notes.iter().map(|note| note.start_beat).collect::<Vec<_>>();
-        let expected = [0.0, 0.25, 0.375, 1.0, 1.25, 1.375];
+        let expected = [0.0, 0.5, 0.75, 1.0, 1.5, 1.75];
         assert_eq!(positions.len(), expected.len());
         for (position, expected) in positions.iter().zip(expected) {
             assert!(
