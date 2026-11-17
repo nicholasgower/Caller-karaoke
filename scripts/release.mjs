@@ -27,6 +27,9 @@ import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CARGO_TOML = path.join(ROOT, 'Cargo.toml');
+// The docs site links straight at the release assets, whose file names carry
+// the version, so it has to move in the same commit as the workspace version.
+const WEBSITE_RELEASE_TS = path.join(ROOT, 'website', 'src', 'release.ts');
 
 function fail(message) {
   console.error(`release: ${message}`);
@@ -68,6 +71,16 @@ function writeVersion(next) {
     }
   }
   fail('Cargo.toml has no version in [workspace.package]');
+}
+
+function writeWebsiteVersion(next) {
+  if (!fs.existsSync(WEBSITE_RELEASE_TS)) return;
+  const source = fs.readFileSync(WEBSITE_RELEASE_TS, 'utf8');
+  const pattern = /(export const RELEASE_VERSION = ')[^']*(';)/;
+  if (!pattern.test(source)) {
+    fail('website/src/release.ts has no RELEASE_VERSION line to update');
+  }
+  fs.writeFileSync(WEBSITE_RELEASE_TS, source.replace(pattern, `$1${next}$2`));
 }
 
 function nextVersion(current, spec) {
@@ -157,6 +170,7 @@ console.log(`release: branch ${branch}, tag ${tag}${dryRun ? ', dry run' : ''}`)
 if (dryRun) {
   if (changed) {
     console.log(`release: would set [workspace.package] version to ${next}`);
+    console.log('release: would set RELEASE_VERSION in website/src/release.ts');
     console.log('release: would refresh Cargo.lock');
   }
   console.log('release: would regenerate CHANGELOG.md for the tag');
@@ -168,6 +182,7 @@ if (dryRun) {
 
 if (changed) {
   writeVersion(next);
+  writeWebsiteVersion(next);
   run('cargo', ['metadata', '--format-version', '1'], {capture: true});
 }
 
@@ -179,9 +194,12 @@ if (hasGitCliff()) {
   console.warn('release: git-cliff is not installed; leaving CHANGELOG.md alone');
 }
 
-const paths = ['Cargo.toml', 'Cargo.lock', 'CHANGELOG.md'].filter((file) =>
-  fs.existsSync(path.join(ROOT, file)),
-);
+const paths = [
+  'Cargo.toml',
+  'Cargo.lock',
+  'CHANGELOG.md',
+  'website/src/release.ts',
+].filter((file) => fs.existsSync(path.join(ROOT, file)));
 run('git', ['add', ...paths]);
 if (hasStagedChanges()) {
   run('git', ['commit', '-m', `chore(release): ${tag}`]);

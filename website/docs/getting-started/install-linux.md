@@ -23,14 +23,20 @@ sudo apt-get install libasound2-dev libxkbcommon-dev libssl-dev \
   libgl1-mesa-dev libgtk-3-dev libspeechd-dev speech-dispatcher
 ```
 
+## Download
+
+<DownloadButton platform="linux" />
+
+The main button downloads the Debian package; the menu on the button offers the
+AppImage.
+
 ## Debian package
 
 <Steps>
   <Step shot="install-linux-deb">
-    Download the `.deb` from the
-    [releases page](https://github.com/nicholasgower/Contra-karaoke/releases).
+    Download `contra-app_0.1.0-1_amd64.deb` with the button above.
   </Step>
-  <CommandStep command="sudo apt install ./contra-app_0.1.0_amd64.deb">
+  <CommandStep command="sudo apt install ./contra-app_0.1.0-1_amd64.deb">
     Install the package with apt so its dependencies are resolved. Use the
     actual downloaded filename; the version and architecture may differ.
   </CommandStep>

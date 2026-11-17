@@ -17,14 +17,13 @@ Windows may show a SmartScreen warning.
 
 ## Download
 
-Open the [releases page](https://github.com/nicholasgower/Contra-karaoke/releases)
-and download one of:
+<DownloadButton platform="windows" />
 
-- `ContraKaraoke-0.1.0-windows-x64-setup.exe` — installer;
-- `ContraKaraoke-0.1.0-windows-x64-portable.zip` — portable build.
-
-release artifacts carry version 0.1.0 and may be replaced by a later build.
-They are not code-signed.
+The main button downloads `ContraKaraoke-0.1.0-windows-x64-setup.exe`, the
+installer. The menu on the button offers
+`ContraKaraoke-0.1.0-windows-x64-portable.zip`, the portable build. Release
+artifacts carry version 0.1.0 and may be replaced by a later build. They are
+not code-signed.
 
 <Shot id="install-windows-release" />
 
@@ -66,8 +65,8 @@ The app opens on **Session** with *Another Last Dance* and *Sandy Boys*. Press
 start during the count-in. See
 [Your first session](/docs/getting-started/first-session).
 
-If SmartScreen or antivirus blocks the unsigned executable, verify the download
-hash from the latest release and use the **More info** path rather than
+If SmartScreen or antivirus blocks the unsigned executable, verify the SHA-256
+from the release's `SHA256SUMS.txt` and use the **More info** path rather than
 disabling security features.
 
 ## Media keys and the system media overlay

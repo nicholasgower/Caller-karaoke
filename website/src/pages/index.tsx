@@ -3,6 +3,8 @@ import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
+import DownloadButton from '@site/src/components/DownloadButton';
+
 import styles from './index.module.css';
 
 export default function Home(): React.ReactElement {
@@ -18,14 +20,23 @@ export default function Home(): React.ReactElement {
             The dance card and the music move together. Each call appears and is
             spoken early enough that the words finish before the dancers move.
           </p>
+          <div className={styles.download}>
+            <DownloadButton />
+          </div>
           <div className={styles.actions}>
             <Link className="button button--primary button--lg" to="/play">
               Play in your browser
             </Link>
-            <Link className="button button--secondary button--lg" to="/docs/getting-started/first-session">
+            <Link
+              className="button button--primary button--lg"
+              to="/docs/getting-started/first-session"
+            >
               Run your first session
             </Link>
-            <Link className="button button--secondary button--lg" to="/docs/intro">
+            <Link
+              className="button button--primary button--lg"
+              to="/docs/intro"
+            >
               Read the guide
             </Link>
           </div>

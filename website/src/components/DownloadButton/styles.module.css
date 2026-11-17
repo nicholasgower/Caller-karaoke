@@ -1,0 +1,118 @@
+.download {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.buttons {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+/* The download is the one action a visitor came for, so it uses the theme's
+   content colour as its fill: light on the dark theme and dark on the light
+   theme, with no accent colour. */
+.download .main,
+.download .toggle {
+  background: var(--ifm-color-content);
+  border: 1px solid var(--ifm-color-content);
+  color: var(--ifm-background-color);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.download .main:hover,
+.download .toggle:hover {
+  background: var(--ifm-color-content-secondary);
+  border-color: var(--ifm-color-content-secondary);
+  color: var(--ifm-background-color);
+  text-decoration: none;
+}
+
+.download .main {
+  padding-left: 1.6rem;
+  padding-right: 1.6rem;
+}
+
+.download .toggle {
+  margin-left: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
+}
+
+.chevron {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: -0.2rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.download .main:focus-visible,
+.download .toggle:focus-visible,
+.download .item:focus-visible {
+  outline: 2px solid var(--ifm-color-content);
+  outline-offset: 2px;
+}
+
+/* The menu also renders inside documentation pages, so every rule that a
+   Markdown list could override is scoped under `.download`. */
+.download .menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 20;
+  min-width: 17rem;
+  max-width: min(22rem, calc(100vw - 2.5rem));
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  box-shadow: var(--ifm-global-shadow-md);
+}
+
+.download .menu li {
+  margin: 0;
+  padding: 0;
+}
+
+.download .item {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--ifm-global-radius);
+  color: var(--ifm-color-content);
+  text-decoration: none;
+}
+
+.download .item:hover {
+  background: var(--ifm-hover-overlay);
+  color: var(--ifm-color-content);
+  text-decoration: none;
+}
+
+.download .itemLabel {
+  display: block;
+  font-weight: 600;
+}
+
+.download .itemDetail {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.82rem;
+}
+
+.download .caption {
+  margin: 0;
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.82rem;
+}

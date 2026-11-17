@@ -2,6 +2,13 @@ import React from 'react';
 import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
 
+import DownloadButton from '@site/src/components/DownloadButton';
+import {
+  CHECKSUMS_URL,
+  RELEASE_URL,
+  RELEASE_VERSION,
+} from '@site/src/release';
+
 export default function Download(): React.ReactElement {
   return (
     <Layout
@@ -11,53 +18,62 @@ export default function Download(): React.ReactElement {
       <main className="container margin-vert--lg">
         <h1>Download Contra Karaoke</h1>
         <p>
-          Contra Karaoke is at <strong>0.1.0</strong> and is still in development.
-          Releases are cut from <code>main</code> when a new version is ready and
-          published on the{' '}
-          <a href="https://github.com/nicholasgower/Contra-karaoke/releases">
-            releases page
-          </a>
-          . Builds are not code-signed yet.
+          Version <strong>{RELEASE_VERSION}</strong>. Choose a build below; each
+          button downloads the release file directly. Builds are not code-signed
+          yet, so Windows SmartScreen and some browsers may ask you to confirm
+          the download.
         </p>
 
         <div className="row">
           <div className="col col--6 margin-bottom--lg">
             <h2>Windows</h2>
+            <DownloadButton platform="windows" />
             <p>
-              Download <code>ContraKaraoke-0.1.0-windows-x64-setup.exe</code> or{' '}
-              <code>ContraKaraoke-0.1.0-windows-x64-portable.zip</code> from the
-              latest release. The installer is unsigned; see{' '}
-              <Link to="/docs/getting-started/install-windows">Install on Windows</Link>{' '}
-              before running it.
+              The installer sets up Contra Karaoke in Program Files; the portable
+              ZIP runs from any folder without installing. Both need 64-bit
+              Windows 10 or 11. See{' '}
+              <Link to="/docs/getting-started/install-windows">Install on Windows</Link>.
             </p>
           </div>
           <div className="col col--6 margin-bottom--lg">
             <h2>Linux</h2>
+            <DownloadButton platform="linux" />
             <p>
-              Download the <code>.deb</code> or{' '}
-              <code>ContraKaraoke-0.1.0-x86_64.AppImage</code> from the latest
-              release. See{' '}
+              The Debian package suits Debian, Ubuntu, and Mint; the AppImage runs
+              on any 64-bit distribution. See{' '}
               <Link to="/docs/getting-started/install-linux">Install on Linux</Link>.
             </p>
           </div>
           <div className="col col--6 margin-bottom--lg">
-            <h2>Web</h2>
+            <h2>Browser (self-hosting)</h2>
+            <DownloadButton platform="web" />
             <p>
-              <Link to="/play">Play the hosted copy</Link> in your browser, or
-              download <code>contra-karaoke-0.1.0-web.zip</code> and serve the
-              bundle over HTTP. Online search needs the included proxy. See{' '}
+              This bundle is for publishing your own copy of the browser build:
+              serve it over HTTP, and add the included proxy for online search.
+              To use the app without installing anything,{' '}
+              <Link to="/play">play the hosted copy</Link> instead. See{' '}
               <Link to="/docs/getting-started/install-web">Run in the browser</Link>.
             </p>
           </div>
           <div className="col col--6 margin-bottom--lg">
             <h2>Android</h2>
+            <DownloadButton platform="android" />
             <p>
-              Download the APK from the latest release or build it with{' '}
-              <code>cargo-apk</code>. Android still needs real-device testing. See{' '}
+              Sideload the APK on Android 8.0 or newer. It is a test build that
+              uses the debug keystore, and real-device audio and TTS testing is
+              still in progress. See{' '}
               <Link to="/docs/getting-started/install-android">Install on Android</Link>.
             </p>
           </div>
         </div>
+
+        <h2>Verify the download</h2>
+        <p>
+          <a href={CHECKSUMS_URL}>SHA256SUMS.txt</a> lists a SHA-256 for every
+          file in the release, and the{' '}
+          <a href={RELEASE_URL}>release notes</a> record the commit and build
+          time. Artifacts may be replaced by a later build of the same version.
+        </p>
 
         <h2>Build from source</h2>
         <p>
@@ -76,10 +92,10 @@ cargo run -p contra-app`}</code>
 
         <h2>Release caveats</h2>
         <p>
-          Release artifacts carry the version shown in the release name, may be
-          replaced by a later build, and are not code-signed. Android CI uses the debug keystore unless
-          release signing secrets are configured. Verify checksums from the
-          release before running an unsigned binary.
+          Release artifacts carry the version shown on this page and may be
+          replaced by a later build. Android CI uses the debug keystore unless
+          release signing secrets are configured. Verify checksums before
+          running an unsigned binary.
         </p>
       </main>
     </Layout>

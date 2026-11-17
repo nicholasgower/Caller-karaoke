@@ -132,6 +132,11 @@ instead of being duplicated.
 - `<Step shot="id">` renders an instruction and its screenshot.
 - `<CommandStep command="…">` is for shell commands; it is not a UI step.
 - `<Shot id="id" />` is for a standalone figure.
+- `<DownloadButton platform="windows" />` is the release download button; add it
+  wherever a page tells the reader to download the app. Pass `windows`, `linux`,
+  `android`, or `web`, or leave `platform` off to follow the visitor's operating
+  system. The button links straight at the release asset, so the page never
+  sends the reader to GitHub.
 - `<Figure>` is reserved for the few manual OS installer images.
 
 A page should not use a raw `<img>` for an in-app screenshot.

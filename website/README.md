@@ -55,6 +55,15 @@ Rust therefore produces a site whose `/play` frame shows the placeholder.
 Override the public URL with `CONTRA_WEB_PUBLIC_URL` if you deploy the site at a
 different base path.
 
+## Download links
+
+The `DownloadButton` component links straight at GitHub release assets, so a
+visitor never has to find the file on GitHub. Those file names carry the
+version, which comes from `src/release.ts`. That line mirrors
+`[workspace.package] version` in `Cargo.toml`; `scripts/release.mjs` rewrites
+both in the release commit. Keep them in step when you change the version by
+hand.
+
 ## Screenshot manifest
 
 `website/screenshots/manifest.json` lists every planned shot ID with its alt

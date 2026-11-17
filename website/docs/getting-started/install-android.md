@@ -17,9 +17,10 @@ treat Android as a polished release yet.
 
 ## Get the APK
 
-Download the APK from the
-[releases page](https://github.com/nicholasgower/Contra-karaoke/releases),
-or build it yourself:
+<DownloadButton platform="android" />
+
+The APK is a test build; see the signing and device-testing caveats below. To
+build it yourself:
 
 <Steps>
   <CommandStep command="rustup target add --toolchain 1.100.0 aarch64-linux-android armv7-linux-androideabi">

@@ -38,6 +38,10 @@
   margin: 1.5rem 0 1rem;
 }
 
+.download {
+  margin-top: 1.75rem;
+}
+
 .note {
   color: var(--ifm-color-content-secondary);
   font-size: 0.85rem;

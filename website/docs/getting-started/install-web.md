@@ -12,8 +12,7 @@ do not allow browser requests from this origin.
 ## Try the hosted copy
 
 A copy of the browser build is hosted on this site at
-[Play in your browser](/play). It is built from `main` together with the
-documentation, so it can lag the latest release.
+[Play in your browser](/play).
 
 - Press **Play** in the app once to allow audio; browsers block sound until you
   interact with the page.
@@ -27,9 +26,10 @@ link above the frame.
 
 ## Get the build
 
-Download `contra-karaoke-0.1.0-web.zip` from the
-[releases page](https://github.com/nicholasgower/Contra-karaoke/releases),
-or build it from source:
+<DownloadButton platform="web" />
+
+The ZIP holds the static bundle; serve it over HTTP as described below. To build
+it from source:
 
 ```sh
 rustup target add wasm32-unknown-unknown
