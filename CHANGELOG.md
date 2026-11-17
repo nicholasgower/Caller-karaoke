@@ -4,7 +4,12 @@ All notable changes to Contra Karaoke are documented here.
 
 ## [Unreleased]
 
+### Chores
+- **deny:** Ignore the chrono unmaintained advisory
+
+
 ### Documentation
+- Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
