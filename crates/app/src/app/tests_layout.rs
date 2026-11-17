@@ -307,6 +307,83 @@ fn every_screen_fits_horizontally_at_every_supported_width() {
 }
 
 #[test]
+fn preferences_header_places_feedback_and_update_actions_beside_the_title() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .with_accessibility_check(false)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Preferences;
+            app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
+            app
+        });
+    harness.run_steps(3);
+
+    let nodes = node_rects(&harness);
+    let heading = nodes
+        .iter()
+        .find(|(_, role, label)| *role != accesskit::Role::Button && label == "Preferences")
+        .map(|(rect, _, _)| *rect)
+        .expect("the Preferences title is on screen");
+    let rect_for = |label: &str| {
+        nodes
+            .iter()
+            .find(|(_, role, text)| *role == accesskit::Role::Button && text == label)
+            .map(|(rect, _, _)| *rect)
+            .unwrap_or_else(|| panic!("the {label} button is on screen"))
+    };
+    let feedback = rect_for("Submit feedback");
+    let updates = rect_for("Check for updates");
+
+    // The title and both actions share one row, with the update action in the
+    // rightmost position and feedback immediately to its left.
+    assert!(
+        (feedback.center().y - heading.center().y).abs() < 14.0,
+        "Submit feedback is not on the title row: {feedback:?} vs {heading:?}"
+    );
+    assert!(
+        (updates.center().y - heading.center().y).abs() < 14.0,
+        "Check for updates is not on the title row: {updates:?} vs {heading:?}"
+    );
+    assert!(
+        feedback.left() > heading.right(),
+        "the actions should sit to the right of the title: {feedback:?} vs {heading:?}"
+    );
+    assert!(
+        updates.left() > feedback.right(),
+        "Check for updates should be the rightmost action: {updates:?} vs {feedback:?}"
+    );
+    assert!(
+        updates.right() > 1000.0,
+        "Check for updates should sit at the top right of the page: {updates:?}"
+    );
+
+    // At the 360-point minimum width both long labels move under the title but
+    // stay on screen, so the header cannot widen the page. The phone category
+    // list is in front here so the test does not depend on the settings below
+    // it; the header is drawn by both pages.
+    harness.set_size(egui::vec2(360.0, 640.0));
+    harness.state_mut().prefs_page = PreferencesPage::Categories;
+    harness.run_steps(3);
+    let nodes = node_rects(&harness);
+    for label in ["Submit feedback", "Check for updates"] {
+        let rect = nodes
+            .iter()
+            .find(|(_, role, text)| *role == accesskit::Role::Button && text == label)
+            .map(|(rect, _, _)| *rect)
+            .unwrap_or_else(|| panic!("the {label} button is on screen at 360 points"));
+        assert!(
+            rect.left() >= 0.0 && rect.right() <= 360.0 + 0.6,
+            "{label} overflows the minimum window: {rect:?}"
+        );
+    }
+}
+
+#[test]
 fn phone_preferences_category_rows_share_one_left_edge() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(390.0, 844.0))
