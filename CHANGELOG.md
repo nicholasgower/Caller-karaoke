@@ -33,6 +33,7 @@ All notable changes to Caller Karaoke are documented here.
 - **website:** Remove the GitHub link from the navbar.
 - **website:** Restore the unbuilt app fallback and size the mobile app frame.
 - **music:** Resolve ending melody a fifth below the final chord.
+- **release:** Bump internal crate requirements.
 
 
 ### Style
