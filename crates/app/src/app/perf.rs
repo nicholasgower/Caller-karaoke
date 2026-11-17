@@ -1111,6 +1111,25 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
             "stub speech; a real neural voice preparation is asynchronous",
         );
     }
+    {
+        let app = harness.state_mut();
+        let before = app.prefs.clone();
+        let times = timed(
+            || {
+                app.prefs.tts_deliveries = if app.prefs.tts_deliveries > 1 { 1 } else { 4 };
+                app.reconcile_preferences(before.clone());
+            },
+            samples,
+        );
+        report.record(
+            "session",
+            "Deliveries per call",
+            "ContraApp::reconcile_preferences → Speech::set_deliveries",
+            ACTION_BUDGET_MS,
+            times,
+            "stub speech; extra deliveries prepare asynchronously",
+        );
+    }
 
     // Selection and library actions.
     {

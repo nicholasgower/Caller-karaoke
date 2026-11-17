@@ -998,6 +998,35 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             .small()
             .color(theme::muted(ui)),
     );
+    ui.add_enabled_ui(neural, |ui| {
+        slider_row(
+            ui,
+            compact,
+            "Deliveries per call",
+            &mut app.prefs.tts_deliveries,
+            |ui, deliveries| {
+                ui.add(
+                    egui::Slider::new(
+                        deliveries,
+                        contra_core::MIN_TTS_DELIVERIES..=contra_core::MAX_TTS_DELIVERIES,
+                    )
+                    .integer(),
+                )
+                .accessible_name("Deliveries per call")
+            },
+        );
+    });
+    ui.label(
+        egui::RichText::new(
+            "Prepares up to four versions of every call, each a little higher or lower, and \
+             rotates them when a line repeats, so a looping dance does not sound like one \
+             recording. The first version is ready before the rest, which prepare quietly in \
+             the background. More deliveries add preparation time and memory; 1 keeps a \
+             single version. Desktop and Android neural voice only.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
     ui.checkbox(
         &mut app.prefs.shuffle_alternatives,
         "Shuffle alternative call aliases",

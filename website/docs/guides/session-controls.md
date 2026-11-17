@@ -278,9 +278,11 @@ neural voice, and gives a total. **Refresh memory use** rebuilds the table after
 a setting or a session changes.
 
 The biggest optional consumers are the neural voice (turn **Speak calls** off
-to release it; it reloads from the cache when enabled again) and the four music
-variation passes per render (turn **Vary the music on each loop** off for one
-pass). Cycling tunes also keeps the next rendered tune in memory. See the
+to release it and its prepared deliveries; they reload from the cache when
+enabled again), the four prepared deliveries per call (set **Deliveries per
+call** to 1 to skip them), and the four music variation passes per render (turn
+**Vary the music on each loop** off for one pass). Cycling tunes also keeps the
+next rendered tune in memory. See the
 [memory notes](https://github.com/storytold/Contra-karaoke/blob/dev/docs/memory.md)
 for the measured numbers and the remaining options.
 

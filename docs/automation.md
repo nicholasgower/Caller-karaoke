@@ -173,7 +173,10 @@ Useful checks for this app:
   change tabs.
 - Preferences is not a tab: click the header gear, whose accessible name is
   `Preferences`. Its accessible node reports the selected state while
-  Preferences or the alias editor is in front.
+  Preferences or the alias editor is in front. The **Deliveries per call**
+  slider in Calling carries the accessible name `Deliveries per call`, so the
+  generic slider tools can change the prepared call count (tap it first on a
+  touch build).
 - After selecting a dance or tune, use `wait_for` on the result text before
   asserting the session screen changed.
 - The screenshot is useful for theme and layout checks; `widget_tree` is better

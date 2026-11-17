@@ -34,6 +34,20 @@ const VOICE_ROWS: usize = 510;
 const VOICE_DIM: usize = 256;
 const PROGRESS_STEP: u64 = 256 * 1024;
 
+/// Directory under the TTS cache for synthesized call deliveries.
+const SPEECH_CACHE_DIR: &str = "speech-v1";
+/// Magic and version in the 16-byte header of a cached delivery.
+///
+/// Bump the version when the delivery pitch table or the synthesis settings
+/// change, so old audio is not reused for a different voice.
+const SPEECH_CACHE_MAGIC: &[u8; 4] = b"CKSP";
+const SPEECH_CACHE_VERSION: u16 = 1;
+/// Magic, version, sample rate, sample count, and two reserved bytes.
+const SPEECH_CACHE_HEADER: usize = 16;
+/// Upper bound on the on-disk delivery cache. A four-delivery card is a few
+/// megabytes, so this holds several cards before least-recently-used files go.
+const SPEECH_CACHE_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
+
 struct Asset {
     name: &'static str,
     url: &'static str,
@@ -132,12 +146,20 @@ pub(crate) enum KokoroEvent {
 enum Command {
     Enable(bool),
     Prewarm(Vec<String>),
-    Speak { text: String, generation: u64 },
+    Speak {
+        text: String,
+        variant: u8,
+        generation: u64,
+    },
     Stop,
     SetRate(f32),
     SetTone(CallTone),
+    SetDeliveries(u8),
     SetVoice(String),
-    Retry { enabled: bool, calls: Vec<String> },
+    Retry {
+        enabled: bool,
+        calls: Vec<String>,
+    },
 }
 
 enum PrewarmAction {
@@ -146,11 +168,19 @@ enum PrewarmAction {
     Abort,
 }
 
+/// How one run through the prepared deliveries ended.
+enum PrewarmRun {
+    Done,
+    Restart,
+    Aborted,
+}
+
 /// Handle to the Kokoro worker thread.
 pub(crate) struct KokoroSpeech {
     tx: Sender<Command>,
     rx: Receiver<KokoroEvent>,
     generation: Arc<AtomicU64>,
+    cache_bytes: Arc<AtomicU64>,
 }
 
 impl KokoroSpeech {
@@ -158,14 +188,25 @@ impl KokoroSpeech {
         let (tx, commands) = channel();
         let (events, rx) = channel();
         let generation = Arc::new(AtomicU64::new(0));
+        let cache_bytes = Arc::new(AtomicU64::new(0));
         let worker_generation = Arc::clone(&generation);
+        let worker_cache_bytes = Arc::clone(&cache_bytes);
         std::thread::Builder::new()
             .name("contra-kokoro".into())
             .spawn(move || {
-                Worker::new(cache_dir, output_sample_rate).run(commands, events, worker_generation);
+                Worker::new(cache_dir, output_sample_rate, worker_cache_bytes).run(
+                    commands,
+                    events,
+                    worker_generation,
+                );
             })
             .ok()?;
-        Some(Self { tx, rx, generation })
+        Some(Self {
+            tx,
+            rx,
+            generation,
+            cache_bytes,
+        })
     }
 
     pub(crate) fn enable(&self, enabled: bool) {
@@ -176,12 +217,22 @@ impl KokoroSpeech {
         let _ = self.tx.send(Command::Prewarm(calls));
     }
 
-    pub(crate) fn speak(&self, text: &str) {
+    pub(crate) fn speak(&self, text: &str, variant: u8) {
         let generation = self.generation.load(Ordering::Relaxed);
         let _ = self.tx.send(Command::Speak {
             text: pronounce::kokoro_text(text),
+            variant,
             generation,
         });
+    }
+
+    pub(crate) fn set_deliveries(&self, deliveries: u8) {
+        let _ = self.tx.send(Command::SetDeliveries(deliveries));
+    }
+
+    /// Bytes held by the prepared call deliveries.
+    pub(crate) fn cache_bytes(&self) -> u64 {
+        self.cache_bytes.load(Ordering::Relaxed)
     }
 
     pub(crate) fn stop(&self) {
@@ -215,27 +266,34 @@ struct Worker {
     output_sample_rate: u32,
     rate: f32,
     tone: CallTone,
+    /// Deliveries prepared for each call text.
+    deliveries: u8,
     voice: &'static crate::tts::VoiceOption,
     enabled: bool,
     engine: Option<Engine>,
     environment: Option<ort::environment::Environment>,
-    cache: HashMap<String, Vec<f32>>,
+    /// Prepared audio for each call text, indexed by delivery. A missing slot
+    /// is a delivery that is still being prepared.
+    cache: HashMap<String, Vec<Option<Vec<f32>>>>,
+    cache_bytes: Arc<AtomicU64>,
     last_calls: Vec<String>,
     failed: Option<String>,
 }
 
 impl Worker {
-    fn new(cache_dir: PathBuf, output_sample_rate: u32) -> Self {
+    fn new(cache_dir: PathBuf, output_sample_rate: u32, cache_bytes: Arc<AtomicU64>) -> Self {
         Self {
             cache_dir,
             output_sample_rate,
             rate: 1.0,
             tone: CallTone::default(),
+            deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
             voice: crate::tts::voice(crate::tts::DEFAULT_VOICE_ID),
             enabled: false,
             engine: None,
             environment: None,
             cache: HashMap::new(),
+            cache_bytes,
             last_calls: Vec::new(),
             failed: None,
         }
@@ -265,6 +323,7 @@ impl Worker {
                 }
                 Command::Speak {
                     text,
+                    variant,
                     generation: asked,
                 } => {
                     if !self.enabled {
@@ -276,7 +335,7 @@ impl Worker {
                     if self.engine.is_none() {
                         continue;
                     }
-                    self.speak_now(&text, asked, &events, &generation);
+                    self.speak_now(&text, variant, asked, &events, &generation);
                 }
                 Command::Stop => {
                     // The handle bumps the generation counter before sending
@@ -287,14 +346,29 @@ impl Worker {
                         contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
                         contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
                     );
-                    self.cache.clear();
+                    self.clear_cache();
                 }
                 Command::SetTone(tone) => {
                     if self.tone == tone {
                         continue;
                     }
                     self.tone = tone;
-                    self.cache.clear();
+                    self.clear_cache();
+                }
+                Command::SetDeliveries(deliveries) => {
+                    let deliveries = deliveries.clamp(
+                        contra_core::MIN_TTS_DELIVERIES,
+                        contra_core::MAX_TTS_DELIVERIES,
+                    );
+                    if self.deliveries == deliveries {
+                        continue;
+                    }
+                    self.deliveries = deliveries;
+                    self.clear_cache();
+                    if self.enabled {
+                        self.ensure_ready(&events);
+                        self.prewarm(&commands, &events, &generation);
+                    }
                 }
                 Command::SetVoice(id) => {
                     let voice = crate::tts::voice(&id);
@@ -302,7 +376,7 @@ impl Worker {
                         continue;
                     }
                     self.voice = voice;
-                    self.cache.clear();
+                    self.clear_cache();
                     self.engine = None;
                     self.failed = None;
                     if self.enabled {
@@ -326,20 +400,132 @@ impl Worker {
     fn speak_now(
         &mut self,
         text: &str,
+        variant: u8,
         asked: u64,
         events: &Sender<KokoroEvent>,
         generation: &AtomicU64,
     ) {
-        let samples = if let Some(samples) = self.cache.get(text) {
-            Some(samples.clone())
-        } else {
-            self.synthesize(text, events)
-        };
+        // Prefer the requested delivery, then the base delivery, then an
+        // on-demand render. A missing variation must never delay a call.
+        let samples = self
+            .cache_get(text, variant)
+            .cloned()
+            .or_else(|| self.cache_get(text, 0).cloned())
+            .or_else(|| self.prepare(text, variant, true, events));
         if let Some(samples) = samples
             && generation.load(Ordering::Relaxed) == asked
         {
             let _ = events.send(KokoroEvent::Audio(samples));
         }
+    }
+
+    fn cache_get(&self, text: &str, variant: u8) -> Option<&Vec<f32>> {
+        self.cache
+            .get(text)
+            .and_then(|deliveries| deliveries.get(usize::from(variant)))
+            .and_then(Option::as_ref)
+    }
+
+    fn cache_put(&mut self, text: &str, variant: u8, samples: Vec<f32>) {
+        let needed = usize::from(variant) + 1;
+        let length = usize::from(self.deliveries).max(needed);
+        let entry = self
+            .cache
+            .entry(text.to_string())
+            .or_insert_with(|| vec![None; length]);
+        if entry.len() < length {
+            entry.resize(length, None);
+        }
+        entry[usize::from(variant)] = Some(samples);
+        self.publish_cache_bytes();
+    }
+
+    fn clear_cache(&mut self) {
+        self.cache.clear();
+        self.cache_bytes.store(0, Ordering::Relaxed);
+    }
+
+    /// Publish the resident size of the prepared deliveries.
+    ///
+    /// The Preferences memory table reads this through an atomic instead of
+    /// asking the worker, which may be inside an inference.
+    fn publish_cache_bytes(&self) {
+        let bytes = self
+            .cache
+            .values()
+            .flat_map(|deliveries| deliveries.iter().flatten())
+            .map(|samples| samples.len() as u64 * std::mem::size_of::<f32>() as u64)
+            .sum();
+        self.cache_bytes.store(bytes, Ordering::Relaxed);
+    }
+
+    /// Make one delivery available in RAM.
+    ///
+    /// The on-disk PCM cache is checked first, so a later launch reuses the
+    /// previous synthesis instead of running the model again. A failure that
+    /// matters to a live call is reported to the app, which falls back to the
+    /// platform voice; a hidden delivery fails quietly.
+    fn prepare(
+        &mut self,
+        text: &str,
+        variant: u8,
+        report_failure: bool,
+        events: &Sender<KokoroEvent>,
+    ) -> Option<Vec<f32>> {
+        let variant = variant.min(self.deliveries.saturating_sub(1));
+        if let Some(samples) = self.cache_get(text, variant) {
+            return Some(samples.clone());
+        }
+        if let Some(samples) = self.load_cached(text, variant) {
+            self.cache_put(text, variant, samples.clone());
+            return Some(samples);
+        }
+        match self.synthesize(text, variant) {
+            Ok(samples) => {
+                self.save_cached(text, variant, &samples);
+                self.cache_put(text, variant, samples.clone());
+                Some(samples)
+            }
+            Err(error) => {
+                // A hidden delivery that fails must not take the whole neural
+                // voice down: the base delivery still speaks the call.
+                if report_failure {
+                    let _ = events.send(KokoroEvent::Failed(error));
+                }
+                None
+            }
+        }
+    }
+
+    fn load_cached(&self, text: &str, variant: u8) -> Option<Vec<f32>> {
+        read_speech_cache(&self.cache_path(text, variant), self.output_sample_rate)
+    }
+
+    fn save_cached(&self, text: &str, variant: u8, samples: &[f32]) {
+        let directory = speech_cache_dir(&self.cache_dir);
+        if write_speech_cache(
+            &self.cache_path(text, variant),
+            self.output_sample_rate,
+            samples,
+        )
+        .is_ok()
+        {
+            prune_speech_cache(&directory);
+        }
+    }
+
+    fn cache_path(&self, text: &str, variant: u8) -> PathBuf {
+        speech_cache_path(
+            &self.cache_dir,
+            &speech_cache_digest(
+                self.voice.id,
+                self.tone,
+                self.rate,
+                self.output_sample_rate,
+                variant,
+                text,
+            ),
+        )
     }
 
     /// Turn the voice on or off.
@@ -355,7 +541,7 @@ impl Worker {
             PrewarmAction::Restart
         } else {
             self.engine = None;
-            self.cache.clear();
+            self.clear_cache();
             PrewarmAction::Abort
         }
     }
@@ -412,57 +598,90 @@ impl Worker {
         }
     }
 
+    /// Prepare every delivery so a live call never waits for synthesis.
+    ///
+    /// Delivery zero for every call is prepared first and ends the visible
+    /// progress: after that the voice is usable. The remaining deliveries are
+    /// synthesized quietly, one call at a time, so a repeated call can rotate
+    /// without the user watching a longer progress bar.
     fn prewarm(
         &mut self,
         commands: &Receiver<Command>,
         events: &Sender<KokoroEvent>,
         generation: &AtomicU64,
     ) {
-        if self.engine.is_none() {
-            return;
-        }
-        let start_generation = generation.load(Ordering::Relaxed);
-        let mut calls = self.last_calls.clone();
-        let mut index = 0;
-        let mut failed = false;
-        while index < calls.len() {
-            // Prewarming must not starve live calls: handle anything the UI
-            // queued while the last phrase was rendering.
-            while let Ok(command) = commands.try_recv() {
-                match self.handle_prewarm_command(command, events, generation) {
-                    PrewarmAction::Continue => {}
-                    PrewarmAction::Restart => {
-                        calls = self.last_calls.clone();
-                        index = 0;
-                    }
-                    PrewarmAction::Abort => return,
-                }
-            }
-            if generation.load(Ordering::Relaxed) != start_generation {
+        loop {
+            if self.engine.is_none() {
                 return;
             }
-            let text = &calls[index];
-            if !self.cache.contains_key(text) {
-                if self.synthesize(text, events).is_some() {
+            let start_generation = generation.load(Ordering::Relaxed);
+            match self.prewarm_run(&start_generation, commands, events, generation) {
+                PrewarmRun::Restart => continue,
+                PrewarmRun::Done | PrewarmRun::Aborted => return,
+            }
+        }
+    }
+
+    fn prewarm_run(
+        &mut self,
+        start_generation: &u64,
+        commands: &Receiver<Command>,
+        events: &Sender<KokoroEvent>,
+        generation: &AtomicU64,
+    ) -> PrewarmRun {
+        let calls = self.last_calls.clone();
+        if calls.is_empty() {
+            self.announce_ready(events);
+            return PrewarmRun::Done;
+        }
+        for variant in 0..self.deliveries {
+            // Only the base delivery is user-visible. A repeated call may use
+            // one of the others, but waiting for them is not part of "ready".
+            let announce = variant == 0;
+            let mut failed = false;
+            for (index, text) in calls.iter().enumerate() {
+                // Prewarming must not starve live calls: handle anything the UI
+                // queued while the last phrase was rendering.
+                while let Ok(command) = commands.try_recv() {
+                    match self.handle_prewarm_command(command, events, generation) {
+                        PrewarmAction::Continue => {}
+                        PrewarmAction::Restart => return PrewarmRun::Restart,
+                        PrewarmAction::Abort => return PrewarmRun::Aborted,
+                    }
+                }
+                if generation.load(Ordering::Relaxed) != *start_generation {
+                    return PrewarmRun::Aborted;
+                }
+                let already_prepared = self.cache_get(text, variant).is_some();
+                if self.prepare(text, variant, variant == 0, events).is_none() {
+                    failed = true;
+                } else if announce && !already_prepared {
                     let total = calls.len();
                     let _ = events.send(KokoroEvent::Status {
                         message: format!("Preparing calls ({}/{total})", index + 1),
                         progress: Some((index + 1) as f32 / total as f32),
                         ready: true,
                     });
-                } else {
-                    failed = true;
                 }
             }
-            index += 1;
+            if variant == 0 {
+                if failed {
+                    // Do not spend more CPU behind a failure; the app already
+                    // fell back to the platform voice for this call.
+                    return PrewarmRun::Done;
+                }
+                self.announce_ready(events);
+            }
         }
-        if !failed {
-            let _ = events.send(KokoroEvent::Status {
-                message: format!("{} ready", self.voice.label),
-                progress: None,
-                ready: true,
-            });
-        }
+        PrewarmRun::Done
+    }
+
+    fn announce_ready(&self, events: &Sender<KokoroEvent>) {
+        let _ = events.send(KokoroEvent::Status {
+            message: format!("{} ready", self.voice.label),
+            progress: None,
+            ready: true,
+        });
     }
 
     fn handle_prewarm_command(
@@ -474,10 +693,11 @@ impl Worker {
         match command {
             Command::Speak {
                 text,
+                variant,
                 generation: asked,
             } => {
                 if self.enabled && self.engine.is_some() {
-                    self.speak_now(&text, asked, events, generation);
+                    self.speak_now(&text, variant, asked, events, generation);
                 }
                 PrewarmAction::Continue
             }
@@ -487,7 +707,7 @@ impl Worker {
                     contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
                     contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
                 );
-                self.cache.clear();
+                self.clear_cache();
                 PrewarmAction::Abort
             }
             Command::SetTone(tone) => {
@@ -495,8 +715,29 @@ impl Worker {
                     return PrewarmAction::Continue;
                 }
                 self.tone = tone;
-                self.cache.clear();
+                self.clear_cache();
                 PrewarmAction::Restart
+            }
+            Command::SetDeliveries(deliveries) => {
+                let deliveries = deliveries.clamp(
+                    contra_core::MIN_TTS_DELIVERIES,
+                    contra_core::MAX_TTS_DELIVERIES,
+                );
+                if self.deliveries == deliveries {
+                    return PrewarmAction::Continue;
+                }
+                self.deliveries = deliveries;
+                self.clear_cache();
+                if self.enabled {
+                    self.ensure_ready(events);
+                    if self.engine.is_some() {
+                        PrewarmAction::Restart
+                    } else {
+                        PrewarmAction::Abort
+                    }
+                } else {
+                    PrewarmAction::Abort
+                }
             }
             Command::SetVoice(id) => {
                 let voice = crate::tts::voice(&id);
@@ -504,7 +745,7 @@ impl Worker {
                     return PrewarmAction::Continue;
                 }
                 self.voice = voice;
-                self.cache.clear();
+                self.clear_cache();
                 self.engine = None;
                 self.failed = None;
                 if self.enabled {
@@ -541,18 +782,12 @@ impl Worker {
         }
     }
 
-    fn synthesize(&mut self, text: &str, events: &Sender<KokoroEvent>) -> Option<Vec<f32>> {
-        let engine = self.engine.as_mut()?;
-        match engine.synthesize(text, self.rate, self.tone, self.output_sample_rate) {
-            Ok(samples) => {
-                self.cache.insert(text.to_string(), samples.clone());
-                Some(samples)
-            }
-            Err(error) => {
-                let _ = events.send(KokoroEvent::Failed(error));
-                None
-            }
-        }
+    fn synthesize(&mut self, text: &str, variant: u8) -> Result<Vec<f32>, String> {
+        let engine = self
+            .engine
+            .as_mut()
+            .ok_or("the neural voice is not loaded")?;
+        engine.synthesize(text, self.rate, self.tone, variant, self.output_sample_rate)
     }
 }
 
@@ -594,8 +829,11 @@ impl Engine {
         }
 
         let voice = read_voice(&assets.voice)?;
+        // Leave one core for the UI and the audio callback. The hidden
+        // delivery passes run while the dance is playing, so saturating every
+        // core would trade background preparation against frame time.
         let threads = std::thread::available_parallelism()
-            .map(|value| value.get().clamp(1, 4))
+            .map(|value| value.get().saturating_sub(1).clamp(1, 4))
             .unwrap_or(1);
         let session = Session::builder(environment)
             .map_err(|error| format!("could not create the Kokoro session: {error}"))?
@@ -630,6 +868,7 @@ impl Engine {
         text: &str,
         rate: f32,
         tone: CallTone,
+        variant: u8,
         output_sample_rate: u32,
     ) -> Result<Vec<f32>, String> {
         let input = pronounce::kokoro_text(text);
@@ -642,7 +881,8 @@ impl Engine {
         if tone.enunciation() {
             phonemes = enunciate_phonemes(&phonemes);
         }
-        self.render(&phonemes, text, rate, tone, output_sample_rate)
+        let pitch = tone.pitch() * delivery_pitch(variant);
+        self.render(&phonemes, text, rate, tone, pitch, output_sample_rate)
     }
 
     fn render(
@@ -651,6 +891,7 @@ impl Engine {
         text: &str,
         rate: f32,
         tone: CallTone,
+        pitch: f32,
         output_sample_rate: u32,
     ) -> Result<Vec<f32>, String> {
         if phonemes.is_empty() {
@@ -685,7 +926,7 @@ impl Engine {
             .map_err(|error| format!("could not build the Kokoro input: {error}"))?;
         let style = Tensor::from_array((vec![1, VOICE_DIM], style))
             .map_err(|error| format!("could not build the Kokoro style: {error}"))?;
-        let speed = Tensor::from_array((vec![1], vec![synthesis_speed(rate, tone.pitch())]))
+        let speed = Tensor::from_array((vec![1], vec![synthesis_speed(rate, pitch)]))
             .map_err(|error| format!("could not build the Kokoro speed: {error}"))?;
         let outputs = self
             .session
@@ -709,19 +950,35 @@ impl Engine {
         }
         trim_silence(&mut audio);
         fade(&mut audio);
-        // A lower tone is produced by synthesizing the same words a little
+        // A lower pitch is produced by synthesizing the same words a little
         // faster and then playing the samples back a little slower. The two
-        // cancel in duration, so the call still fits its timeline slot; only
-        // the pitch and formants move down.
+        // cancel in duration, so the delivery still fits its timeline slot;
+        // only the pitch and formants move.
         let mut samples = resample_linear(
             &audio,
             SAMPLE_RATE,
-            pitch_shifted_rate(output_sample_rate, tone.pitch()),
+            pitch_shifted_rate(output_sample_rate, pitch),
         );
         if tone.enunciation() {
             enunciate_audio(&mut samples, output_sample_rate);
         }
         Ok(samples)
+    }
+}
+
+/// Pitch multiplier for one prepared delivery.
+///
+/// Delivery zero is the caller tone unchanged. The others move a fraction of a
+/// semitone up or down. Each offset goes through the same speed/resample pair
+/// as the tone, so every delivery has the same duration and the call still
+/// matches its syllable-based lead.
+fn delivery_pitch(variant: u8) -> f32 {
+    match variant % 4 {
+        0 => 1.0,
+        1 => 1.04,
+        2 => 0.96,
+        3 => 1.02,
+        _ => 1.0,
     }
 }
 
@@ -1097,6 +1354,155 @@ fn read_voice(path: &Path) -> Result<Vec<f32>, String> {
     Ok(voice)
 }
 
+fn speech_cache_dir(cache_dir: &Path) -> PathBuf {
+    cache_dir.join(SPEECH_CACHE_DIR)
+}
+
+fn speech_cache_path(cache_dir: &Path, digest: &str) -> PathBuf {
+    speech_cache_dir(cache_dir).join(format!("{digest}.pcm"))
+}
+
+/// Stable cache key for one delivery of one call.
+///
+/// The rate is rounded to the UI's 0.1 steps before hashing, so a slider
+/// release reuses a delivery that was already synthesized at that rate. The
+/// tone, voice, sample rate, and delivery index are part of the key because
+/// the audio is baked for all of them.
+fn speech_cache_digest(
+    voice: &str,
+    tone: CallTone,
+    rate: f32,
+    sample_rate: u32,
+    variant: u8,
+    text: &str,
+) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(SPEECH_CACHE_MAGIC);
+    hasher.update(SPEECH_CACHE_VERSION.to_le_bytes());
+    hasher.update(voice.as_bytes());
+    hasher.update([0]);
+    hasher.update(
+        match tone {
+            CallTone::Commanding => "commanding",
+            CallTone::Natural => "natural",
+        }
+        .as_bytes(),
+    );
+    hasher.update([0]);
+    hasher.update(format!("{rate:.3}").as_bytes());
+    hasher.update([0]);
+    hasher.update(sample_rate.to_le_bytes());
+    hasher.update([0]);
+    hasher.update([variant]);
+    hasher.update([0]);
+    hasher.update(text.as_bytes());
+    hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+/// Write one delivery as 16-bit mono PCM with a small versioned header.
+fn write_speech_cache(path: &Path, sample_rate: u32, samples: &[f32]) -> Result<(), String> {
+    if samples.is_empty() || samples.len() > u32::MAX as usize {
+        return Err("the synthesized call has an unsupported length".into());
+    }
+    let directory = path
+        .parent()
+        .ok_or_else(|| "the speech cache path has no directory".to_string())?;
+    fs::create_dir_all(directory)
+        .map_err(|error| format!("could not create the speech cache: {error}"))?;
+    let mut bytes = Vec::with_capacity(SPEECH_CACHE_HEADER + samples.len() * 2);
+    bytes.extend_from_slice(SPEECH_CACHE_MAGIC);
+    bytes.extend_from_slice(&SPEECH_CACHE_VERSION.to_le_bytes());
+    bytes.extend_from_slice(&sample_rate.to_le_bytes());
+    bytes.extend_from_slice(&(samples.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(&[0, 0]);
+    for sample in samples {
+        let value = (sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)).round() as i16;
+        bytes.extend_from_slice(&value.to_le_bytes());
+    }
+    let temporary = path.with_extension("part");
+    fs::write(&temporary, bytes)
+        .map_err(|error| format!("could not write the speech cache: {error}"))?;
+    fs::rename(&temporary, path)
+        .map_err(|error| format!("could not finish the speech cache: {error}"))
+}
+
+/// Read one delivery, rejecting a stale version, rate, or truncated file.
+fn read_speech_cache(path: &Path, sample_rate: u32) -> Option<Vec<f32>> {
+    let bytes = fs::read(path).ok()?;
+    if bytes.len() < SPEECH_CACHE_HEADER || &bytes[0..4] != SPEECH_CACHE_MAGIC {
+        return None;
+    }
+    let version = u16::from_le_bytes([bytes[4], bytes[5]]);
+    if version != SPEECH_CACHE_VERSION {
+        return None;
+    }
+    let stored_rate = u32::from_le_bytes(bytes[6..10].try_into().ok()?);
+    if stored_rate != sample_rate {
+        return None;
+    }
+    let count = u32::from_le_bytes(bytes[10..14].try_into().ok()?) as usize;
+    if count == 0 || bytes.len() != SPEECH_CACHE_HEADER + count * 2 {
+        return None;
+    }
+    let scale = f32::from(i16::MAX);
+    Some(
+        bytes[SPEECH_CACHE_HEADER..]
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|chunk| f32::from(i16::from_le_bytes(*chunk)) / scale)
+            .collect(),
+    )
+}
+
+fn prune_speech_cache(directory: &Path) {
+    prune_speech_cache_with_limit(directory, SPEECH_CACHE_LIMIT_BYTES);
+}
+
+/// Drop the oldest deliveries until the directory is under `limit`.
+fn prune_speech_cache_with_limit(directory: &Path, limit: u64) {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return;
+    };
+    let mut files = Vec::new();
+    let mut total = 0u64;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let extension = path.extension().and_then(|extension| extension.to_str());
+        // A crash can leave a `.part` file behind; count and age it out with
+        // the finished deliveries instead of letting it accumulate.
+        if !matches!(extension, Some("pcm" | "part")) {
+            continue;
+        }
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
+        if !metadata.is_file() {
+            continue;
+        }
+        let length = metadata.len();
+        total = total.saturating_add(length);
+        let modified = metadata.modified().unwrap_or(std::time::UNIX_EPOCH);
+        files.push((modified, path, length));
+    }
+    if total <= limit {
+        return;
+    }
+    files.sort_by_key(|(modified, _, _)| *modified);
+    for (_, path, length) in files {
+        if total <= limit {
+            break;
+        }
+        if fs::remove_file(&path).is_ok() {
+            total = total.saturating_sub(length);
+        }
+    }
+}
+
 #[cfg(windows)]
 fn init_onnx(
     cache_dir: &Path,
@@ -1426,9 +1832,9 @@ mod tests {
 
     #[test]
     fn disabling_the_voice_releases_its_cache() {
-        let mut worker = Worker::new(std::env::temp_dir(), 48_000);
+        let mut worker = Worker::new(std::env::temp_dir(), 48_000, Arc::new(AtomicU64::new(0)));
         worker.engine = None;
-        worker.cache.insert("a call".into(), vec![0.25; 1_024]);
+        worker.cache_put("a call", 0, vec![0.25; 1_024]);
         worker.enabled = true;
 
         assert!(matches!(worker.set_enabled(false), PrewarmAction::Abort));
@@ -1438,6 +1844,206 @@ mod tests {
             worker.cache.is_empty(),
             "synthesized calls must not stay resident after speech is turned off"
         );
+    }
+
+    #[test]
+    fn prepared_deliveries_are_counted_and_cleared() {
+        let bytes = Arc::new(AtomicU64::new(0));
+        let mut worker = Worker::new(std::env::temp_dir(), 48_000, Arc::clone(&bytes));
+        worker.cache_put("swing your partner", 0, vec![0.0; 1_024]);
+        worker.cache_put("swing your partner", 1, vec![0.0; 1_024]);
+        assert_eq!(
+            bytes.load(Ordering::Relaxed),
+            8_192,
+            "four bytes per sample, across both deliveries"
+        );
+        assert!(worker.cache_get("swing your partner", 1).is_some());
+        assert!(
+            worker.cache_get("swing your partner", 2).is_none(),
+            "a delivery that has not been prepared is missing"
+        );
+
+        worker.clear_cache();
+        assert_eq!(bytes.load(Ordering::Relaxed), 0);
+        assert!(worker.cache_get("swing your partner", 0).is_none());
+    }
+
+    #[test]
+    fn every_delivery_keeps_the_call_length() {
+        let output_rate = 48_000;
+        for tone in [CallTone::Commanding, CallTone::Natural] {
+            for variant in 0..4u8 {
+                let pitch = tone.pitch() * delivery_pitch(variant);
+                let speed = synthesis_speed(1.0, pitch);
+                let shifted = pitch_shifted_rate(output_rate, pitch);
+                let length = (1.0 / speed) * (shifted as f32 / output_rate as f32);
+                assert!(
+                    (length - 1.0).abs() < 0.002,
+                    "{tone:?} delivery {variant} changed the length to {length}"
+                );
+            }
+        }
+        assert_eq!(delivery_pitch(0), 1.0);
+        let mut pitches = [0.0f32; 4];
+        for (variant, pitch) in pitches.iter_mut().enumerate() {
+            *pitch = delivery_pitch(variant as u8);
+        }
+        for (index, pitch) in pitches.iter().enumerate() {
+            assert!(
+                !pitches[..index].contains(pitch),
+                "delivery {index} repeats an earlier pitch"
+            );
+        }
+    }
+
+    #[test]
+    fn speech_cache_round_trips_pcm() {
+        let directory = temporary_cache_dir("round-trip");
+        let path = directory.join("a.pcm");
+        let samples: Vec<f32> = (0..2_000)
+            .map(|index| (index as f32 * 0.01).sin() * 0.5)
+            .collect();
+        write_speech_cache(&path, 48_000, &samples).expect("write");
+        let restored = read_speech_cache(&path, 48_000).expect("read");
+        assert_eq!(restored.len(), samples.len());
+        for (original, cached) in samples.iter().zip(&restored) {
+            assert!(
+                (original - cached).abs() < 1.0 / 32_000.0,
+                "{original} became {cached}"
+            );
+        }
+        assert!(
+            read_speech_cache(&path, 44_100).is_none(),
+            "a delivery for another output rate must not be reused"
+        );
+
+        fs::write(&path, b"CKSP").expect("truncate");
+        assert!(
+            read_speech_cache(&path, 48_000).is_none(),
+            "a truncated file must be rejected"
+        );
+        let _ = fs::remove_dir_all(&directory);
+    }
+
+    #[test]
+    fn speech_cache_key_covers_the_audio_settings() {
+        let key = |voice, tone, rate, sample_rate, variant, text| {
+            speech_cache_digest(voice, tone, rate, sample_rate, variant, text)
+        };
+        let base = key(
+            "af_heart",
+            CallTone::Commanding,
+            1.2,
+            48_000,
+            0,
+            "swing your partner",
+        );
+        assert_eq!(base.len(), 64);
+        assert_eq!(
+            base,
+            key(
+                "af_heart",
+                CallTone::Commanding,
+                1.2,
+                48_000,
+                0,
+                "swing your partner"
+            )
+        );
+        assert_ne!(
+            base,
+            key(
+                "am_onyx",
+                CallTone::Commanding,
+                1.2,
+                48_000,
+                0,
+                "swing your partner"
+            )
+        );
+        assert_ne!(
+            base,
+            key(
+                "af_heart",
+                CallTone::Natural,
+                1.2,
+                48_000,
+                0,
+                "swing your partner"
+            )
+        );
+        assert_ne!(
+            base,
+            key(
+                "af_heart",
+                CallTone::Commanding,
+                1.3,
+                48_000,
+                0,
+                "swing your partner"
+            )
+        );
+        assert_ne!(
+            base,
+            key(
+                "af_heart",
+                CallTone::Commanding,
+                1.2,
+                44_100,
+                0,
+                "swing your partner"
+            )
+        );
+        assert_ne!(
+            base,
+            key(
+                "af_heart",
+                CallTone::Commanding,
+                1.2,
+                48_000,
+                1,
+                "swing your partner"
+            )
+        );
+        assert_ne!(
+            base,
+            key(
+                "af_heart",
+                CallTone::Commanding,
+                1.2,
+                48_000,
+                0,
+                "balance the ring"
+            )
+        );
+    }
+
+    #[test]
+    fn pruning_keeps_the_speech_cache_under_its_limit() {
+        let directory = temporary_cache_dir("prune");
+        fs::create_dir_all(&directory).expect("create");
+        for index in 0..3 {
+            fs::write(directory.join(format!("{index}.pcm")), vec![0u8; 10]).expect("write");
+        }
+        prune_speech_cache_with_limit(&directory, 25);
+        let total: u64 = fs::read_dir(&directory)
+            .expect("read")
+            .flatten()
+            .map(|entry| entry.metadata().map(|metadata| metadata.len()).unwrap_or(0))
+            .sum();
+        assert!(total <= 25, "cache still holds {total} bytes");
+        let _ = fs::remove_dir_all(&directory);
+    }
+
+    fn temporary_cache_dir(label: &str) -> PathBuf {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        std::env::temp_dir().join(format!(
+            "contra-kokoro-{label}-{}-{stamp}",
+            std::process::id()
+        ))
     }
 
     #[test]
@@ -1741,6 +2347,7 @@ mod tests {
                 "larks allemande left once and a half",
                 1.0,
                 CallTone::Commanding,
+                0,
                 48_000,
             )
             .expect("synthesize a call");
@@ -1749,6 +2356,24 @@ mod tests {
             .iter()
             .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
         assert!(peak > 0.01, "the call was silent");
+
+        // Every prepared delivery must reach the model as non-silent audio;
+        // the pitch offset must not break the voice.
+        for variant in 1..4 {
+            let samples = engine
+                .synthesize(
+                    "larks allemande left once and a half",
+                    1.0,
+                    CallTone::Commanding,
+                    variant,
+                    48_000,
+                )
+                .unwrap_or_else(|error| panic!("delivery {variant}: {error}"));
+            let peak = samples
+                .iter()
+                .fold(0.0f32, |peak, sample| peak.max(sample.abs()));
+            assert!(peak > 0.01, "delivery {variant} was silent");
+        }
 
         // The corrected terms must also reach the model as non-silent audio.
         for text in [
@@ -1760,7 +2385,7 @@ mod tests {
             "neighbors do-si-do once",
         ] {
             let samples = engine
-                .synthesize(text, 1.0, CallTone::Commanding, 48_000)
+                .synthesize(text, 1.0, CallTone::Commanding, 0, 48_000)
                 .expect(text);
             let peak = samples
                 .iter()
@@ -1773,7 +2398,7 @@ mod tests {
             let mut engine = Engine::load(Path::new(&cache), voice, &environment, |_, _, _| {})
                 .unwrap_or_else(|error| panic!("{}: {error}", voice.id));
             let samples = engine
-                .synthesize("swing your partner", 1.0, CallTone::Commanding, 48_000)
+                .synthesize("swing your partner", 1.0, CallTone::Commanding, 0, 48_000)
                 .unwrap_or_else(|error| panic!("{}: {error}", voice.id));
             let peak = samples
                 .iter()

@@ -119,6 +119,12 @@ presence/compression stage brings consonants forward. **Natural** keeps the
 voice's recorded pitch. Clear speech adds a few percent to the spoken call, but
 the syllable-based lead and safety padding still cover it.
 
+**Deliveries per call** (default 4) prepares several slightly different versions
+of every call and rotates them when a line repeats. The first version of each
+call is ready before the others, which prepare quietly in the background; the
+audio is cached on disk so later launches reuse it. Set it to 1 for a single
+rendering.
+
 The web and Android builds use the platform voice. Speech is pre-synthesized on
 a worker thread and mixed into the existing audio stream, so the UI and audio
 callback stay responsive.
