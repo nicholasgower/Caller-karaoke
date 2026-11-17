@@ -882,7 +882,8 @@ pub struct EndingOptions {
     /// Reveal the ending gradually over the last four beats instead of jumping
     /// into a stretched final bar.
     pub gradual: bool,
-    /// Resolve the final chord a perfect fifth below the written final chord.
+    /// Resolve the final chord and closing melody a perfect fifth below the
+    /// written final harmony.
     pub final_chord_down_fifth: bool,
 }
 

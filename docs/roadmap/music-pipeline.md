@@ -233,7 +233,9 @@ separate gains, so turning the band down never hides a call.
   gradual option off restores the older shape, where only the last bar is
   replaced and stretched.
 - The final chord resolves a perfect fifth below the written final chord by
-  default. A separate option keeps the written chord.
+  default. The closing melody note holds until the final chord arrives, then
+  resolves a fifth below as well. A separate option keeps the written chord and
+  melody.
 - The ending leaves the 64-beat grid. The UI reports the loop end, stops calls,
   and shows a slow-finish state while it plays.
 - With looping off, the ending replaces the abrupt stop at the loop boundary.
