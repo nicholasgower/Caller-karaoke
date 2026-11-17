@@ -59,8 +59,12 @@
     min-height: 0;
   }
 
+  /* flex-basis 0 from the desktop rule would win over `height`, clamping the
+     app to min-height. Let the explicit height size the frame instead. */
   .frame {
+    flex: none;
     height: calc(100vh - var(--ifm-navbar-height) - 8rem);
+    height: calc(100dvh - var(--ifm-navbar-height) - 8rem);
     min-height: 30rem;
   }
 }
