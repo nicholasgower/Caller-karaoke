@@ -36,7 +36,7 @@ exec "$HERE/usr/bin/contra-karaoke" "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 
-TOOL="$ROOT/dist/appimagetool-x86_64.AppImage"
+TOOL="$ROOT/target/appimagetool-x86_64.AppImage"
 if [ ! -x "$TOOL" ]; then
   curl -L --fail --retry 3 \
     -o "$TOOL" \

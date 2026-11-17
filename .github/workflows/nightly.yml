@@ -72,7 +72,7 @@ jobs:
           name: linux
           path: |
             target/debian/*.deb
-            dist/*.AppImage
+            dist/ContraKaraoke-*.AppImage
 
   web:
     runs-on: ubuntu-latest
