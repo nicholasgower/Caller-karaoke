@@ -75,8 +75,10 @@ See the `egui`/`epaint` source for the exact font files and notices.
   <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX> on first use and
   cache them locally. They are not stored in this repository or in the source
   tree.
-- **ONNX Runtime 1.31.0** — <https://onnxruntime.ai>. MIT licensed. The Windows
-  build embeds the official `onnxruntime.dll` in the executable and unpacks it
+- **ONNX Runtime 1.31.0** - <https://onnxruntime.ai>. MIT licensed. The Windows
+  build embeds the official `onnxruntime.dll` from the
+  [`Microsoft.ML.OnnxRuntime` 1.31.0 NuGet package](https://www.nuget.org/packages/Microsoft.ML.OnnxRuntime/1.31.0)
+  in the executable and unpacks it
   to the user cache on first use. Linux loads the official
   `libonnxruntime.so` dynamically; the app downloads and caches it on first use,
   so Flatpak and other offline package builds do not need a native runtime at

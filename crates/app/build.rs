@@ -1,11 +1,11 @@
 //! Build helper for the optional Kokoro neural voice.
 //!
 //! ONNX Runtime is loaded dynamically on Windows so the application can keep
-//! its self-contained static-CRT build. The runtime DLL is fetched at build
-//! time, verified, and embedded in the executable; it is written to the local
-//! cache on first use. Linux downloads its runtime at first use, and Android
-//! packages it from the pinned ONNX Runtime AAR in `packaging/android`, so this
-//! script does nothing there.
+//! its self-contained static-CRT build. The official runtime DLL is fetched
+//! from the pinned NuGet package at build time, verified, and embedded in the
+//! executable; it is written to the local cache on first use. Linux downloads
+//! its runtime at first use, and Android packages it from the pinned ONNX
+//! Runtime AAR in `packaging/android`, so this script does nothing there.
 
 use std::env;
 use std::fs;
@@ -14,10 +14,10 @@ use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
 
-const ONNX_RUNTIME_ZIP: &str = "https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-win-x64-1.31.0.zip";
-const ONNX_RUNTIME_ZIP_SHA256: &str =
-    "3958d8a44984160692c1b4ffd0de3cb48f8c39f9d34bb31e433db06e30b82195";
-const ONNX_RUNTIME_DLL: &str = "onnxruntime-win-x64-1.31.0/lib/onnxruntime.dll";
+const ONNX_RUNTIME_PACKAGE: &str = "https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/1.31.0/microsoft.ml.onnxruntime.1.31.0.nupkg";
+const ONNX_RUNTIME_PACKAGE_SHA256: &str =
+    "7e35fdb4f5adb62f01e60798e2e5ed05108f5fbbe1cca03fbcc37903cf7c5e3b";
+const ONNX_RUNTIME_DLL: &str = "runtimes/win-x64/native/onnxruntime.dll";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -63,7 +63,7 @@ fn main() {
             version = "1.31.0"
         )
     });
-    if sha256_hex(&bytes) != ONNX_RUNTIME_ZIP_SHA256 {
+    if sha256_hex(&bytes) != ONNX_RUNTIME_PACKAGE_SHA256 {
         panic!("ONNX Runtime download did not match the pinned SHA-256");
     }
     extract_dll(&bytes, &destination)
@@ -71,13 +71,15 @@ fn main() {
 }
 
 fn download() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let mut response = ureq::get(ONNX_RUNTIME_ZIP)
+    let mut response = ureq::get(ONNX_RUNTIME_PACKAGE)
         .header("User-Agent", "caller-karaoke-build")
         .call()?;
     let bytes = response
         .body_mut()
         .with_config()
-        .limit(128 * 1024 * 1024)
+        // The package carries every runtime, so it is larger than the old
+        // Windows-only archive.
+        .limit(256 * 1024 * 1024)
         .read_to_vec()?;
     Ok(bytes)
 }
