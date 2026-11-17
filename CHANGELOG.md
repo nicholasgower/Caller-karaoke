@@ -14,6 +14,7 @@ All notable changes to Contra Karaoke are documented here.
 - Add release checksums and simplify cargo-deb install
 - **nightly:** Stop installing the removed Android tools package
 - **cache:** Only save rust caches from long-lived branches
+- **nightly:** Build nightlies from dev instead of main
 
 
 ### Chores
@@ -42,6 +43,7 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - **website:** Serve the documentation site from nicholasgower
+- Update changelog [skip ci]
 - Update changelog [skip ci]
 
 
