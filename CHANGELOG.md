@@ -4,6 +4,14 @@ All notable changes to Contra Karaoke are documented here.
 
 ## [Unreleased]
 
+### Documentation
+- Update changelog [skip ci]
+
+
+### Features
+- **website:** Add platform-aware download buttons
+
+
 ### Fixes
 - **release:** Create the tag only after the artifacts exist
 
