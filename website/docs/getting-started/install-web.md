@@ -12,7 +12,8 @@ do not allow browser requests from this origin.
 ## Try the hosted copy
 
 A copy of the browser build is hosted on this site at
-[Play in your browser](/play).
+[Play in your browser](/play). On an iPhone or iPad, the site's download button
+opens this hosted copy, because there is no iOS build yet.
 
 - Press **Play** in the app once to allow audio; browsers block sound until you
   interact with the page.

@@ -1,17 +1,21 @@
 import {RELEASE_VERSION, releaseAssetUrl} from './release';
 
-/** Release builds we publish, in the order the download buttons offer them. */
-export type DownloadPlatform = 'windows' | 'linux' | 'android' | 'web';
+/**
+ * What the download button can offer: one of the release builds, or iOS, which
+ * has no release build and uses the browser app hosted on this site.
+ */
+export type DownloadPlatform = 'windows' | 'linux' | 'android' | 'web' | 'ios';
 
 export type DownloadAsset = {
-  /** File name attached to the GitHub release. */
-  file: string;
+  /** File name attached to the GitHub release; omitted for a link on this site. */
+  file?: string;
   /** Button text when this asset is the main download. */
   action: string;
   /** Menu label for an alternative build. */
   label: string;
   /** One line of context under the menu label. */
   detail: string;
+  /** Release asset URL, or a site path resolved against the deployed base URL. */
   url: string;
 };
 
@@ -22,6 +26,8 @@ export type DownloadOptions = {
   primary: DownloadAsset;
   /** Other builds for the same platform, offered in the menu. */
   alternatives: DownloadAsset[];
+  /** Version note under the button; defaults to the unsigned release note. */
+  caption?: string;
 };
 
 function asset(
@@ -99,11 +105,28 @@ const WEB: DownloadOptions = {
   alternatives: [],
 };
 
+/**
+ * iOS has no release build yet, so the button opens the browser app hosted on
+ * this site instead of downloading a Windows file that cannot run there.
+ */
+const IOS: DownloadOptions = {
+  name: 'iOS',
+  primary: {
+    action: 'Play in your browser',
+    label: 'Play in your browser',
+    detail: 'Runs in Safari; no install needed.',
+    url: '/play/',
+  },
+  alternatives: [],
+  caption: `Version ${RELEASE_VERSION} · hosted browser build`,
+};
+
 const OPTIONS: Record<DownloadPlatform, DownloadOptions> = {
   windows: WINDOWS,
   linux: LINUX,
   android: ANDROID,
   web: WEB,
+  ios: IOS,
 };
 
 /** The builds offered for one platform; the first is the main button. */
@@ -112,13 +135,26 @@ export function downloadOptions(platform: DownloadPlatform): DownloadOptions {
 }
 
 /**
- * The visitor's platform, read from the browser. Anything without a release
- * build (macOS, iOS, unknown systems) falls back to the Windows build rather
- * than leaving the visitor without a download.
+ * The visitor's platform, read from the browser. iOS has no release build, so
+ * it points at the browser app on this site; anything else without a build
+ * (macOS, unknown systems) falls back to the Windows build rather than leaving
+ * the visitor without a download.
  */
 export function detectPlatform(): DownloadPlatform {
   if (typeof navigator === 'undefined') return 'windows';
   const reported = `${navigator.userAgent} ${navigator.platform ?? ''}`.toLowerCase();
+  // iPadOS 13+ reports a desktop Safari user agent; multi-touch distinguishes it
+  // from a Mac, which has no touch screen.
+  const isIPadOS =
+    reported.includes('macintosh') && navigator.maxTouchPoints > 1;
+  if (
+    reported.includes('iphone') ||
+    reported.includes('ipad') ||
+    reported.includes('ipod') ||
+    isIPadOS
+  ) {
+    return 'ios';
+  }
   if (reported.includes('android')) return 'android';
   if (reported.includes('windows') || reported.includes('win32') || reported.includes('win64')) {
     return 'windows';

@@ -79,8 +79,10 @@ captured manually.
 
 <DownloadButton />
 
-The button follows the computer you are using. Every desktop build and the
-Android APK is on the [download page](/download). You can also
+The button follows the computer you are using. On an iPhone or iPad it opens
+the [hosted browser app](/play) instead, because there is no iOS build yet.
+Every desktop build and the Android APK is on the [download page](/download).
+You can also
 [play in your browser](/play) without installing anything, or continue to
 [Install on Windows](/docs/getting-started/install-windows),
 [Install on Linux](/docs/getting-started/install-linux),

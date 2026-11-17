@@ -14,6 +14,9 @@ development release. These are the limitations to know before relying on it.
   a bare `cargo apk build` does not, and will crash while loading the native
   library. Release APKs use the debug keystore unless release signing secrets
   are configured.
+- **iOS and macOS** have no release build. On an iPhone or iPad, the download
+  button on this site opens the hosted browser app, with the browser build's
+  limits below. macOS visitors can use the hosted browser app too.
 - The **web build** needs the included proxy for online search and downloads.
   Without it, the bundled defaults and anything already in your saved library
   still work.
