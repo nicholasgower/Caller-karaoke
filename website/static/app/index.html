@@ -2,40 +2,123 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-    <title>Contra Karaoke</title>
-    <link rel="icon" type="image/svg+xml" href="contra-karaoke.svg" />
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Browser app not built — Contra Karaoke</title>
     <style>
-      html,
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
-        padding: 0;
+        padding: 2rem 1.25rem;
         background: #141414;
         color: #e6e6e6;
-        font-family: system-ui, sans-serif;
-        overflow: hidden;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        line-height: 1.5;
       }
-      #contra-canvas {
-        width: 100vw;
-        height: 100vh;
-        display: block;
-        touch-action: none;
+      main {
+        max-width: 44rem;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 1rem;
+        font-size: 1.5rem;
+        line-height: 1.25;
+      }
+      h2 {
+        margin: 2rem 0 0.5rem;
+        font-size: 1.1rem;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+      .eyebrow {
+        margin-bottom: 0.5rem;
+        color: #a3a3a3;
+        font-size: 0.8rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      code {
+        padding: 0.1em 0.3em;
+        border: 1px solid #3a3a3a;
+        border-radius: 4px;
+        background: #1f1f1f;
+        font-size: 0.9em;
+      }
+      pre {
+        overflow-x: auto;
+        margin: 0 0 1rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid #3a3a3a;
+        border-radius: 6px;
+        background: #1f1f1f;
+      }
+      pre code {
+        padding: 0;
+        border: 0;
+        background: none;
+      }
+      a {
+        color: #d6d6d6;
+      }
+      .note {
+        color: #a3a3a3;
+        font-size: 0.9rem;
       }
     </style>
-  <link rel="modulepreload" href="/Contra-karaoke/app/contra-web-be237a6db7487236.js" crossorigin="anonymous" integrity="sha384-jjJH74bKHqsgfpXZ2buloFq4oNzAKLHhG8P0/Cg1bzB4v8A0aQ1QGu1+g9njM0bH"><link rel="preload" href="/Contra-karaoke/app/contra-web-18775ecbaed13044_bg.wasm" crossorigin="anonymous" integrity="sha384-QboAMhNHkdAlD3U4Uw5sqVzonN3/jNdUbcl6GmJyLRsiLbgmxMOsreLTzcLAqcGa" as="fetch" type="application/wasm"></head>
+  </head>
   <body>
-    <canvas id="contra-canvas"></canvas>
-  
-<script type="module">
-import init, * as bindings from '/Contra-karaoke/app/contra-web-be237a6db7487236.js';
-const wasm = await init({ module_or_path: '/Contra-karaoke/app/contra-web-18775ecbaed13044_bg.wasm' });
+    <main>
+      <p class="eyebrow">Contra Karaoke documentation</p>
+      <h1>The browser app has not been built</h1>
+      <p>
+        This page is a placeholder served from <code>website/static/app/</code>,
+        not the app itself. Build the WebAssembly app to replace it, or use the
+        downloaded build and the <a href="../play/">hosted copy on this site</a>.
+      </p>
 
+      <h2>Build it locally</h2>
+      <p>
+        Building needs Rust, the <code>wasm32-unknown-unknown</code> target, and
+        Trunk:
+      </p>
+      <pre><code>rustup target add wasm32-unknown-unknown
+cargo install trunk --locked</code></pre>
+      <p>Then stage the app and start the documentation server:</p>
+      <pre><code>cd website
+npm run build:app
+npm start</code></pre>
+      <p>
+        <code>npm start</code> runs <code>npm run build:app</code> automatically,
+        so the staging command is only needed when the app is already built or
+        when you want to refresh it before starting.
+      </p>
 
-window.wasmBindings = bindings;
-
-
-dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
-
-</script></body>
+      <h2>Working on the docs only?</h2>
+      <p>
+        Run <code>npm run start:docs</code> to skip the browser build. That
+        server is enough for prose and screenshots; this placeholder stays in
+        the <code>/play</code> frame. To review the site at phone width, run
+        <code>npm run preview:ios</code>. Add <code>-- --path /play/</code> only
+        after the WASM app has been staged.
+      </p>
+      <p class="note">
+        See
+        <a href="../docs/contributing/docs-and-screenshots/"
+          >Docs and screenshots</a
+        >
+        for the full local workflow and the release steps.
+      </p>
+    </main>
+  </body>
 </html>

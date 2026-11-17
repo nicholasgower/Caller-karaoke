@@ -16,6 +16,7 @@
     "build:app": "node scripts/build-web-app.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "annotate": "node scripts/annotate-screenshots.mjs",
+    "preview:ios": "node scripts/ios-preview.mjs",
     "check": "npm run check:shots && docusaurus build"
   },
   "dependencies": {

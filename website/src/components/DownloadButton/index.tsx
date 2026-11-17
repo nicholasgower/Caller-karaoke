@@ -1,4 +1,5 @@
 import React, {useEffect, useId, useRef, useState} from 'react';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 
 import {
   detectPlatform,
@@ -30,6 +31,9 @@ export default function DownloadButton({
   // the visitor's own platform replaces it right after mount.
   const active = platform === 'auto' ? detected ?? 'windows' : platform;
   const options = downloadOptions(active);
+  // iOS points at the hosted browser app, an in-site path that needs the
+  // deployed base URL. Release URLs are absolute and pass through unchanged.
+  const primaryUrl = useBaseUrl(options.primary.url);
 
   useEffect(() => {
     if (platform === 'auto') setDetected(detectPlatform());
@@ -63,7 +67,7 @@ export default function DownloadButton({
       <div className={styles.buttons}>
         <a
           className={`button button--lg ${styles.main}`}
-          href={options.primary.url}
+          href={primaryUrl}
           aria-describedby={`${menuId}-version`}
         >
           {options.primary.action}
@@ -105,7 +109,7 @@ export default function DownloadButton({
         )}
       </div>
       <p className={styles.caption} id={`${menuId}-version`}>
-        Version {RELEASE_VERSION} · unsigned build
+        {options.caption ?? `Version ${RELEASE_VERSION} · unsigned build`}
       </p>
     </div>
   );

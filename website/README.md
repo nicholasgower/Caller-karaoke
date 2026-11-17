@@ -23,6 +23,7 @@ npm run start:docs   # docs only: skips the browser build; /play shows a placeho
 npm run build:app    # requires Rust + Trunk; stages the WASM app under static/app
 npm test             # screenshot manifest, uniqueness, and emphasis regions
 npm run check        # npm test + production build
+npm run preview:ios  # serve website/build in an iPhone frame (build first)
 npm run screenshots  # release prep only: headless renderer + PhotoCraft annotation
 npm run annotate     # release prep only: re-apply PhotoCraft to existing raw PNGs
 npm run build
@@ -55,10 +56,33 @@ Rust therefore produces a site whose `/play` frame shows the placeholder.
 Override the public URL with `CONTRA_WEB_PUBLIC_URL` if you deploy the site at a
 different base path.
 
+## Mobile preview
+
+`npm run preview:ios` serves the production build in a 390×844 iPhone frame
+with an iPhone Safari user agent injected before the site bundle runs. Use it to
+review phone layout and code that reads the browser's platform, such as the
+adaptive download button. It reads `website/build`, so run `npm run build`
+first; run `npm run build:app` before that when reviewing `/play`, because the
+docs build alone does not stage the WASM app.
+
+```sh
+npm run build:app
+npm run build
+npm run preview:ios -- --path /play/
+```
+
+Options include `--device ipad`, `--width`/`--height` for another viewport,
+`--port` to avoid a busy port, and `--host 0.0.0.0` to open the preview from a
+real phone on the same network. The script prints the frame URL and the page URL
+inside it. It does not rebuild the site, and it warns when `/app/` looks like a
+Trunk build without its WASM bundle.
+
 ## Download links
 
 The `DownloadButton` component links straight at GitHub release assets, so a
-visitor never has to find the file on GitHub. Those file names carry the
+visitor never has to find the file on GitHub. The auto-detected button is the
+exception on iOS, where it links to the hosted browser app at `/play` instead
+of a release file. Those file names carry the
 version, which comes from `src/release.ts`. That line mirrors
 `[workspace.package] version` in `Cargo.toml`; `scripts/release.mjs` rewrites
 both in the release commit. Keep them in step when you change the version by

@@ -54,6 +54,19 @@ state, and error banner, not only to the two screens with phone screenshots.
 Fix what the phone pass reveals. Do not add a limitation that says a picker is
 only usable in a wider window.
 
+For the website's own mobile layout, build it and open the iOS preview:
+
+```sh
+cd website
+npm run build
+npm run preview:ios
+```
+
+That serves the production build in a 390×844 iPhone frame with an iOS user
+agent. Use `--path /play/` to review the hosted browser app, or `--device ipad`
+for tablet width. See `website/README.md` for the options. The preview does not
+rebuild the site, and `/play` needs `npm run build:app` before the build.
+
 ## Writing style
 
 - Second person, present tense.
@@ -77,6 +90,9 @@ For docs-only work, `npm run start:docs` skips the build. A tracked
 
 The app is built with the public URL `/Contra-karaoke/app/`; keep that in step
 with `baseUrl` in `docusaurus.config.ts` or set `CONTRA_WEB_PUBLIC_URL`.
+
+To review the hosted app at phone width, run
+`npm run preview:ios -- --path /play/` after building the site.
 
 ## Screenshots
 
@@ -134,9 +150,11 @@ instead of being duplicated.
 - `<Shot id="id" />` is for a standalone figure.
 - `<DownloadButton platform="windows" />` is the release download button; add it
   wherever a page tells the reader to download the app. Pass `windows`, `linux`,
-  `android`, or `web`, or leave `platform` off to follow the visitor's operating
-  system. The button links straight at the release asset, so the page never
-  sends the reader to GitHub.
+  `android`, `web`, or `ios`, or leave `platform` off to follow the visitor's
+  operating system. On iOS the button opens the hosted browser app at `/play`
+  instead, so it still resolves through the site's base URL. Every other button
+  links straight at the release asset, so the page never sends the reader to
+  GitHub.
 - `<Figure>` is reserved for the few manual OS installer images.
 
 A page should not use a raw `<img>` for an in-app screenshot.
