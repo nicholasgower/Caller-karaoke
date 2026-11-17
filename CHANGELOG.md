@@ -59,6 +59,8 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
+- **release:** Link the download pages at the releases list
 
 
 ### Features
@@ -137,6 +139,7 @@ All notable changes to Contra Karaoke are documented here.
 - **android:** Add local Kokoro neural voice
 - **tts:** Prepare and cache four deliveries per call
 - **android:** Build a signed APK with the TTS bridge
+- **release:** Publish releases only when they are cut by hand
 
 
 ### Fixes
