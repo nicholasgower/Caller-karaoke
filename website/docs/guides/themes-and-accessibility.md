@@ -88,6 +88,11 @@ the field, and shortcuts such as **Space** and **1-3** stay suspended until it
 loses focus. Suggestions and autocorrect are off so typed aliases, searches, and
 ABC source are not rewritten.
 
+A number box behaves the same way. The keyboard stays open while you edit a
+tempo, volume, or timing value, and the number applies when you press Enter or
+tap elsewhere. Typing is never interrupted by the field reformatting a partial
+value.
+
 <Shot id="main-mobile" />
 
 The search and download screens use the same phone layout. Form labels sit
