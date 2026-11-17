@@ -32,6 +32,7 @@ All notable changes to Caller Karaoke are documented here.
 - **android:** Keep the soft keyboard stable for number fields.
 - **website:** Remove the GitHub link from the navbar.
 - **website:** Restore the unbuilt app fallback and size the mobile app frame.
+- **music:** Resolve ending melody a fifth below the final chord.
 
 
 ### Style
