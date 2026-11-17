@@ -2,6 +2,12 @@
 
 All notable changes to Contra Karaoke are documented here.
 
+## [Unreleased]
+
+### Fixes
+- **release:** Create the tag only after the artifacts exist
+
+
 ## [0.1.0] — 2026-11-17
 
 ### Build
@@ -218,6 +224,10 @@ All notable changes to Contra Karaoke are documented here.
 - **app:** Split the preferences screen into section functions
 - **app:** Group the headless screenshots by screen
 - **app:** Group the picker state into one struct
+
+
+### Release
+- **release:** V0.1.0
 
 
 ### Testing
