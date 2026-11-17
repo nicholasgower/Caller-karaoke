@@ -37,6 +37,7 @@ All notable changes to Contra Karaoke are documented here.
 - **agents:** Require docs updates with code changes
 - **screenshots:** Refresh only when preparing a release
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 
 ### Features
@@ -61,6 +62,7 @@ All notable changes to Contra Karaoke are documented here.
 - **aliases:** Shuffle alternative call aliases
 - **ui:** Colour the prompt card for call-now and upcoming-move
 - **ui:** Add an about window with project links
+- **android:** Build a signed APK with the TTS bridge
 
 
 ### Fixes
@@ -78,6 +80,8 @@ All notable changes to Contra Karaoke are documented here.
 - **music:** Normalize raw ABC before parsing
 - **tts:** Stress the first syllable in petronella
 - **packaging:** Resolve the Debian desktop asset from the workspace root
+- **android:** Add the launcher icons the manifest references
+- **packaging:** Give the AppImage its desktop entry and icon
 
 
 ### Testing
