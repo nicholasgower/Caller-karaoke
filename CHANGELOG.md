@@ -39,6 +39,7 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 
 ### Features
@@ -84,6 +85,7 @@ All notable changes to Contra Karaoke are documented here.
 - **android:** Add the launcher icons the manifest references
 - **packaging:** Give the AppImage its desktop entry and icon
 - **android:** Install the Android targets for the repo toolchain
+- **nightly:** Checksum the release files instead of the artifact folders
 
 
 ### Testing
