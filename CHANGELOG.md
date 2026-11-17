@@ -34,6 +34,7 @@ All notable changes to Caller Karaoke are documented here.
 - **website:** Restore the unbuilt app fallback and size the mobile app frame.
 - **music:** Resolve ending melody a fifth below the final chord.
 - **release:** Bump internal crate requirements.
+- **release:** Allow for the full cargo metadata output.
 
 
 ### Style
