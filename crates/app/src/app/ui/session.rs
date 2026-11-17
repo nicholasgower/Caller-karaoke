@@ -68,7 +68,8 @@ fn session_controls(
             // Leave room for the value box and the " BPM" suffix.
             ui.spacing_mut().slider_width = (ui.available_width() - 100.0).max(96.0);
             let response = scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
-                ui.add(
+                number_slider(
+                    ui,
                     egui::Slider::new(tempo, tempo_min..=tempo_max)
                         .fixed_decimals(0)
                         .suffix(" BPM"),
@@ -157,7 +158,7 @@ fn session_controls(
             ui.label("Caller");
             ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
             let response = scroll_safe_slider(ui, &mut prefs.caller_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
             });
             let response = response.accessible_name("Caller volume");
             if response.changed() {
@@ -169,7 +170,7 @@ fn session_controls(
             ui.label("Band");
             ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
             let response = scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
             });
             let response = response.accessible_name("Band volume");
             if response.changed() {
@@ -181,7 +182,8 @@ fn session_controls(
         ui.horizontal_wrapped(|ui| {
             ui.label("Tempo");
             if scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
-                ui.add(
+                number_slider(
+                    ui,
                     egui::Slider::new(tempo, tempo_min..=tempo_max)
                         .text("BPM")
                         .fixed_decimals(0),
@@ -255,7 +257,7 @@ fn session_controls(
         ui.horizontal(|ui| {
             ui.label("Caller");
             if scroll_safe_slider(ui, &mut prefs.caller_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5))
             })
             .accessible_name("Caller volume")
             .changed()
@@ -265,7 +267,7 @@ fn session_controls(
             }
             ui.label("Band");
             if scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5))
             })
             .accessible_name("Band volume")
             .changed()
@@ -878,7 +880,8 @@ impl ContraApp {
                     "Change tune every",
                     &mut self.prefs.tune_rotation.passes_per_tune,
                     |ui, passes| {
-                        ui.add(
+                        number_slider(
+                            ui,
                             egui::Slider::new(
                                 passes,
                                 contra_core::TuneRotation::MIN_PASSES

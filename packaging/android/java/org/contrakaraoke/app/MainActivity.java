@@ -645,9 +645,13 @@ public class MainActivity extends NativeActivity {
     /**
      * Show or hide the system keyboard for the focused egui text field.
      *
-     * <p>Called from Rust once per focus change (and again on a tap, so a
-     * dismissed keyboard can be brought back). The call arrives on the native
-     * event-loop thread and is posted to the UI thread.
+     * <p>Called from Rust when the desired keyboard state changes (and again
+     * on a tap, so a dismissed keyboard can be brought back). The call arrives
+     * on the native event-loop thread and is posted to the UI thread.
+     *
+     * <p>This is the only Android IME controller: Rust suppresses egui's own
+     * IME output so {@code winit} cannot issue a second, competing show/hide.
+     * Each method call is therefore idempotent and cheap.
      */
     public static void setTextInputActive(final boolean active) {
         final MainActivity activity = appActivity;
@@ -660,15 +664,11 @@ public class MainActivity extends NativeActivity {
                     input.getContext().getSystemService(InputMethodManager.class);
             if (active) {
                 if (!input.hasFocus()) {
-                    // The field is only a carrier for the IME. Clearing it
-                    // prevents a half-typed hardware key from leaking into the
-                    // next field the user opens.
-                    input.setText("");
                     input.requestFocus();
                 }
-                if (imm != null) {
+                if (imm != null && !imm.isActive(input)) {
                     input.post(() -> {
-                        if (input.hasFocus()) {
+                        if (input.hasFocus() && !imm.isActive(input)) {
                             imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
                         }
                     });
@@ -678,6 +678,12 @@ public class MainActivity extends NativeActivity {
                     imm.hideSoftInputFromWindow(input.getWindowToken(), 0);
                 }
                 input.clearFocus();
+                // The field only carries the IME. Clearing it after it loses
+                // focus drops any half-composed text instead of leaking it
+                // into the next field the user opens. Do not clear it while
+                // showing: that restarts the IME (and its composing state) and
+                // is what made numeric fields flicker.
+                input.setText("");
             }
         });
     }

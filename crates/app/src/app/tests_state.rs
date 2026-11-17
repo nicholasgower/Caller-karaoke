@@ -642,3 +642,64 @@ fn clicking_loop_twice_restores_the_session() {
         "the second click did not restore the full session"
     );
 }
+
+/// A typed number belongs to the field until editing finishes.
+///
+/// Parsing and clamping every digit used to turn a partial "1" into the
+/// minimum and let the tempo window swap its two bounds, rewriting the text
+/// under the keyboard. The same churn restarts an Android IME's composition, so
+/// the value box now commits on Enter or focus loss.
+#[test]
+fn typing_into_a_number_box_does_not_rewrite_it_mid_entry() {
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
+
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_accessibility_check(false)
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = ContraApp::new_headless(cc);
+            app.clear_render_pending();
+            app.screen = Screen::Preferences;
+            app.prefs_page = crate::app::ui::preferences::PreferencesPage::Category(
+                crate::app::ui::preferences::PreferencesCategory::Playback,
+            );
+            app.status = "Ready".into();
+            app
+        });
+    harness.run_steps(3);
+
+    let minimum = harness.get_by_label("Minimum tempo");
+    minimum.scroll_to_me();
+    harness.run_steps(3);
+    let minimum = harness.get_by_label("Minimum tempo");
+    minimum.click();
+    harness.run_steps(3);
+
+    for (typed, expected) in [("1", "1"), ("5", "15"), ("0", "150")] {
+        harness.event(egui::Event::Text(typed.to_string()));
+        harness.run_steps(1);
+        assert_eq!(
+            harness.state().prefs.tempo_min_bpm,
+            200.0,
+            "a partial number must not be applied while the field is focused"
+        );
+        assert_eq!(
+            harness.get_by_label("Minimum tempo").value().as_deref(),
+            Some(expected),
+            "the field must keep what was typed"
+        );
+    }
+
+    harness.key_press(egui::Key::Enter);
+    harness.run_steps(2);
+    assert_eq!(
+        harness.state().prefs.tempo_min_bpm,
+        150.0,
+        "Enter applies the typed number once"
+    );
+}

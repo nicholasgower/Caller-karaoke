@@ -3703,8 +3703,14 @@ impl eframe::App for ContraApp {
 
         // Focus is settled by the end of the frame, so this is where a field
         // that was just tapped asks the activity for the system keyboard.
+        // The bridge is the only Android IME controller; egui's own IME output
+        // would make winit show and hide the same keyboard again (see
+        // `suppress_backend_ime`).
         #[cfg(target_os = "android")]
-        crate::android_ime::sync_text_input(ui.ctx());
+        {
+            crate::android_ime::suppress_backend_ime(ui.ctx());
+            crate::android_ime::sync_text_input(ui.ctx());
+        }
     }
 
     /// Session work that must also run while the window is minimized or hidden.

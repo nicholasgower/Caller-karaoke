@@ -135,6 +135,19 @@ where
     }
 }
 
+/// Add a numeric slider whose typed value applies when editing finishes.
+///
+/// Dragging still changes the value continuously. Only a number typed into the
+/// value box waits for Enter or for the field to lose focus. Without that,
+/// every digit is parsed and clamped while the user is still typing: a partial
+/// number such as "1" becomes the minimum, and a setting that normalizes a pair
+/// of boxes (the tempo window) can swap the two fields and rewrite the text
+/// under the keyboard. On Android each rewrite also restarts the IME's
+/// composing text, which is what made numeric entry flicker and lose digits.
+pub(super) fn number_slider(ui: &mut egui::Ui, slider: egui::Slider<'_>) -> egui::Response {
+    ui.add(slider.update_while_editing(false))
+}
+
 /// Distance the pointer must travel before a slider gesture's direction is
 /// judged. Below this a press is still a potential tap, so the slider holds
 /// the value it had before the press instead of committing the press position.
