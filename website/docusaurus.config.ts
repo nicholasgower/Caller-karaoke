@@ -74,11 +74,6 @@ const config: Config = {
           label: 'Play',
           position: 'left',
         },
-        {
-          href: 'https://github.com/nicholasgower/Contra-karaoke',
-          label: 'GitHub',
-          position: 'right',
-        },
       ],
     },
     footer: {
