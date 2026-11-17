@@ -466,6 +466,19 @@ fn count_in_label(count_in_beats: f64) -> String {
     }
 }
 
+/// The detail line under the current call: the lead left, rounded to the
+/// nearest half beat, or a muted note once the dancers are executing.
+fn executes_in_text(phase: CallPhase, execute_beat: f64, beat: f64) -> String {
+    if phase == CallPhase::Executing {
+        "figure in progress".to_string()
+    } else {
+        format!(
+            "executes in {} beats",
+            format_half_beats((execute_beat - beat).max(0.0))
+        )
+    }
+}
+
 /// Lines of call text the prompt card reserves, even for a one-line call.
 ///
 /// A longer call wraps and grows the card: the budget is a minimum, never a
@@ -1275,14 +1288,11 @@ impl ContraApp {
                             );
                             ui.horizontal_wrapped(|ui| {
                                 ui.label(
-                                    egui::RichText::new(if phase == CallPhase::Executing {
-                                        "figure in progress".to_string()
-                                    } else {
-                                        format!(
-                                            "executes in {:.1} beats",
-                                            (call.execute_beat - beat).max(0.0)
-                                        )
-                                    })
+                                    egui::RichText::new(executes_in_text(
+                                        phase,
+                                        call.execute_beat,
+                                        beat,
+                                    ))
                                     .color(theme::muted(ui)),
                                 );
                                 if self.prefs.show_original {
@@ -1412,6 +1422,16 @@ impl ContraApp {
                 .filter(|(_, call)| call.figure_index == figure_index)
                 .map(|(index, call)| (index, call.clone()))
                 .collect();
+            // The figure card's top-right corner carries the lead for its
+            // calls. A split figure has one lead per sub-call, in order.
+            let call_lead = (!calls.is_empty()).then(|| {
+                let leads = calls
+                    .iter()
+                    .map(|(_, call)| format_half_beats(call.lead_beats()))
+                    .collect::<Vec<_>>()
+                    .join(" · ");
+                format!("call {leads} beats")
+            });
             let fill = lerp_color(
                 theme::call_upcoming_bg(ui),
                 theme::call_active_bg(ui),
@@ -1424,7 +1444,7 @@ impl ContraApp {
                     if full_width {
                         ui.set_width(ui.available_width());
                     }
-                    ui.horizontal_wrapped(|ui| {
+                    ui.horizontal(|ui| {
                         if let Some(phrase) = &figure.phrase {
                             ui.label(egui::RichText::new(phrase).strong().color(
                                 if active_figure {
@@ -1439,6 +1459,18 @@ impl ContraApp {
                                 .small()
                                 .color(theme::muted(ui)),
                         );
+                        if let Some(call_lead) = &call_lead {
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    ui.label(
+                                        egui::RichText::new(call_lead)
+                                            .small()
+                                            .color(theme::subtle(ui)),
+                                    );
+                                },
+                            );
+                        }
                     });
                     for (index, call) in &calls {
                         let phase = self
@@ -1708,6 +1740,32 @@ mod tests {
         assert_eq!(
             progress_text(TransportState::Ending, 62.0, 64.0, 4.0),
             "Ending · slow finish"
+        );
+    }
+
+    #[test]
+    fn executes_in_text_rounds_to_the_nearest_half_beat() {
+        assert_eq!(
+            executes_in_text(CallPhase::Upcoming, 8.0, 4.0),
+            "executes in 4.0 beats"
+        );
+        assert_eq!(
+            executes_in_text(CallPhase::Calling, 8.0, 4.4),
+            "executes in 3.5 beats"
+        );
+        assert_eq!(
+            executes_in_text(CallPhase::Upcoming, 8.0, 4.75),
+            "executes in 3.5 beats"
+        );
+        assert_eq!(
+            executes_in_text(CallPhase::Executing, 8.0, 4.0),
+            "figure in progress"
+        );
+        // A clock that has reached the execute beat shows zero, never a
+        // negative countdown.
+        assert_eq!(
+            executes_in_text(CallPhase::Upcoming, 8.0, 9.0),
+            "executes in 0.0 beats"
         );
     }
 

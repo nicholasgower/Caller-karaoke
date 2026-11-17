@@ -144,19 +144,23 @@ impl LeadSettings {
     }
 
     /// Lead in dance beats for a rendered call, including the safety padding.
+    ///
+    /// The automatic lead — the speech estimate plus the safety padding — is
+    /// rounded **up** to the next whole dance beat. The caller therefore gets at
+    /// least the time the words need, and the call starts on a beat boundary
+    /// instead of a fraction of one. A manual lead is a direct user setting and
+    /// is used as entered.
     pub fn lead_beats(&self, syllables: usize, words: usize, tempo: Tempo) -> f64 {
-        let speech_lead = if !self.auto {
-            self.manual_beats.clamp(self.min_beats, self.max_beats)
-        } else {
-            let speech_seconds = syllables as f64 / self.syllables_per_second
-                + words.saturating_sub(1) as f64 * self.word_gap_seconds
-                + self.extra_pause_seconds;
-            let beats = speech_seconds / tempo.seconds_per_dance_beat().0 * self.lead_scale;
-            beats.clamp(self.min_beats, self.max_beats)
-        };
-
         let padding_beats = self.padding_seconds / tempo.seconds_per_dance_beat().0;
-        speech_lead + padding_beats
+        if !self.auto {
+            return self.manual_beats.clamp(self.min_beats, self.max_beats) + padding_beats;
+        }
+
+        let speech_seconds = syllables as f64 / self.syllables_per_second
+            + words.saturating_sub(1) as f64 * self.word_gap_seconds
+            + self.extra_pause_seconds;
+        let beats = speech_seconds / tempo.seconds_per_dance_beat().0 * self.lead_scale;
+        (beats.clamp(self.min_beats, self.max_beats) + padding_beats).ceil()
     }
 }
 
@@ -815,10 +819,30 @@ mod tests {
         assert_eq!(call.syllables, 9);
 
         let lead = LeadSettings::default().lead_beats(call.syllables, call.words, Tempo::default());
-        // 9 syllables / 4.0 = 2.25 s = 4.5 beats, plus the flat 0.5 s = 5.5 beats.
-        assert_eq!(lead, 5.5);
+        // 9 syllables / 4.0 = 2.25 s = 4.5 beats, plus the flat 0.5 s (1 beat
+        // at 240 BPM) = 5.5, rounded up to 6.
+        assert_eq!(lead, 6.0);
         let seconds = lead * Tempo::default().seconds_per_dance_beat().0;
-        assert!((seconds - 2.75).abs() < 1e-9);
+        assert!((seconds - 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn automatic_lead_rounds_up_to_a_whole_beat() {
+        let tempo = Tempo::default();
+        let lead = LeadSettings::default();
+
+        // 5 syllables at 4/s = 1.25 s = 2.5 beats, plus the default 1 beat of
+        // padding = 3.5, which rounds up to 4.
+        assert_eq!(lead.lead_beats(5, 3, tempo), 4.0);
+        // 9 syllables = 4.5 beats plus 1 of padding rounds up to 6.
+        assert_eq!(lead.lead_beats(9, 7, tempo), 6.0);
+        // An exact whole-beat lead is not bumped any further.
+        assert_eq!(lead.lead_beats(8, 2, tempo), 5.0);
+
+        // The rounding applies to the whole automatic lead at every tempo, not
+        // just to the speech estimate: at 180 BPM the same call is 3.375 beats
+        // of speech plus 0.75 of padding, which rounds up to 5.
+        assert_eq!(lead.lead_beats(9, 7, Tempo::new(180.0)), 5.0);
     }
 
     #[test]
@@ -890,9 +914,9 @@ mod tests {
         .expect("timeline");
         let first = &timeline.calls[0];
         assert_eq!(first.text, "neighbors do-si-do");
-        assert_eq!(first.lead_beats(), 3.5);
+        assert_eq!(first.lead_beats(), 4.0);
         let wrapped_start = timeline.music_loop_beats - first.lead_beats();
-        assert_eq!(wrapped_start, 60.5);
+        assert_eq!(wrapped_start, 60.0);
         assert!(wrapped_start > 0.0);
         assert!(wrapped_start < timeline.music_loop_beats);
 

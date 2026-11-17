@@ -31,9 +31,14 @@ speech_lead_beats = clamp(
   min_lead_beats,
   max_lead_beats
 )
-lead_beats = speech_lead_beats + safety_padding (converted to dance beats)
+lead_beats = ceil(speech_lead_beats + safety_padding (converted to dance beats))
 call_start_beat = execute_beat - lead_beats
 ```
+
+The automatic lead — the speech estimate plus the safety padding — is rounded
+**up** to the next whole dance beat, so the caller always gets at least the time
+the words need and the call starts on a beat boundary. A manual lead is used
+exactly as entered.
 
 Defaults are calibrated from a measured 2.25 s delivery of the nine-syllable
 call “larks allemande left once and a half”. A safety padding is added to every
@@ -48,17 +53,18 @@ to 2 s in Preferences.
 | lead scale | 1.0 |
 | minimum speech lead | 1.0 beat |
 | maximum speech lead | 5.0 beats |
+| automatic-lead rounding | up to the next whole beat |
 | safety padding | 0.5 s (adjustable 0–2 s) |
 
-At 240 BPM that phrase gets 4.5 beats of speech plus 1 beat of padding = 5.5
-beats, or 2.75 seconds. The maximum speech lead can be raised to 6 beats in
-Preferences, and the safety padding is adjustable; it is always added. Calls are
-computed from the **rendered alias**, not the original card text, so a longer
-alias starts earlier.
+At 240 BPM that phrase gets 4.5 beats of speech plus 1 beat of padding = 5.5,
+which rounds up to 6 beats, or 3.0 seconds. The maximum speech lead can be raised
+to 6 beats in Preferences, and the safety padding is adjustable; it is always
+added. Calls are computed from the **rendered alias**, not the original card
+text, so a longer alias starts earlier.
 
 Clear enunciation can lengthen the acoustic delivery by a few percent. The
-safety padding is added after the clamp and covers that variation, so the visual
-lead does not change.
+safety padding is part of the automatic lead before it is rounded up and covers
+that variation, so the visual lead does not change.
 
 A count of one is omitted from the rendered alias, so it adds no syllable and no
 lead. Fractional counts keep their words; “and a half” is spoken as the
@@ -99,14 +105,17 @@ repeat it.
 - The UI has three states: upcoming, call now, executing.
 - While the dancers execute a figure, the large prompt switches to an
   **upcoming move** box that names the move the caller must say next and how
-  many beats remain until the call starts. The dance card still highlights the
-  figure in progress.
+  many beats remain until the call starts. Both live countdowns (**executes in**
+  and **call in**) show the nearest half beat with one decimal (`4.0`, `3.5`).
+  The dance card still highlights the figure in progress and prints the call lead
+  in beats next to each call.
 
 ## Tests
 
 `crates/core/src/timing.rs` covers the default dance, the negative first call,
-the 1–5 beat speech-lead clamp plus the 0.5 s padding, manual leads, loop
-wrapping, sub-call splitting, and tempo sensitivity.
+the 1–5 beat speech-lead clamp, the round-up of the automatic lead, the 0.5 s
+padding, manual leads, loop wrapping, sub-call splitting, and tempo sensitivity.
+`crates/app/src/app/ui/mod.rs` covers the half-beat countdown formatting.
 `crates/music/src/arrange.rs` verifies the bundled Sandy Boys tune has a
 64-beat AABB body plus a 0.5-beat pickup, and checks the dance/tune length
 comparison. `crates/app/src/defaults.rs` asserts that the bundled dance and

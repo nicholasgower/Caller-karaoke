@@ -732,6 +732,7 @@ struct TimelineBasis {
     timeline: PracticeTimeline,
     last_spoken: Option<f64>,
     last_beat: f64,
+    first_call_pending: bool,
 }
 
 /// The values a render needs, captured so a worker can render without the app.
@@ -2106,6 +2107,7 @@ impl ContraApp {
                     self.speech.prewarm(call_texts(&self.timeline));
                     self.last_spoken = basis.last_spoken;
                     self.last_beat = basis.last_beat;
+                    self.first_call_pending = basis.first_call_pending;
                     return;
                 }
                 if self.timeline_basis.is_none() {
@@ -2115,6 +2117,7 @@ impl ContraApp {
                         timeline: self.timeline.clone(),
                         last_spoken: self.last_spoken,
                         last_beat: self.last_beat,
+                        first_call_pending: self.first_call_pending,
                     });
                 }
                 self.timeline = timeline;
@@ -2252,6 +2255,7 @@ impl ContraApp {
                     self.speech.prewarm(call_texts(&self.timeline));
                     self.last_spoken = basis.last_spoken;
                     self.last_beat = basis.last_beat;
+                    self.first_call_pending = basis.first_call_pending;
                     return;
                 }
                 if self.timeline_basis.is_none() {
@@ -2261,6 +2265,7 @@ impl ContraApp {
                         timeline: self.timeline.clone(),
                         last_spoken: self.last_spoken,
                         last_beat: self.last_beat,
+                        first_call_pending: self.first_call_pending,
                     });
                 }
                 self.timeline = timeline;

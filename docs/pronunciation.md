@@ -101,7 +101,7 @@ call at 240 BPM. The calibrated long call fits comfortably:
 
 ```
 larks allemande left once and a half
-  measured 2.22 s   lead 2.75 s   (0.53 s to spare)
+  measured 2.22 s   lead 3.00 s   (0.78 s to spare)
 ```
 
 Short calls can run about 0.1-0.2 s past the minimum lead because the voice has
