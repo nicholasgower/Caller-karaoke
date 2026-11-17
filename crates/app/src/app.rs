@@ -424,6 +424,12 @@ pub struct ContraApp {
     /// category's settings. A desktop shows the list and the selected category
     /// side by side; a phone shows one page at a time.
     prefs_page: ui::preferences::PreferencesPage,
+    /// The Preferences search field. While it holds text, the category list
+    /// and settings give way to the settings that match, from every category.
+    prefs_query: String,
+    /// The section a search result asked to reveal. The next category frame
+    /// scrolls it into view and clears this, so a later visit does not jump.
+    prefs_reveal: Option<&'static str>,
     /// A count-in change that must wait for the running count-in to finish
     /// before the timeline and the rendered music can change together.
     pending_count_in: Option<bool>,
@@ -954,6 +960,8 @@ impl ContraApp {
             source_rx,
             screen: Screen::Session,
             prefs_page: ui::preferences::PreferencesPage::Categories,
+            prefs_query: String::new(),
+            prefs_reveal: None,
             pending_count_in: None,
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
@@ -1644,6 +1652,8 @@ impl ContraApp {
             source_rx,
             screen: Screen::Session,
             prefs_page: ui::preferences::PreferencesPage::Categories,
+            prefs_query: String::new(),
+            prefs_reveal: None,
             pending_count_in: None,
             screen_anim: 1.0,
             screen_anim_screen: Screen::Session,
@@ -3539,8 +3549,11 @@ impl ContraApp {
         {
             // Entering Preferences starts at the category list on a phone and
             // at the first category on a desktop, never halfway down a page the
-            // user left earlier.
+            // user left earlier. A search belongs to one visit, so its results
+            // do not hide the categories the next time Preferences opens.
             self.prefs_page = ui::preferences::PreferencesPage::Categories;
+            self.prefs_query.clear();
+            self.prefs_reveal = None;
         }
 
         if let Some(error) = self.error.clone() {

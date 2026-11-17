@@ -95,37 +95,455 @@ impl PreferencesPage {
 #[derive(Clone, Copy)]
 pub(in crate::app) struct PreferencesSection {
     pub category: PreferencesCategory,
+    /// Stable name a search result uses to reveal this section. It is not a
+    /// user-facing label; the section draws its own heading.
+    pub anchor: &'static str,
     pub draw: fn(&mut ContraApp, &mut egui::Ui, bool),
 }
 
 impl PreferencesSection {
     const fn new(
         category: PreferencesCategory,
+        anchor: &'static str,
         draw: fn(&mut ContraApp, &mut egui::Ui, bool),
     ) -> Self {
-        Self { category, draw }
+        Self {
+            category,
+            anchor,
+            draw,
+        }
     }
 }
 
 /// Every preferences section, in the order it is drawn inside its category.
 ///
 /// A new setting belongs in the matching section function, so unrelated
-/// branches edit different functions instead of the same 200-line body.
+/// branches edit different functions instead of the same 200-line body, and
+/// gets an entry in [`SETTINGS`] so the search can find it.
 pub(in crate::app) const SECTIONS: &[PreferencesSection] = &[
-    PreferencesSection::new(PreferencesCategory::Calling, role_terms),
-    PreferencesSection::new(PreferencesCategory::Calling, calling_lead),
-    PreferencesSection::new(PreferencesCategory::Calling, speech),
-    PreferencesSection::new(PreferencesCategory::BandAndSound, instruments),
-    PreferencesSection::new(PreferencesCategory::BandAndSound, soundfont),
-    PreferencesSection::new(PreferencesCategory::BandAndSound, effects),
-    PreferencesSection::new(PreferencesCategory::Playback, playback),
-    PreferencesSection::new(PreferencesCategory::Playback, tempo_range),
-    PreferencesSection::new(PreferencesCategory::Appearance, appearance),
-    PreferencesSection::new(PreferencesCategory::DataAndStorage, data_sources),
-    PreferencesSection::new(PreferencesCategory::DataAndStorage, web_proxy),
-    PreferencesSection::new(PreferencesCategory::DataAndStorage, maintenance),
-    PreferencesSection::new(PreferencesCategory::About, about),
+    PreferencesSection::new(PreferencesCategory::Calling, "role-terms", role_terms),
+    PreferencesSection::new(PreferencesCategory::Calling, "calling-lead", calling_lead),
+    PreferencesSection::new(PreferencesCategory::Calling, "speech", speech),
+    PreferencesSection::new(
+        PreferencesCategory::BandAndSound,
+        "instruments",
+        instruments,
+    ),
+    PreferencesSection::new(PreferencesCategory::BandAndSound, "soundfont", soundfont),
+    PreferencesSection::new(PreferencesCategory::BandAndSound, "effects", effects),
+    PreferencesSection::new(PreferencesCategory::Playback, "playback", playback),
+    PreferencesSection::new(PreferencesCategory::Playback, "tempo-range", tempo_range),
+    PreferencesSection::new(PreferencesCategory::Appearance, "appearance", appearance),
+    PreferencesSection::new(
+        PreferencesCategory::DataAndStorage,
+        "data-sources",
+        data_sources,
+    ),
+    PreferencesSection::new(PreferencesCategory::DataAndStorage, "web-proxy", web_proxy),
+    PreferencesSection::new(
+        PreferencesCategory::DataAndStorage,
+        "maintenance",
+        maintenance,
+    ),
+    PreferencesSection::new(PreferencesCategory::About, "about", about),
 ];
+
+/// One setting the Preferences search can find.
+///
+/// The list is hand-written rather than derived from the widgets: a result
+/// must jump to a real section, and a new control is not searchable until it
+/// has an entry here. `keywords` carries the words a user is likely to try but
+/// that are not in the title or category name.
+struct PreferenceSetting {
+    title: &'static str,
+    category: PreferencesCategory,
+    /// The [`PreferencesSection::anchor`] that draws this setting.
+    section: &'static str,
+    keywords: &'static str,
+}
+
+impl PreferenceSetting {
+    /// Whether every word in `query` appears in the title, category, or
+    /// keywords. `query` is already lower-case.
+    fn matches(&self, query: &str) -> bool {
+        let text =
+            format!("{} {} {}", self.title, self.category.label(), self.keywords).to_lowercase();
+        query.split_whitespace().all(|word| text.contains(word))
+    }
+}
+
+/// Every setting a user can find through the search box, in category order.
+///
+/// Sections without individual controls (About) still get one entry so their
+/// content is reachable by name.
+const SETTINGS: &[PreferenceSetting] = &[
+    PreferenceSetting {
+        title: "Role terms",
+        category: PreferencesCategory::Calling,
+        section: "role-terms",
+        keywords: "larks robins ladies gentlemen women men leads follows lefts rights preset",
+    },
+    PreferenceSetting {
+        title: "Custom role terms",
+        category: PreferencesCategory::Calling,
+        section: "role-terms",
+        keywords: "left singular plural right singular plural custom",
+    },
+    PreferenceSetting {
+        title: "Dance move aliases",
+        category: PreferencesCategory::Calling,
+        section: "role-terms",
+        keywords: "alias editor wording alternative calls phrase",
+    },
+    PreferenceSetting {
+        title: "Automatic syllable-based lead",
+        category: PreferencesCategory::Calling,
+        section: "calling-lead",
+        keywords: "lead timing auto speech",
+    },
+    PreferenceSetting {
+        title: "Minimum speech lead",
+        category: PreferencesCategory::Calling,
+        section: "calling-lead",
+        keywords: "beats timing minimum lead",
+    },
+    PreferenceSetting {
+        title: "Maximum speech lead",
+        category: PreferencesCategory::Calling,
+        section: "calling-lead",
+        keywords: "beats timing maximum lead",
+    },
+    PreferenceSetting {
+        title: "Speech rate",
+        category: PreferencesCategory::Calling,
+        section: "calling-lead",
+        keywords: "syllables per second pace delivery",
+    },
+    PreferenceSetting {
+        title: "Manual speech lead",
+        category: PreferencesCategory::Calling,
+        section: "calling-lead",
+        keywords: "beats fixed timing",
+    },
+    PreferenceSetting {
+        title: "Safety padding",
+        category: PreferencesCategory::Calling,
+        section: "calling-lead",
+        keywords: "buffer seconds delay lead",
+    },
+    PreferenceSetting {
+        title: "Rebuild call timing",
+        category: PreferencesCategory::Calling,
+        section: "calling-lead",
+        keywords: "refresh timeline recompute",
+    },
+    PreferenceSetting {
+        title: "Speak calls",
+        category: PreferencesCategory::Calling,
+        section: "speech",
+        keywords: "tts text to speech voice narration",
+    },
+    PreferenceSetting {
+        title: "Voice",
+        category: PreferencesCategory::Calling,
+        section: "speech",
+        keywords: "tts neural kokoro voice speaker",
+    },
+    PreferenceSetting {
+        title: "Text to speech rate",
+        category: PreferencesCategory::Calling,
+        section: "speech",
+        keywords: "tts speed pace rate",
+    },
+    PreferenceSetting {
+        title: "Tone",
+        category: PreferencesCategory::Calling,
+        section: "speech",
+        keywords: "delivery tts style",
+    },
+    PreferenceSetting {
+        title: "Deliveries per call",
+        category: PreferencesCategory::Calling,
+        section: "speech",
+        keywords: "tts versions repeats variation",
+    },
+    PreferenceSetting {
+        title: "Shuffle alternative call aliases",
+        category: PreferencesCategory::Calling,
+        section: "speech",
+        keywords: "wording alternatives random variation",
+    },
+    PreferenceSetting {
+        title: "Instrument",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "band part voice row section",
+    },
+    PreferenceSetting {
+        title: "Players",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "count section size band",
+    },
+    PreferenceSetting {
+        title: "Instrument volume",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "band mix level loudness",
+    },
+    PreferenceSetting {
+        title: "Instrument direction",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "pan front rear placement stereo surround",
+    },
+    PreferenceSetting {
+        title: "Add instrument",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "band row new",
+    },
+    PreferenceSetting {
+        title: "Dancer sounds",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "stomps claps dancer",
+    },
+    PreferenceSetting {
+        title: "Dancer sound volume",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "stomps claps level",
+    },
+    PreferenceSetting {
+        title: "Percussion rhythm",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "foot taps drumset one and a gallop",
+    },
+    PreferenceSetting {
+        title: "Accompaniment rhythm",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "chords rhythm strum",
+    },
+    PreferenceSetting {
+        title: "Caller volume",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "speech level mix volume",
+    },
+    PreferenceSetting {
+        title: "Band volume",
+        category: PreferencesCategory::BandAndSound,
+        section: "instruments",
+        keywords: "master music level mix volume",
+    },
+    PreferenceSetting {
+        title: "Soundfont",
+        category: PreferencesCategory::BandAndSound,
+        section: "soundfont",
+        keywords: "sf2 bank instruments fluid r3 load",
+    },
+    PreferenceSetting {
+        title: "Load .sf2",
+        category: PreferencesCategory::BandAndSound,
+        section: "soundfont",
+        keywords: "soundfont bank file instruments",
+    },
+    PreferenceSetting {
+        title: "Reverb",
+        category: PreferencesCategory::BandAndSound,
+        section: "effects",
+        keywords: "room hall effects",
+    },
+    PreferenceSetting {
+        title: "Echo",
+        category: PreferencesCategory::BandAndSound,
+        section: "effects",
+        keywords: "delay slapback effects",
+    },
+    PreferenceSetting {
+        title: "Chorus",
+        category: PreferencesCategory::BandAndSound,
+        section: "effects",
+        keywords: "shimmer widen effects",
+    },
+    PreferenceSetting {
+        title: "Loop the dance and music",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "repeat loop",
+    },
+    PreferenceSetting {
+        title: "Four-beat count-in",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "potatoes intro count in",
+    },
+    PreferenceSetting {
+        title: "Vary the music on each loop",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "variations ornaments loop",
+    },
+    PreferenceSetting {
+        title: "Variation options",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "articulation double stops grace notes octave chord stabs melody alone",
+    },
+    PreferenceSetting {
+        title: "Show original card text",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "card figures wording",
+    },
+    PreferenceSetting {
+        title: "Humanize timing",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "drift spread human timing",
+    },
+    PreferenceSetting {
+        title: "Human timing amount",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "drift amount human",
+    },
+    PreferenceSetting {
+        title: "Tempo controller",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "proportional integral derivative gains kp ki kd pid",
+    },
+    PreferenceSetting {
+        title: "Gradual ending",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "final bar fade ending",
+    },
+    PreferenceSetting {
+        title: "Resolve the final chord a fifth lower",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "ending final chord",
+    },
+    PreferenceSetting {
+        title: "Output mode",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "mono stereo surround channels",
+    },
+    PreferenceSetting {
+        title: "Tempo range",
+        category: PreferencesCategory::Playback,
+        section: "tempo-range",
+        keywords: "minimum maximum bpm slider window",
+    },
+    PreferenceSetting {
+        title: "Reset to 200–300",
+        category: PreferencesCategory::Playback,
+        section: "tempo-range",
+        keywords: "restore default tempo bpm",
+    },
+    PreferenceSetting {
+        title: "Theme",
+        category: PreferencesCategory::Appearance,
+        section: "appearance",
+        keywords: "dark light colour color",
+    },
+    PreferenceSetting {
+        title: "Smooth animations",
+        category: PreferencesCategory::Appearance,
+        section: "appearance",
+        keywords: "motion reduce animation",
+    },
+    PreferenceSetting {
+        title: "Dance card padding",
+        category: PreferencesCategory::Appearance,
+        section: "appearance",
+        keywords: "compact sparse spacing row",
+    },
+    PreferenceSetting {
+        title: "Show dance glossary",
+        category: PreferencesCategory::Appearance,
+        section: "appearance",
+        keywords: "glossary terms definitions underline",
+    },
+    PreferenceSetting {
+        title: "Undo",
+        category: PreferencesCategory::Appearance,
+        section: "appearance",
+        keywords: "history ctrl z revert",
+    },
+    PreferenceSetting {
+        title: "Redo",
+        category: PreferencesCategory::Appearance,
+        section: "appearance",
+        keywords: "history ctrl y repeat",
+    },
+    PreferenceSetting {
+        title: "Data sources",
+        category: PreferencesCategory::DataAndStorage,
+        section: "data-sources",
+        keywords: "contradb source site download",
+    },
+    PreferenceSetting {
+        title: "Web data proxy",
+        category: PreferencesCategory::DataAndStorage,
+        section: "web-proxy",
+        keywords: "proxy cors web browser",
+    },
+    PreferenceSetting {
+        title: "Proxy URL",
+        category: PreferencesCategory::DataAndStorage,
+        section: "web-proxy",
+        keywords: "proxy token web address",
+    },
+    PreferenceSetting {
+        title: "Proxy token",
+        category: PreferencesCategory::DataAndStorage,
+        section: "web-proxy",
+        keywords: "proxy token web secret",
+    },
+    PreferenceSetting {
+        title: "Export MIDI",
+        category: PreferencesCategory::DataAndStorage,
+        section: "maintenance",
+        keywords: "midi file export save",
+    },
+    PreferenceSetting {
+        title: "Clear source cache",
+        category: PreferencesCategory::DataAndStorage,
+        section: "maintenance",
+        keywords: "cache offline storage clear",
+    },
+    PreferenceSetting {
+        title: "Memory use",
+        category: PreferencesCategory::DataAndStorage,
+        section: "maintenance",
+        keywords: "ram memory report refresh",
+    },
+    PreferenceSetting {
+        title: "About",
+        category: PreferencesCategory::About,
+        section: "about",
+        keywords: "version credits author project links license",
+    },
+];
+
+/// The settings whose title, category, or keywords contain every word.
+fn matching_settings(query: &str) -> Vec<&'static PreferenceSetting> {
+    let query = query.trim().to_lowercase();
+    if query.is_empty() {
+        return Vec::new();
+    }
+    SETTINGS
+        .iter()
+        .filter(|setting| setting.matches(&query))
+        .collect()
+}
 
 /// The About section, named so the shell tests can assert that the version,
 /// author, and project links are drawn from Preferences and nowhere else.
@@ -261,7 +679,12 @@ impl ContraApp {
         );
         ui.add_space(8.0);
 
-        if compact {
+        preferences_search_box(self, ui, compact);
+        ui.add_space(4.0);
+
+        if !self.prefs_query.trim().is_empty() {
+            self.preferences_search_results(ui, compact);
+        } else if compact {
             self.preferences_phone_ui(ui, compact);
         } else {
             self.preferences_desktop_ui(ui, compact);
@@ -271,6 +694,49 @@ impl ContraApp {
         // Preferences::changes_since. A value changed and changed back before
         // the queued render runs leaves no pending work.
         self.reconcile_preferences(before);
+    }
+
+    /// The settings that match the search field, across every category.
+    ///
+    /// Selecting a result switches Preferences to the category that owns it
+    /// and asks that category to scroll the matching section into view. The
+    /// query stays in the field while the list is shown, so typing keeps
+    /// narrowing it; **Clear search** returns to the normal category layout.
+    fn preferences_search_results(&mut self, ui: &mut egui::Ui, compact: bool) {
+        let matches = matching_settings(&self.prefs_query);
+        if matches.is_empty() {
+            ui.add_space(8.0);
+            ui.label(format!(
+                "No settings match \"{}\".",
+                self.prefs_query.trim()
+            ));
+            ui.label(
+                egui::RichText::new("Try a word such as volume, tempo, theme, lead, or cache.")
+                    .small()
+                    .color(theme::muted(ui)),
+            );
+            return;
+        }
+        ui.label(
+            egui::RichText::new(match matches.len() {
+                1 => "1 setting".to_string(),
+                count => format!("{count} settings"),
+            })
+            .small()
+            .color(theme::muted(ui)),
+        );
+        egui::ScrollArea::vertical()
+            .id_salt("preferences-search-results")
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for setting in matches {
+                    if setting_row(ui, setting, compact) {
+                        self.prefs_page = PreferencesPage::Category(setting.category);
+                        self.prefs_reveal = Some(setting.section);
+                        self.prefs_query.clear();
+                    }
+                }
+            });
     }
 
     /// Desktop Preferences: a category list on the left, settings on the right.
@@ -313,7 +779,12 @@ impl ContraApp {
                             .iter()
                             .filter(|section| section.category == selected)
                         {
-                            (section.draw)(self, ui, compact);
+                            let response =
+                                ui.push_id(section.anchor, |ui| (section.draw)(self, ui, compact));
+                            if self.prefs_reveal == Some(section.anchor) {
+                                ui.scroll_to_rect(response.response.rect, Some(egui::Align::TOP));
+                                self.prefs_reveal = None;
+                            }
                         }
                     });
             });
@@ -357,12 +828,126 @@ impl ContraApp {
                             .iter()
                             .filter(|section| section.category == category)
                         {
-                            (section.draw)(self, ui, compact);
+                            let response =
+                                ui.push_id(section.anchor, |ui| (section.draw)(self, ui, compact));
+                            if self.prefs_reveal == Some(section.anchor) {
+                                ui.scroll_to_rect(response.response.rect, Some(egui::Align::TOP));
+                                self.prefs_reveal = None;
+                            }
                         }
                     });
             }
         }
     }
+}
+
+/// The Preferences search field.
+///
+/// The visible label names the action; the accessible name is "Search
+/// settings", so an agent can find the field without guessing the prompt.
+fn preferences_search_box(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    if compact {
+        ui.label(
+            egui::RichText::new("Find a setting")
+                .small()
+                .color(theme::muted(ui)),
+        );
+        let response = ui.add(
+            egui::TextEdit::singleline(&mut app.prefs_query)
+                .hint_text("Search by name, such as volume or lead")
+                .desired_width(f32::INFINITY),
+        );
+        response.accessible_name("Search settings");
+        if !app.prefs_query.is_empty()
+            && ui
+                .add_sized(
+                    [ui.available_width(), theme::TOUCH_TARGET],
+                    egui::Button::new("Clear search"),
+                )
+                .clicked()
+        {
+            app.prefs_query.clear();
+        }
+    } else {
+        ui.horizontal(|ui| {
+            ui.label("Find a setting");
+            let response = ui.add(
+                egui::TextEdit::singleline(&mut app.prefs_query)
+                    .hint_text("Search by name, such as volume or lead")
+                    .desired_width(PREFERENCES_SEARCH_WIDTH),
+            );
+            response.accessible_name("Search settings");
+            if !app.prefs_query.is_empty() && ui.button("Clear search").clicked() {
+                app.prefs_query.clear();
+            }
+        });
+    }
+}
+
+/// Width of the desktop Preferences search field.
+const PREFERENCES_SEARCH_WIDTH: f32 = 360.0;
+
+/// Height of one search result row. A phone row leaves room for a title that
+/// wraps to two lines above the category name.
+const SEARCH_ROW_HEIGHT: f32 = 40.0;
+const SEARCH_ROW_HEIGHT_COMPACT: f32 = 64.0;
+
+/// Draw one tappable search result: the setting name over its category.
+///
+/// The row is painted rather than assembled from labels so the title wraps
+/// within the row and the whole row stays one click target. Returns true when
+/// the row is clicked or activated from the keyboard.
+fn setting_row(ui: &mut egui::Ui, setting: &PreferenceSetting, compact: bool) -> bool {
+    let width = ui.available_width();
+    let height = if compact {
+        SEARCH_ROW_HEIGHT_COMPACT
+    } else {
+        SEARCH_ROW_HEIGHT
+    };
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::click());
+    let visuals = ui.style().interact(&response);
+    let painter = ui.painter().with_clip_rect(rect);
+    painter.rect(
+        rect,
+        egui::CornerRadius::same(6),
+        visuals.weak_bg_fill,
+        if response.has_focus() {
+            ui.visuals().selection.stroke
+        } else {
+            visuals.bg_stroke
+        },
+        egui::StrokeKind::Inside,
+    );
+
+    let left = rect.left() + PHONE_CATEGORY_INSET;
+    let top = rect.top() + if compact { 8.0 } else { 4.0 };
+    let wrap = (rect.width() - 2.0 * PHONE_CATEGORY_INSET).max(1.0);
+    let title = painter.layout(
+        setting.title.to_owned(),
+        egui::FontId::proportional(15.0),
+        visuals.text_color(),
+        wrap,
+    );
+    let title_height = title.size().y;
+    painter.galley(egui::pos2(left, top), title, visuals.text_color());
+    painter.text(
+        egui::pos2(left, top + title_height + 2.0),
+        egui::Align2::LEFT_TOP,
+        setting.category.label(),
+        egui::FontId::proportional(12.0),
+        theme::muted(ui),
+    );
+
+    let label = format!("{}. {}", setting.title, setting.category.label());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
+    if response.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    response.clicked()
+        || (response.has_focus()
+            && ui.input(|input| {
+                input.key_pressed(egui::Key::Enter) || input.key_pressed(egui::Key::Space)
+            }))
 }
 
 /// Width of the desktop Preferences category column.
@@ -1729,6 +2314,81 @@ mod tests {
             PreferencesPage::Categories.selected(),
             PreferencesCategory::Calling
         );
+    }
+
+    #[test]
+    fn the_search_matches_titles_synonyms_and_every_word() {
+        let titles = |query: &str| -> Vec<&'static str> {
+            matching_settings(query)
+                .into_iter()
+                .map(|setting| setting.title)
+                .collect()
+        };
+
+        assert!(titles("volume").contains(&"Caller volume"));
+        assert!(titles("volume").contains(&"Band volume"));
+        // A synonym that is not in the title finds the same setting.
+        assert!(titles("bpm").contains(&"Tempo range"));
+        assert!(titles("tts").contains(&"Speak calls"));
+        // Every word must match, not just one of them. "band volume" still
+        // matches the other band levels because "band" is one of their
+        // keywords, so use a narrower pair to prove the AND.
+        assert_eq!(titles("caller volume"), vec!["Caller volume"]);
+        assert!(titles("band nothing").is_empty());
+        // Case and punctuation around the query do not matter.
+        assert_eq!(titles("  Volume  "), titles("volume"));
+        assert!(matching_settings("   ").is_empty());
+        assert!(titles("no such setting").is_empty());
+    }
+
+    #[test]
+    fn the_search_lists_the_whole_band_volume_set() {
+        let titles: Vec<&str> = matching_settings("volume")
+            .into_iter()
+            .map(|setting| setting.title)
+            .collect();
+        for expected in [
+            "Instrument volume",
+            "Dancer sound volume",
+            "Caller volume",
+            "Band volume",
+        ] {
+            assert!(titles.contains(&expected), "{expected} is not searchable");
+        }
+    }
+
+    #[test]
+    fn every_searchable_setting_points_at_a_real_section() {
+        for setting in SETTINGS {
+            let section = SECTIONS
+                .iter()
+                .find(|section| section.anchor == setting.section)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{} points at unknown section {}",
+                        setting.title, setting.section
+                    )
+                });
+            assert_eq!(
+                section.category,
+                setting.category,
+                "{} is listed under {} but drawn in {}",
+                setting.title,
+                setting.category.label(),
+                section.category.label()
+            );
+        }
+        // A section with no individual control still needs one way in, so the
+        // search can never land on a category with nothing to reveal.
+        for section in SECTIONS {
+            assert!(
+                SETTINGS
+                    .iter()
+                    .any(|setting| setting.section == section.anchor),
+                "{} has no searchable setting",
+                section.anchor
+            );
+        }
     }
 
     #[test]

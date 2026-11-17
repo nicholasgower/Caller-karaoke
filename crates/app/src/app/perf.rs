@@ -519,6 +519,11 @@ fn profile_screen_frames(
             Screen::Preferences,
         ),
         (
+            "Preferences · Search",
+            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → matching_settings + preferences_search_results",
+            Screen::Preferences,
+        ),
+        (
             "Aliases",
             "ContraApp::ui → draw_aliases → ContraApp::aliases_ui",
             Screen::Aliases,
@@ -552,6 +557,12 @@ fn profile_screen_frames(
             idle(app);
             app.screen = *screen;
             app.prefs_page = prefs_page;
+            app.prefs_query = if *action == "Preferences · Search" {
+                "volume".into()
+            } else {
+                String::new()
+            };
+            app.prefs_reveal = None;
             app.tune_sheet = None;
             app.abc_editor = None;
             if *screen == Screen::AbcEditor {
@@ -740,6 +751,11 @@ fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Repor
             Screen::Preferences,
         ),
         (
+            "Preferences · Search",
+            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui (compact) → matching_settings + preferences_search_results",
+            Screen::Preferences,
+        ),
+        (
             "Aliases",
             "ContraApp::ui → draw_aliases → ContraApp::aliases_ui (compact)",
             Screen::Aliases,
@@ -760,6 +776,12 @@ fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Repor
             } else {
                 PreferencesPage::Categories
             };
+            app.prefs_query = if *action == "Preferences · Search" {
+                "volume".into()
+            } else {
+                String::new()
+            };
+            app.prefs_reveal = None;
             app.tune_sheet = None;
             app.abc_editor = None;
             if *screen == Screen::Glossary {

@@ -435,6 +435,132 @@ fn phone_preferences_category_rows_share_one_left_edge() {
 }
 
 #[test]
+fn the_preferences_search_finds_a_setting_and_opens_its_category() {
+    // A phone starts on the category list and drills into one category, so the
+    // test stays on the two small pages the search connects rather than the
+    // long desktop settings column beside the list.
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(390.0, 844.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Preferences;
+            app.prefs_page = PreferencesPage::Categories;
+            app
+        });
+    harness.run_steps(3);
+
+    harness.get_by_label("Search settings").click();
+    harness.run_steps(1);
+    // One key per frame: the results replace the category list below the
+    // field, and the field must keep focus across that layout change.
+    for character in "theme".chars() {
+        harness
+            .get_by_label("Search settings")
+            .type_text(&character.to_string());
+        harness.run_steps(1);
+    }
+
+    assert_eq!(harness.state().prefs_query, "theme");
+    assert!(
+        harness
+            .query_all_by_label("Theme. Appearance")
+            .next()
+            .is_some(),
+        "the search should offer the Theme setting in Appearance"
+    );
+
+    harness.get_by_label("Theme. Appearance").click();
+    harness.run_steps(3);
+
+    assert_eq!(
+        harness.state().prefs_page,
+        PreferencesPage::Category(PreferencesCategory::Appearance)
+    );
+    assert!(
+        harness.state().prefs_query.is_empty(),
+        "opening a result returns the screen to the normal category layout"
+    );
+    assert!(
+        harness.state().prefs_reveal.is_none(),
+        "the requested section is revealed once and then stops pulling the list"
+    );
+}
+
+#[test]
+fn the_desktop_preferences_search_opens_a_result() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Preferences;
+            app.prefs_page = PreferencesPage::Categories;
+            app.prefs_query = "theme".into();
+            app
+        });
+    harness.run_steps(3);
+
+    assert!(
+        harness
+            .query_all_by_label("Theme. Appearance")
+            .next()
+            .is_some(),
+        "the desktop search should list Theme in Appearance"
+    );
+    harness.get_by_label("Theme. Appearance").click();
+    harness.run_steps(3);
+
+    assert_eq!(
+        harness.state().prefs_page,
+        PreferencesPage::Category(PreferencesCategory::Appearance)
+    );
+    assert!(harness.state().prefs_query.is_empty());
+}
+
+#[test]
+fn the_preferences_search_reports_when_nothing_matches() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(390.0, 844.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Preferences;
+            app.prefs_page = PreferencesPage::Categories;
+            app
+        });
+    harness.run_steps(3);
+
+    harness.get_by_label("Search settings").click();
+    harness.run_steps(1);
+    harness
+        .get_by_label("Search settings")
+        .type_text("no such setting");
+    harness.run_steps(2);
+
+    assert!(
+        harness
+            .query_all_by_label("No settings match \"no such setting\".")
+            .next()
+            .is_some(),
+        "the phone search should explain an empty result"
+    );
+    assert!(
+        harness.query_all_by_label("Clear search").next().is_some(),
+        "the phone search offers a full-width Clear search button"
+    );
+}
+
+#[test]
 fn a_glossary_term_opens_its_entry_and_back_returns_to_the_session() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 800.0))
