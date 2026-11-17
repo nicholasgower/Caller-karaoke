@@ -69,6 +69,11 @@ The saved-tune library, available offline:
   on, the session keeps each tune for a configurable number of 64-beat times
   through (default 8, about four minutes at 240 BPM) and changes at the repeat.
   The next tune is rendered ahead of the boundary.
+- **Share link (web only)**: **Share this session** encodes the current dance
+  and the ordered tune set, with each tune's ABC text, into a `#set=` URL
+  argument. Opening the link adds the cards to the recipient's saved libraries,
+  restores the tune order, interval, and opening tune, and leaves their own
+  preferences untouched. Links are versioned, compressed, and size-capped.
 
 ### 3.4 Preferences
 

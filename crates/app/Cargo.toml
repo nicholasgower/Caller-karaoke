@@ -49,6 +49,7 @@ directories.workspace = true
 egui_kittest = { workspace = true, optional = true }
 ehttp.workspace = true
 epaint_default_fonts.workspace = true
+flate2.workspace = true
 percent-encoding.workspace = true
 resvg.workspace = true
 rustysynth.workspace = true
@@ -66,7 +67,6 @@ souvlaki.workspace = true
 ureq.workspace = true
 
 [target.'cfg(all(unix, not(target_os = "android")))'.dependencies]
-flate2 = "1"
 misaki-rs.workspace = true
 ort = { workspace = true, features = ["std", "load-dynamic", "api-31"] }
 souvlaki = { workspace = true, features = ["use_zbus"] }
@@ -126,6 +126,7 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
   "Blob",
   "BlobPropertyBag",
+  "Clipboard",
   "Document",
   "Element",
   "Event",
@@ -134,8 +135,12 @@ web-sys = { version = "0.3", features = [
   "FileList",
   "HtmlAnchorElement",
   "HtmlCanvasElement",
+  "HtmlDocument",
   "HtmlElement",
   "HtmlInputElement",
+  "HtmlTextAreaElement",
+  "Location",
+  "Navigator",
   "Node",
   "Storage",
   "Url",
