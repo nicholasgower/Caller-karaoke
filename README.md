@@ -14,6 +14,8 @@ Android. Version **0.1.0** is the current development version.
 - Browser build (WASM) with cpal WebAudio playback, localStorage prefs/cache,
   and the same UI. A hosted copy runs on the
   [documentation site](https://nicholasgower.github.io/Contra-karaoke/play/).
+- Shareable web session links (`#set=`) that embed the dance and ordered tune
+  set, so a setup opens in another browser without a download.
 - ContraDB dance search and HTML dance-card parsing, plus The Caller's Box
   search and JSON dance records.
 - ABC Session Tunes search and JSON tune parsing.

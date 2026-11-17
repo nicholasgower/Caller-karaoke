@@ -105,6 +105,10 @@ Android stops the app in the background, playback stops with it.
   visible. Dismiss the keyboard with the system Back gesture; tap the field
   again to bring it back. Suggestions and autocorrect are off so aliases,
   searches, and ABC source arrive exactly as typed.
+- **Type into a number box** (a tempo, volume, or timing value) the same way.
+  The keyboard stays open while you edit the number, and the value applies when
+  you press Enter or tap elsewhere, so a half-typed number is not clamped or
+  swapped while you are still typing.
 - Swipe tab changes are ignored while a text field has focus, while a drop-down
   is open, and while the **About** window is showing, so they cannot interrupt
   typing, a menu, or a dialog.

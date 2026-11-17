@@ -35,6 +35,8 @@ use egui_kittest::Harness;
 use super::ui::AbcEditorState;
 use super::ui::preferences::{PreferencesCategory, PreferencesPage};
 use super::{ContraApp, Screen};
+use crate::library;
+use crate::share;
 
 const DESKTOP: Vec2 = Vec2::new(1280.0, 800.0);
 const PHONE: Vec2 = Vec2::new(390.0, 844.0);
@@ -1246,6 +1248,72 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
             ACTION_BUDGET_MS,
             times,
             "headless has no file path, so this times serialization and the clone",
+        );
+    }
+
+    // The web share link: one press builds and copies a URL that carries the
+    // whole dance card and tune set, and opening a link decodes and applies it.
+    // The desktop and phone builds do not show the control, but the codec and
+    // the apply path are the same and must stay inside the action budget.
+    {
+        let app = harness.state_mut();
+        for index in 0..3 {
+            let mut tune = app.tune_library.entries[0].item.clone();
+            tune.source.id = format!("profile-share-{index}");
+            tune.title = format!("Profile Reel {index}");
+            app.tune_library
+                .insert(tune.clone(), None, library::now_seconds());
+            app.prefs.tune_rotation.add(tune.source.clone());
+        }
+        let times = timed(
+            || {
+                let _ = app.share_link();
+            },
+            samples,
+        );
+        report.record(
+            "session",
+            "Share link · build",
+            "ContraApp::share_link → share::encode",
+            ACTION_BUDGET_MS,
+            times,
+            "deflates the dance card and four tunes' ABC into a URL argument",
+        );
+    }
+    {
+        let app = harness.state_mut();
+        let code = app.share_link().expect("the profile session encodes");
+        let times = timed(
+            || {
+                let _ = share::decode(&code);
+            },
+            samples,
+        );
+        report.record(
+            "session",
+            "Share link · decode",
+            "share::decode",
+            ACTION_BUDGET_MS,
+            times,
+            "validates an untrusted link before any session state changes",
+        );
+    }
+    {
+        let app = harness.state_mut();
+        let code = app.share_link().expect("the profile session encodes");
+        let times = timed(
+            || {
+                let _ = app.apply_share_code(&code);
+            },
+            samples,
+        );
+        report.record(
+            "session",
+            "Share link · open",
+            "ContraApp::apply_share_code → apply_share_payload → use_dance + use_tune",
+            ACTION_BUDGET_MS,
+            times,
+            "saves the shared cards, rebuilds the timeline, and selects the opening tune",
         );
     }
 

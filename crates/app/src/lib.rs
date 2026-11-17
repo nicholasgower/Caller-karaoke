@@ -12,6 +12,7 @@ mod library;
 mod media_keys;
 mod memory;
 mod platform;
+mod share;
 mod sheet;
 mod source;
 mod theme;
@@ -130,13 +131,29 @@ pub fn start_web() -> Result<(), wasm_bindgen::JsValue> {
         .get_element_by_id("contra-canvas")
         .ok_or("missing #contra-canvas")?;
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into()?;
+
+    // A share link pasted into the address bar of the running page changes
+    // only the fragment, and a fragment change does not reload the document.
+    // Reload once so `new_web` can open the new session, exactly as a link
+    // opened in a fresh tab does.
+    let on_hash_change = wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::Event)>::new(
+        |_event: web_sys::Event| {
+            if let Some(window) = web_sys::window() {
+                let _ = window.location().reload();
+            }
+        },
+    );
+    window
+        .add_event_listener_with_callback("hashchange", on_hash_change.as_ref().unchecked_ref())?;
+    on_hash_change.forget();
+
     let runner = eframe::WebRunner::new();
     wasm_bindgen_futures::spawn_local(async move {
         let _ = runner
             .start(
                 canvas,
                 eframe::WebOptions::default(),
-                Box::new(|cc| Ok(Box::new(ContraApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(ContraApp::new_web(cc)))),
             )
             .await;
     });

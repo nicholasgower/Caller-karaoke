@@ -68,7 +68,8 @@ fn session_controls(
             // Leave room for the value box and the " BPM" suffix.
             ui.spacing_mut().slider_width = (ui.available_width() - 100.0).max(96.0);
             let response = scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
-                ui.add(
+                number_slider(
+                    ui,
                     egui::Slider::new(tempo, tempo_min..=tempo_max)
                         .fixed_decimals(0)
                         .suffix(" BPM"),
@@ -157,7 +158,7 @@ fn session_controls(
             ui.label("Caller");
             ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
             let response = scroll_safe_slider(ui, &mut prefs.caller_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
             });
             let response = response.accessible_name("Caller volume");
             if response.changed() {
@@ -169,7 +170,7 @@ fn session_controls(
             ui.label("Band");
             ui.spacing_mut().slider_width = (ui.available_width() - 80.0).max(96.0);
             let response = scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5).max_decimals(2))
             });
             let response = response.accessible_name("Band volume");
             if response.changed() {
@@ -181,7 +182,8 @@ fn session_controls(
         ui.horizontal_wrapped(|ui| {
             ui.label("Tempo");
             if scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
-                ui.add(
+                number_slider(
+                    ui,
                     egui::Slider::new(tempo, tempo_min..=tempo_max)
                         .text("BPM")
                         .fixed_decimals(0),
@@ -255,7 +257,7 @@ fn session_controls(
         ui.horizontal(|ui| {
             ui.label("Caller");
             if scroll_safe_slider(ui, &mut prefs.caller_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5))
             })
             .accessible_name("Caller volume")
             .changed()
@@ -265,7 +267,7 @@ fn session_controls(
             }
             ui.label("Band");
             if scroll_safe_slider(ui, &mut prefs.master_volume, |ui, volume| {
-                ui.add(egui::Slider::new(volume, 0.0..=1.5))
+                number_slider(ui, egui::Slider::new(volume, 0.0..=1.5))
             })
             .accessible_name("Band volume")
             .changed()
@@ -878,7 +880,8 @@ impl ContraApp {
                     "Change tune every",
                     &mut self.prefs.tune_rotation.passes_per_tune,
                     |ui, passes| {
-                        ui.add(
+                        number_slider(
+                            ui,
                             egui::Slider::new(
                                 passes,
                                 contra_core::TuneRotation::MIN_PASSES
@@ -896,7 +899,102 @@ impl ContraApp {
                 self.screen = Screen::TunePicker;
             }
         }
+        if crate::platform::platform() == "web" {
+            self.share_link_ui(ui, compact);
+        }
         rotation_changed
+    }
+
+    /// The web-only share control.
+    ///
+    /// The link is generated on the press and kept in the panel instead of
+    /// every frame: a tune set can carry a lot of ABC text, and the panel is
+    /// closed whenever the dance, tune, or tune set changes.
+    pub(in crate::app) fn share_link_ui(&mut self, ui: &mut egui::Ui, compact: bool) {
+        ui.add_space(6.0);
+        if self.share.is_none() {
+            let button = if compact {
+                ui.add_sized(
+                    [ui.available_width().min(240.0), theme::TOUCH_TARGET],
+                    egui::Button::new("Share this session"),
+                )
+            } else {
+                ui.button("Share this session")
+            };
+            if button
+                .on_hover_text("Copy a link that rebuilds this dance and tune set in the web app")
+                .clicked()
+            {
+                self.open_share_link();
+            }
+            return;
+        }
+
+        let Some(panel) = self.share.as_ref() else {
+            return;
+        };
+        let link = panel.link.clone();
+        let message = panel.message.clone();
+        let message_is_error = message.starts_with("Could not");
+        let mut copy = false;
+        let mut close = false;
+        egui::Frame::group(ui.style())
+            .inner_margin(egui::Margin::same(8))
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new("Share this session").strong());
+                ui.label(
+                    egui::RichText::new(
+                        "The link carries the dance card and every tune, so it opens the same session with no download.",
+                    )
+                    .small()
+                    .color(theme::muted(ui)),
+                );
+                egui::ScrollArea::horizontal()
+                    .id_salt("share-link")
+                    .show(ui, |ui| {
+                        ui.add(
+                            egui::Label::new(egui::RichText::new(&link).monospace().small())
+                                .selectable(true)
+                                .extend(),
+                        );
+                    });
+                ui.horizontal_wrapped(|ui| {
+                    let size = egui::vec2(
+                        if compact { 132.0 } else { 96.0 },
+                        if compact { theme::TOUCH_TARGET } else { 0.0 },
+                    );
+                    let button = |ui: &mut egui::Ui, text: &str| {
+                        if compact {
+                            ui.add_sized(size, egui::Button::new(text))
+                        } else {
+                            ui.button(text)
+                        }
+                    };
+                    if button(ui, "Copy link")
+                        .on_hover_text("Copy the share link to the clipboard")
+                        .clicked()
+                    {
+                        copy = true;
+                    }
+                    if button(ui, "Close").clicked() {
+                        close = true;
+                    }
+                });
+                if !message.is_empty() {
+                    let color = if message_is_error {
+                        theme::error(ui)
+                    } else {
+                        theme::muted(ui)
+                    };
+                    ui.label(egui::RichText::new(&message).small().color(color));
+                }
+            });
+        if copy {
+            self.copy_share_link();
+        }
+        if close {
+            self.share = None;
+        }
     }
 
     /// The beat meter and its transport state.

@@ -1,5 +1,8 @@
 use super::about::about;
-use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
+use super::{
+    apply_phone_spacing, compact, form_row, inline_field, number_slider, responsive_combo,
+    slider_row,
+};
 use crate::app::history::HistoryAction;
 use crate::app::*;
 use crate::updates::{self, UpdateStatus};
@@ -678,7 +681,7 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             compact,
             "Dancer sound volume",
             &mut app.prefs.dancer_sound_volume,
-            |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+            |ui, value| number_slider(ui, egui::Slider::new(value, 0.0..=1.5)),
         );
     });
     ui.label(
@@ -711,7 +714,7 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         compact,
         "Caller volume",
         &mut app.prefs.caller_volume,
-        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+        |ui, value| number_slider(ui, egui::Slider::new(value, 0.0..=1.5)),
     );
     ui.label(
         egui::RichText::new(
@@ -726,7 +729,7 @@ fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         compact,
         "Band volume",
         &mut app.prefs.master_volume,
-        |ui, value| ui.add(egui::Slider::new(value, 0.0..=1.5)),
+        |ui, value| number_slider(ui, egui::Slider::new(value, 0.0..=1.5)),
     );
     ui.label(
         egui::RichText::new(
@@ -855,7 +858,8 @@ fn volume_slider(ui: &mut egui::Ui, compact: bool, index: usize, slot: &mut Band
     if compact {
         ui.spacing_mut().slider_width = (ui.available_width() - 90.0).max(96.0);
     }
-    ui.add(
+    number_slider(
+        ui,
         egui::Slider::new(&mut slot.volume, 0.0..=1.5)
             .max_decimals(2)
             .show_value(true),
@@ -981,21 +985,21 @@ fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             compact,
             "Minimum speech lead",
             &mut app.prefs.lead.min_beats,
-            |ui, value| ui.add(egui::Slider::new(value, 0.5..=4.0).text("beats")),
+            |ui, value| number_slider(ui, egui::Slider::new(value, 0.5..=4.0).text("beats")),
         );
         slider_row(
             ui,
             compact,
             "Maximum speech lead",
             &mut app.prefs.lead.max_beats,
-            |ui, value| ui.add(egui::Slider::new(value, 1.0..=6.0).text("beats")),
+            |ui, value| number_slider(ui, egui::Slider::new(value, 1.0..=6.0).text("beats")),
         );
         slider_row(
             ui,
             compact,
             "Speech rate",
             &mut app.prefs.lead.syllables_per_second,
-            |ui, value| ui.add(egui::Slider::new(value, 3.0..=10.0).text("syllables/s")),
+            |ui, value| number_slider(ui, egui::Slider::new(value, 3.0..=10.0).text("syllables/s")),
         );
     } else {
         slider_row(
@@ -1003,7 +1007,7 @@ fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             compact,
             "Manual speech lead",
             &mut app.prefs.lead.manual_beats,
-            |ui, value| ui.add(egui::Slider::new(value, 0.5..=6.0).text("beats")),
+            |ui, value| number_slider(ui, egui::Slider::new(value, 0.5..=6.0).text("beats")),
         );
     }
     slider_row(
@@ -1012,7 +1016,8 @@ fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         "Safety padding",
         &mut app.prefs.lead.padding_seconds,
         |ui, value| {
-            ui.add(
+            number_slider(
+                ui,
                 egui::Slider::new(
                     value,
                     contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
@@ -1089,7 +1094,8 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         .color(theme::muted(ui)),
     );
     let rate_response = slider_row(ui, compact, "Rate", &mut app.prefs.tts_rate, |ui, rate| {
-        ui.add(
+        number_slider(
+            ui,
             egui::Slider::new(rate, contra_core::MIN_TTS_RATE..=contra_core::MAX_TTS_RATE)
                 .step_by(0.1)
                 .fixed_decimals(1),
@@ -1120,7 +1126,8 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             "Deliveries per call",
             &mut app.prefs.tts_deliveries,
             |ui, deliveries| {
-                ui.add(
+                number_slider(
+                    ui,
                     egui::Slider::new(
                         deliveries,
                         contra_core::MIN_TTS_DELIVERIES..=contra_core::MAX_TTS_DELIVERIES,
@@ -1241,8 +1248,11 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 "Human timing amount",
                 &mut options.amount,
                 |ui, value| {
-                    ui.add(egui::Slider::new(value, 0.0..=MAX_HUMANIZE_AMOUNT).fixed_decimals(2))
-                        .accessible_name("Human timing amount")
+                    number_slider(
+                        ui,
+                        egui::Slider::new(value, 0.0..=MAX_HUMANIZE_AMOUNT).fixed_decimals(2),
+                    )
+                    .accessible_name("Human timing amount")
                 },
             );
             ui.label(
@@ -1271,8 +1281,11 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 "Proportional gain (Kp)",
                 &mut options.pid_kp,
                 |ui, value| {
-                    ui.add(egui::Slider::new(value, 0.0..=MAX_PID_KP).fixed_decimals(2))
-                        .accessible_name("Proportional gain (Kp)")
+                    number_slider(
+                        ui,
+                        egui::Slider::new(value, 0.0..=MAX_PID_KP).fixed_decimals(2),
+                    )
+                    .accessible_name("Proportional gain (Kp)")
                 },
             );
             slider_row(
@@ -1281,8 +1294,11 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 "Integral gain (Ki)",
                 &mut options.pid_ki,
                 |ui, value| {
-                    ui.add(egui::Slider::new(value, 0.0..=MAX_PID_KI).fixed_decimals(3))
-                        .accessible_name("Integral gain (Ki)")
+                    number_slider(
+                        ui,
+                        egui::Slider::new(value, 0.0..=MAX_PID_KI).fixed_decimals(3),
+                    )
+                    .accessible_name("Integral gain (Ki)")
                 },
             );
             slider_row(
@@ -1291,8 +1307,11 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 "Derivative gain (Kd)",
                 &mut options.pid_kd,
                 |ui, value| {
-                    ui.add(egui::Slider::new(value, 0.0..=MAX_PID_KD).fixed_decimals(3))
-                        .accessible_name("Derivative gain (Kd)")
+                    number_slider(
+                        ui,
+                        egui::Slider::new(value, 0.0..=MAX_PID_KD).fixed_decimals(3),
+                    )
+                    .accessible_name("Derivative gain (Kd)")
                 },
             );
         });
@@ -1379,7 +1398,12 @@ fn tempo_range(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             egui::DragValue::new(&mut min)
                 .range(contra_core::Tempo::MIN_BPM..=contra_core::Tempo::MAX_BPM)
                 .speed(1.0)
-                .suffix(" BPM"),
+                .suffix(" BPM")
+                // A typed number applies when editing finishes. Parsing every
+                // digit would clamp a partial "1" to the minimum and let
+                // `normalize_tempo_range` swap the pair while the user is still
+                // typing, rewriting the text under the keyboard.
+                .update_while_editing(false),
         )
         .on_hover_text("Lowest tempo on the session slider")
         .accessible_name("Minimum tempo");
@@ -1389,7 +1413,8 @@ fn tempo_range(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
             egui::DragValue::new(&mut max)
                 .range(contra_core::Tempo::MIN_BPM..=contra_core::Tempo::MAX_BPM)
                 .speed(1.0)
-                .suffix(" BPM"),
+                .suffix(" BPM")
+                .update_while_editing(false),
         )
         .on_hover_text("Highest tempo on the session slider")
         .accessible_name("Maximum tempo");

@@ -110,6 +110,20 @@ to the window and focuses it when egui has a text field focused.
 - `setTextInputActive(boolean)` is called from Rust through the same activity
   bridge as the media session. It requests focus and shows the IME, or hides the
   IME and clears focus.
+- The bridge is the **only** Android IME controller. `egui` publishes its own IME
+  request, and `winit` would turn that into a second
+  `show_soft_input`/`hide_soft_input` pair on the decor view. Rust clears that
+  output on Android (`suppress_backend_ime`), so only the activity's `EditText`
+  decides when the keyboard is visible.
+- The keyboard follows the focused widget, not one frame of its text-edit state.
+  A number box (`DragValue` and a slider's value field) is a text edit only while
+  it is being edited; it may drop out of that mode for a frame while its value
+  changes. The bridge keeps the IME up across that frame and hides it only after
+  two idle frames or when focus leaves, so typing a number does not make the
+  keyboard flash.
+- A typed number applies when editing finishes (Enter, focus loss, or a tap
+  elsewhere), not on every digit. Partial values are not clamped or swapped
+  under the keyboard.
 - `BridgeInputConnection` forwards committed text and editing keys to
   `nativeImeText(String)` / `nativeImeKey(int)` in
   `crates/app/src/android_ime.rs`. The app turns them into ordinary

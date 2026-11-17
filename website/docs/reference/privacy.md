@@ -60,6 +60,14 @@ same privacy rules: preferences and cached source responses stay in this site's
 `localStorage`, and the app sends no telemetry. GitHub sees requests for the
 application files just as it sees requests for the rest of the site.
 
+## Share links
+
+**Share this session** in the browser build writes the dance and tune data into
+the URL fragment (`#set=…`), which browsers do not send to the web server. The
+link is as private as the message you send it in. Opening a link saves its cards
+to that browser's saved libraries; the app does not upload them. Because the
+content is in the URL, treat a link as public if you post it publicly.
+
 ## Third-party content
 
 Dances and tunes remain the work of their contributors. The app caches them for

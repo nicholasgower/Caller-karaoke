@@ -6,6 +6,7 @@ All notable changes to Contra Karaoke are documented here.
 
 ### Documentation
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 
 ### Features
@@ -14,6 +15,8 @@ All notable changes to Contra Karaoke are documented here.
 
 ### Fixes
 - **release:** Create the tag only after the artifacts exist
+- **android:** Keep the soft keyboard stable for number fields
+- **website:** Remove the GitHub link from the navbar
 
 
 ## [0.1.0] — 2026-11-17

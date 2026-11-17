@@ -60,6 +60,9 @@ development release. These are the limitations to know before relying on it.
 - **Cycle tunes** renders the next tune during the current tune's last time
   through on desktop and Android. The web build has no render worker and
   prepares the next tune at the change, which can pause briefly.
+- **Share links** are a web-build feature. A link carries the dance and the
+  ordered tune set in its URL fragment, so it can be long; a chat app may
+  shorten or refuse one. A link holds at most 100 tunes.
 - **File transfer** uses each platform's own mechanism. Desktop saves through a
   native dialog and the browser downloads a file or opens a file input. Android
   writes exports to the app's private export folder and offers the system share

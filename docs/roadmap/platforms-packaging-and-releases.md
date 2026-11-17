@@ -74,6 +74,8 @@ hosted copy.
       manifest dimensions and emphasis regions.
 - [ ] Web build loads and plays audio in Chrome and Firefox, both from the
       downloaded bundle and from the docs site `/play` page.
+- [ ] A web share link (`#set=…`) opens the same dance and tune set in a fresh
+      browser profile, and a damaged link leaves the default session in place.
 - [ ] Android APK installs and plays audio on a real device.
 - [ ] Default dance and tune load offline.
 - [ ] Proxy-backed search works in the web build.

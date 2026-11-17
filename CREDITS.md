@@ -32,7 +32,7 @@ and build tools used by the project.
 | `language-tokenizer` | WTFPL | Tokenizer used by `misaki-rs` |
 | `ort` | MIT OR Apache-2.0 | ONNX Runtime bindings for the Kokoro voice |
 | `ureq` | MIT OR Apache-2.0 | Voice model and runtime download |
-| `flate2` | MIT OR Apache-2.0 | ONNX Runtime archive decompression (Linux) |
+| `flate2` | MIT OR Apache-2.0 | Share-link compression and ONNX Runtime archive decompression (Linux) |
 | `tar` | MIT OR Apache-2.0 | ONNX Runtime archive extraction (Linux) |
 | `zip` | MIT | Build-time extraction of the ONNX Runtime DLL |
 | `winres` | MIT | Build-time Windows icon and version metadata |
