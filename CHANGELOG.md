@@ -22,6 +22,7 @@ All notable changes to Caller Karaoke are documented here.
 - **website:** Lead the browser page with the hosted copy.
 - Update changelog [skip ci].
 - Update changelog [skip ci].
+- Update changelog [skip ci].
 
 
 ### Features
@@ -31,6 +32,7 @@ All notable changes to Caller Karaoke are documented here.
 - **prefs:** Add a settings search to Preferences.
 - **website:** Preview the site on iOS and route iOS downloads to the web app.
 - **glossary:** Move the dance glossary to its own tab.
+- **timing:** Round call leads up and show them on the dance card.
 
 
 ### Fixes
