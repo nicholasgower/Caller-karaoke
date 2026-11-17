@@ -13,6 +13,8 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci].
 - Update changelog [skip ci].
 - Update changelog [skip ci].
+- **changelog:** End every entry with a period.
+- Update changelog [skip ci].
 
 
 ### Features
@@ -21,6 +23,7 @@ All notable changes to Contra Karaoke are documented here.
 - **web:** Share a dance and tune set as a link.
 - **prefs:** Add a settings search to Preferences.
 - **website:** Preview the site on iOS and route iOS downloads to the web app.
+- **glossary:** Move the dance glossary to its own tab.
 
 
 ### Fixes
