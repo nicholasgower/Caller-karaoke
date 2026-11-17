@@ -2,7 +2,7 @@
 
 All notable changes to Contra Karaoke are documented here.
 
-## [Unreleased]
+## [0.1.0] — 2026-11-17
 
 ### Build
 - Statically link the Windows CRT and satisfy cargo-deny
@@ -62,6 +62,7 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - **release:** Link the download pages at the releases list
+- Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
