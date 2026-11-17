@@ -12,6 +12,8 @@ All notable changes to Contra Karaoke are documented here.
 - Install trunk from release assets and verify web build
 - Allow the Unicode data license used by unicode-ident
 - Add release checksums and simplify cargo-deb install
+- **nightly:** Stop installing the removed Android tools package
+- **cache:** Only save rust caches from long-lived branches
 
 
 ### Chores
@@ -34,6 +36,7 @@ All notable changes to Contra Karaoke are documented here.
 - **website:** Cover the first-call TTS fix
 - **agents:** Require docs updates with code changes
 - **screenshots:** Refresh only when preparing a release
+- Update changelog [skip ci]
 
 
 ### Features
@@ -74,6 +77,7 @@ All notable changes to Contra Karaoke are documented here.
 - **tts:** Call the first move when a dance starts
 - **music:** Normalize raw ABC before parsing
 - **tts:** Stress the first syllable in petronella
+- **packaging:** Resolve the Debian desktop asset from the workspace root
 
 
 ### Testing
