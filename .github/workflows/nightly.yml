@@ -110,6 +110,12 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default install list includes the legacy `tools`
+          # package, which sdkmanager 16.0 can no longer resolve ("Failed to
+          # find package 'tools'"), failing the job before our own SDK step
+          # runs. The step below installs everything this build needs.
+          packages: ""
       - name: Install SDK components
         run: |
           sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
