@@ -38,6 +38,7 @@ All notable changes to Contra Karaoke are documented here.
 - **screenshots:** Refresh only when preparing a release
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 
 ### Features
@@ -82,6 +83,7 @@ All notable changes to Contra Karaoke are documented here.
 - **packaging:** Resolve the Debian desktop asset from the workspace root
 - **android:** Add the launcher icons the manifest references
 - **packaging:** Give the AppImage its desktop entry and icon
+- **android:** Install the Android targets for the repo toolchain
 
 
 ### Testing
