@@ -1293,7 +1293,7 @@ pub struct Preferences {
 /// Bump it when the shape of the file changes; gating a migration on it is not
 /// required any more, because [`Preferences::migrate_with`] uses the tags in
 /// [`Preferences::applied_migrations`].
-pub const CURRENT_SCHEMA_VERSION: u32 = 15;
+pub const CURRENT_SCHEMA_VERSION: u32 = 16;
 
 /// The dance source a new or older preference file downloads from.
 ///
@@ -1399,6 +1399,11 @@ pub const MIGRATIONS: &[Migration] = &[
         tag: "tts-deliveries-v15",
         version: 15,
         apply: migrate_v14_tts_deliveries,
+    },
+    Migration {
+        tag: "role-sides-v16",
+        version: 16,
+        apply: migrate_v15_role_sides,
     },
 ];
 
@@ -1540,6 +1545,32 @@ fn migrate_v14_tts_deliveries(_prefs: &mut Preferences) {
     // v15 adds the number of prepared deliveries per call. `serde` supplies
     // the four-delivery default; a file written by this build keeps whatever
     // the user chose.
+}
+
+fn migrate_v15_role_sides(prefs: &mut Preferences) {
+    // v16 corrects the role-side mapping: a gent finishes a swing on the left
+    // (lark side) and a lady on the right (robin side). Earlier builds stored
+    // the gendered pairs on the opposite sides. Swap the two sides of a file
+    // that used one of those presets so the words keep their old meaning, then
+    // re-infer the preset. Custom vocabularies are left untouched.
+    let old_ladies = (prefs.role_terms.left_singular == "lady"
+        && prefs.role_terms.left_plural == "ladies")
+        || (prefs.role_terms.left_singular == "woman" && prefs.role_terms.left_plural == "women");
+    let old_gents = (prefs.role_terms.right_singular == "gentleman"
+        && prefs.role_terms.right_plural == "gentlemen")
+        || (prefs.role_terms.right_singular == "man" && prefs.role_terms.right_plural == "men");
+    if !(old_ladies && old_gents) {
+        return;
+    }
+    std::mem::swap(
+        &mut prefs.role_terms.left_singular,
+        &mut prefs.role_terms.right_singular,
+    );
+    std::mem::swap(
+        &mut prefs.role_terms.left_plural,
+        &mut prefs.role_terms.right_plural,
+    );
+    prefs.role_preset = RolePreset::detect(&prefs.role_terms);
 }
 
 /// Every tag in [`MIGRATIONS`], for a fresh file that needs none of them.
@@ -2356,7 +2387,32 @@ mod tests {
             }
         }"#;
         let prefs = Preferences::from_json(presets).expect("deserialize");
+        // The old file stored the lady terms on the left. The v16 migration
+        // swaps them so the corrected preset is inferred.
         assert_eq!(prefs.role_preset, RolePreset::LadiesGentlemen);
+        assert_eq!(prefs.role_terms.left_plural, "gentlemen");
+        assert_eq!(prefs.role_terms.right_plural, "ladies");
+    }
+
+    #[test]
+    fn migrates_v15_gendered_role_sides() {
+        let json = r#"{
+            "schema_version": 15,
+            "role_preset": "LadiesGentlemen",
+            "role_terms": {
+                "left_singular": "lady",
+                "left_plural": "ladies",
+                "right_singular": "gentleman",
+                "right_plural": "gentlemen"
+            }
+        }"#;
+        let prefs = Preferences::from_json(json).expect("json");
+        assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(prefs.role_preset, RolePreset::LadiesGentlemen);
+        assert_eq!(prefs.role_terms.left_plural, "gentlemen");
+        assert_eq!(prefs.role_terms.right_plural, "ladies");
+        // A lady card still renders with the lady vocabulary.
+        assert_eq!(prefs.role_terms.apply("ladies chain"), "ladies chain");
     }
 
     #[test]

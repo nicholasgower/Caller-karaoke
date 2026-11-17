@@ -707,7 +707,7 @@ fn detect_kind(lower: &str) -> MoveKind {
 
 static ACTOR_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"(?i)\b(first corners?|second corners?|neighbou?rs?|partners?|shadows?|gentlespoons?|gentlemen?|gents?|robins?|ladles?|ladies?|larks?|leads?|follows?|lefts|rights|women|men)\b",
+        r"(?i)\b(first corners?|second corners?|neighbou?rs?|partners?|shadows?|gentlespoons?|gentlemen|gentleman|gentles|gents|gent|robins?|ravens?|ladles?|ladies|lady|larks?|leads?|follows?|lefts|rights|women|woman|men|man|gals?|guys?|belles?|beaus?)\b",
     )
     .expect("actor regex is valid")
 });
@@ -717,21 +717,22 @@ fn find_actor(lower: &str) -> Option<ActorRef> {
     let matched = caps.get(0)?.as_str().to_lowercase();
     let plural = matches!(
         matched.as_str(),
-        "women" | "men" | "gentlemen" | "gentlespoons" | "ladies" | "larks" | "robins"
+        "women" | "men" | "gentlemen" | "gentlespoons"
     ) || (matched.ends_with('s') && !matched.ends_with("ss"));
+    // Lark is the left side (gent/man/lead/lefts); robin is the right side
+    // (lady/woman/follow/rights). Keep this in step with roles::role_word.
     let actor = match matched.as_str() {
         "neighbor" | "neighbors" | "neighbour" | "neighbours" => Actor::Neighbor,
         "partner" | "partners" => Actor::Partner,
         "shadow" | "shadows" => Actor::Shadow,
         "first corner" | "first corners" => Actor::FirstCorner,
         "second corner" | "second corners" => Actor::SecondCorner,
-        "gentlespoon" | "gentlespoons" | "gentleman" | "gentlemen" | "gent" | "gents" => {
-            Actor::Robin
-        }
-        "robin" | "robins" | "follow" | "follows" | "right" | "rights" => Actor::Robin,
-        "ladle" | "ladles" | "lady" | "ladies" | "lark" | "larks" | "lead" | "leads" | "left"
-        | "lefts" | "woman" | "women" => Actor::Lark,
-        "man" | "men" => Actor::Robin,
+        "gentlespoon" | "gentlespoons" | "gentleman" | "gentlemen" | "gentles" | "gent"
+        | "gents" | "man" | "men" | "guy" | "guys" | "beau" | "beaus" | "lark" | "larks"
+        | "lead" | "leads" | "left" | "lefts" => Actor::Lark,
+        "ladle" | "ladles" | "lady" | "ladies" | "woman" | "women" | "gal" | "gals" | "belle"
+        | "belles" | "robin" | "robins" | "raven" | "ravens" | "follow" | "follows" | "right"
+        | "rights" => Actor::Robin,
         other => Actor::Other(other.to_string()),
     };
     Some(ActorRef { actor, plural })
@@ -928,7 +929,8 @@ mod tests {
         let classified = classify("ladles allemande left 1½");
         assert_eq!(classified.kind, MoveKind::Allemande);
         let actor = classified.actor().expect("actor");
-        assert_eq!(actor.actor, Actor::Lark);
+        // A lady is a robin-side dancer, not a lark.
+        assert_eq!(actor.actor, Actor::Robin);
         assert!(actor.plural);
         assert_eq!(classified.params.direction.as_deref(), Some("left"));
         assert_eq!(classified.params.count.as_deref(), Some("once and a half"));
@@ -939,7 +941,7 @@ mod tests {
         let aliases = AliasTable::default();
         let roles = RoleTerms::default();
         let call = aliases.render("ladles allemande left 1½", &roles);
-        assert_eq!(call.text, "larks allemande left once and a half");
+        assert_eq!(call.text, "robins allemande left once and a half");
         assert_eq!(call.kind, MoveKind::Allemande);
     }
 
@@ -953,7 +955,7 @@ mod tests {
         );
         assert_eq!(
             aliases.render("ladles allemande left once", &roles).text,
-            "larks allemande left"
+            "robins allemande left"
         );
         assert_eq!(
             aliases.render("circle left once", &roles).text,
@@ -963,7 +965,7 @@ mod tests {
         // A fractional count still needs its "once".
         assert_eq!(
             aliases.render("ladles allemande left 1½", &roles).text,
-            "larks allemande left once and a half"
+            "robins allemande left once and a half"
         );
     }
 
@@ -1068,6 +1070,35 @@ mod tests {
         let roles = RoleTerms::preset(crate::roles::RolePreset::LadiesGentlemen);
         let call = aliases.render("ladles chain", &roles);
         assert_eq!(call.text, "ladies chain");
+    }
+
+    #[test]
+    fn card_role_words_classify_to_the_correct_lark_robin_actor() {
+        // Lark side: gent/man/lead/left and their inflections.
+        for word in [
+            "gentlespoon",
+            "gentleman",
+            "gentlemen",
+            "gent",
+            "man",
+            "men",
+            "guy",
+            "beau",
+            "lead",
+            "lefts",
+            "lark",
+        ] {
+            let actor = find_actor(word).unwrap_or_else(|| panic!("no actor for {word}"));
+            assert_eq!(actor.actor, Actor::Lark, "{word} should be a lark");
+        }
+        // Robin side: lady/woman/follow/right and their inflections.
+        for word in [
+            "ladle", "lady", "ladies", "woman", "women", "gal", "belle", "raven", "follow",
+            "rights", "robin",
+        ] {
+            let actor = find_actor(word).unwrap_or_else(|| panic!("no actor for {word}"));
+            assert_eq!(actor.actor, Actor::Robin, "{word} should be a robin");
+        }
     }
 
     #[test]

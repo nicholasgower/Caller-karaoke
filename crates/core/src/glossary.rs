@@ -232,14 +232,14 @@ pub const ENTRIES: &[GlossaryEntry] = &[
             "man",
             "men",
         ],
-        definition: "Traditional role names that follow the same left/right role \
-            model as larks and robins.",
+        definition: "Traditional role names: a lady is the robin (right-side) \
+            role and a gentleman is the lark (left-side) role.",
     },
     GlossaryEntry {
         term: "Leads / follows",
         aliases: &["leads", "follows"],
-        definition: "Role names that follow the same left/right role model as larks \
-            and robins.",
+        definition: "Role names for the lark (left-side) and robin (right-side) \
+            roles respectively.",
     },
     GlossaryEntry {
         term: "Long lines",
