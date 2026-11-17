@@ -13,13 +13,21 @@ import styles from './styles.module.css';
 type Props = {
   /**
    * Which platform's builds to offer. Leave it off on pages that serve every
-   * platform: the button then follows the visitor's operating system.
+   * platform: the button then follows the visitor's operating system. `hosted`
+   * offers the browser app running on this site, which needs no download.
    */
   platform?: DownloadPlatform | 'auto';
+  /**
+   * `button` (default) is the filled action a reader came to press. `link`
+   * renders one inline link with the version note, for a build that is an
+   * aside for technical readers rather than the page's main action.
+   */
+  variant?: 'button' | 'link';
 };
 
 export default function DownloadButton({
   platform = 'auto',
+  variant = 'button',
 }: Props): React.ReactElement {
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -31,8 +39,9 @@ export default function DownloadButton({
   // the visitor's own platform replaces it right after mount.
   const active = platform === 'auto' ? detected ?? 'windows' : platform;
   const options = downloadOptions(active);
-  // iOS points at the hosted browser app, an in-site path that needs the
-  // deployed base URL. Release URLs are absolute and pass through unchanged.
+  // The hosted copy and iOS point at the browser app, an in-site path that
+  // needs the deployed base URL. Release URLs are absolute and pass through
+  // unchanged.
   const primaryUrl = useBaseUrl(options.primary.url);
 
   useEffect(() => {
@@ -61,6 +70,19 @@ export default function DownloadButton({
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [open]);
+
+  // A link variant is one line, so it skips the menu and caption markup below.
+  if (variant === 'link') {
+    return (
+      <p className={styles.link}>
+        <a href={primaryUrl}>{options.primary.action}</a>
+        <span className={styles.linkCaption}>
+          {' · '}
+          {options.caption ?? `Version ${RELEASE_VERSION} · unsigned build`}
+        </span>
+      </p>
+    );
+  }
 
   return (
     <div className={styles.download} ref={rootRef}>

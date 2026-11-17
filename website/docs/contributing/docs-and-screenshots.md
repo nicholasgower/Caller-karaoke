@@ -150,11 +150,14 @@ instead of being duplicated.
 - `<Shot id="id" />` is for a standalone figure.
 - `<DownloadButton platform="windows" />` is the release download button; add it
   wherever a page tells the reader to download the app. Pass `windows`, `linux`,
-  `android`, `web`, or `ios`, or leave `platform` off to follow the visitor's
-  operating system. On iOS the button opens the hosted browser app at `/play`
-  instead, so it still resolves through the site's base URL. Every other button
-  links straight at the release asset, so the page never sends the reader to
-  GitHub.
+  `android`, `web`, `ios`, or `hosted`, or leave `platform` off to follow the
+  visitor's operating system. On iOS and with `hosted`, the button opens the
+  hosted browser app at `/play` instead, so it still resolves through the site's
+  base URL. Every other button links straight at the release asset, so the page
+  never sends the reader to GitHub. Add `variant="link"` when the build is an
+  aside for technical readers: the page then renders one inline link with the
+  version note instead of the filled button, and the reader's main action stays
+  visually dominant.
 - `<Figure>` is reserved for the few manual OS installer images.
 
 A page should not use a raw `<img>` for an in-app screenshot.

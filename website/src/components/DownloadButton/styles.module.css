@@ -116,3 +116,18 @@
   color: var(--ifm-color-content-secondary);
   font-size: 0.82rem;
 }
+
+/* A build that is an aside for technical readers: one inline link with the
+   version note, so it does not compete with the page's main action. */
+.link {
+  margin: 0 0 1rem;
+}
+
+.link a {
+  font-weight: 600;
+}
+
+.linkCaption {
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.82rem;
+}

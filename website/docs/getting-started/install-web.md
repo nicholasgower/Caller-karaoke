@@ -1,6 +1,6 @@
 ---
 title: Run in the browser
-description: Serve the WASM build, start audio with a gesture, and configure the web data proxy.
+description: Play the hosted browser build, or serve your own WASM build and configure the web data proxy.
 sidebar_position: 3
 ---
 
@@ -9,11 +9,13 @@ cpal's WebAudio backend, keeps preferences and source responses in
 `localStorage`, and needs a proxy for online search because the upstream sites
 do not allow browser requests from this origin.
 
-## Try the hosted copy
+## Play in your browser
 
-A copy of the browser build is hosted on this site at
-[Play in your browser](/play). On an iPhone or iPad, the site's download button
-opens this hosted copy, because there is no iOS build yet.
+<DownloadButton platform="hosted" />
+
+A copy of the browser build runs on this site, so you can try the app without
+downloading or serving anything. On an iPhone or iPad, the site's download
+button opens this hosted copy too, because there is no iOS build yet.
 
 - Press **Play** in the app once to allow audio; browsers block sound until you
   interact with the page.
@@ -27,9 +29,13 @@ opens this hosted copy, because there is no iOS build yet.
 To open the app without the documentation header, use the **Open full screen**
 link above the frame.
 
-## Get the build
+## Host the build yourself
 
-<DownloadButton platform="web" />
+The rest of this page is for technical readers who want their own copy of the
+browser build: a download, a static server, and a proxy for online search. If
+you only want to use the app, play the hosted copy above.
+
+<DownloadButton platform="web" variant="link" />
 
 The ZIP holds the static bundle; serve it over HTTP as described below. To build
 it from source:

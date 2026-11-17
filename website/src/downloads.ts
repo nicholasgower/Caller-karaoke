@@ -1,10 +1,17 @@
 import {RELEASE_VERSION, releaseAssetUrl} from './release';
 
 /**
- * What the download button can offer: one of the release builds, or iOS, which
- * has no release build and uses the browser app hosted on this site.
+ * What the download button can offer: one of the release builds, the browser
+ * app hosted on this site (`hosted`), or iOS, which has no release build and
+ * uses that hosted copy too.
  */
-export type DownloadPlatform = 'windows' | 'linux' | 'android' | 'web' | 'ios';
+export type DownloadPlatform =
+  | 'windows'
+  | 'linux'
+  | 'android'
+  | 'web'
+  | 'ios'
+  | 'hosted';
 
 export type DownloadAsset = {
   /** File name attached to the GitHub release; omitted for a link on this site. */
@@ -107,18 +114,29 @@ const WEB: DownloadOptions = {
 
 /**
  * iOS has no release build yet, so the button opens the browser app hosted on
- * this site instead of downloading a Windows file that cannot run there.
+ * this site instead of downloading a Windows file that cannot run there. The
+ * hosted copy is the same offer on any browser, where it needs no download.
  */
-const IOS: DownloadOptions = {
-  name: 'iOS',
+const HOSTED: DownloadOptions = {
+  name: 'the hosted browser app',
   primary: {
     action: 'Play in your browser',
     label: 'Play in your browser',
-    detail: 'Runs in Safari; no install needed.',
+    detail: 'Runs in this browser; no install needed.',
     url: '/play/',
   },
   alternatives: [],
   caption: `Version ${RELEASE_VERSION} · hosted browser build`,
+};
+
+const IOS: DownloadOptions = {
+  name: 'iOS',
+  primary: {
+    ...HOSTED.primary,
+    detail: 'Runs in Safari; no install needed.',
+  },
+  alternatives: [],
+  caption: HOSTED.caption,
 };
 
 const OPTIONS: Record<DownloadPlatform, DownloadOptions> = {
@@ -127,6 +145,7 @@ const OPTIONS: Record<DownloadPlatform, DownloadOptions> = {
   android: ANDROID,
   web: WEB,
   ios: IOS,
+  hosted: HOSTED,
 };
 
 /** The builds offered for one platform; the first is the main button. */

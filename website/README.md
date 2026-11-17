@@ -84,7 +84,9 @@ Trunk build without its WASM bundle.
 The `DownloadButton` component links straight at GitHub release assets, so a
 visitor never has to find the file on GitHub. The auto-detected button is the
 exception on iOS, where it links to the hosted browser app at `/play` instead
-of a release file. Those file names carry the
+of a release file; `platform="hosted"` offers that same hosted copy on any
+browser, and `variant="link"` renders a build as an inline link for pages where
+downloading is an aside. Those file names carry the
 version, which comes from `src/release.ts`. That line mirrors
 `[workspace.package] version` in `Cargo.toml`; `scripts/release.mjs` rewrites
 both in the release commit. Keep them in step when you change the version by
