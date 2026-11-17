@@ -7,16 +7,22 @@ All notable changes to Contra Karaoke are documented here.
 ### Documentation
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 
 ### Features
 - **website:** Add platform-aware download buttons
+- **prefs:** Add update check and feedback actions
+- **web:** Share a dance and tune set as a link
+- **prefs:** Add a settings search to Preferences
+- **website:** Preview the site on iOS and route iOS downloads to the web app
 
 
 ### Fixes
 - **release:** Create the tag only after the artifacts exist
 - **android:** Keep the soft keyboard stable for number fields
 - **website:** Remove the GitHub link from the navbar
+- **website:** Restore the unbuilt app fallback and size the mobile app frame
 
 
 ## [0.1.0] — 2026-11-17
