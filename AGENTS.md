@@ -484,10 +484,11 @@ test(music): cover 6/8 arrangement
 - Releases are cut by hand, only when the owner decides one is ready: merge
   `dev` into `main`, then run
   `node scripts/release.mjs <patch|minor|major|X.Y.Z>`. The script bumps the
-  workspace version, refreshes `Cargo.lock` and the changelog, commits, tags
-  `v<version>`, and pushes the commit and tag. The tag starts
-  `.github/workflows/release.yml`, which builds every platform and publishes the
-  GitHub release. Pushing a branch never publishes a release.
+  workspace version, refreshes `Cargo.lock` and the changelog, commits, pushes
+  `main`, and starts `.github/workflows/release.yml`. That workflow builds every
+  platform first and creates the `v<version>` tag and GitHub release only after
+  all of them succeed, so a tag never exists before its artifacts. Pushing a
+  branch or a tag never publishes a release by itself.
 - Before a release, refresh the documentation screenshots in one pass: run
   `cd website && npm run screenshots`, review every changed image, update the
   manifest dimensions and `emphasis.json` regions, and commit the refreshed

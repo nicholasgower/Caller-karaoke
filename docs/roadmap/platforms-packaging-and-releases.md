@@ -33,16 +33,16 @@ Notes:
 - `cargo deny check` with an allowlist of permissive licenses
 - `cargo machete`
 
-**`release.yml`** on a `v<version>` tag, and by hand with `workflow_dispatch`:
+**`release.yml`** by hand with `workflow_dispatch`, started by `scripts/release.mjs`:
 
 - Build all release targets.
 - Write release notes with the version, commit, and build time.
-- Publish the `v<version>` GitHub release.
+- Create the `v<version>` tag at the built commit and publish the GitHub release.
 - Upload all artifacts with checksums.
 
 Releases are cut with `node scripts/release.mjs <patch|minor|major|X.Y.Z>`, which
-bumps the workspace version, commits, tags, and pushes. Nothing is published on a
-branch push.
+bumps the workspace version, commits, and pushes `main`. The workflow creates the
+tag only after every build succeeds, so it never points at an unbuilt commit.
 
 **`changelog.yml`** on push to `main`:
 

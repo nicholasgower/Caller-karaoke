@@ -11,10 +11,10 @@ The release matrix is defined in `.github/workflows/release.yml`.
 
 Releases are cut by hand with `node scripts/release.mjs <patch|minor|major|X.Y.Z>`.
 The script bumps the workspace version, refreshes `Cargo.lock` and `CHANGELOG.md`,
-commits, and tags `v<version>`. Pushing the tag starts
-`.github/workflows/release.yml`, which builds every platform and attaches the
-artifacts to that GitHub release. Feature work merges into `dev` first; `main`
-is the source for releases. The changelog is maintained by `git-cliff`.
+commits, pushes `main`, and starts `.github/workflows/release.yml`. The workflow
+builds every platform and creates the `v<version>` tag and release only when all
+of them succeed. Feature work merges into `dev` first; `main` is the source for
+releases. The changelog is maintained by `git-cliff`.
 
 Before a release, run:
 

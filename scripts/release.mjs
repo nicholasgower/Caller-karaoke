@@ -3,17 +3,18 @@
  * Cut a release.
  *
  * Bumps the workspace version in `Cargo.toml`, refreshes `Cargo.lock` and the
- * changelog, commits the result, tags `v<version>`, and pushes the commit and
- * the tag. The tag starts `.github/workflows/release.yml`, which builds every
- * platform and publishes the GitHub release.
+ * changelog, commits the result, and pushes it to `main`. It then starts
+ * `.github/workflows/release.yml`, which builds every platform and only creates
+ * the `v<version>` tag and the GitHub release once all of them succeed, so a tag
+ * never appears before its artifacts.
  *
  * Usage:
  *   node scripts/release.mjs patch              # 0.1.0 -> 0.1.1
  *   node scripts/release.mjs minor              # 0.1.0 -> 0.2.0
  *   node scripts/release.mjs major              # 0.1.0 -> 1.0.0
- *   node scripts/release.mjs 0.1.0              # tag the current version as-is
+ *   node scripts/release.mjs 0.1.0              # release the current version as-is
  *   node scripts/release.mjs patch --dry-run    # print the plan, change nothing
- *   node scripts/release.mjs patch --no-push    # commit and tag, push nothing
+ *   node scripts/release.mjs patch --no-push    # commit only, push nothing
  *
  * The script refuses to run on a branch other than `main`, with a dirty working
  * tree, behind `origin/main`, or when the tag already exists. `--allow-branch`
@@ -90,6 +91,24 @@ function hasStagedChanges() {
   return result.status === 1;
 }
 
+function startReleaseWorkflow(tag) {
+  const gh = spawnSync('gh', ['--version'], {cwd: ROOT, stdio: 'ignore'});
+  if (!gh.error && gh.status === 0) {
+    const dispatch = spawnSync('gh', ['workflow', 'run', 'release.yml', '--ref', 'main'], {
+      cwd: ROOT,
+      stdio: 'inherit',
+    });
+    if (!dispatch.error && dispatch.status === 0) {
+      console.log(`release: started the Release workflow; it creates ${tag} once every build passes`);
+      return;
+    }
+  }
+  console.log('release: main is pushed. Start the release build with:');
+  console.log('release:   gh workflow run release.yml --ref main');
+  console.log('release:   or Actions -> Release -> Run workflow');
+  console.log(`release: the workflow creates ${tag} only after every build succeeds`);
+}
+
 const argv = process.argv.slice(2);
 const flags = new Set(argv.filter((arg) => arg.startsWith('--')));
 const positional = argv.filter((arg) => !arg.startsWith('--'));
@@ -124,11 +143,12 @@ if (head !== upstream && !allowBranch) {
   fail('HEAD is not at origin/main; pull or merge first (use --allow-branch to override)');
 }
 
-const existingTag = spawnSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], {
-  cwd: ROOT,
-  stdio: 'ignore',
-});
-if (existingTag.status === 0) fail(`tag ${tag} already exists`);
+const existingTag = spawnSync(
+  'git',
+  ['ls-remote', '--exit-code', '--tags', 'origin', `refs/tags/${tag}`],
+  {cwd: ROOT, stdio: 'ignore'},
+);
+if (existingTag.status === 0) fail(`tag ${tag} already exists on origin; bump the version`);
 
 const changed = next !== current;
 console.log(`release: ${current} -> ${next}${changed ? '' : ' (version unchanged)'}`);
@@ -141,8 +161,8 @@ if (dryRun) {
   }
   console.log('release: would regenerate CHANGELOG.md for the tag');
   console.log(`release: would commit "chore(release): ${tag}" if anything changed`);
-  console.log(`release: would tag ${tag}`);
-  console.log(noPush ? 'release: would not push' : `release: would push main and ${tag} to origin`);
+  console.log('release: would start the Release workflow, which creates ' + tag + ' after every build passes');
+  console.log(noPush ? 'release: would not push' : 'release: would push main to origin');
   process.exit(0);
 }
 
@@ -169,13 +189,11 @@ if (hasStagedChanges()) {
   console.log(`release: nothing to commit; tagging ${tag} at HEAD`);
 }
 
-run('git', ['tag', '-a', tag, '-m', `Contra Karaoke ${tag}`]);
-
 if (noPush) {
-  console.log(`release: committed and tagged ${tag}; push with:`);
-  console.log(`release:   git push origin main && git push origin ${tag}`);
+  console.log(`release: committed ${tag} locally; finish with:`);
+  console.log('release:   git push origin main');
+  console.log('release:   gh workflow run release.yml --ref main');
 } else {
   run('git', ['push', 'origin', 'main']);
-  run('git', ['push', 'origin', tag]);
-  console.log(`release: pushed ${tag}; .github/workflows/release.yml is building it`);
+  startReleaseWorkflow(tag);
 }
