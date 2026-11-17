@@ -81,7 +81,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # `arguments` is inserted *before* the subcommand and `command-arguments`
+      # *after* it. cargo-deny 0.21 (the version the v2 action container now
+      # ships) moved the -A/-W/-D lint flags from the root CLI onto `check`,
+      # so a lint level passed as `arguments` fails with
+      # "unexpected argument '-A' found". Keep lint levels in
+      # `command-arguments`; `arguments` keeps its `--all-features` default.
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
-          arguments: -A warnings
+          command-arguments: -A warnings
