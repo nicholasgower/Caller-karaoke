@@ -4,7 +4,7 @@ description: Build and sideload the Android APK, and understand the current devi
 sidebar_position: 4
 ---
 
-Android support is configured with minSdk 26 and targetSdk 35. A nightly APK is
+Android support is configured with minSdk 26 and targetSdk 35. A release APK is
 built by CI, but real-device audio and TTS testing is still in progress. Do not
 treat Android as a polished release yet.
 
@@ -18,7 +18,7 @@ treat Android as a polished release yet.
 ## Get the APK
 
 Download the APK from the
-[nightly release](https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly),
+[latest release](https://github.com/nicholasgower/Contra-karaoke/releases/latest),
 or build it yourself:
 
 <Steps>
@@ -117,7 +117,7 @@ Android stops the app in the background, playback stops with it.
 - Loading a SoundFont from a file is not available in this build yet; the
   bundled Fluid R3 GM subset is used instead.
 - MIDI export is not available in this build yet.
-- There is no Play Store release. Use the nightly APK or build from source.
+- There is no Play Store release. Use the release APK or build from source.
 - Preferences and the source cache use the app's private storage; clearing app
   data resets them.
 - The on-screen keyboard is basic: suggestions and autocorrect are off, and an

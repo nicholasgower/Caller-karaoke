@@ -10,7 +10,7 @@ re-aligns the archive, and signs it.
 
 The release profile is signed with the debug keystore unless
 `CARGO_APK_RELEASE_KEYSTORE` and `CARGO_APK_RELEASE_KEYSTORE_PASSWORD` are set,
-which matches the nightly/test-build policy.
+which matches the test-build policy.
 """
 
 from __future__ import annotations

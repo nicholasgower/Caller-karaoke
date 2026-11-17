@@ -18,7 +18,7 @@ export default function Play(): React.ReactElement {
         <div className={styles.bar}>
           <p className={styles.note}>
             This copy is built from <code>main</code> with the documentation and
-            may lag the nightly release. Press <strong>Play</strong> in the app
+            may lag the latest release. Press <strong>Play</strong> in the app
             once to allow audio. Online search needs a{' '}
             <Link to="/docs/getting-started/install-web#configure-the-data-proxy">
               data proxy

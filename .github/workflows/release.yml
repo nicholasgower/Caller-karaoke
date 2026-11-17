@@ -1,24 +1,42 @@
-name: Nightly
+name: Release
 
+# Releases are cut by hand. `scripts/release.mjs` bumps the workspace version,
+# commits it, tags v<version>, and pushes the tag; this workflow then builds the
+# artifacts and publishes them as that release. Pushing to a branch never
+# publishes anything.
 on:
   push:
-    # Nightly builds follow main, so the rolling `nightly` release always comes
-    # from released code. Feature work lands on dev first.
-    branches: [main]
-    paths-ignore:
-      - CHANGELOG.md
+    tags: ['v*']
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
-  VERSION: 0.1.0
 
 permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the workspace version
+        id: read
+        run: |
+          version=$(sed -n 's/^version = "\([^"]*\)"$/\1/p' Cargo.toml | head -n1)
+          if [ -z "$version" ]; then
+            echo "Could not read [workspace.package] version from Cargo.toml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   windows:
+    needs: version
     runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -49,7 +67,10 @@ jobs:
             dist/*.zip
 
   linux:
+    needs: version
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -77,7 +98,10 @@ jobs:
             dist/ContraKaraoke-*.AppImage
 
   web:
+    needs: version
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       # Must match the pin in rust-toolchain.toml; see the wasm job in ci.yml.
@@ -104,6 +128,7 @@ jobs:
           path: dist/*-web.zip
 
   android:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -140,10 +165,19 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [windows, linux, web, android]
+    needs: [version, windows, linux, web, android]
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check the tag matches the crate version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match v${VERSION} in Cargo.toml" >&2
+            exit 1
+          fi
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -160,18 +194,19 @@ jobs:
         shell: bash
         run: |
           {
-            echo "Nightly build of Contra Karaoke $VERSION."
+            echo "Contra Karaoke ${VERSION}."
             echo ""
-            echo "- commit: \`$GITHUB_SHA\`"
+            echo "- commit: \`${GITHUB_SHA}\`"
             echo "- built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo ""
-            echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)."
+            echo "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/v${VERSION}/CHANGELOG.md)."
           } > release-notes.md
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: nightly
-          name: Nightly (${{ github.sha }})
-          prerelease: true
+          tag_name: v${{ needs.version.outputs.version }}
+          name: Contra Karaoke v${{ needs.version.outputs.version }}
+          prerelease: false
+          make_latest: true
           body_path: release-notes.md
           files: artifacts/**/*
           fail_on_unmatched_files: true

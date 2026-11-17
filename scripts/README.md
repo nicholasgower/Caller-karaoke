@@ -12,6 +12,10 @@ the application.
   as the first argument; five samples is the default. The report names the
   functions over the frame or action budget and writes nothing except to
   stdout.
+- `release.mjs` — cut a release: bump the workspace version, refresh
+  `Cargo.lock` and `CHANGELOG.md`, commit, tag `v<version>`, and push. The tag
+  starts `.github/workflows/release.yml`. Run it from `main`; `--dry-run` prints
+  the plan without changing anything.
 - `rebuild-soundfont.py` — regenerate
   `assets/defaults/fluid-r3-gm-subset.sf2` from the full Fluid R3 GM bank. Needs
   only Python 3: it downloads the pinned official release, verifies its

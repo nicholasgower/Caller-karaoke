@@ -5,7 +5,7 @@ sidebar_position: 1
 ---
 
 Contra Karaoke is distributed as a 64-bit Windows installer and a portable ZIP
-in the rolling nightly release. There is no stable signed release yet, so
+in the latest release. There is no stable signed release yet, so
 Windows may show a SmartScreen warning.
 
 ## Requirements
@@ -17,13 +17,13 @@ Windows may show a SmartScreen warning.
 
 ## Download
 
-Open the [nightly release](https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly)
+Open the [latest release](https://github.com/nicholasgower/Contra-karaoke/releases/latest)
 and download one of:
 
 - `ContraKaraoke-0.1.0-windows-x64-setup.exe` — installer;
 - `ContraKaraoke-0.1.0-windows-x64-portable.zip` — portable build.
 
-Nightly artifacts carry version 0.1.0 and may be replaced by a later build.
+release artifacts carry version 0.1.0 and may be replaced by a later build.
 They are not code-signed.
 
 <Shot id="install-windows-release" />
@@ -37,7 +37,7 @@ They are not code-signed.
     create a desktop shortcut, then finish the install.
   </Step>
   <Step shot="install-windows-smartscreen">
-    If Windows SmartScreen appears because the nightly build is unsigned,
+    If Windows SmartScreen appears because the release build is unsigned,
     select **More info**, verify the publisher/URL, and choose **Run anyway**
     only if you downloaded it from this repository's release page.
   </Step>
@@ -67,7 +67,7 @@ start during the count-in. See
 [Your first session](/docs/getting-started/first-session).
 
 If SmartScreen or antivirus blocks the unsigned executable, verify the download
-hash from the nightly release and use the **More info** path rather than
+hash from the latest release and use the **More info** path rather than
 disabling security features.
 
 ## Media keys and the system media overlay

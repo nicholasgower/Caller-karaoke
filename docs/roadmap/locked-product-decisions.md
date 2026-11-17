@@ -17,7 +17,7 @@
 | Count-in | Four dance beats ("four potatoes"), built from the tune's first chord |
 | Version until further notice | **0.1.0** |
 | Windows packaging | Inno Setup installer + portable ZIP |
-| Nightly releases | Every push to `main`, dated tags plus a rolling `nightly` release |
+| Releases | Manual, version-tagged `v<version>` builds cut with `scripts/release.mjs` |
 | Branching | Feature work merges into `dev`; `main` advances only for releases |
 
 The default dance is **Another Last Dance** (ContraDB dance 2409).

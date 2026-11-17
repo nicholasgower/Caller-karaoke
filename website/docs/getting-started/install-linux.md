@@ -4,8 +4,8 @@ description: Install the Debian package or AppImage, or build Contra Karaoke fro
 sidebar_position: 2
 ---
 
-Linux nightly builds are published as a Debian package and an AppImage. The
-Flatpak manifest is included in the source tree but is not part of the nightly
+Linux release builds are published as a Debian package and an AppImage. The
+Flatpak manifest is included in the source tree but is not part of the release
 artifact set yet.
 
 ## Requirements
@@ -28,7 +28,7 @@ sudo apt-get install libasound2-dev libxkbcommon-dev libssl-dev \
 <Steps>
   <Step shot="install-linux-deb">
     Download the `.deb` from the
-    [nightly release](https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly).
+    [latest release](https://github.com/nicholasgower/Contra-karaoke/releases/latest).
   </Step>
   <CommandStep command="sudo apt install ./contra-app_0.1.0_amd64.deb">
     Install the package with apt so its dependencies are resolved. Use the
@@ -62,7 +62,7 @@ The Flatpak manifest is
 `packaging/flatpak/org.contrakaraoke.ContraKaraoke.yml`. It requires a generated
 `cargo-sources.json` and `flatpak-builder`; see
 `packaging/flatpak/README.md` for the exact commands. This is a developer path,
-not a published nightly package.
+not a published package.
 
 ## First launch and data
 

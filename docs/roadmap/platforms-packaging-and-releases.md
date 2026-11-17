@@ -33,19 +33,22 @@ Notes:
 - `cargo deny check` with an allowlist of permissive licenses
 - `cargo machete`
 
-**`nightly.yml`** on every push to `main`:
+**`release.yml`** on a `v<version>` tag, and by hand with `workflow_dispatch`:
 
 - Build all release targets.
-- Generate release notes with `git-cliff`.
-- Create a prerelease tagged `nightly-YYYYMMDD-<short-sha>`.
-- Update the rolling `nightly` release.
+- Write release notes with the version, commit, and build time.
+- Publish the `v<version>` GitHub release.
 - Upload all artifacts with checksums.
+
+Releases are cut with `node scripts/release.mjs <patch|minor|major|X.Y.Z>`, which
+bumps the workspace version, commits, tags, and pushes. Nothing is published on a
+branch push.
 
 **`changelog.yml`** on push to `main`:
 
 - Regenerate `CHANGELOG.md` with `git-cliff`.
 - Commit with `[skip ci]` and path filters to avoid loops.
-- Nightly builds ignore changelog-only commits.
+- Release builds ignore changelog-only commits.
 
 **`docs.yml`** builds and deploys the documentation site to GitHub Pages. It
 also builds the WASM app and stages it under `/app/` so the guide can embed a
@@ -56,8 +59,10 @@ hosted copy.
 - Feature work from worktrees and pull requests merges into `dev` first. Test it
   on `dev`; only merge `dev` into `main` when a release is ready.
 - `main` is the source for official release builds.
-- Stay at **0.1.0** until the project owner declares a release.
-- Nightly artifacts carry the date and short SHA, not a new semantic version.
+- The version only changes when the owner cuts a release with
+  `scripts/release.mjs`.
+- Each release carries a `v<version>` tag that matches the workspace version in
+  `Cargo.toml`; the release workflow refuses a mismatched tag.
 - The changelog keeps an `[Unreleased]` section.
 - Release notes are generated from Conventional Commits.
 

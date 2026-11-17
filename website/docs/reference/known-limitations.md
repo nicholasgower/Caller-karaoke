@@ -12,15 +12,15 @@ development release. These are the limitations to know before relying on it.
 - **Android** is configured and buildable with minSdk 26, but real-device audio
   and TTS testing is incomplete. The APK includes the `rs.tts.Bridge` JNI class;
   a bare `cargo apk build` does not, and will crash while loading the native
-  library. Nightly APKs use the debug keystore unless release signing secrets
+  library. Release APKs use the debug keystore unless release signing secrets
   are configured.
 - The **web build** needs the included proxy for online search and downloads.
   Without it, the bundled defaults and anything already in your saved library
   still work. The hosted copy on this site is rebuilt with the documentation
-  from `main`, so it can lag the nightly release.
-- There is **no stable signed release**. Nightly artifacts use version 0.1.0,
+  from `main`, so it can lag the latest release.
+- There is **no stable signed release**. release artifacts use version 0.1.0,
   may be replaced, and are not code-signed.
-- Flatpak is a source-tree packaging path, not a nightly artifact yet.
+- Flatpak is a source-tree packaging path, not a release artifact yet.
 
 ## Features
 
@@ -111,7 +111,7 @@ when it needs the memory.
 - Dance and tune data belong to their contributors. The app stores downloads
   locally but does not redistribute a database.
 - There is no telemetry, account, or cloud sync.
-- The docs describe the current `main`/nightly build; there are no versioned
+- The docs describe the current `main`/release build; there are no versioned
   docs before 1.0.
 
 If a limitation blocks you, open an issue with the platform, the screen, and

@@ -6,7 +6,7 @@
 4. Work offline after content has been cached.
 5. Keep dance/tune parsing replaceable so new sources can be added without
    touching the session engine or UI.
-6. Ship as a small, MIT-licensed application with reproducible nightly builds.
+6. Ship as a small, MIT-licensed application with reproducible release builds.
 
 ### Two audiences
 
