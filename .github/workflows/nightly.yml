@@ -152,7 +152,10 @@ jobs:
         shell: bash
         run: |
           cd artifacts
-          sha256sum * > SHA256SUMS.txt
+          # Merged artifacts keep their internal layout (dist/, target/), so
+          # checksum the files, not the top-level entries.
+          find . -type f ! -name SHA256SUMS.txt -printf '%P\0' \
+            | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt
       - name: Release notes
         shell: bash
         run: |
