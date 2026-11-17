@@ -136,7 +136,7 @@ quiet master with a loud melody is still quiet overall.
 The **About** button sits in the top-right corner of the tab row on every
 screen. Select it to open a window with the program name, its version, a short
 description, the author (Nicholas Gower), and links to the GitHub repository and
-the documentation site. The project pages may not be live yet.
+the published documentation site.
 
 <Shot id="about-window" />
 

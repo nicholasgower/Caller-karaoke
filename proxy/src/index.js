@@ -63,7 +63,7 @@ export default {
     const headers = new Headers();
     headers.set(
       "User-Agent",
-      "ContraKaraoke/0.1 (+https://github.com/storytold/Contra-karaoke)",
+      "ContraKaraoke/0.1 (+https://github.com/nicholasgower/Contra-karaoke)",
     );
     const contentType = request.headers.get("content-type");
     if (contentType) {
