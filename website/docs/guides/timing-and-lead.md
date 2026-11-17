@@ -45,17 +45,21 @@ speech_lead_beats = clamp(
                       min_beats,
                       max_beats
                     )
-lead_beats = speech_lead_beats + safety_padding_seconds (converted to dance beats)
+lead_beats = ceil(speech_lead_beats + safety_padding_seconds (converted to dance beats))
 ```
 
 Speech rate, minimum, maximum, and safety padding are exposed in the UI. The
-word gap and extra pause are fixed at 0.0, and the lead scale at 1.0. Every call
-also gets the **safety padding** after the speech-lead clamp; it defaults to
-0.5 s and can be set from 0 to 2 s.
+word gap and extra pause are fixed at 0.0, and the lead scale at 1.0. The
+automatic lead — the speech estimate plus the safety padding — rounds **up** to
+the next whole dance beat, so a call always gets at least the time its words
+need and starts on a beat boundary. A manual lead is used exactly as entered.
+Every call also gets the **safety padding** after the speech-lead clamp; it
+defaults to 0.5 s and can be set from 0 to 2 s.
 
 The default is calibrated from a measured 2.25 s delivery of the nine-syllable
 call “larks allemande left once and a half”. At 240 BPM that is 4.5 beats of
-speech plus 1 beat of padding, so the call starts 5.5 beats before the move.
+speech plus 1 beat of padding = 5.5, rounded up so the call starts 6 beats
+before the move.
 
 ## Manual lead
 
@@ -90,6 +94,11 @@ A short call such as `swing` gets the 1-beat minimum speech lead plus the
 default 1-beat padding at 240 BPM, so it starts about two beats early. A longer
 phrase approaches the 5-beat default maximum plus padding. If you raise the
 maximum to 6 or increase the safety padding, long calls can start even earlier.
+
+The dance card prints the lead for each call as **call N beats**. The
+**executes in N beats** and **call in N beats** countdowns are both rounded to
+the nearest half beat and always show one decimal (`4.0`, `3.5`) while the dance
+runs.
 
 ## The first call can be negative
 

@@ -276,6 +276,76 @@ fn the_default_dance_card_fits_without_scrolling_on_a_desktop() {
 }
 
 #[test]
+fn the_dance_card_shows_the_lead_for_every_call() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Session;
+            app.error = None;
+            app.started = false;
+            app.needs_render = false;
+            app
+        });
+    harness.run_steps(3);
+
+    let figures = harness.state().dance.figures.len();
+    let labels: Vec<String> = (0..figures)
+        .filter_map(|figure_index| {
+            let leads: Vec<String> = harness
+                .state()
+                .timeline
+                .calls
+                .iter()
+                .filter(|call| call.figure_index == figure_index)
+                .map(|call| crate::app::ui::format_half_beats(call.lead_beats()))
+                .collect();
+            (!leads.is_empty()).then(|| format!("call {} beats", leads.join(" · ")))
+        })
+        .collect();
+    for label in &labels {
+        assert!(
+            harness.query_all_by_label(label).next().is_some(),
+            "the dance card is missing the figure lead {label}"
+        );
+    }
+    // The measured long call now has five beats of speech plus one of
+    // padding, so its card entry reads six beats.
+    assert!(
+        harness
+            .query_all_by_label("call 6.0 beats")
+            .next()
+            .is_some()
+    );
+    assert!(
+        harness
+            .query_all_by_label("call 3.0 beats")
+            .next()
+            .is_some()
+    );
+    // The lead sits on the header row, to the right of the figure's beat count.
+    let swing_lead = harness
+        .query_all_by_label("call 3.0 beats")
+        .next()
+        .expect("the swing lead")
+        .rect();
+    let header_beats = harness
+        .query_all_by_label("8 beats")
+        .map(|node| node.rect())
+        .find(|rect| {
+            (rect.center().y - swing_lead.center().y).abs() < 4.0
+                && rect.right() < swing_lead.left()
+        })
+        .expect("the swing figure's header beat count");
+    assert!(swing_lead.right() > header_beats.right());
+    assert!((swing_lead.center().y - header_beats.center().y).abs() < 4.0);
+}
+
+#[test]
 fn every_screen_fits_horizontally_at_every_supported_width() {
     for screen in SCREENS {
         let mut harness = Harness::builder()

@@ -36,9 +36,12 @@ speech_lead_beats = clamp(
                      min_lead_beats,
                      max_lead_beats
                    )
-lead_beats       = speech_lead_beats + safety_padding (as dance beats)
+lead_beats       = ceil(speech_lead_beats + safety_padding (as dance beats))
 call_start_beat  = execution_beat - lead_beats
 ```
+
+The automatic lead — speech estimate plus safety padding — rounds up to the next
+whole dance beat; a manual lead is used as entered.
 
 Defaults are calibrated from measured delivery: saying
 “larks allemande left once and a half” (nine syllables) took **2.25 seconds**,
@@ -65,8 +68,8 @@ Example at 240 BPM:
 | --- | ---: | ---: |
 | `swing` | 2.0 beats | 1.0 s before the move |
 | `circle left three` | 3.0 beats | 1.5 s before the move |
-| `neighbors do-si-do` | 3.5 beats | 1.75 s before the move |
-| `larks allemande left once and a half` | 5.5 beats | 2.75 s before the move |
+| `neighbors do-si-do` | 4.0 beats | 2.0 s before the move |
+| `larks allemande left once and a half` | 6.0 beats | 3.0 s before the move |
 
 The first call of a dance may fall at a negative beat (inside the count-in).
 That is intentional and must be displayed/spoken. When the dance loops, the

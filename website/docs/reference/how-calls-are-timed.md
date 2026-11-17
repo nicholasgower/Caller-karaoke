@@ -40,9 +40,14 @@ speech_lead_beats = clamp(
                       min_lead_beats,
                       max_lead_beats
                     )
-lead_beats = speech_lead_beats + safety_padding_seconds (converted to dance beats)
+lead_beats = ceil(speech_lead_beats + safety_padding_seconds (converted to dance beats))
 call_start_beat = execute_beat - lead_beats
 ```
+
+The automatic lead — the speech estimate plus the safety padding — is rounded
+**up** to the next whole dance beat. The caller therefore gets at least the time
+the words need, and the call starts on a beat boundary rather than part of one.
+A manual lead is used exactly as entered.
 
 Defaults:
 
@@ -54,6 +59,7 @@ Defaults:
 | lead scale | 1.0 | No |
 | minimum speech lead | 1.0 beat | Yes |
 | maximum speech lead | 5.0 beats | Yes |
+| automatic-lead rounding | up to the next whole beat | No |
 | manual lead | 1.5 beats | Yes, when automatic is off |
 | safety padding | 0.5 s | Yes, **Safety padding** |
 
@@ -62,16 +68,16 @@ slower TTS voices. Every call adds the safety padding after the clamp. It
 defaults to 0.5 s and can be set from 0 to 2 s; zero removes the buffer. The
 defaults are calibrated from a measured 2.25 s delivery of the nine-syllable
 call “larks allemande left once and a half”, which is 4.5 beats of speech plus
-1 beat of padding at 240 BPM.
+1 beat of padding at 240 BPM, rounded up to 6.
 
 ## Worked examples at 240 BPM
 
-| Call | Speech lead | Total lead | Call starts |
+| Call | Speech estimate | Total lead | Call starts |
 | --- | ---: | ---: | ---: |
 | `swing` | 1.0 beat | 2.0 beats | 1.0 s before the move |
 | `circle left three` | 2.0 beats | 3.0 beats | 1.5 s before the move |
-| `neighbors do-si-do` | 2.5 beats | 3.5 beats | 1.75 s before the move |
-| `larks allemande left once and a half` | 4.5 beats | 5.5 beats | 2.75 s before the move |
+| `neighbors do-si-do` | 2.5 beats | 4.0 beats | 2.0 s before the move |
+| `larks allemande left once and a half` | 4.5 beats | 6.0 beats | 3.0 s before the move |
 
 These values are illustrative and depend on the current alias text. The
 application computes the real values from the rendered words. A count of one is
@@ -102,12 +108,13 @@ call start can be before beat 0:
 
 ```
 first execute beat = 0
-first speech lead  = 2 beats
+first speech lead  = 2.5 beats
 first padding      = 1 beat (default 0.5 s at 240 BPM)
-first call start   = -3 beats
+first total lead   = ceil(3.5) = 4 beats
+first call start   = -4 beats
 ```
 
-With the four-beat count-in, that call begins one beat into the count-in. The
+With the four-beat count-in, that call begins at the start of the count-in. The
 count-in is not a clamp. The app shows and speaks the first call during the
 count-in when necessary. Do not "fix" this by starting the call at beat 0; that
 would make the first figure late.
@@ -154,6 +161,16 @@ and tune body lengths differ. Calls use the card's cumulative figure beats; the
 music keeps the 64-beat grid.
 
 <Shot id="session-length-warning" />
+
+## What the session shows
+
+The dance card prints each figure's call lead in the top-right corner as
+**call N beats**, so a caller can see how early each move starts before the
+dance runs. While a figure executes, the upcoming-move card counts down with
+**call in N beats**, and the **executes in N beats** line under the current call
+is the same remaining lead. Both live countdowns are rounded to the nearest half
+beat and always show one decimal (`4.0`, `3.5`) so they do not flicker through
+tenths.
 
 ## TTS timing
 

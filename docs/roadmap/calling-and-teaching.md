@@ -103,7 +103,10 @@ The implications for the app are direct:
 
 **Already strong:**
 
-- The lead is computed from the rendered alias, including the safety padding.
+- The lead is computed from the rendered alias, rounds the automatic lead up to
+  a whole beat, and includes the safety padding.
+- The dance card prints each call's lead, and live countdowns round to the
+  nearest half beat.
 - The first call may start before beat 0; it is not clamped.
 - Loop wrapping calls the first figure again at the end of the previous loop.
 - Alias templates and role terms keep the card, the prompt, the lead, and TTS

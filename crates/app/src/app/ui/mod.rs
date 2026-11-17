@@ -768,6 +768,22 @@ pub(super) struct TuneSetPanel<'a> {
     pub count: usize,
 }
 
+/// Round a beat count to the nearest half beat for display.
+///
+/// Countdowns move continuously with the audio clock, so showing every tenth
+/// of a beat flickers. Calls are timed to whole beats, which makes a half-beat
+/// readout the finest step the caller needs.
+pub(super) fn round_half_beat(beats: f64) -> f64 {
+    (beats * 2.0).round() / 2.0
+}
+
+/// Format a beat count to the nearest half beat, always with one decimal.
+///
+/// Whole beats read as `5.0`, half beats as `5.5`.
+pub(super) fn format_half_beats(beats: f64) -> String {
+    format!("{:.1}", round_half_beat(beats))
+}
+
 /// Prompt the caller with the move they must call next while the current
 /// figure is being danced.
 pub(super) fn upcoming_move_card(
@@ -793,8 +809,8 @@ pub(super) fn upcoming_move_card(
     ui.horizontal_wrapped(|ui| {
         ui.label(
             egui::RichText::new(format!(
-                "call in {:.1} beats",
-                (next.start_beat - beat).max(0.0)
+                "call in {} beats",
+                format_half_beats((next.start_beat - beat).max(0.0))
             ))
             .color(theme::muted(ui)),
         );
@@ -882,6 +898,18 @@ impl CallerApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lead_countdowns_show_the_nearest_half_beat() {
+        assert_eq!(format_half_beats(3.74), "3.5");
+        assert_eq!(format_half_beats(3.76), "4.0");
+        assert_eq!(format_half_beats(4.0), "4.0");
+        assert_eq!(format_half_beats(0.24), "0.0");
+        // A live countdown never shows more than one decimal, and whole beats
+        // keep their tenths place.
+        assert_eq!(format_half_beats(2.1), "2.0");
+        assert_eq!(format_half_beats(2.3), "2.5");
+    }
 
     #[test]
     fn only_a_dominant_vertical_drag_counts_as_a_scroll() {

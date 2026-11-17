@@ -160,7 +160,9 @@ button resumes from the same beat.
 | `Dance complete` | The music reached the end with looping off. |
 
 The **executes in N beats** line counts down to the figure's execute beat. It is
-not a metronome; the music is the clock.
+not a metronome; the music is the clock. The dance card prints each call's lead
+as **call N beats**, and both live countdowns — **executes in** and **call in** —
+are rounded to the nearest half beat with one decimal (`4.0`, `3.5`).
 
 ## If something does not work
 

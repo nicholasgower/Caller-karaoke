@@ -121,7 +121,9 @@ completed card stay content-sized.
 
 The **executes in N beats** line is the remaining lead. A short call may show
 about two beats; a long call up to six by default once the safety padding
-(0.5 s by default) is included. See
+(0.5 s by default) is added and the automatic total is rounded up to a whole
+beat. Both this line and the upcoming-move card's **call in N beats** countdown
+round to the nearest half beat and show one decimal (`4.0`, `3.5`). See
 [Timing and lead](/docs/guides/timing-and-lead).
 
 If **Show original card text** is enabled in Preferences, the original card
@@ -152,8 +154,8 @@ dropped when the setting changes.
 Below the prompt, the tune line shows the tune title, key, rhythm, and every band
 row with its player count such as `Fiddle ×2` when a row has more than one
 player. The dance card at the bottom of the session shows every figure with its
-phrase label and beat count. The active figure row is highlighted as the music
-moves.
+phrase label, its beat count, and the lead for its call in the top-right corner
+as **call 4.0 beats**. The active figure row is highlighted as the music moves.
 
 The card uses compact padding by default, so a standard dance fits whole on a
 desktop session tab without scrolling. **Preferences → Appearance → Dance card
