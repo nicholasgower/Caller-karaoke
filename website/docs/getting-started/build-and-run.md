@@ -109,7 +109,7 @@ limitations.
 ## Packaging status
 
 There is no stable signed release yet, but nightly builds are produced on every
-push to `main`. The workflow attaches a Windows installer and portable ZIP, a
+push to `dev`. The workflow attaches a Windows installer and portable ZIP, a
 Linux `.deb` and AppImage, a web ZIP, and an Android APK to the rolling
 `nightly` release. Flatpak remains a source-tree packaging path. Use the
 [download page](/download) for the current artifact list.

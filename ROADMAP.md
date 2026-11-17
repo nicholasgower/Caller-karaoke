@@ -51,7 +51,7 @@ The same Rust codebase targets Windows, Linux, the web (WASM), and Android.
 | Theme | Dark grey by default; light grey option |
 | Version until further notice | **0.1.0** |
 | Windows packaging | Inno Setup installer + portable ZIP |
-| Nightly releases | Every push to `main`, dated tags plus a rolling `nightly` release |
+| Nightly releases | Every push to `dev`, dated tags plus a rolling `nightly` release |
 
 The default dance is **Another Last Dance** (ContraDB dance 2409).
 The default tune is **Sandy Boys** (ABC Session Tunes tune 75815).
@@ -841,7 +841,7 @@ Notes:
 - `cargo deny check` with an allowlist of permissive licenses
 - `cargo machete`
 
-**`nightly.yml`** on every push to `main`:
+**`nightly.yml`** on every push to `dev`:
 
 - Build all release targets.
 - Generate release notes with `git-cliff`.
@@ -1049,7 +1049,7 @@ placeholder screens.
 - [ ] `CREDITS.md`, README, and docs.
 - [ ] Artifact checksums and release notes.
 
-Exit: a push to `main` produces a complete nightly release.
+Exit: a push to `dev` produces a complete nightly release.
 
 ### M6 — Release hardening
 
