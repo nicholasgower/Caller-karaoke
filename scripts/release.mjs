@@ -83,6 +83,32 @@ function writeWebsiteVersion(next) {
   fs.writeFileSync(WEBSITE_RELEASE_TS, source.replace(pattern, `$1${next}$2`));
 }
 
+/// Keep internal path dependencies on the workspace release version.
+///
+/// Cargo checks the declared requirement against the path dependency's version,
+/// so bumping `[workspace.package]` alone leaves `caller-core = "0.1.0"` behind
+/// and makes `cargo metadata` fail with "failed to select a version".
+function writeCrateVersions(next) {
+  const crates = path.join(ROOT, 'crates');
+  if (!fs.existsSync(crates)) return [];
+  const changed = [];
+  for (const entry of fs.readdirSync(crates, {withFileTypes: true})) {
+    if (!entry.isDirectory()) continue;
+    const manifest = path.join(crates, entry.name, 'Cargo.toml');
+    if (!fs.existsSync(manifest)) continue;
+    const source = fs.readFileSync(manifest, 'utf8');
+    const updated = source.replace(
+      /(^caller-[\w-]+ = \{ version = ")[^"]*(")/gm,
+      `$1${next}$2`,
+    );
+    if (updated !== source) {
+      fs.writeFileSync(manifest, updated);
+      changed.push(path.relative(ROOT, manifest));
+    }
+  }
+  return changed;
+}
+
 function nextVersion(current, spec) {
   const match = current.match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!match) fail(`cannot parse version "${current}" in Cargo.toml`);
@@ -180,9 +206,11 @@ if (dryRun) {
   process.exit(0);
 }
 
+let crateManifests = [];
 if (changed) {
   writeVersion(next);
   writeWebsiteVersion(next);
+  crateManifests = writeCrateVersions(next);
   run('cargo', ['metadata', '--format-version', '1'], {capture: true});
 }
 
@@ -199,6 +227,7 @@ const paths = [
   'Cargo.lock',
   'CHANGELOG.md',
   'website/src/release.ts',
+  ...crateManifests,
 ].filter((file) => fs.existsSync(path.join(ROOT, file)));
 run('git', ['add', ...paths]);
 if (hasStagedChanges()) {
