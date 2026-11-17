@@ -11,15 +11,14 @@ or the music.
 
 ## Opening the glossary
 
-There are two ways in:
-
-- Select the **Glossary** button beside the **Dance card** heading on the
-  **Session** tab.
-- Select an underlined term in the call prompt or on the dance card. The
-  glossary opens at that entry, so the definition is already on screen.
+The glossary has its own tab in the top row, to the right of **Select tune**.
+Select **Glossary** (labelled **Terms** on a phone) to browse the whole
+reference, or select an underlined term in the call prompt or on the dance card;
+the tab opens at that entry, so the definition is already on screen.
 
 The **About** category of **Preferences** also has an **Open the dance glossary**
-link. **Back** and **Esc** return to the screen that opened the glossary.
+link. **Esc** and the **Session** tab leave the glossary, because it is an
+ordinary top-level tab rather than a page that remembers where it came from.
 
 <Shot id="glossary" />
 
@@ -34,7 +33,7 @@ it does not rely on colour alone.
 Hovering a linked term shows its definition in a tooltip beside the pointer. On a
 touch screen, rest a finger on the term instead; the definition appears in a card
 at the top of the screen and stays briefly after the finger lifts. Selecting a
-term still opens the glossary, and the entry for the selected term keeps an
+term opens the glossary tab, and the entry for the selected term keeps an
 emphasized box around it so it is easy to find in the list.
 
 <Shot id="glossary-tooltip" />
@@ -46,11 +45,11 @@ as "swinging" is not treated as a link.
 ## Turning the glossary off
 
 The glossary is on by default. Turn off **Show dance glossary** in
-**Preferences → Appearance** to remove every part of it: terms are no longer
-underlined or clickable, definition tooltips and the touch card do not appear,
-the **Glossary** button leaves the Dance card header, and the **Open the dance
-glossary** link leaves About. The saved glossary text is still on disk; turning
-the option back on restores it.
+**Preferences → Appearance** to remove every part of it: its tab leaves the top
+row, terms are no longer underlined or clickable, definition tooltips and the
+touch card do not appear, the **Glossary** button leaves the Dance card header,
+and the **Open the dance glossary** link leaves About. The saved glossary text
+is still on disk; turning the option back on restores it.
 
 Use **Filter terms** to search the whole list by name, alternative spelling, or
 wording in the definition. The count below the filter shows how many entries

@@ -93,7 +93,7 @@ does not rescale either one. Prefer 64-beat cards.
 
 ## Accessibility
 
-The app is keyboard-operable for Space, R, Esc, 1-3 (the tabs), 4 (Preferences),
+The app is keyboard-operable for Space, R, Esc, 1-4 (the tabs), 5 (Preferences),
 the Left/Right arrows, and Enter, and responds to the system media controls from
 any window on Windows and Linux and from the lock screen, headset, and Bluetooth
 buttons on Android. On a touch screen, swipe left or right across empty content

@@ -1133,10 +1133,7 @@ impl ContraApp {
             LibraryAction::ExportTune(tune) => self.export_tune_abc(&tune),
             LibraryAction::ExportDance(dance) => self.export_dance_json(&dance),
             LibraryAction::EditTuneAbc(tune) => self.edit_tune_abc(&tune),
-            LibraryAction::OpenGlossary(term) => {
-                let return_to = self.screen;
-                self.open_glossary(Some(term), return_to);
-            }
+            LibraryAction::OpenGlossary(term) => self.open_glossary(Some(term)),
             LibraryAction::UseChosenTuneSet => {
                 self.set_tune_set_source(contra_core::TuneSetSource::List)
             }

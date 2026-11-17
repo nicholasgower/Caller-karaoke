@@ -1192,8 +1192,8 @@ pub struct Preferences {
     pub theme: Theme,
     /// Smooth transitions for tab changes, highlights, and screen entries.
     pub animations_enabled: bool,
-    /// Show the dance glossary: linked terms, definition tooltips, the
-    /// Glossary button, and the reference page. On by default; a caller who
+    /// Show the dance glossary: its tab, linked terms, definition tooltips,
+    /// the Glossary button, and the reference page. On by default; a caller who
     /// does not want the extra reference can hide all of it.
     #[serde(default = "default_glossary_enabled")]
     pub glossary_enabled: bool,

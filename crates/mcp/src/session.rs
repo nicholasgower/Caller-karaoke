@@ -18,6 +18,7 @@
 //! | Transport buttons | `Play`/`Pause` (one toggle), `Restart`, `End tune`/`End`, `Cancel ending`/`Cancel` |
 //! | Toggles | `Loop`, `Cycle tunes`, `Count-in`, `Speak calls` |
 //! | Preferences gear | `Preferences` (a header button, not a tab) |
+//! | Glossary tab | `Dance glossary` (its phone label is shortened to `Terms`) |
 //! | Preferences search | `Search settings` (a text field; type into it with the generic tools) |
 //! | Transport readout | the progress bar text, e.g. `Playing · beat 12 / 64` |
 
@@ -68,7 +69,8 @@ impl TransportState {
 /// A snapshot of the session tab, readable after any input.
 #[derive(Debug, Clone, Default, Serialize, JsonSchema)]
 pub struct SessionState {
-    /// The tab in front: `session`, `dance`, `tune`, or `preferences`.
+    /// The tab in front: `session`, `dance`, `tune`, `glossary`, or
+    /// `preferences`.
     pub screen: Option<String>,
 
     /// `ready`, `count_in`, `playing`, `paused`, `ending`, or `finished`.
@@ -173,6 +175,7 @@ fn screen_for_tab(label: &str) -> Option<&'static str> {
         "Session" => Some("session"),
         "Select dance" | "Dance" => Some("dance"),
         "Select Tune" | "Tune" => Some("tune"),
+        "Dance glossary" | "Terms" => Some("glossary"),
         "Preferences" | "Prefs" => Some("preferences"),
         _ => None,
     }
@@ -914,6 +917,7 @@ fn swipe_starts(snap: &egui_mcp::TreeSnapshot, direction: SwipeDirection) -> Vec
         };
         viewport = viewport.union(rect);
         if node.role() == Role::Button
+            && is_on(&node).is_some()
             && screen_for_tab(&node.label().unwrap_or_default()).is_some()
         {
             tab_row_bottom =
@@ -1037,6 +1041,8 @@ mod tests {
         assert_eq!(screen_for_tab("Dance"), Some("dance"));
         assert_eq!(screen_for_tab("Select Tune"), Some("tune"));
         assert_eq!(screen_for_tab("Tune"), Some("tune"));
+        assert_eq!(screen_for_tab("Dance glossary"), Some("glossary"));
+        assert_eq!(screen_for_tab("Terms"), Some("glossary"));
         assert_eq!(screen_for_tab("Preferences"), Some("preferences"));
         assert_eq!(screen_for_tab("Prefs"), Some("preferences"));
         assert_eq!(screen_for_tab("About"), None);
