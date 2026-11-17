@@ -40,6 +40,8 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
+- **website:** Serve the documentation site from nicholasgower
 
 
 ### Features
