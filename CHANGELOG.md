@@ -2,7 +2,7 @@
 
 All notable changes to Caller Karaoke are documented here.
 
-## [0.2.0] — 2026-11-17
+## [Unreleased]
 
 ### Chores
 - **deny:** Ignore the chrono unmaintained advisory.
@@ -35,6 +35,10 @@ All notable changes to Caller Karaoke are documented here.
 - **music:** Resolve ending melody a fifth below the final chord.
 - **release:** Bump internal crate requirements.
 - **release:** Allow for the full cargo metadata output.
+
+
+### Release
+- **release:** V0.2.0.
 
 
 ### Style
