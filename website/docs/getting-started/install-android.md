@@ -18,7 +18,7 @@ treat Android as a polished release yet.
 ## Get the APK
 
 Download the APK from the
-[latest release](https://github.com/nicholasgower/Contra-karaoke/releases/latest),
+[releases page](https://github.com/nicholasgower/Contra-karaoke/releases),
 or build it yourself:
 
 <Steps>

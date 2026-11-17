@@ -28,7 +28,7 @@ link above the frame.
 ## Get the build
 
 Download `contra-karaoke-0.1.0-web.zip` from the
-[latest release](https://github.com/nicholasgower/Contra-karaoke/releases/latest),
+[releases page](https://github.com/nicholasgower/Contra-karaoke/releases),
 or build it from source:
 
 ```sh

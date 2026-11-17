@@ -14,8 +14,8 @@ export default function Download(): React.ReactElement {
           Contra Karaoke is at <strong>0.1.0</strong> and is still in development.
           Releases are cut from <code>main</code> when a new version is ready and
           published on the{' '}
-          <a href="https://github.com/nicholasgower/Contra-karaoke/releases/latest">
-            latest release
+          <a href="https://github.com/nicholasgower/Contra-karaoke/releases">
+            releases page
           </a>
           . Builds are not code-signed yet.
         </p>

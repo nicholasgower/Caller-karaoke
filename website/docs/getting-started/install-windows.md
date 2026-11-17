@@ -17,7 +17,7 @@ Windows may show a SmartScreen warning.
 
 ## Download
 
-Open the [latest release](https://github.com/nicholasgower/Contra-karaoke/releases/latest)
+Open the [releases page](https://github.com/nicholasgower/Contra-karaoke/releases)
 and download one of:
 
 - `ContraKaraoke-0.1.0-windows-x64-setup.exe` — installer;
