@@ -63,6 +63,7 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci]
 - **release:** Link the download pages at the releases list
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 
 ### Features
@@ -198,6 +199,7 @@ All notable changes to Contra Karaoke are documented here.
 - **roles:** Map lady to robin and gent to lark
 - **ci:** Install the wasm target on the pinned toolchain
 - **release:** Keep appimagetool out of the published artifacts
+- **docs:** Install the wasm target on the pinned toolchain
 
 
 ### Performance
