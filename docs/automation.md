@@ -245,6 +245,11 @@ Details worth knowing:
   work: `resize` to `390 × 844` and repeat the same calls to check the compact
   layout. The generic tools still cover anything the session tools do not, such
   as opening a picker or reading the dance card text.
+- The **Share this session** control exists only in the browser build. Its
+  accessible name is that label and its panel exposes the link as selectable
+  text, but the native MCP server drives the desktop app, where the control is
+  not drawn. Link building and applying are covered by the `share` unit tests
+  and by `contra-perf`; a browser opens a link from its `?set=` argument.
 
 ## Diagnostics
 

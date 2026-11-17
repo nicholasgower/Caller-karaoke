@@ -234,6 +234,27 @@ no background renderer, so it prepares the next tune at the change instead.
 
 <Shot id="session-tune-set" />
 
+## Sharing a session (web)
+
+The browser build can put the whole setup into the page address. Open **Share
+this session** in the session summary and the app copies a link that carries:
+
+- the dance card: title, choreographer, formation, notes, and every figure with
+  its beats;
+- every tune in the tune set, in order, including its ABC music;
+- how many times through each tune changes, and which tune starts.
+
+The link is self-contained, so a friend needs no download and no data proxy.
+Opening it adds the cards to their saved libraries, selects the dance, restores
+the tune set, and starts on the same tune. A shared card with the same source
+replaces that saved copy, the same way downloading it again does. Their own
+preferences — role terms, band, volume, and lead timing — are left alone.
+
+Links are compressed but can still be long. The panel keeps the address
+selectable, so if the browser blocks the automatic copy, select the text and
+copy it by hand. A damaged or newer-format link leaves the current session in
+place and shows a short error. A link can hold at most 100 tunes.
+
 ## Spoken calls
 
 Enable **Speak calls** in the session controls or in Preferences. The visual

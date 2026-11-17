@@ -29,6 +29,7 @@ use crate::audio::AudioEngine;
 use crate::defaults;
 use crate::files;
 use crate::library;
+use crate::share::{self, SharePayload};
 use crate::sheet::SheetPreview;
 use crate::source::{SourceClient, SourceEvent};
 use crate::theme;
@@ -544,6 +545,8 @@ pub struct ContraApp {
     /// Seed for the alternative-alias shuffle. Selecting a dance advances it.
     alias_seed: u64,
     rotation: RotationState,
+    /// The share link panel on the web session screen, when it is open.
+    share: Option<SharePanel>,
     /// Bumped whenever a setting changes; prepared buffers from an older
     /// generation are discarded.
     render_generation: u64,
@@ -675,6 +678,12 @@ struct CachedRender {
 struct Prefetch {
     key: RenderKey,
     rx: Receiver<Result<PreparedTune, String>>,
+}
+
+/// An open share-link panel: the encoded link and its last status line.
+struct SharePanel {
+    link: String,
+    message: String,
 }
 
 /// Bookkeeping for cycling through a set of tunes.
@@ -1019,6 +1028,7 @@ impl ContraApp {
             alternative_inputs: std::collections::BTreeMap::new(),
             alias_seed: 0,
             rotation: RotationState::default(),
+            share: None,
             render_generation: 0,
             render_cache: None,
             prefetch: None,
@@ -1031,6 +1041,23 @@ impl ContraApp {
             #[cfg(test)]
             prefs_save_count: 0,
         }
+    }
+
+    /// Browser entry point.
+    ///
+    /// The page may have been opened from a share link. A valid `?set=`
+    /// argument replaces the startup session before the first frame; an invalid
+    /// one leaves the bundled defaults in place and explains why.
+    #[cfg(target_arch = "wasm32")]
+    pub fn new_web(cc: &eframe::CreationContext<'_>) -> Self {
+        let mut app = Self::new_with_data_dir(cc, None);
+        let Some(code) = crate::web_store::share_code_from_location() else {
+            return app;
+        };
+        if let Err(error) = app.apply_share_code(&code) {
+            app.error = Some(format!("Could not open the shared link: {error}"));
+        }
+        app
     }
 
     /// Apply hardware media keys from the OS media session.
@@ -1690,6 +1717,7 @@ impl ContraApp {
             alternative_inputs: std::collections::BTreeMap::new(),
             alias_seed: 0,
             rotation: RotationState::default(),
+            share: None,
             render_generation: 0,
             render_cache: None,
             prefetch: None,
@@ -1811,6 +1839,7 @@ impl ContraApp {
     /// the same reset a picker choice does: the old audio and speech stop and
     /// the restored tune is prepared on the next Play.
     fn restore_snapshot(&mut self, snapshot: Snapshot) {
+        self.share = None;
         let changes = snapshot.prefs.changes_since(&self.prefs);
         let dance_changed = snapshot.dance.source != self.dance.source;
         let tune_changed = snapshot.tune.source != self.tune.source;
@@ -2812,6 +2841,7 @@ impl ContraApp {
     /// The tune set or its interval changed: discard work rendered from the
     /// old setup. The current tune keeps playing.
     fn rotation_settings_changed(&mut self) {
+        self.share = None;
         self.render_generation = self.render_generation.wrapping_add(1);
         self.rotation.prepared = None;
         self.rotation.rx = None;
@@ -2967,6 +2997,7 @@ impl ContraApp {
 
     fn use_dance(&mut self, dance: Dance) {
         self.error = None;
+        self.share = None;
         self.pending_count_in = None;
         self.download_dance(dance.clone());
         self.dance = dance;
@@ -2992,6 +3023,7 @@ impl ContraApp {
 
     fn use_tune(&mut self, tune: Tune) {
         self.error = None;
+        self.share = None;
         self.pending_count_in = None;
         self.download_tune(tune.clone());
         self.tune = tune;
@@ -3012,6 +3044,137 @@ impl ContraApp {
         self.rotation_settings_changed();
         self.save_prefs();
         self.status = "Tune selected".into();
+    }
+
+    /// The payload a share link carries: the dance and the ordered tune set.
+    ///
+    /// The current tune is prepended when it is not a member of the set, so the
+    /// recipient hears the same opening tune even when the caller was playing
+    /// something outside their rotation.
+    fn share_payload(&self) -> SharePayload {
+        let mut tunes = self.rotation_tunes();
+        let mut current = tunes.iter().position(|tune| same_tune(tune, &self.tune));
+        if current.is_none() {
+            tunes.insert(0, self.tune.clone());
+            current = Some(0);
+        }
+        SharePayload {
+            schema_version: share::SCHEMA_VERSION,
+            dance: self.dance.clone(),
+            tunes,
+            current: current.unwrap_or(0),
+            rotation: self.prefs.tune_rotation.enabled,
+            passes_per_tune: self.prefs.tune_rotation.passes_per_tune,
+        }
+    }
+
+    /// Build the page link for the current session.
+    fn share_link(&self) -> Result<String, String> {
+        let code = share::encode(&self.share_payload())?;
+        Ok(share_link_for(&code))
+    }
+
+    /// Open the panel and copy the new link to the clipboard.
+    fn open_share_link(&mut self) {
+        match self.share_link() {
+            Ok(link) => {
+                self.share = Some(SharePanel {
+                    link,
+                    message: String::new(),
+                });
+                self.copy_share_link();
+            }
+            Err(error) => {
+                self.error = Some(format!("Could not create a share link: {error}"));
+            }
+        }
+    }
+
+    /// Copy the open panel's link, reporting the result inside the panel.
+    fn copy_share_link(&mut self) {
+        let Some(panel) = self.share.as_mut() else {
+            return;
+        };
+        panel.message = match copy_link_text(&panel.link) {
+            Ok(()) => "Link copied to the clipboard.".to_string(),
+            Err(error) => {
+                format!("Could not copy automatically: {error}. Select the link and copy it.")
+            }
+        };
+    }
+
+    /// Load a share argument: rebuild the dance, libraries, and tune set.
+    ///
+    /// Returns the status line shown to the user. A rejected link leaves the
+    /// current session exactly as it was, because decoding and validation
+    /// finish before anything is changed.
+    ///
+    /// Only the browser build can receive a URL; the tests call it directly.
+    #[cfg(any(target_arch = "wasm32", test, feature = "headless"))]
+    fn apply_share_code(&mut self, code: &str) -> Result<String, String> {
+        let payload = share::decode(code)?;
+        self.apply_share_payload(payload)
+    }
+
+    #[cfg(any(target_arch = "wasm32", test, feature = "headless"))]
+    fn apply_share_payload(&mut self, payload: SharePayload) -> Result<String, String> {
+        payload.validate()?;
+        let SharePayload {
+            dance,
+            tunes,
+            current,
+            rotation,
+            passes_per_tune,
+            ..
+        } = payload;
+
+        // A link is hand-editable, so resolve the opening tune before dropping
+        // repeated source references; the index could otherwise move.
+        let opening = tunes.get(current).map(|tune| tune.source.clone());
+        let mut seen = std::collections::BTreeSet::new();
+        let tunes: Vec<Tune> = tunes
+            .into_iter()
+            .filter(|tune| seen.insert((tune.source.provider.clone(), tune.source.id.clone())))
+            .collect();
+        if tunes.is_empty() {
+            return Err("The shared session has no tunes.".to_string());
+        }
+        let chosen = opening
+            .and_then(|source| tunes.iter().find(|tune| tune.source == source).cloned())
+            .unwrap_or_else(|| tunes[0].clone());
+
+        let now = library::now_seconds();
+        for tune in &tunes {
+            self.tune_library.insert(tune.clone(), None, now);
+        }
+        self.save_tune_library();
+
+        self.prefs.tune_rotation.tunes.clear();
+        for tune in &tunes {
+            self.prefs.tune_rotation.add(tune.source.clone());
+        }
+        self.prefs.tune_rotation.source = TuneSetSource::List;
+        self.prefs.tune_rotation.enabled = rotation && tunes.len() >= 2;
+        self.prefs.tune_rotation.passes_per_tune = passes_per_tune;
+        self.prefs.tune_rotation.validate();
+
+        // These save the library again and reset the transport, timeline, and
+        // render state the same way a picker selection does.
+        self.use_dance(dance);
+        self.use_tune(chosen);
+        self.rotation_settings_changed();
+        self.save_prefs();
+
+        let message = format!(
+            "Opened a shared session: \"{}\" with {} tune{}.",
+            self.dance.title,
+            tunes.len(),
+            if tunes.len() == 1 { "" } else { "s" }
+        );
+        self.error = None;
+        self.status = message.clone();
+        self.library_status = Some(message.clone());
+        Ok(message)
     }
 
     fn handle_source_events(&mut self) {
@@ -4483,10 +4646,45 @@ fn call_texts(timeline: &PracticeTimeline) -> Vec<String> {
         .collect()
 }
 
+/// Whether two tunes are the same saved item.
+fn same_tune(a: &Tune, b: &Tune) -> bool {
+    a.source.provider == b.source.provider && a.source.id == b.source.id
+}
+
+/// Turn a code into the address the user shares.
+///
+/// The browser build keeps the page's own origin and path, so a bundle hosted
+/// under a subpath still produces a working link. Other builds cannot know the
+/// address; they return the bare argument, which the tests use.
+fn share_link_for(code: &str) -> String {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(base) = crate::web_store::page_url() {
+            return share::link_for(&base, code);
+        }
+    }
+    share::link_for("", code)
+}
+
+/// Put the link on the clipboard. Only the browser build has one.
+fn copy_link_text(link: &str) -> Result<(), String> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        crate::web_store::copy_text(link)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = link;
+        Err("the clipboard is only available in the web build".to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests_layout;
 #[cfg(test)]
 mod tests_memory;
+#[cfg(test)]
+mod tests_share;
 #[cfg(test)]
 mod tests_state;
 

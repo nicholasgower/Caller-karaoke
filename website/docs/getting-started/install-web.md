@@ -17,6 +17,8 @@ A copy of the browser build is hosted on this site at
 - Press **Play** in the app once to allow audio; browsers block sound until you
   interact with the page.
 - The bundled *Another Last Dance* and *Sandy Boys* work without any setup.
+- **Share this session** (in the session summary) copies a link that rebuilds
+  the current dance and tune set in anyone's browser.
 - Online search still needs a data proxy, as described below.
 - Preferences and cached source responses are stored in this site's
   `localStorage`, not shared with the desktop app or the downloaded bundle.
@@ -56,6 +58,31 @@ will not work. Use any static server, for example:
 
 For a deployment, upload the contents of `dist/web` to a static host. If you
 host it under a subpath, keep `index.html` and the generated assets together.
+
+## Share a session
+
+The browser build can turn the current session into a link. Open **Share this
+session** in the session summary; the app copies a URL with a `#set=` argument
+that carries the dance card and every tune in the tune set, including the ABC
+music, the change interval, and which tune starts. The recipient does not need
+the data proxy or a download: the link itself holds the content.
+
+Opening a link adds the dance and tunes to the saved libraries on that browser,
+selects the dance, and restores the tune order and opening tune. A shared card
+with the same source replaces that saved copy, the same way downloading it
+again does. Role terms, band, volume, lead timing, and the other preferences
+stay with the recipient. Pasting a share address into the address bar of an open
+copy reloads it and opens that session.
+
+The link is a URL fragment (`#set=…`), so the browser does not send the shared
+cards to the web server. The app also accepts the same argument as a `?set=`
+query for a hand-edited link.
+
+Links are compressed, and a long tune set makes a long URL. The panel keeps the
+address selectable, so if the browser blocks automatic copying, select the text
+and copy it by hand. A damaged, incomplete, or newer-format link leaves the
+current session in place and shows a short error instead. A link can hold at
+most 100 tunes.
 
 ## Configure the data proxy
 
