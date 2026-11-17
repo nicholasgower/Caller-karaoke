@@ -15,6 +15,7 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci].
 - **changelog:** End every entry with a period.
 - Update changelog [skip ci].
+- **website:** Serve the site from contrakaraoke.nicholasgower.com.
 
 
 ### Features
