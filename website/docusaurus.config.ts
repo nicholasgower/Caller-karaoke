@@ -106,7 +106,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Caller Karaoke. MIT licensed.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Nicholas Gower. MIT licensed.`,
     },
     tableOfContents: {
       minHeadingLevel: 2,
