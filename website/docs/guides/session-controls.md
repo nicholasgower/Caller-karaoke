@@ -289,6 +289,17 @@ the list first and opens one category at a time; the back control, **Esc**, and
 the Android system back button return to the category list, and a second Back
 returns to the session.
 
+**Find a setting** at the top of Preferences searches every category by setting
+name, category, or a common synonym. Type `volume` to see **Caller volume**,
+**Band volume**, each instrument's level, and the dancer-sound level; type
+`bpm` to reach **Tempo range**, or `glossary` to reach its appearance option.
+Each match names the category it belongs to. Selecting a match opens that
+category, scrolls its section into view, and clears the search; **Clear
+search** returns to the category layout without leaving Preferences. The
+search is cleared automatically the next time Preferences opens, so it never
+hides the categories on a later visit. On a phone the field and results use
+full-width rows that meet the same 44-pixel touch target as the category list.
+
 ## Maintenance and memory
 
 **Preferences → Data & Storage** has **Export MIDI…**, **Clear source cache**,

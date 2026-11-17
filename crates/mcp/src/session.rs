@@ -18,6 +18,7 @@
 //! | Transport buttons | `Play`/`Pause` (one toggle), `Restart`, `End tune`/`End`, `Cancel ending`/`Cancel` |
 //! | Toggles | `Loop`, `Cycle tunes`, `Count-in`, `Speak calls` |
 //! | Preferences gear | `Preferences` (a header button, not a tab) |
+//! | Preferences search | `Search settings` (a text field; type into it with the generic tools) |
 //! | Transport readout | the progress bar text, e.g. `Playing · beat 12 / 64` |
 
 use std::time::Duration;
