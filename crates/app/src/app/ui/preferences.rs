@@ -1507,7 +1507,7 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.checkbox(&mut app.prefs.glossary_enabled, "Show dance glossary");
     ui.label(
         egui::RichText::new(
-            "Underline dance terms in calls and cards, show their definition tooltips, and open the glossary from the Dance card header.",
+            "Underline dance terms in calls and cards, show their definition tooltips, and keep the Glossary tab and Dance card button. Turning this off removes all of them.",
         )
         .small()
         .color(theme::muted(ui)),
@@ -1518,7 +1518,7 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     }
     ui.label(
                 egui::RichText::new(
-                    "Keyboard: Space play/pause · R restart · Esc back · 1-3 switch tabs · 4 opens Preferences · ←/→ previous or next tab · Ctrl+Z undo · Ctrl+Y or Ctrl+Shift+Z redo · Enter starts a search, creates a folder, or adds an alias.",
+                    "Keyboard: Space play/pause · R restart · Esc back · 1-4 switch tabs · 5 opens Preferences · ←/→ previous or next tab · Ctrl+Z undo · Ctrl+Y or Ctrl+Shift+Z redo · Enter starts a search, creates a folder, or adds an alias.",
                 )
                 .small()
                 .color(theme::muted(ui)),

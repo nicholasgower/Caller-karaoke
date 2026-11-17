@@ -48,14 +48,14 @@
     },
     {
       "id": "about-window",
-      "alt": "The About category of the Preferences screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the GitHub repository and the documentation site.",
+      "alt": "The About category of the Preferences screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the website and the source code.",
       "caption": "About is one of the Preferences categories, beside the settings list.",
       "status": "pending"
     },
     {
       "id": "glossary",
       "alt": "The Dance glossary reference page with a filter field, a source link, a scrolling list of contra dance terms, and the Balance and swing entry boxed with an emphasis border.",
-      "caption": "The in-app glossary opens from a linked term or the Dance card header and works offline.",
+      "caption": "The in-app glossary is its own tab, opens at a linked term, and works offline.",
       "status": "pending"
     },
     {

@@ -48,9 +48,10 @@ immediately. The docs site also respects `prefers-reduced-motion`.
 
 Below those controls, **Dance card padding** chooses how tightly the session
 card packs its figures, and **Show dance glossary** (on by default) controls the
-optional dance-term reference. Turning the glossary off removes its underlined
-terms, definition tooltips, **Glossary** button, and About link altogether. See
-the [Dance glossary](/docs/reference/glossary) for the reference itself.
+optional dance-term reference. Turning the glossary off removes its tab, its
+underlined terms, definition tooltips, **Glossary** button, and About link
+altogether. See the [Dance glossary](/docs/reference/glossary) for the reference
+itself.
 
 **Undo** and **Redo** undo the last preference or dance/tune change and are
 disabled while there is nothing to undo or redo. They are full touch targets at
@@ -65,7 +66,7 @@ toggle — uses a 44-pixel interaction height, and the app window has a minimum
 size of 360×560. On a desktop every action button keeps the same 40-pixel height
 as the session **Play** button; no control is shrunk to the height of its text.
 Below about 640 pixels wide the **Session** tab switches to that phone layout:
-the wordmark and long tab labels give way to three short tabs
+the wordmark and long tab labels give way to four short tabs
 beside the pinned Preferences gear, which keeps the same 44-pixel target, the
 tempo, caller, and band sliders use the full width, and the transport buttons
 split the row evenly. On a short window the whole session page scrolls so the dance card is
@@ -84,7 +85,7 @@ field has focus, a drop-down is open, or the **About** window is showing.
 
 Tapping a text field opens the system keyboard on Android and the browser. The
 field keeps focus while you type; Backspace, Enter, and the arrow keys belong to
-the field, and shortcuts such as **Space** and **1-3** stay suspended until it
+the field, and shortcuts such as **Space** and **1-4** stay suspended until it
 loses focus. Suggestions and autocorrect are off so typed aliases, searches, and
 ABC source are not rewritten.
 
@@ -112,7 +113,7 @@ folder/delete menu for a saved item.
 - **Space** plays or pauses.
 - **R** restarts from the count-in.
 - **Esc** returns to **Session** from a picker, Preferences, or the alias editor.
-- **1-3** switch tabs; **4** opens Preferences.
+- **1-4** switch tabs; **5** opens Preferences.
 - **← / →** move to the previous or next tab.
 - **Enter** submits a search or adds a custom alias.
 - **Ctrl+Z** undoes the last change; **Ctrl+Y** or **Ctrl+Shift+Z** redoes it.

@@ -753,9 +753,9 @@ impl ContraApp {
             }
         }
         if open_glossary {
-            self.open_glossary(None, Screen::Session);
+            self.open_glossary(None);
         } else if let Some(entry) = glossary_click {
-            self.open_glossary(Some(entry.term), Screen::Session);
+            self.open_glossary(Some(entry.term));
         }
 
         if count_in_dirty {

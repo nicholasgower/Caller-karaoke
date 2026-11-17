@@ -1,9 +1,11 @@
 //! The in-app dance glossary.
 //!
 //! Calls and dance cards are ordinary text until this module turns a recognised
-//! term into a link. The reference page itself is a scrolling list so it fits
-//! the same phone layout as the alias editor, and the filter is the only input
-//! besides Back and the source link.
+//! term into a link. The reference page is the fourth top-row tab, to the right
+//! of **Select tune**, and is also opened at a specific entry when a caller
+//! follows a term. The page itself is a scrolling list so it fits the same phone
+//! layout as the alias editor, and the filter is the only input besides the
+//! source link.
 
 use super::*;
 use crate::app::*;
@@ -184,35 +186,29 @@ fn push_plain_text(ui: &mut egui::Ui, text: &str, style: &impl Fn(&str) -> egui:
 }
 
 impl ContraApp {
-    /// Open the glossary, optionally highlighting one entry.
+    /// Open the glossary tab, optionally highlighting one entry.
     ///
-    /// `return_to` is where Back and Escape go, so a term selected on the
-    /// session returns to the session while the About link returns to
-    /// Preferences.
-    pub(in crate::app) fn open_glossary(&mut self, term: Option<&str>, return_to: Screen) {
+    /// A term selected in a call, on the dance card, or in a dance preview
+    /// brings the caller here with that entry boxed and scrolled into view. The
+    /// tab itself opens the same page and keeps the last selection, so a caller
+    /// can leave and return without losing their place.
+    pub(in crate::app) fn open_glossary(&mut self, term: Option<&str>) {
         if !self.prefs.glossary_enabled {
             return;
         }
         self.glossary_query.clear();
         self.glossary_focus = term.map(str::to_owned);
         self.glossary_focus_scrolled = false;
-        self.glossary_return = if return_to == Screen::Glossary {
-            Screen::Session
-        } else {
-            return_to
-        };
         self.glossary_epoch = self.glossary_epoch.wrapping_add(1);
         self.screen = Screen::Glossary;
     }
 
-    /// Leave the glossary for the screen that opened it.
-    pub(in crate::app) fn leave_glossary(&mut self) {
-        self.screen = self.glossary_return;
-    }
-
     pub(in crate::app) fn glossary_ui(&mut self, ui: &mut egui::Ui) {
         if !self.prefs.glossary_enabled {
-            self.leave_glossary();
+            // The reference is optional. If it is switched off while its tab is
+            // in front, fall back to the session rather than leaving a blank
+            // page the tab row no longer offers.
+            self.screen = Screen::Session;
             return;
         }
         let compact = compact(ui);
@@ -228,24 +224,7 @@ impl ContraApp {
     }
 
     fn glossary_body(&mut self, ui: &mut egui::Ui, compact: bool) {
-        let back_label = if compact {
-            "< Back"
-        } else {
-            match self.glossary_return {
-                Screen::Preferences => "< Back to preferences",
-                Screen::DancePicker => "< Back to saved dances",
-                Screen::DanceDownload => "< Back to download dance",
-                Screen::TunePicker => "< Back to saved tunes",
-                Screen::TuneDownload => "< Back to download tune",
-                _ => "< Back to session",
-            }
-        };
-        ui.horizontal_wrapped(|ui| {
-            if ui.button(back_label).on_hover_text("Back (Esc)").clicked() {
-                self.leave_glossary();
-            }
-            ui.heading("Dance glossary");
-        });
+        ui.heading("Dance glossary");
         ui.label(
             egui::RichText::new(
                 "Select an underlined term in a call or on the dance card to open \

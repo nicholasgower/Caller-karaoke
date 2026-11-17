@@ -484,7 +484,7 @@ impl ContraApp {
                                 egui::RichText::new(text)
                             })
                         {
-                            self.open_glossary(Some(entry.term), Screen::DanceDownload);
+                            self.open_glossary(Some(entry.term));
                         }
                     });
                 }

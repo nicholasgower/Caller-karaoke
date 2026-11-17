@@ -76,8 +76,9 @@ the background stops with it.
   alias editor to **Preferences**, and from a picker or **Preferences** to the
   session. On a phone it first steps out of a Preferences category to the
   category list. The Android system back button does the same.
-- **1-3** switch between Session, Select dance, and Select tune; **4** opens
-  Preferences from any screen, like the gear button in the header.
+- **1-4** switch between Session, Select dance, Select tune, and the dance
+  glossary; **5** opens Preferences from any screen, like the gear button in
+  the header.
 - **← / →** switch to the previous or next tab, wrapping at the ends.
 - **Enter** starts a search from a search field, creates a folder, or adds a
   custom alias.
@@ -166,7 +167,8 @@ card scrolls inside its box, so a long card never pushes the prompt or the
 controls off screen. Phone and tablet widths keep the stacked layout, with the
 card below the meter.
 
-The **Glossary** button beside the **Dance card** heading opens the in-app
+The **Glossary** button beside the **Dance card** heading, or the **Glossary**
+tab in the top row, opens the in-app
 [Dance glossary](/docs/reference/glossary). Many terms in the prompt and on the
 card are underlined as well; selecting one opens its entry directly. The
 glossary is a reading aid and does not change the loaded dance or its timing.
@@ -322,7 +324,7 @@ for the measured numbers and the remaining options.
 
 The About text is the **About** category of **Preferences**. It shows the
 program name, its version, a short description, the author (Nicholas Gower), and
-links to the GitHub repository and the published documentation site.
+links to the project website and the source code.
 
 <Shot id="about-window" />
 
@@ -332,11 +334,11 @@ focus, or suspends the transport and tab shortcuts. Press **Esc** or select
 
 ## Narrow windows
 
-At phone width the session tab uses its compact layout. The top row keeps three
-short tabs — **Session**, **Dance**, and **Tune** — beside the pinned gear button
-that opens **Preferences**, without the wordmark. On a wide window the gear also
-carries the word **Preferences** when the header has room; the text is dropped
-before anything wraps. The tempo, caller, and band sliders
+At phone width the session tab uses its compact layout. The top row keeps four
+short tabs — **Session**, **Dance**, **Tune**, and **Terms** — beside the pinned
+gear button that opens **Preferences**, without the wordmark. On a wide window
+the gear also carries the word **Preferences** when the header has room; the text
+is dropped before the wordmark. The tempo, caller, and band sliders
 span the screen with their value boxes, and **Play/Pause**,
 **Restart**, and **End** split one row evenly. Loop, cycle tunes, count-in, and
 spoken calls stay on one wrapping row. Every control keeps a 44-pixel touch

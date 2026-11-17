@@ -561,7 +561,7 @@ fn the_preferences_search_reports_when_nothing_matches() {
 }
 
 #[test]
-fn a_glossary_term_opens_its_entry_and_back_returns_to_the_session() {
+fn a_glossary_term_opens_its_entry_and_the_tab_returns_to_the_session() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 800.0))
         .with_theme(egui::Theme::Dark)
@@ -588,7 +588,6 @@ fn a_glossary_term_opens_its_entry_and_back_returns_to_the_session() {
     harness.run_steps(3);
 
     assert_eq!(harness.state().screen, Screen::Glossary);
-    assert_eq!(harness.state().glossary_return, Screen::Session);
     assert_eq!(
         harness.state().glossary_focus.as_deref(),
         Some("Balance and swing"),
@@ -596,9 +595,34 @@ fn a_glossary_term_opens_its_entry_and_back_returns_to_the_session() {
     );
     assert!(harness.state().glossary_focus_scrolled);
 
-    harness.get_by_label("< Back to session").click();
+    harness.get_by_label("Session").click();
     harness.run_steps(2);
     assert_eq!(harness.state().screen, Screen::Session);
+}
+
+#[test]
+fn the_glossary_tab_opens_the_reference_from_the_header() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            let mut app = demo_app(cc);
+            app.screen = Screen::Session;
+            app.error = None;
+            app
+        });
+    harness.run_steps(3);
+
+    harness.get_by_label("Dance glossary").click();
+    harness.run_steps(2);
+    assert_eq!(
+        harness.state().screen,
+        Screen::Glossary,
+        "the fourth tab opens the dance glossary"
+    );
 }
 
 #[test]
@@ -619,6 +643,13 @@ fn disabling_the_glossary_hides_its_links_and_entry_points() {
     harness.run_steps(3);
 
     assert!(
+        harness
+            .query_all_by_label("Dance glossary")
+            .next()
+            .is_none(),
+        "the glossary tab should not be offered while the reference is off"
+    );
+    assert!(
         harness.query_all_by_label("Glossary").next().is_none(),
         "the Dance card header should not offer the glossary while it is off"
     );
@@ -630,7 +661,7 @@ fn disabling_the_glossary_hides_its_links_and_entry_points() {
         "dance terms must not remain links while the glossary is off"
     );
 
-    harness.state_mut().open_glossary(None, Screen::Session);
+    harness.state_mut().open_glossary(None);
     assert_eq!(
         harness.state().screen,
         Screen::Session,
@@ -939,7 +970,13 @@ fn the_header_and_top_level_controls_stay_vertical_where_the_page_does_not_scrol
                 harness.run_steps(3);
 
                 // The tab row and gear are always visible.
-                for label in ["Session", "Select dance", "Select Tune", "Preferences"] {
+                for label in [
+                    "Session",
+                    "Select dance",
+                    "Select Tune",
+                    "Dance glossary",
+                    "Preferences",
+                ] {
                     let Some(node) = harness.query_all_by_label(label).next() else {
                         continue;
                     };

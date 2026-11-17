@@ -572,7 +572,7 @@ fn profile_screen_frames(
                 app.alias_filter = "swing".into();
             }
             if *screen == Screen::Glossary {
-                app.open_glossary(Some("Balance and swing"), Screen::Session);
+                app.open_glossary(Some("Balance and swing"));
             }
         }
         harness.run_steps(1);
@@ -785,7 +785,7 @@ fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Repor
             app.tune_sheet = None;
             app.abc_editor = None;
             if *screen == Screen::Glossary {
-                app.open_glossary(Some("Balance and swing"), Screen::Session);
+                app.open_glossary(Some("Balance and swing"));
             }
         }
         harness.run_steps(1);

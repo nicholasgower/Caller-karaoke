@@ -154,19 +154,21 @@ Useful checks for this app:
   overflow.
 - `press_key` with `Space` toggles play/pause; `R` restarts; `Escape` leaves a
   picker or preferences screen (the alias editor returns to preferences, and the
-  Dance glossary returns to the screen that opened it).
+  Dance glossary tab returns to the session).
 - Glossary terms are clickable labels named with the term itself; the
   **Glossary** button beside the Dance card heading has the same accessible
-  name. The **Filter terms** field narrows the reference list. Hover a linked
-  term to read its definition tooltip beside the pointer; the phone long press
-  shows the same definition in a card at the top of the screen. The **Show
-  dance glossary** checkbox in Appearance turns all of it off.
+  name. The fourth top-row tab has the accessible name **Dance glossary**, and
+  its phone label is shortened to **Terms**. The **Filter terms** field narrows the reference list. Hover a
+  linked term to read its definition tooltip beside the pointer; the phone long
+  press shows the same definition in a card at the top of the screen. The
+  **Show dance glossary** checkbox in Appearance turns all of it off, including
+  the tab.
 - Media keys are not MCP inputs: the operating system's media session sits
   outside the app's widget tree, so no tool can press a hardware key.
   `session_action` (`play`, `pause`, `restart`) drives the same app path the
   session uses; use it when changing the media integration. The Android
   session is a device feature and is not reachable from `contra-mcp`.
-- Number keys `1`-`3` switch tabs, `4` opens Preferences, and `Enter` in a
+- Number keys `1`-`4` switch tabs, `5` opens Preferences, and `Enter` in a
   search field starts the search or adds a custom or alternative alias. Use
   `swipe` to reproduce the phone tab gesture: the app reads only a finger as a
   swipe, so a `drag` over the same content stays a mouse gesture and does not

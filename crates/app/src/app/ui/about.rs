@@ -26,12 +26,12 @@ pub(in crate::app) fn about(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bo
     ui.add_space(8.0);
     ui.label(egui::RichText::new("Project links").strong());
     ui.hyperlink_to(
-        egui::RichText::new("GitHub repository").underline(),
-        REPOSITORY_URL,
+        egui::RichText::new("Website").underline(),
+        DOCUMENTATION_URL,
     );
     ui.hyperlink_to(
-        egui::RichText::new("Documentation").underline(),
-        DOCUMENTATION_URL,
+        egui::RichText::new("Source code").underline(),
+        REPOSITORY_URL,
     );
     if app.prefs.glossary_enabled
         && ui
@@ -39,7 +39,7 @@ pub(in crate::app) fn about(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bo
             .on_hover_text("Short definitions of the terms in a dance card and its calls")
             .clicked()
     {
-        app.open_glossary(None, Screen::Preferences);
+        app.open_glossary(None);
     }
     ui.add_space(8.0);
     ui.label(

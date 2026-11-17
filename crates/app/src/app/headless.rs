@@ -828,11 +828,11 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     }
     capture(harness, out, "about-window")?;
 
-    // The glossary is a reference page opened from a term or from About. Open
-    // one entry so the emphasis around the followed term is visible.
+    // The glossary is a top-row tab and a reference page; open one entry so the
+    // emphasis around the followed term is visible.
     {
         let app = harness.state_mut();
-        app.open_glossary(Some("Balance and swing"), Screen::Preferences);
+        app.open_glossary(Some("Balance and swing"));
     }
     capture(harness, out, "glossary")?;
 
@@ -1011,7 +1011,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     {
         let app = harness.state_mut();
         app.alias_filter.clear();
-        app.open_glossary(None, Screen::Aliases);
+        app.open_glossary(None);
     }
     capture(harness, out, "glossary")?;
 

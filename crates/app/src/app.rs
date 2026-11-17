@@ -48,7 +48,8 @@ enum Screen {
     AbcEditor,
     Preferences,
     Aliases,
-    /// The in-app dance glossary, opened from a term or the About section.
+    /// The in-app dance glossary, a top-level tab opened from its tab, a term,
+    /// or the About section.
     Glossary,
 }
 
@@ -113,23 +114,6 @@ fn back_action(
     screen.escape_target().map(BackAction::Screen)
 }
 
-/// Resolve Back with the glossary's dynamic destination included.
-///
-/// The glossary is opened from several places, so its target is the screen that
-/// opened it rather than the static `escape` field in `SCREENS`. Every other
-/// screen keeps the table's destination.
-fn back_target(
-    screen: Screen,
-    page: ui::preferences::PreferencesPage,
-    compact: bool,
-    glossary_return: Screen,
-) -> Option<BackAction> {
-    if screen == Screen::Glossary {
-        return Some(BackAction::Screen(glossary_return));
-    }
-    back_action(screen, page, compact)
-}
-
 /// One top-row tab: the screens it covers, its labels, and its shortcut key.
 ///
 /// A tab stays lit for every screen it covers, so a detail screen such as the
@@ -155,7 +139,7 @@ impl TabDef {
     }
 }
 
-const TABS: [TabDef; 3] = [
+const TABS: [TabDef; 4] = [
     TabDef {
         screens: &[Screen::Session],
         label: "Session",
@@ -180,13 +164,31 @@ const TABS: [TabDef; 3] = [
         shortcut: "3",
         key: egui::Key::Num3,
     },
+    TabDef {
+        screens: &[Screen::Glossary],
+        label: "Glossary",
+        short_label: "Terms",
+        hover: "Dance glossary",
+        shortcut: "4",
+        key: egui::Key::Num4,
+    },
 ];
 
 /// The number key that opens Preferences.
 ///
-/// Preferences is a header button rather than a tab, but the key it had as the
-/// fourth tab keeps working so an established shortcut does not disappear.
-const PREFERENCES_KEY: egui::Key = egui::Key::Num4;
+/// Preferences is a header button rather than a tab, so its key follows the
+/// four tabs in the row: 1-4 switch tabs and 5 opens the gear's screen.
+const PREFERENCES_KEY: egui::Key = egui::Key::Num5;
+
+/// The tabs in the row for the current glossary setting.
+///
+/// The glossary tab is part of the optional reference, so turning **Show dance
+/// glossary** off removes it along with the underlined terms, the tooltips,
+/// and the Dance card button. The remaining tabs keep their order and keys.
+fn visible_tabs(glossary_enabled: bool) -> impl Iterator<Item = &'static TabDef> {
+    TABS.iter()
+        .filter(move |tab| glossary_enabled || tab.landing() != Screen::Glossary)
+}
 
 /// One screen: how to draw it and where Escape leads from it.
 struct ScreenDef {
@@ -239,9 +241,9 @@ const SCREENS: [ScreenDef; 9] = [
     ScreenDef {
         screen: Screen::Glossary,
         draw: draw_glossary,
-        // Back returns to the screen that opened the glossary; `back_target`
-        // reads `ContraApp::glossary_return` instead of this static fallback.
-        escape: None,
+        // The glossary is a tab, so Back and Escape leave it like any other
+        // tab and return to the session.
+        escape: Some(Screen::Session),
     },
 ];
 
@@ -283,30 +285,32 @@ fn draw_glossary(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
 pub(crate) use crate::updates::{DOCUMENTATION_URL, REPOSITORY_URL};
 
 /// Map the number-key shortcuts to screens.
-fn screen_for_number_key(key: egui::Key) -> Option<Screen> {
-    TABS.iter()
+fn screen_for_number_key(key: egui::Key, glossary_enabled: bool) -> Option<Screen> {
+    visible_tabs(glossary_enabled)
         .find(|tab| tab.key == key)
         .map(|tab| tab.landing())
         .or_else(|| (key == PREFERENCES_KEY).then_some(Screen::Preferences))
 }
 
 /// The top-row tab that contains `screen`.
-fn tab_index(screen: Screen) -> usize {
-    TABS.iter()
+fn tab_index(screen: Screen, glossary_enabled: bool) -> usize {
+    visible_tabs(glossary_enabled)
         .position(|tab| tab.is_active(screen))
         .unwrap_or(0)
 }
 
 /// The landing screen of the tab `step` places away from `current`.
 ///
-/// The tab row wraps in both directions, so Left from Session reaches
-/// Preferences and Right from Preferences returns to Session. Detail screens
-/// (a download search, the alias editor) step from the tab that contains them.
-fn tab_step(current: Screen, step: isize) -> Screen {
-    let count = TABS.len() as isize;
-    let index = tab_index(current) as isize;
+/// The tab row wraps in both directions, so Left from Session reaches the last
+/// tab and Right from the last tab returns to Session. Detail screens (a
+/// download search, the alias editor) step from the tab that contains them.
+fn tab_step(current: Screen, step: isize, glossary_enabled: bool) -> Screen {
+    let count = visible_tabs(glossary_enabled).count() as isize;
+    let index = tab_index(current, glossary_enabled) as isize;
     let next = (index + step).rem_euclid(count) as usize;
-    TABS[next].landing()
+    visible_tabs(glossary_enabled)
+        .nth(next)
+        .map_or(current, TabDef::landing)
 }
 
 /// How far a horizontal swipe must travel before it changes tabs.
@@ -363,11 +367,15 @@ fn touch_started(events: &[egui::Event]) -> bool {
 /// A swipe left (negative x) moves to the next tab and a swipe right moves to
 /// the previous one. A mostly vertical drag is a scroll, not a tab change, and
 /// a short drag is a tap or a slider adjustment.
-fn swipe_target(current: Screen, dx: f32, dy: f32) -> Option<Screen> {
+fn swipe_target(current: Screen, dx: f32, dy: f32, glossary_enabled: bool) -> Option<Screen> {
     if dx.abs() <= SWIPE_MIN_DISTANCE || dx.abs() < dy.abs() * SWIPE_AXIS_RATIO {
         return None;
     }
-    Some(tab_step(current, if dx < 0.0 { 1 } else { -1 }))
+    Some(tab_step(
+        current,
+        if dx < 0.0 { 1 } else { -1 },
+        glossary_enabled,
+    ))
 }
 
 /// The screen selected by a number-key shortcut pressed this frame, if any.
@@ -375,13 +383,13 @@ fn swipe_target(current: Screen, dx: f32, dy: f32) -> Option<Screen> {
 /// The key must actually have been pressed: resolving the first tab's
 /// shortcut regardless of input would pin the app to the session screen every
 /// frame and undo any click on another tab.
-fn number_key_shortcut(input: &egui::InputState) -> Option<Screen> {
+fn number_key_shortcut(input: &egui::InputState, glossary_enabled: bool) -> Option<Screen> {
     let key = TABS
         .iter()
         .map(|tab| tab.key)
         .chain(std::iter::once(PREFERENCES_KEY))
         .find(|key| input.key_pressed(*key))?;
-    screen_for_number_key(key)
+    screen_for_number_key(key, glossary_enabled)
 }
 
 /// The undo or redo shortcut pressed this frame, if any.
@@ -453,15 +461,13 @@ pub struct ContraApp {
     /// next frame. Set by the headless renderer so a documentation shot can
     /// show the section without rendering the whole scrolling page.
     about_reveal: bool,
-    /// The glossary filter text, the entry a term link asked to reveal, and the
-    /// screen Back returns to from the glossary.
+    /// The glossary filter text and the entry a term link asked to reveal.
     glossary_query: String,
     glossary_focus: Option<String>,
     /// Whether the focused entry has already been scrolled to. The emphasis
     /// stays on the entry, but a later filter edit must not keep pulling the
     /// list back to it.
     glossary_focus_scrolled: bool,
-    glossary_return: Screen,
     /// Bumped when the glossary opens so its scroll area starts at the top
     /// instead of where the previous visit left it.
     glossary_epoch: u64,
@@ -973,7 +979,6 @@ impl ContraApp {
             glossary_query: String::new(),
             glossary_focus: None,
             glossary_focus_scrolled: false,
-            glossary_return: Screen::Session,
             glossary_epoch: 0,
             dance,
             tune,
@@ -1125,7 +1130,7 @@ impl ContraApp {
                 // eframe forwards Android's back gesture as BrowserBack on the
                 // platforms that have it, and as Escape when the OS maps it.
                 input.key_pressed(egui::Key::Escape) || input.key_pressed(egui::Key::BrowserBack),
-                number_key_shortcut(input),
+                number_key_shortcut(input, self.prefs.glossary_enabled),
                 input.key_pressed(egui::Key::ArrowLeft),
                 input.key_pressed(egui::Key::ArrowRight),
             )
@@ -1134,9 +1139,9 @@ impl ContraApp {
         if let Some(screen) = tab {
             self.screen = screen;
         } else if next_tab {
-            self.screen = tab_step(self.screen, 1);
+            self.screen = tab_step(self.screen, 1, self.prefs.glossary_enabled);
         } else if previous_tab {
-            self.screen = tab_step(self.screen, -1);
+            self.screen = tab_step(self.screen, -1, self.prefs.glossary_enabled);
         }
         if space {
             self.toggle_playback();
@@ -1146,7 +1151,7 @@ impl ContraApp {
         }
         if escape {
             let compact = compact_layout(ui.available_width());
-            match back_target(self.screen, self.prefs_page, compact, self.glossary_return) {
+            match back_action(self.screen, self.prefs_page, compact) {
                 Some(BackAction::PreferencesPage(page)) => self.prefs_page = page,
                 Some(BackAction::Screen(screen)) => self.screen = screen,
                 None => {}
@@ -1229,7 +1234,9 @@ impl ContraApp {
         {
             return;
         }
-        if let Some(screen) = swipe_target(self.screen, delta.x, delta.y) {
+        if let Some(screen) =
+            swipe_target(self.screen, delta.x, delta.y, self.prefs.glossary_enabled)
+        {
             self.screen = screen;
             ui.data_mut(|data| data.insert_temp(fired_id, true));
         }
@@ -1665,7 +1672,6 @@ impl ContraApp {
             glossary_query: String::new(),
             glossary_focus: None,
             glossary_focus_scrolled: false,
-            glossary_return: Screen::Session,
             glossary_epoch: 0,
             dance,
             tune,
@@ -3536,7 +3542,13 @@ impl ContraApp {
         let beat = self.current_beat();
 
         let compact = compact_layout(ui.available_width());
-        let header = header_ui(ui, self.screen, self.prefs.animations_enabled, compact);
+        let header = header_ui(
+            ui,
+            self.screen,
+            self.prefs.animations_enabled,
+            compact,
+            self.prefs.glossary_enabled,
+        );
         if let Some(screen) = header.screen {
             self.screen = screen;
         }
@@ -4055,7 +4067,7 @@ impl Default for HeaderResponse {
     }
 }
 
-/// Draw the tab row: the pinned About button, the wordmark, and the tabs.
+/// Draw the tab row: the pinned Preferences button, the wordmark, and the tabs.
 ///
 /// The header is a top panel sized by its contents, and egui starts that
 /// content-driven layout from the panel's rect on the *previous* frame.
@@ -4067,13 +4079,22 @@ impl Default for HeaderResponse {
 /// window - where the tabs wrap onto a second row - was enough to leave the
 /// header permanently taller, even after the window was widened again.
 ///
-/// Wrapping itself is unchanged: at intermediate widths the wordmark and tabs
-/// still flow onto a second row, and the panel grows to fit both rows.
-fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) -> HeaderResponse {
+/// Where room is short, the header gives up its least useful parts in order:
+/// the Preferences text first, then the decorative wordmark. The tabs and the
+/// gear always keep one row, so the header height stays the same from the
+/// phone minimum to a large desktop.
+fn header_ui(
+    ui: &mut egui::Ui,
+    active: Screen,
+    animate: bool,
+    compact: bool,
+    glossary_enabled: bool,
+) -> HeaderResponse {
     let mut header = HeaderResponse::default();
     let available_width = (ui.available_width() - 24.0).max(0.0);
     let spacing = ui.spacing().item_spacing.x;
     let gear_side = ui.spacing().interact_size.y;
+    let tabs: Vec<&TabDef> = visible_tabs(glossary_enabled).collect();
     let heading_width = if compact {
         0.0
     } else {
@@ -4088,7 +4109,7 @@ fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) ->
             .x
             + 12.0
     };
-    let tab_widths: Vec<f32> = TABS
+    let tab_widths: Vec<f32> = tabs
         .iter()
         .map(|tab_def| {
             let label = if compact {
@@ -4107,6 +4128,17 @@ fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) ->
         label_extra,
         spacing,
     );
+    // The wordmark is decorative and the tabs are navigation, so a row that
+    // cannot hold both drops the wordmark rather than wrapping onto a second
+    // row. This is the same trade the phone layout makes, and it keeps the
+    // four tabs plus the gear on one line at the narrowest desktop width.
+    let heading_width = if compact
+        || header_content_width(heading_width, &tab_widths, gear_side, spacing) > available_width
+    {
+        0.0
+    } else {
+        heading_width
+    };
     header.preferences_label = show_preferences_label;
     let panel = egui::Panel::top("tabs")
         .frame(
@@ -4119,7 +4151,7 @@ fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) ->
         .show(ui, |ui| {
             if compact {
                 // Keep the phone header at the 44 pt touch minimum and narrow
-                // the About button so four short tabs fit beside it. This is
+                // the gear button so four short tabs fit beside it. This is
                 // the panel's own ui, so the tweak ends with the header.
                 ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
                 ui.spacing_mut().button_padding.x = 8.0;
@@ -4141,12 +4173,12 @@ fn header_ui(ui: &mut egui::Ui, active: Screen, animate: bool, compact: bool) ->
                         // the useful part of the header. Dropping the heading
                         // and the long tab labels keeps the navigation to one
                         // row and leaves that height for the prompt and card.
-                        if !compact {
+                        if heading_width > 0.0 {
                             let heading = ui.heading("Contra Karaoke");
                             header.heading = Some(heading.rect);
                             ui.add_space(12.0);
                         }
-                        for tab_def in &TABS {
+                        for tab_def in &tabs {
                             let label = if compact {
                                 tab_def.short_label
                             } else {
@@ -4368,7 +4400,7 @@ fn preferences_gear(ui: &mut egui::Ui, active: Screen, show_label: bool) -> egui
         .unwrap_or(0.0);
     let (rect, response) =
         ui.allocate_exact_size(egui::vec2(side + label_width, side), egui::Sense::click());
-    let response = response.on_hover_text("Preferences (4)");
+    let response = response.on_hover_text("Preferences (5)");
     // The gear has no tab that stays lit, so it shows the selected style for the
     // screen it owns: otherwise the header looks like nothing is current while
     // Preferences (or the alias editor) is in front. The same flag reaches the
@@ -4811,16 +4843,20 @@ mod tests {
             for screen in tab.screens {
                 assert!(ALL.contains(screen), "{screen:?} is not a screen");
             }
-            assert_eq!(screen_for_number_key(tab.key), Some(tab.landing()));
+            assert_eq!(screen_for_number_key(tab.key, true), Some(tab.landing()));
         }
     }
 
-    /// Preferences moved to a header button, so the top row must stay at three
-    /// tabs: a fourth one would put it back where it does not belong and leave
-    /// the gear pointing at a screen that is already on screen.
+    /// The glossary is a top-level reference tab to the right of Select tune,
+    /// and Preferences stays a header button.
     #[test]
-    fn preferences_is_a_header_button_not_a_top_tab() {
-        assert_eq!(TABS.len(), 3, "the top row is Session, dance, and tune");
+    fn the_glossary_is_a_top_tab_and_preferences_is_a_header_button() {
+        assert_eq!(
+            TABS.len(),
+            4,
+            "the top row is Session, dance, tune, and the glossary"
+        );
+        assert_eq!(TABS[3].landing(), Screen::Glossary);
         for tab in &TABS {
             assert!(
                 !tab.is_active(Screen::Preferences),
@@ -4829,7 +4865,7 @@ mod tests {
             );
         }
         assert_eq!(
-            screen_for_number_key(PREFERENCES_KEY),
+            screen_for_number_key(PREFERENCES_KEY, true),
             Some(Screen::Preferences)
         );
     }
@@ -4837,37 +4873,64 @@ mod tests {
     #[test]
     fn number_keys_select_top_tabs() {
         assert_eq!(
-            screen_for_number_key(egui::Key::Num1),
+            screen_for_number_key(egui::Key::Num1, true),
             Some(Screen::Session)
         );
         assert_eq!(
-            screen_for_number_key(egui::Key::Num2),
+            screen_for_number_key(egui::Key::Num2, true),
             Some(Screen::DancePicker)
         );
         assert_eq!(
-            screen_for_number_key(egui::Key::Num3),
+            screen_for_number_key(egui::Key::Num3, true),
             Some(Screen::TunePicker)
         );
-        assert_eq!(screen_for_number_key(egui::Key::Num5), None);
-        assert_eq!(screen_for_number_key(egui::Key::Space), None);
+        assert_eq!(
+            screen_for_number_key(egui::Key::Num4, true),
+            Some(Screen::Glossary)
+        );
+        assert_eq!(
+            screen_for_number_key(egui::Key::Num5, true),
+            Some(Screen::Preferences)
+        );
+        assert_eq!(screen_for_number_key(egui::Key::Num6, true), None);
+        assert_eq!(screen_for_number_key(egui::Key::Space, true), None);
+    }
+
+    /// Turning the glossary off removes its tab, so the number key does not
+    /// reopen a screen the rest of the reference is no longer offering.
+    #[test]
+    fn the_glossary_tab_disappears_when_the_reference_is_off() {
+        assert_eq!(visible_tabs(false).count(), 3);
+        assert!(visible_tabs(false).all(|tab| !tab.is_active(Screen::Glossary)));
+        assert_eq!(screen_for_number_key(egui::Key::Num4, false), None);
+        assert_eq!(
+            screen_for_number_key(egui::Key::Num5, false),
+            Some(Screen::Preferences)
+        );
+        // The row wraps, so Right from Select tune returns to Session instead
+        // of an unreachable glossary tab.
+        assert_eq!(tab_step(Screen::TunePicker, 1, false), Screen::Session);
+        assert_eq!(tab_step(Screen::Session, -1, false), Screen::TunePicker);
     }
 
     #[test]
     fn arrow_keys_step_through_tabs_and_wrap() {
-        assert_eq!(tab_step(Screen::Session, 1), Screen::DancePicker);
-        assert_eq!(tab_step(Screen::DancePicker, 1), Screen::TunePicker);
-        assert_eq!(tab_step(Screen::TunePicker, 1), Screen::Session);
-        assert_eq!(tab_step(Screen::Session, -1), Screen::TunePicker);
-        assert_eq!(tab_step(Screen::TunePicker, -1), Screen::DancePicker);
+        assert_eq!(tab_step(Screen::Session, 1, true), Screen::DancePicker);
+        assert_eq!(tab_step(Screen::DancePicker, 1, true), Screen::TunePicker);
+        assert_eq!(tab_step(Screen::TunePicker, 1, true), Screen::Glossary);
+        assert_eq!(tab_step(Screen::Glossary, 1, true), Screen::Session);
+        assert_eq!(tab_step(Screen::Session, -1, true), Screen::Glossary);
+        assert_eq!(tab_step(Screen::Glossary, -1, true), Screen::TunePicker);
+        assert_eq!(tab_step(Screen::TunePicker, -1, true), Screen::DancePicker);
         // A detail screen steps from the tab that contains it.
-        assert_eq!(tab_step(Screen::DanceDownload, 1), Screen::TunePicker);
-        assert_eq!(tab_step(Screen::DanceDownload, -1), Screen::Session);
+        assert_eq!(tab_step(Screen::DanceDownload, 1, true), Screen::TunePicker);
+        assert_eq!(tab_step(Screen::DanceDownload, -1, true), Screen::Session);
         // The ABC editor belongs to the Select tune tab as well.
-        assert_eq!(tab_step(Screen::AbcEditor, 1), Screen::Session);
-        assert_eq!(tab_step(Screen::AbcEditor, -1), Screen::DancePicker);
+        assert_eq!(tab_step(Screen::AbcEditor, 1, true), Screen::Glossary);
+        assert_eq!(tab_step(Screen::AbcEditor, -1, true), Screen::DancePicker);
         // The alias editor is reached from the Preferences gear, not a tab;
         // stepping from it starts at the first tab.
-        assert_eq!(tab_step(Screen::Aliases, 1), Screen::DancePicker);
+        assert_eq!(tab_step(Screen::Aliases, 1, true), Screen::DancePicker);
     }
 
     #[test]
@@ -4924,26 +4987,34 @@ mod tests {
     fn a_horizontal_swipe_selects_an_adjacent_tab() {
         // Swipe left goes forward, swipe right goes back, and both wrap.
         assert_eq!(
-            swipe_target(Screen::Session, -100.0, 10.0),
+            swipe_target(Screen::Session, -100.0, 10.0, true),
             Some(Screen::DancePicker)
         );
         assert_eq!(
-            swipe_target(Screen::Session, 100.0, 10.0),
-            Some(Screen::TunePicker)
+            swipe_target(Screen::Session, 100.0, 10.0, true),
+            Some(Screen::Glossary)
         );
         assert_eq!(
-            swipe_target(Screen::TunePicker, -100.0, 10.0),
+            swipe_target(Screen::TunePicker, -100.0, 10.0, true),
+            Some(Screen::Glossary)
+        );
+        assert_eq!(
+            swipe_target(Screen::Glossary, -100.0, 10.0, true),
             Some(Screen::Session)
         );
         assert_eq!(
-            swipe_target(Screen::TunePicker, 100.0, -10.0),
+            swipe_target(Screen::TunePicker, 100.0, -10.0, true),
             Some(Screen::DancePicker)
         );
+        assert_eq!(
+            swipe_target(Screen::Session, 100.0, 10.0, false),
+            Some(Screen::TunePicker)
+        );
         // A short drag is a tap or slider adjustment, not a swipe.
-        assert_eq!(swipe_target(Screen::Session, 60.0, 0.0), None);
-        assert_eq!(swipe_target(Screen::Session, 59.0, 0.0), None);
+        assert_eq!(swipe_target(Screen::Session, 60.0, 0.0, true), None);
+        assert_eq!(swipe_target(Screen::Session, 59.0, 0.0, true), None);
         // A mostly vertical drag is a scroll.
-        assert_eq!(swipe_target(Screen::Session, 80.0, 60.0), None);
+        assert_eq!(swipe_target(Screen::Session, 80.0, 60.0, true), None);
     }
 
     /// Run one egui frame with `raw_input` and read the number-key shortcut it
@@ -4952,7 +5023,7 @@ mod tests {
         let ctx = egui::Context::default();
         let mut screen = None;
         let mut output = ctx.run_ui(raw_input, |ui| {
-            screen = ui.input(number_key_shortcut);
+            screen = ui.input(|input| number_key_shortcut(input, true));
         });
         output.textures_delta.clear();
         screen
@@ -4982,9 +5053,13 @@ mod tests {
         );
         assert_eq!(
             number_shortcut_for(key_press(egui::Key::Num4)),
+            Some(Screen::Glossary)
+        );
+        assert_eq!(
+            number_shortcut_for(key_press(egui::Key::Num5)),
             Some(Screen::Preferences)
         );
-        assert_eq!(number_shortcut_for(key_press(egui::Key::Num5)), None);
+        assert_eq!(number_shortcut_for(key_press(egui::Key::Num6)), None);
     }
 
     /// Raw input with a fixed viewport, so a simulated click lands on the
@@ -5127,6 +5202,8 @@ mod tests {
         assert_eq!(Screen::AbcEditor.escape_target(), Some(Screen::TunePicker));
         assert_eq!(Screen::Preferences.escape_target(), Some(Screen::Session));
         assert_eq!(Screen::Aliases.escape_target(), Some(Screen::Preferences));
+        // The glossary is a tab, so it leaves like the other tabs.
+        assert_eq!(Screen::Glossary.escape_target(), Some(Screen::Session));
     }
 
     #[test]
@@ -5420,14 +5497,10 @@ mod tests {
             Some(BackAction::Screen(Screen::Preferences))
         );
         assert_eq!(back_action(Screen::Session, categories, true), None);
-        // The glossary remembers which screen opened it.
+        // The glossary is a tab, so it leaves to the session like any tab.
         assert_eq!(
-            back_target(Screen::Glossary, categories, true, Screen::Session),
+            back_action(Screen::Glossary, categories, true),
             Some(BackAction::Screen(Screen::Session))
-        );
-        assert_eq!(
-            back_target(Screen::Glossary, categories, false, Screen::Preferences),
-            Some(BackAction::Screen(Screen::Preferences))
         );
     }
 
@@ -5761,6 +5834,7 @@ mod tests {
                     Screen::Session,
                     false,
                     compact_layout(size.x),
+                    true,
                 ));
             });
             // Nothing renders in this test, but epaint insists its texture
@@ -5779,7 +5853,7 @@ mod tests {
         let fresh = run_header(&ctx, launch, 2);
         let fresh = &fresh[1];
 
-        // The phone layout, then an intermediate width. With three tabs and
+        // The phone layout, then an intermediate width. With four tabs and
         // the gear, the wordmark and tabs may fit one row at 700 points; the
         // round-trip below is what matters, not that this width wraps.
         run_header(&ctx, egui::vec2(390.0, 844.0), 2);
