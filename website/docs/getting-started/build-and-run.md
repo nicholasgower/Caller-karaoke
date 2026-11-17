@@ -81,8 +81,7 @@ The bundle is written to `dist/web`. It must be served over HTTP. See
 Android requires the SDK/NDK, `cargo-apk`, and the arm64/armv7 targets:
 
 ```sh
-rustup target add --toolchain 1.100.0 \
-  aarch64-linux-android armv7-linux-androideabi
+rustup target add aarch64-linux-android armv7-linux-androideabi
 python packaging/android/build-apk.py
 ```
 

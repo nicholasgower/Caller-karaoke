@@ -181,8 +181,7 @@ trunk build --release
 Android:
 
 ```sh
-rustup target add --toolchain 1.100.0 \
-  aarch64-linux-android armv7-linux-androideabi
+rustup target add aarch64-linux-android armv7-linux-androideabi
 python packaging/android/build-apk.py
 ```
 

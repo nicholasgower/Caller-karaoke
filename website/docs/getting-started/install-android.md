@@ -22,8 +22,8 @@ Download the APK from the
 or build it yourself:
 
 <Steps>
-  <CommandStep command="rustup target add --toolchain 1.100.0 aarch64-linux-android armv7-linux-androideabi">
-    Install the Android Rust targets for the pinned toolchain.
+  <CommandStep command="rustup target add aarch64-linux-android armv7-linux-androideabi">
+    Install the Android Rust targets for the toolchain in `rust-toolchain.toml`.
   </CommandStep>
   <CommandStep command="export ANDROID_HOME=... ANDROID_NDK_ROOT=...">
     Point the build at your Android SDK and NDK.

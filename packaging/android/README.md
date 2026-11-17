@@ -12,8 +12,7 @@ backend.
 Install the SDK platform, build-tools, NDK, and Rust targets:
 
 ```sh
-rustup target add --toolchain 1.100.0 \
-  aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
 sdkmanager "platform-tools" "platforms;android-35" \
   "build-tools;35.0.0" "ndk;27.0.12077973"
 ```
