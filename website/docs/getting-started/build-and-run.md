@@ -29,7 +29,7 @@ installed Windows voices.
 ## Run a development build
 
 <Steps>
-  <CommandStep command="git clone https://github.com/storytold/Contra-karaoke.git">
+  <CommandStep command="git clone https://github.com/nicholasgower/Contra-karaoke.git">
     Clone the repository.
   </CommandStep>
   <CommandStep command="cd Contra-karaoke">

@@ -12,7 +12,7 @@ do not allow browser requests from this origin.
 ## Get the build
 
 Download `contra-karaoke-0.1.0-web.zip` from the
-[nightly release](https://github.com/storytold/Contra-karaoke/releases/tag/nightly),
+[nightly release](https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly),
 or build it from source:
 
 ```sh

@@ -14,7 +14,7 @@ export default function Download(): React.ReactElement {
           Contra Karaoke is at <strong>0.1.0</strong> and is still in development.
           Nightly builds are produced on every push to <code>main</code> and
           attached to the rolling{' '}
-          <a href="https://github.com/storytold/Contra-karaoke/releases/tag/nightly">
+          <a href="https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly">
             nightly release
           </a>
           . There is no stable signed release yet.
@@ -64,7 +64,7 @@ export default function Download(): React.ReactElement {
           1.95 as its minimum.
         </p>
         <pre>
-          <code>{`git clone https://github.com/storytold/Contra-karaoke.git
+          <code>{`git clone https://github.com/nicholasgower/Contra-karaoke.git
 cd Contra-karaoke
 cargo run -p contra-app`}</code>
         </pre>
