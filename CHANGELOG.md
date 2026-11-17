@@ -14,6 +14,7 @@ All notable changes to Caller Karaoke are documented here.
 - **changelog:** End every entry with a period.
 - **website:** Serve the site from contrakaraoke.nicholasgower.com.
 - **website:** Lead the browser page with the hosted copy.
+- **changelog:** Skip changelog refresh commits.
 
 
 ### Features
