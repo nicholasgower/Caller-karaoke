@@ -284,6 +284,25 @@ Feature work from worktrees and pull requests merges into `dev` first. `dev` is
 the integration branch where new code is tested. `main` only advances when a
 release is ready; official release builds come from `main`.
 
+## Library crates
+
+Two workspace crates are published to crates.io so other tools can reuse them
+without a second repository: `caller-core` (domain types and call timing) and
+`caller-sources` (dance and tune providers, with no HTTP client of their own).
+
+```sh
+cargo add caller-core
+cargo add caller-sources
+```
+
+They are published by hand, from `main`, after the release tag exists. A dry
+run is the default:
+
+```sh
+node scripts/publish-crates.mjs          # dry run both crates
+node scripts/publish-crates.mjs --yes    # upload core, then sources
+```
+
 ## Project documents
 
 - `ROADMAP.md` and `docs/roadmap/` — full product and milestone plan, one

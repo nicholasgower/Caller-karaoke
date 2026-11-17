@@ -6,6 +6,10 @@ license.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+description = "Fetch and parse contra dance and ABC tune sources behind provider traits, with a TTL cache and no HTTP client"
+readme = "README.md"
+keywords = ["contra", "dance", "abc", "cache"]
+categories = ["web-programming", "parsing", "caching"]
 
 [dependencies]
 caller-core = { version = "0.2.0", path = "../core" }

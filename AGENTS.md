@@ -493,6 +493,10 @@ test(music): cover 6/8 arrangement
   platform first and creates the `v<version>` tag and GitHub release only after
   all of them succeed, so a tag never exists before its artifacts. Pushing a
   branch or a tag never publishes a release by itself.
+- Publishing the library crates is its own manual step: after the `v<version>`
+  tag exists, run `node scripts/publish-crates.mjs` (dry run) and then `--yes`.
+  `release.yml` never publishes crates, and a crates.io version can only be
+  yanked, not replaced, so never upload from an untagged or dirty commit.
 - Before a release, refresh the documentation screenshots in one pass: run
   `cd website && npm run screenshots`, review every changed image, update the
   manifest dimensions and `emphasis.json` regions, and commit the refreshed

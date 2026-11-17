@@ -66,7 +66,25 @@ hosted copy.
 - The changelog keeps an `[Unreleased]` section.
 - Release notes are generated from Conventional Commits.
 
-### 9.4 Release checklist
+### 9.4 Crate publishing
+
+`caller-core` and `caller-sources` are published to crates.io from this
+workspace; keeping them in the repository needs no split. `caller-sources`
+requires the same version of `caller-core` from the registry, so the order is
+fixed: core first, then sources.
+
+- After the `v<version>` tag exists, run `node scripts/publish-crates.mjs` from
+  `main`. It dry-runs both crates by default; `--yes` uploads in order.
+- The script refuses a dirty tree, a branch other than `main`, or a missing tag,
+  skips versions already on crates.io (so a rerun after a partial failure is
+  safe), and reads `CARGO_REGISTRY_TOKEN` (or `CRATES_API_KEY`) from the
+  environment or `--env-file` (default `.env`) without printing it.
+- A published version is immutable: yanking is the only undo. Never upload from
+  an untagged or dirty commit.
+- `release.yml` never publishes crates. Uploading is a separate, manual step
+  that needs the owner's approval, like a release.
+
+### 9.5 Release checklist
 
 - [ ] `cargo fmt`, `clippy`, and tests pass on Windows and Linux.
 - [ ] Documentation screenshots are regenerated in one pass
@@ -85,4 +103,6 @@ hosted copy.
       attached to the release.
 - [ ] `CREDITS.md`, `LICENSE`, and `CHANGELOG.md` are present in the artifacts
       where applicable.
+- [ ] `node scripts/publish-crates.mjs --yes` has published `caller-core` and
+      `caller-sources` at the workspace version.
 - [ ] No third-party content beyond the attributed defaults is bundled.

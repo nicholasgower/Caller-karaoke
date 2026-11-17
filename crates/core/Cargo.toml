@@ -6,6 +6,10 @@ license.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+description = "Pure domain types and call-timing math for contra dance calling: dance cards, roles, aliases, and timelines"
+readme = "README.md"
+keywords = ["contra", "dance", "karaoke", "timing"]
+categories = ["multimedia"]
 
 [dependencies]
 regex.workspace = true

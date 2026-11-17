@@ -17,6 +17,13 @@ the application.
   `.github/workflows/release.yml`. The workflow creates the `v<version>` tag
   after every build succeeds. Run it from `main`; `--dry-run` prints the plan
   without changing anything.
+- `publish-crates.mjs` — publish `caller-core` and then `caller-sources` to
+  crates.io from this workspace. Dry runs both crates by default; `--yes`
+  uploads. It refuses a dirty tree, a branch other than `main`, or a missing
+  `v<version>` tag, skips versions already on crates.io, and reads
+  `CARGO_REGISTRY_TOKEN` (or `CRATES_API_KEY`) from the environment or
+  `--env-file` (default `.env`) without ever printing it. Run it from `main`
+  after the release tag exists.
 - `rebuild-soundfont.py` — regenerate
   `assets/defaults/fluid-r3-gm-subset.sf2` from the full Fluid R3 GM bank. Needs
   only Python 3: it downloads the pinned official release, verifies its
