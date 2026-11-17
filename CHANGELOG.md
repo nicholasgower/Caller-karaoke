@@ -23,6 +23,7 @@ All notable changes to Contra Karaoke are documented here.
 - Satisfy clippy and format workspace
 - Export current-tune MIDI and show source links
 - Remove temporary merge logs
+- Remove a stray SHA256SUMS.txt from the repository root
 
 
 ### Documentation
@@ -61,6 +62,7 @@ All notable changes to Contra Karaoke are documented here.
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - **release:** Link the download pages at the releases list
+- Update changelog [skip ci]
 
 
 ### Features
