@@ -301,7 +301,8 @@ impl Arrangement {
     /// transport jumping into a stretched final bar. Turning the option off
     /// keeps the older shape: only the last bar is replaced and it is stretched
     /// three times. [`EndingOptions::final_chord_down_fifth`] resolves the final
-    /// harmony a perfect fifth below the written chord.
+    /// harmony a perfect fifth below the written chord, and the closing melody
+    /// note resolves with it.
     ///
     /// The ending replaces its region when the transport reaches
     /// [`Ending::from_beat`], so the tune's own closing music is not heard
@@ -370,13 +371,30 @@ impl Arrangement {
             });
         }
 
-        // Hold the closing melody note through the final chord, unless the
-        // fallback above already begins on the final chord.
-        if let Some(last) = melody.last_mut()
-            && last.start_seconds < ritard_seconds
-        {
-            last.duration_seconds =
-                (ritard_seconds - last.start_seconds).max(0.05) + linger_seconds;
+        // Hold the closing melody note into the final chord. When the final
+        // chord resolves a fifth below the written chord, the melody resolves
+        // with it: the written note holds until the chord arrives, then the
+        // same voice re-attacks a perfect fifth lower under the held harmony.
+        if let Some(last) = melody.last_mut() {
+            if options.final_chord_down_fifth {
+                if last.start_seconds < ritard_seconds {
+                    let resolved = EndingNote {
+                        start_seconds: ritard_seconds,
+                        duration_seconds: (linger_seconds * 0.96).max(0.3),
+                        midi: last.midi.saturating_sub(7),
+                        velocity: last.velocity,
+                    };
+                    last.duration_seconds = (ritard_seconds - last.start_seconds).max(0.05);
+                    melody.push(resolved);
+                } else {
+                    // The fallback already begins on the final chord, so the
+                    // written note is the resolution itself.
+                    last.midi = last.midi.saturating_sub(7);
+                }
+            } else if last.start_seconds < ritard_seconds {
+                last.duration_seconds =
+                    (ritard_seconds - last.start_seconds).max(0.05) + linger_seconds;
+            }
         }
 
         let mut accompaniment =
@@ -2280,6 +2298,47 @@ mod tests {
             i32::from(bass).rem_euclid(12),
             (written_root - 7).rem_euclid(12),
             "the final bass should be a perfect fifth below the written root"
+        );
+    }
+
+    #[test]
+    fn the_closing_melody_resolves_a_fifth_below_with_the_final_chord() {
+        let mut score = simple_score();
+        score.notes.push(NoteEvent {
+            start_beat: 63.0,
+            duration_beats: 1.0,
+            midi: 66,
+            velocity: 80,
+        });
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let written_last = arrangement
+            .melody
+            .last()
+            .expect("the score has a closing melody note")
+            .midi;
+        let ending = arrangement.ending(
+            240.0,
+            AccompanimentInstrument::Piano,
+            AccompanimentRhythm::Auto,
+            &EndingOptions::default(),
+        );
+
+        let closing: Vec<&EndingNote> = ending
+            .melody
+            .iter()
+            .filter(|note| (note.start_seconds - ending.linger_start_seconds).abs() < 1e-9)
+            .collect();
+        assert_eq!(closing.len(), 1, "the final chord has one melody note");
+        assert_eq!(
+            closing[0].midi,
+            written_last.saturating_sub(7),
+            "the closing melody should resolve a perfect fifth below the written note"
+        );
+        assert!(
+            ending.melody.iter().any(|note| {
+                note.start_seconds < ending.linger_start_seconds - 1e-9 && note.midi == written_last
+            }),
+            "the written melody note should hold until the final chord arrives"
         );
     }
 

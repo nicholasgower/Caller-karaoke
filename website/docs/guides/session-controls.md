@@ -203,13 +203,13 @@ Select **End tune** while music is playing (or paused) to finish the way a band
 would. Four dance beats before the end of the loop the arranger splices into a
 rendered ending: the accompaniment thins, the tempo eases, the final melody
 note rings, and the final chord is held for a few seconds before the audio
-fades out. The final chord resolves a perfect fifth below the written chord by
-default. The prompt shows **SLOW FINISH** while the ending plays, and **Dance
-complete** when it is over.
+fades out. The final chord and its closing melody note resolve a perfect fifth
+below the written ones by default. The prompt shows **SLOW FINISH** while the
+ending plays, and **Dance complete** when it is over.
 
 In **Preferences → Playback**, **Gradual ending** turns the four-beat reveal
 off, so only the final bar is replaced and stretched. **Resolve the final chord
-a fifth lower** keeps the written chord when it is off.
+a fifth lower** keeps the written chord and melody when it is off.
 
 The ending is prepared with the music, so it starts without a delay. Press
 **Cancel ending** before the ending begins to keep playing normally. With

@@ -1909,8 +1909,8 @@ fn playback(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.label(
         egui::RichText::new(
             "The last four dance beats ease and thin into a held final chord. Turning gradual ending \
-             off replaces only the final bar. The final chord is a perfect fifth below the written \
-             one unless the second option is off.",
+             off replaces only the final bar. The final chord and its closing melody note are a \
+             perfect fifth below the written ones unless the second option is off.",
         )
         .small()
         .color(theme::muted(ui)),
