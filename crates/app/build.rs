@@ -116,7 +116,7 @@ fn embed_windows_resources() {
     resource.set_icon("../../assets/icons/caller-karaoke.ico");
     resource.set("FileDescription", "Contra dance caller trainer");
     resource.set("ProductName", "Caller Karaoke");
-    resource.set("LegalCopyright", "MIT licensed");
+    resource.set("LegalCopyright", "Copyright © 2026 Nicholas Gower. MIT licensed.");
     if let Err(error) = resource.compile() {
         println!("cargo:warning=Windows icon and metadata not embedded: {error}");
     }
