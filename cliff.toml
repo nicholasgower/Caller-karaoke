@@ -22,6 +22,12 @@ footer = ""
 conventional_commits = true
 filter_unconventional = true
 split_commits = false
+# Every changelog entry ends with a period. Normalizing the subject here rather
+# than in the body template means an entry never ends in "..", "!.", or "?.", and
+# commit subjects stay free of punctuation they do not need.
+commit_preprocessors = [
+  { pattern = '\A([^\r\n]*?)[ \t]*[.!?]*(\r?\n|\z)', replace = "$1.$2" },
+]
 commit_parsers = [
   { message = "^feat", group = "Features" },
   { message = "^fix", group = "Fixes" },
