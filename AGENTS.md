@@ -481,7 +481,7 @@ test(music): cover 6/8 arrangement
 - Merge feature work from worktrees and pull requests into `dev` first. `dev` is
   the integration branch where new code is tested. `main` only advances when a
   release is ready, and official release builds come from `main`.
-- Nightly releases build on every push to `dev`, tagged
+- Nightly releases build on every push to `main`, tagged
   `nightly-YYYYMMDD-<short-sha>` and refreshed under the rolling `nightly`
   release.
 - When a release is ready, merge `dev` into `main`, then build the release from

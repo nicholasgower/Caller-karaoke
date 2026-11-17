@@ -85,7 +85,7 @@ placeholder screens.
 - [ ] `CREDITS.md`, README, and docs.
 - [ ] Artifact checksums and release notes.
 
-Exit: a push to `dev` produces a complete nightly release.
+Exit: a push to `main` produces a complete nightly release.
 
 ### M6 — Release hardening
 

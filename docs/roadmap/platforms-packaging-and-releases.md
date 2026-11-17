@@ -33,7 +33,7 @@ Notes:
 - `cargo deny check` with an allowlist of permissive licenses
 - `cargo machete`
 
-**`nightly.yml`** on every push to `dev`:
+**`nightly.yml`** on every push to `main`:
 
 - Build all release targets.
 - Generate release notes with `git-cliff`.

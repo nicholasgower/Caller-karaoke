@@ -2,9 +2,9 @@ name: Nightly
 
 on:
   push:
-    # Nightly builds follow the integration branch. main only advances when a
-    # release is ready and is built with workflow_dispatch.
-    branches: [dev]
+    # Nightly builds follow main, so the rolling `nightly` release always comes
+    # from released code. Feature work lands on dev first.
+    branches: [main]
     paths-ignore:
       - CHANGELOG.md
   workflow_dispatch:

@@ -111,11 +111,11 @@ limitations.
 ## Packaging status
 
 There is no stable signed release yet, but nightly builds are produced on every
-push to `dev`. Feature work merges into `dev` first; `main` only advances when a
-release is ready. The workflow attaches a Windows installer and portable ZIP, a
-Linux `.deb` and AppImage, a web ZIP, and an Android APK to the rolling
-`nightly` release. Flatpak remains a source-tree packaging path. Use the
-[download page](/download) for the current artifact list.
+push to `main`. Feature work merges into `dev` first. The workflow attaches a
+Windows installer and portable ZIP, a Linux `.deb` and AppImage, a web ZIP, and
+an Android APK to the rolling `nightly` release. Flatpak remains a source-tree
+packaging path. Use the [download page](/download) for the current artifact
+list.
 
 Do not follow a third-party install guide for 0.1.0; use this repository's
 release artifacts or build from source.
