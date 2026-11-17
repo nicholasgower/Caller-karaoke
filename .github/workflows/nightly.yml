@@ -109,6 +109,12 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default install list includes the legacy `tools`
+          # package, which sdkmanager 16.0 can no longer resolve ("Failed to
+          # find package 'tools'"), failing the job before our own SDK step
+          # runs. The step below installs everything this build needs.
+          packages: ""
       - name: Install SDK components
         run: |
           sdkmanager "platform-tools" "platforms;android-35" \
@@ -143,7 +149,10 @@ jobs:
         shell: bash
         run: |
           cd artifacts
-          sha256sum * > SHA256SUMS.txt
+          # Merged artifacts keep their internal layout (dist/, target/), so
+          # checksum the files, not the top-level entries.
+          find . -type f ! -name SHA256SUMS.txt -printf '%P\0' \
+            | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt
       - name: Release notes
         shell: bash
         run: |

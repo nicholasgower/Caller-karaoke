@@ -123,7 +123,7 @@ remaining images are OS installer dialogs that are not part of the app. The old
 ### 1.1 Goals
 
 1. Publish user documentation at
-   `https://storytold.github.io/Contra-karaoke/` from `main`.
+   `https://nicholasgower.github.io/Contra-karaoke/` from `main`.
 2. Explain the complete implemented 0.1.0 journey: install, choose a dance,
    choose a tune, configure roles/aliases/instruments/timing, run a session,
    use TTS, clear the source cache, export MIDI, troubleshoot.
@@ -930,9 +930,9 @@ to `'throw'`, add local search, commit `package-lock.json`, add `.nvmrc` with
 const config: Config = {
   title: 'Contra Karaoke',
   tagline: 'Learn to call contra dances in time with the music',
-  url: 'https://storytold.github.io',
+  url: 'https://nicholasgower.github.io',
   baseUrl: '/Contra-karaoke/',
-  organizationName: 'storytold',
+  organizationName: 'nicholasgower',
   projectName: 'Contra-karaoke',
   trailingSlash: true,
   onBrokenLinks: 'throw',
@@ -942,7 +942,7 @@ const config: Config = {
   presets: [['classic', {
     docs: {
       sidebarPath: './sidebars.ts',
-      editUrl: 'https://github.com/storytold/Contra-karaoke/edit/main/website/',
+      editUrl: 'https://github.com/nicholasgower/Contra-karaoke/edit/main/website/',
     },
     blog: false,
     theme: { customCss: './src/css/custom.css' },
@@ -964,7 +964,7 @@ const config: Config = {
       items: [
         { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Guide' },
         { to: '/download', label: 'Download', position: 'left' },
-        { href: 'https://github.com/storytold/Contra-karaoke', label: 'GitHub', position: 'right' },
+        { href: 'https://github.com/nicholasgower/Contra-karaoke', label: 'GitHub', position: 'right' },
       ],
     },
     footer: { style: 'dark' },
@@ -1048,7 +1048,7 @@ Use a muted Prism theme for code.
 
 ### 6.7 Download page
 
-- Link to `https://github.com/storytold/Contra-karaoke/releases/tag/nightly`.
+- Link to `https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly`.
 - List expected artifact names; note nightly names include date/SHA.
 - Explain SmartScreen and unsigned nightly builds.
 - No GitHub API fetch at build/runtime.

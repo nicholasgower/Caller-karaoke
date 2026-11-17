@@ -26,7 +26,7 @@ pub static CALLERS_BOX: CallersBox = CallersBox;
 const BASE: &str = "https://www.ibiblio.org/contradance/thecallersbox/";
 
 /// Identifies this app to the site, as its operators ask of automated clients.
-const USER_AGENT: &str = "ContraKaraoke/0.1 (+https://github.com/storytold/Contra-karaoke)";
+const USER_AGENT: &str = "ContraKaraoke/0.1 (+https://github.com/nicholasgower/Contra-karaoke)";
 
 /// Formation values the site's search form sends. The field is an exact match,
 /// so the picker offers the site's own list instead of a free-text value.

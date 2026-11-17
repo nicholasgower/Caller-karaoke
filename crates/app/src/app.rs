@@ -276,10 +276,10 @@ fn draw_glossary(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
 
 /// Project links shown in the About section of Preferences.
 ///
-/// The pages may not be live yet; the addresses are the ones the documentation
-/// and packaging use so they start working as soon as the site is published.
-const REPOSITORY_URL: &str = "https://github.com/storytold/Contra-karaoke";
-const DOCUMENTATION_URL: &str = "https://storytold.github.io/Contra-karaoke/";
+/// The documentation site is published from `website/` to GitHub Pages; these
+/// are the same addresses the release artifacts and the docs use.
+const REPOSITORY_URL: &str = "https://github.com/nicholasgower/Contra-karaoke";
+const DOCUMENTATION_URL: &str = "https://nicholasgower.github.io/Contra-karaoke/";
 
 /// Map the number-key shortcuts to screens.
 fn screen_for_number_key(key: egui::Key) -> Option<Screen> {

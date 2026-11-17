@@ -13,7 +13,7 @@ Android. Version **0.1.0** is the current development version.
 - Native desktop application (Windows and Linux) built with `eframe`/`egui`.
 - Browser build (WASM) with cpal WebAudio playback, localStorage prefs/cache,
   and the same UI. A hosted copy runs on the
-  [documentation site](https://storytold.github.io/Contra-karaoke/play/).
+  [documentation site](https://nicholasgower.github.io/Contra-karaoke/play/).
 - ContraDB dance search and HTML dance-card parsing, plus The Caller's Box
   search and JSON dance records.
 - ABC Session Tunes search and JSON tune parsing.
@@ -212,7 +212,7 @@ cd crates/web && trunk build --release
 ```
 
 The documentation site hosts a copy of this build at
-<https://storytold.github.io/Contra-karaoke/play/>. The docs workflow stages it
+<https://nicholasgower.github.io/Contra-karaoke/play/>. The docs workflow stages it
 under `website/static/app/` with `npm run build:app` in `website/`, which
 `npm start` also runs. The staged build is generated and not committed; a small
 fallback page is tracked so `/play` explains itself when the app is absent.

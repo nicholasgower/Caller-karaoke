@@ -187,12 +187,14 @@ section = "sound"
 priority = "optional"
 assets = [
   ["target/release/contra-karaoke", "usr/bin/", "755"],
-  ["packaging/linux/contra-karaoke.desktop", "usr/share/applications/", "644"],
-  ["assets/icons/contra-karaoke-16.png", "usr/share/icons/hicolor/16x16/apps/contra-karaoke.png", "644"],
-  ["assets/icons/contra-karaoke-32.png", "usr/share/icons/hicolor/32x32/apps/contra-karaoke.png", "644"],
-  ["assets/icons/contra-karaoke-48.png", "usr/share/icons/hicolor/48x48/apps/contra-karaoke.png", "644"],
-  ["assets/icons/contra-karaoke-64.png", "usr/share/icons/hicolor/64x64/apps/contra-karaoke.png", "644"],
-  ["assets/icons/contra-karaoke-128.png", "usr/share/icons/hicolor/128x128/apps/contra-karaoke.png", "644"],
-  ["assets/icons/contra-karaoke-256.png", "usr/share/icons/hicolor/256x256/apps/contra-karaoke.png", "644"],
-  ["assets/icons/contra-karaoke.svg", "usr/share/icons/hicolor/scalable/apps/contra-karaoke.svg", "644"],
+  # Asset paths are relative to this crate's directory, so workspace-root
+  # paths need the same `../../` prefix as `license-file`.
+  ["../../packaging/linux/contra-karaoke.desktop", "usr/share/applications/", "644"],
+  ["../../assets/icons/contra-karaoke-16.png", "usr/share/icons/hicolor/16x16/apps/contra-karaoke.png", "644"],
+  ["../../assets/icons/contra-karaoke-32.png", "usr/share/icons/hicolor/32x32/apps/contra-karaoke.png", "644"],
+  ["../../assets/icons/contra-karaoke-48.png", "usr/share/icons/hicolor/48x48/apps/contra-karaoke.png", "644"],
+  ["../../assets/icons/contra-karaoke-64.png", "usr/share/icons/hicolor/64x64/apps/contra-karaoke.png", "644"],
+  ["../../assets/icons/contra-karaoke-128.png", "usr/share/icons/hicolor/128x128/apps/contra-karaoke.png", "644"],
+  ["../../assets/icons/contra-karaoke-256.png", "usr/share/icons/hicolor/256x256/apps/contra-karaoke.png", "644"],
+  ["../../assets/icons/contra-karaoke.svg", "usr/share/icons/hicolor/scalable/apps/contra-karaoke.svg", "644"],
 ]

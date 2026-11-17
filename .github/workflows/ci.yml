@@ -26,6 +26,11 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          # Only the long-lived branches write caches. PR runs still restore
+          # them, but must not fill the 10 GB repo cache quota, which would
+          # evict the entries that keep CI and Nightly fast.
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
@@ -47,6 +52,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -65,6 +72,8 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
       - run: cargo check -p contra-app --target wasm32-unknown-unknown
       - name: Install Trunk
         run: |
@@ -84,6 +93,12 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default install list includes the legacy `tools`
+          # package, which sdkmanager 16.0 can no longer resolve ("Failed to
+          # find package 'tools'"), failing the job before our own SDK step
+          # runs. The step below installs everything this build needs.
+          packages: ""
       - name: Install SDK components
         run: |
           sdkmanager "platform-tools" "platforms;android-35" \
@@ -102,8 +117,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      # No rust-cache here: the deny action runs inside its own container, which
+      # mounts only the workspace, so the host ~/.cargo and target/ caches are
+      # never read. Caching them just stores ~0.1 GB and adds restore time.
+      # `arguments` is inserted *before* the subcommand and `command-arguments`
+      # *after* it. cargo-deny 0.21 (the version the v2 action container now
+      # ships) moved the -A/-W/-D lint flags from the root CLI onto `check`,
+      # so a lint level passed as `arguments` fails with
+      # "unexpected argument '-A' found". Keep lint levels in
+      # `command-arguments`; `arguments` keeps its `--all-features` default.
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
-          arguments: -A warnings
+          command-arguments: -A warnings

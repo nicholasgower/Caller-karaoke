@@ -5,10 +5,10 @@ const config: Config = {
   title: 'Contra Karaoke',
   tagline: 'Learn to call contra dances in time with the music',
   favicon: 'img/favicon.svg',
-  url: 'https://storytold.github.io',
+  url: 'https://nicholasgower.github.io',
   // Keep in sync with the hosted app public URL in scripts/build-web-app.mjs.
   baseUrl: '/Contra-karaoke/',
-  organizationName: 'storytold',
+  organizationName: 'nicholasgower',
   projectName: 'Contra-karaoke',
   trailingSlash: true,
   onBrokenLinks: 'throw',
@@ -29,7 +29,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl:
-            'https://github.com/storytold/Contra-karaoke/edit/main/website/',
+            'https://github.com/nicholasgower/Contra-karaoke/edit/main/website/',
         },
         blog: false,
         theme: {
@@ -75,7 +75,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/storytold/Contra-karaoke',
+          href: 'https://github.com/nicholasgower/Contra-karaoke',
           label: 'GitHub',
           position: 'right',
         },
@@ -105,9 +105,9 @@ const config: Config = {
         {
           title: 'Project',
           items: [
-            {label: 'GitHub', href: 'https://github.com/storytold/Contra-karaoke'},
-            {label: 'Roadmap', href: 'https://github.com/storytold/Contra-karaoke/blob/main/ROADMAP.md'},
-            {label: 'License', href: 'https://github.com/storytold/Contra-karaoke/blob/main/LICENSE'},
+            {label: 'GitHub', href: 'https://github.com/nicholasgower/Contra-karaoke'},
+            {label: 'Roadmap', href: 'https://github.com/nicholasgower/Contra-karaoke/blob/main/ROADMAP.md'},
+            {label: 'License', href: 'https://github.com/nicholasgower/Contra-karaoke/blob/main/LICENSE'},
           ],
         },
       ],
