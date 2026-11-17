@@ -130,4 +130,5 @@ assets = [
   # Asset paths are relative to this crate's directory, so the desktop file at
   # the workspace root needs the same `../../` prefix as `license-file`.
   ["../../packaging/linux/contra-karaoke.desktop", "usr/share/applications/", "644"],
+  ["../../assets/icons/contra-karaoke-256.png", "usr/share/icons/hicolor/256x256/apps/contra-karaoke.png", "644"],
 ]

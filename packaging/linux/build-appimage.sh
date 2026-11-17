@@ -8,6 +8,8 @@ VERSION="${VERSION:-0.1.0}"
 BIN="$ROOT/target/release/contra-karaoke"
 OUT="$ROOT/dist/ContraKaraoke-${VERSION}-x86_64.AppImage"
 APPDIR="$ROOT/dist/ContraKaraoke.AppDir"
+ICON="$ROOT/assets/icons/contra-karaoke-256.png"
+DESKTOP="$ROOT/packaging/linux/contra-karaoke.desktop"
 
 if [ ! -x "$BIN" ]; then
   echo "Missing $BIN; run 'cargo build --release -p contra-app' first." >&2
@@ -15,10 +17,17 @@ if [ ! -x "$BIN" ]; then
 fi
 
 rm -rf "$APPDIR"
-mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications"
+mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
+         "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 cp "$BIN" "$APPDIR/usr/bin/contra-karaoke"
-cp "$ROOT/packaging/linux/contra-karaoke.desktop" \
-   "$APPDIR/usr/share/applications/contra-karaoke.desktop"
+cp "$DESKTOP" "$APPDIR/usr/share/applications/contra-karaoke.desktop"
+cp "$ICON" "$APPDIR/usr/share/icons/hicolor/256x256/apps/contra-karaoke.png"
+# appimagetool rejects an AppDir without a top-level .desktop file and a PNG
+# icon matching its Icon= entry (SVG icons are not accepted), so the same files
+# also live at the AppDir root.
+cp "$DESKTOP" "$APPDIR/contra-karaoke.desktop"
+cp "$ICON" "$APPDIR/contra-karaoke.png"
+cp "$ICON" "$APPDIR/.DirIcon"
 
 cat > "$APPDIR/AppRun" <<'EOF'
 #!/bin/sh
