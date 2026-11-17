@@ -196,8 +196,8 @@
     },
     {
       "id": "prefs-open",
-      "alt": "The Preferences screen with the Calling, Band & Sound, Playback, Appearance, Data & Storage, and About categories in a left column and the Calling settings, starting with Role terms, beside them.",
-      "caption": "The gear in the header opens Preferences; a category list keeps each group of settings in one place, and playback changes apply without restarting.",
+      "alt": "The Preferences screen with Submit feedback and Check for updates in the top-right corner beside the title, the Calling, Band & Sound, Playback, Appearance, Data & Storage, and About categories in a left column, and the Calling settings, starting with Role terms, beside them.",
+      "caption": "The gear opens Preferences; categories keep settings in one place, feedback and update checks sit in the header, and playback changes apply without restarting.",
       "status": "ready",
       "width": 1280,
       "height": 800

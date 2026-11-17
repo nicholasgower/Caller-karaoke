@@ -488,7 +488,7 @@ fn profile_screen_frames(
         ),
         (
             "Preferences · Calling",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → role_terms/speech",
+            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → preferences_header/role_terms/speech",
             Screen::Preferences,
         ),
         (
@@ -729,7 +729,7 @@ fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Repor
         ),
         (
             "Preferences",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui (compact)",
+            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui (compact) → preferences_header",
             Screen::Preferences,
         ),
         (
@@ -1361,6 +1361,30 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
             ACTION_BUDGET_MS,
             times,
             "",
+        );
+    }
+
+    // The update-check response is parsed and compared after the network
+    // answer arrives; the fetch itself is off the UI thread and is not timed.
+    {
+        let body = format!(
+            r#"{{"tag_name":"v0.2.0","html_url":"{}/releases/tag/v0.2.0","draft":false}}"#,
+            crate::updates::REPOSITORY_URL
+        );
+        let times = timed(
+            || {
+                let _ =
+                    crate::updates::check_release(crate::updates::CURRENT_VERSION, body.as_bytes());
+            },
+            samples,
+        );
+        report.record(
+            "preferences",
+            "Check for updates · parse result",
+            "updates::check_release → serde_json + Version::parse",
+            ACTION_BUDGET_MS,
+            times,
+            "the CPU work after the background GitHub request; the network wait is not on the UI thread",
         );
     }
 

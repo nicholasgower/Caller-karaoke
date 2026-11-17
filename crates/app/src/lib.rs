@@ -17,6 +17,7 @@ mod source;
 mod theme;
 mod tts;
 mod tune_set;
+mod updates;
 #[cfg(target_arch = "wasm32")]
 mod web_store;
 mod window;

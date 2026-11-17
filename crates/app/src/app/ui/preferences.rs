@@ -2,6 +2,7 @@ use super::about::about;
 use super::{apply_phone_spacing, compact, form_row, inline_field, responsive_combo, slider_row};
 use crate::app::history::HistoryAction;
 use crate::app::*;
+use crate::updates::{self, UpdateStatus};
 use contra_core::{
     CardPadding, ChorusPreset, EchoPreset, MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP,
     ReverbPreset,
@@ -128,6 +129,120 @@ pub(in crate::app) const SECTIONS: &[PreferencesSection] = &[
 #[cfg(test)]
 pub(in crate::app) const ABOUT_SECTION: fn(&mut ContraApp, &mut egui::Ui, bool) = about;
 
+/// The "Preferences" title, with the feedback and update actions on its right.
+///
+/// A wide header keeps all three on one row, with **Check for updates** in the
+/// top-right corner and **Submit feedback** to its left. At phone width the
+/// buttons stack under the title and stay right-aligned, so the two long labels
+/// never force the page wider than the 360-point minimum window.
+fn preferences_header(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+    if compact {
+        preferences_title(ui);
+        ui.horizontal(|ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                preferences_actions(app, ui);
+            });
+        });
+    } else {
+        ui.horizontal(|ui| {
+            preferences_title(ui);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                preferences_actions(app, ui);
+            });
+        });
+    }
+    update_status(app, ui);
+}
+
+/// The page title, with an accessible name.
+///
+/// `Ui::heading` paints the word but leaves the accessibility node's label
+/// empty, so a screen reader (and the agent UI tests) cannot name the page from
+/// the title node. Naming it here also gives the test a stable anchor for the
+/// "same row as the title" layout check.
+fn preferences_title(ui: &mut egui::Ui) {
+    ui.heading("Preferences")
+        .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Heading, true, "Preferences"));
+}
+
+/// The two header actions, added right to left.
+fn preferences_actions(app: &mut ContraApp, ui: &mut egui::Ui) {
+    let checking = app.updates.is_checking();
+    let check = ui
+        .add_enabled(!checking, egui::Button::new("Check for updates"))
+        .on_hover_text("Ask GitHub whether a newer release has been published")
+        .accessible_name("Check for updates");
+    if check.clicked() {
+        app.updates.start();
+    }
+    // Added second, so it sits to the left of the update button.
+    let feedback = ui
+        .button("Submit feedback")
+        .on_hover_text("Open the GitHub issue tracker in your browser")
+        .accessible_name("Submit feedback");
+    if feedback.clicked() {
+        ui.ctx()
+            .open_url(egui::OpenUrl::new_tab(updates::ISSUES_URL));
+    }
+}
+
+/// The outcome of the last update check, under the title row.
+///
+/// This is deliberately inline rather than a modal: a check is a background
+/// question, and its answer must not interrupt a running session. Nothing is
+/// downloaded or installed; a newer release is shown as a link to its page.
+fn update_status(app: &ContraApp, ui: &mut egui::Ui) {
+    let muted = theme::muted(ui);
+    match app.updates.status() {
+        UpdateStatus::Idle => {}
+        UpdateStatus::Checking => {
+            ui.label(
+                egui::RichText::new("Checking for updates…")
+                    .small()
+                    .color(muted),
+            );
+        }
+        UpdateStatus::UpToDate { latest } => {
+            ui.label(
+                egui::RichText::new(format!("You are running the latest version ({latest})."))
+                    .small()
+                    .color(muted),
+            );
+        }
+        UpdateStatus::Available { latest, url } => {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(
+                    egui::RichText::new(format!(
+                        "Version {latest} is available. This build is {}.",
+                        updates::CURRENT_VERSION
+                    ))
+                    .small(),
+                );
+                ui.hyperlink_to(
+                    egui::RichText::new("Open the release page")
+                        .small()
+                        .underline(),
+                    url,
+                );
+            });
+        }
+        UpdateStatus::NoRelease => {
+            ui.label(
+                egui::RichText::new("No GitHub release has been published yet.")
+                    .small()
+                    .color(muted),
+            );
+        }
+        UpdateStatus::Failed { message } => {
+            ui.label(
+                egui::RichText::new(format!("Could not check for updates: {message}"))
+                    .small()
+                    .color(theme::error(ui)),
+            );
+        }
+    }
+}
+
 impl ContraApp {
     pub(in crate::app) fn preferences_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
@@ -136,7 +251,7 @@ impl ContraApp {
         // Recomputed by the custom role fields each frame. While a field is
         // focused the timeline rebuild is deferred; see `role_terms`.
         self.role_edit_active = false;
-        ui.heading("Preferences");
+        preferences_header(self, ui, compact);
         ui.label(
             egui::RichText::new("Changes are saved automatically. Playback settings are applied without restarting the music; role and alias changes rebuild the call timeline.")
                 .color(theme::muted(ui)),

@@ -277,9 +277,9 @@ fn draw_glossary(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
 /// Project links shown in the About section of Preferences.
 ///
 /// The documentation site is published from `website/` to GitHub Pages; these
-/// are the same addresses the release artifacts and the docs use.
-const REPOSITORY_URL: &str = "https://github.com/nicholasgower/Contra-karaoke";
-const DOCUMENTATION_URL: &str = "https://nicholasgower.github.io/Contra-karaoke/";
+/// are the same addresses the release artifacts and the docs use. The constants
+/// live with the GitHub fetch so the update check and the links cannot drift.
+pub(crate) use crate::updates::{DOCUMENTATION_URL, REPOSITORY_URL};
 
 /// Map the number-key shortcuts to screens.
 fn screen_for_number_key(key: egui::Key) -> Option<Screen> {
@@ -569,6 +569,9 @@ pub struct ContraApp {
     last_saved_prefs: Option<Preferences>,
     /// The last memory table built for Preferences → Maintenance.
     memory_report: Option<crate::memory::MemoryReport>,
+    /// The GitHub release check behind the Preferences header's **Check for
+    /// updates** button.
+    updates: crate::updates::UpdateCheck,
     /// Number of preference files actually written. Test-only so a
     /// reversibility test can prove a no-op edit did not touch the file.
     #[cfg(test)]
@@ -1028,6 +1031,7 @@ impl ContraApp {
             history_status: None,
             last_saved_prefs: None,
             memory_report: None,
+            updates: crate::updates::UpdateCheck::default(),
             #[cfg(test)]
             prefs_save_count: 0,
         }
@@ -1699,6 +1703,7 @@ impl ContraApp {
             history_status: None,
             last_saved_prefs: None,
             memory_report: None,
+            updates: crate::updates::UpdateCheck::default(),
             #[cfg(test)]
             prefs_save_count: 0,
         }
@@ -3254,6 +3259,7 @@ impl ContraApp {
     /// visible frame would speak the same call twice.
     fn tick(&mut self, ctx: &egui::Context) {
         self.handle_source_events();
+        self.updates.poll();
         self.poll_imported_files();
         self.poll_prefetch();
         self.handle_media_keys();
@@ -3322,6 +3328,7 @@ impl ContraApp {
             || self.render_loading
             || self.speech.is_busy()
             || self.prefetch.is_some()
+            || self.updates.is_checking()
         {
             ctx.request_repaint_after(PLAYBACK_TICK);
         }

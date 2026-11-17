@@ -29,13 +29,18 @@ The app contacts only the sources you use:
 
 - `contradb.com` for dance search and details;
 - `backend.abcsessiontunes.com` for tune search and details;
+- `api.github.com`, only when you select **Check for updates**, to read the
+  newest published release;
 - a configured web proxy, if you set one;
 - Hugging Face, once, to download the Kokoro model and voice files for the
   desktop and Android neural voice.
 
-There are no analytics endpoints, crash reports, or update checks. The app does
-not fetch a page unless a search or selection asks for it; it does not crawl a
-site. After the neural voice is cached, speech synthesis is local.
+There are no analytics endpoints or crash reports, and the app does not check
+for updates at startup. The only update request is the one **Check for updates**
+in the Preferences header makes when you select it; it sends no account details
+or token. The app does not fetch a page unless a search, a selection, or that
+button asks for it; it does not crawl a site. After the neural voice is cached,
+speech synthesis is local.
 
 ## Proxy tokens
 

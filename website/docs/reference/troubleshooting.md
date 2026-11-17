@@ -20,6 +20,8 @@ message in Preferences.
 | The first call appears during the count-in | Expected. The first call starts before beat 0. |
 | Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, the number keys 1-4, and Enter are ignored while a text field has focus. |
 | A media key does nothing | The operating system sends the key to the active media player. Pause any other player, or use **Space** in Contra Karaoke. On Android, check that the app is still running; the media session is not a foreground service, so Android can stop playback in the background. The browser build has no media session in 0.1.0. |
+| **Check for updates** cannot reach GitHub | Check the network and try again later. The message under the Preferences title gives the HTTP status or network error. A browser may block the request through an extension or a privacy setting; the desktop and Android builds fetch directly. |
+| **Submit feedback** did not open a page | The button asks the operating system for the default browser. Check the default-browser setting, or open [the issue tracker](https://github.com/nicholasgower/Contra-karaoke/issues) manually. |
 | Search returns an error | Dismiss it and retry. Cached content may still be available. In a browser, check the web proxy URL/token. |
 | Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from **Preferences → Data & Storage**. |
 | No spoken calls | Check the **Speak calls** toggle, **Rate**, the selected **Voice**, and that the music is playing. On desktop or Android, wait for the first voice preparation or select **Retry neural voice**. |
