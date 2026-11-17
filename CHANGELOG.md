@@ -7,6 +7,7 @@ All notable changes to Caller Karaoke are documented here.
 ### Chores
 - **deny:** Ignore the chrono unmaintained advisory.
 - **brand:** Rename the app to Caller Karaoke.
+- **legal:** Credit the copyright notices to Nicholas Gower.
 
 
 ### Documentation
@@ -19,6 +20,7 @@ All notable changes to Caller Karaoke are documented here.
 - **website:** Serve the site from contrakaraoke.nicholasgower.com.
 - Update changelog [skip ci].
 - **website:** Lead the browser page with the hosted copy.
+- Update changelog [skip ci].
 - Update changelog [skip ci].
 
 
