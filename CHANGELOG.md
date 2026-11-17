@@ -34,6 +34,10 @@ All notable changes to Caller Karaoke are documented here.
 - **website:** Restore the unbuilt app fallback and size the mobile app frame.
 
 
+### Style
+- **app:** Format windows legal copyright metadata.
+
+
 ## [0.1.0] — 2026-11-17
 
 ### Build
