@@ -85,6 +85,11 @@ function hasGitCliff() {
   return !result.error && result.status === 0;
 }
 
+function hasStagedChanges() {
+  const result = spawnSync('git', ['diff', '--cached', '--quiet'], {cwd: ROOT, stdio: 'ignore'});
+  return result.status === 1;
+}
+
 const argv = process.argv.slice(2);
 const flags = new Set(argv.filter((arg) => arg.startsWith('--')));
 const positional = argv.filter((arg) => !arg.startsWith('--'));
@@ -132,11 +137,11 @@ console.log(`release: branch ${branch}, tag ${tag}${dryRun ? ', dry run' : ''}`)
 if (dryRun) {
   if (changed) {
     console.log(`release: would set [workspace.package] version to ${next}`);
-    console.log('release: would refresh Cargo.lock and CHANGELOG.md');
-    console.log(`release: would commit "chore(release): ${tag}" and tag ${tag}`);
-  } else {
-    console.log(`release: would tag the current commit as ${tag}`);
+    console.log('release: would refresh Cargo.lock');
   }
+  console.log('release: would regenerate CHANGELOG.md for the tag');
+  console.log(`release: would commit "chore(release): ${tag}" if anything changed`);
+  console.log(`release: would tag ${tag}`);
   console.log(noPush ? 'release: would not push' : `release: would push main and ${tag} to origin`);
   process.exit(0);
 }
@@ -144,16 +149,24 @@ if (dryRun) {
 if (changed) {
   writeVersion(next);
   run('cargo', ['metadata', '--format-version', '1'], {capture: true});
-  if (hasGitCliff()) {
-    run('git-cliff', ['--tag', tag, '--output', 'CHANGELOG.md']);
-  } else {
-    console.warn('release: git-cliff is not installed; leaving CHANGELOG.md alone');
-  }
-  const paths = ['Cargo.toml', 'Cargo.lock', 'CHANGELOG.md'].filter((file) =>
-    fs.existsSync(path.join(ROOT, file)),
-  );
-  run('git', ['add', ...paths]);
+}
+
+// Always snapshot the changelog: the tag is what fixes its heading, and tagging
+// the version that is already in Cargo.toml is a supported release path.
+if (hasGitCliff()) {
+  run('git-cliff', ['--tag', tag, '--output', 'CHANGELOG.md']);
+} else {
+  console.warn('release: git-cliff is not installed; leaving CHANGELOG.md alone');
+}
+
+const paths = ['Cargo.toml', 'Cargo.lock', 'CHANGELOG.md'].filter((file) =>
+  fs.existsSync(path.join(ROOT, file)),
+);
+run('git', ['add', ...paths]);
+if (hasStagedChanges()) {
   run('git', ['commit', '-m', `chore(release): ${tag}`]);
+} else {
+  console.log(`release: nothing to commit; tagging ${tag} at HEAD`);
 }
 
 run('git', ['tag', '-a', tag, '-m', `Contra Karaoke ${tag}`]);
