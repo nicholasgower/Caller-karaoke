@@ -41,6 +41,9 @@ function run(cmd, args, {capture = false} = {}) {
     cwd: ROOT,
     encoding: 'utf8',
     stdio: capture ? 'pipe' : 'inherit',
+    // `cargo metadata` prints the whole workspace graph, which is well past
+    // the 1 MiB default capture buffer.
+    maxBuffer: 64 * 1024 * 1024,
   });
   if (result.error) fail(`cannot run ${cmd}: ${result.error.message}`);
   if (result.status !== 0) {
