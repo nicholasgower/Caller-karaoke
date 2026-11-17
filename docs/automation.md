@@ -1,16 +1,16 @@
 # Agent automation (MCP)
 
-Contra Karaoke can expose a loopback inspection endpoint that lets an MCP
+Caller Karaoke can expose a loopback inspection endpoint that lets an MCP
 client read the accessibility tree, synthesize real input events, and capture
 screenshots of the running window. This is a **development and QA tool**. It is
 compiled out by default and is not part of a release artifact.
 
 The pieces are:
 
-- **`inspection` Cargo feature** on `contra-app` — attaches the
+- **`inspection` Cargo feature** on `caller-app` — attaches the
   `egui_inspection` plugin to the running app. It is inert unless
   `EGUI_INSPECTION` is set.
-- **`contra-mcp`** — an MCP server over stdio. It exposes `attach`, `screenshot`,
+- **`caller-mcp`** — an MCP server over stdio. It exposes `attach`, `screenshot`,
   `widget_tree`, `click`, `type_text`, `press_key`, and related tools, then
   forwards them to the app over the inspection protocol. It also adds
   session-tab tools (`session_state`, `session_action`, `session_set`, and
@@ -23,12 +23,12 @@ Start the desktop app with the feature enabled and a loopback address:
 ```powershell
 # PowerShell (Windows)
 $env:EGUI_INSPECTION = "127.0.0.1:5719"
-cargo run -p contra-app --features inspection
+cargo run -p caller-app --features inspection
 ```
 
 ```sh
 # bash (Linux/macOS)
-EGUI_INSPECTION=127.0.0.1:5719 cargo run -p contra-app --features inspection
+EGUI_INSPECTION=127.0.0.1:5719 cargo run -p caller-app --features inspection
 ```
 
 Or use the helper script:
@@ -54,19 +54,19 @@ out.
 ## 2. Run the MCP server
 
 The server speaks MCP JSON-RPC over stdin/stdout and logs diagnostics to
-stderr. It does not start the app itself. `contra-mcp` uses the upstream
+stderr. It does not start the app itself. `caller-mcp` uses the upstream
 `egui-mcp` tool set for generic input and adds its own session-tab tools; the
-server advertises itself as `contra-mcp`.
+server advertises itself as `caller-mcp`.
 
 ```sh
-cargo run -p contra-mcp
+cargo run -p caller-mcp
 ```
 
 For a stable command name, install it once:
 
 ```sh
 cargo install --path crates/mcp
-contra-mcp
+caller-mcp
 ```
 
 Register it with your MCP client. The repository includes `.mcp.json` with this
@@ -75,9 +75,9 @@ configuration, which Claude Code and other clients pick up automatically:
 ```json
 {
   "mcpServers": {
-    "contra-karaoke": {
+    "caller-karaoke": {
       "command": "cargo",
-      "args": ["run", "--quiet", "-p", "contra-mcp"]
+      "args": ["run", "--quiet", "-p", "caller-mcp"]
     }
   }
 }
@@ -88,19 +88,19 @@ If you installed the binary, use:
 ```json
 {
   "mcpServers": {
-    "contra-karaoke": {
-      "command": "contra-mcp"
+    "caller-karaoke": {
+      "command": "caller-mcp"
     }
   }
 }
 ```
 
-For Claude Code, `claude mcp add contra-karaoke -- contra-mcp` works after the
+For Claude Code, `claude mcp add caller-karaoke -- caller-mcp` works after the
 install. For Codex, add to `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.contra-karaoke]
-command = "contra-mcp"
+[mcp_servers.caller-karaoke]
+command = "caller-mcp"
 args = []
 ```
 
@@ -167,7 +167,7 @@ Useful checks for this app:
   outside the app's widget tree, so no tool can press a hardware key.
   `session_action` (`play`, `pause`, `restart`) drives the same app path the
   session uses; use it when changing the media integration. The Android
-  session is a device feature and is not reachable from `contra-mcp`.
+  session is a device feature and is not reachable from `caller-mcp`.
 - Number keys `1`-`4` switch tabs, `5` opens Preferences, and `Enter` in a
   search field starts the search or adds a custom or alternative alias. Use
   `swipe` to reproduce the phone tab gesture: the app reads only a finger as a
@@ -251,14 +251,14 @@ Details worth knowing:
   accessible name is that label and its panel exposes the link as selectable
   text, but the native MCP server drives the desktop app, where the control is
   not drawn. Link building and applying are covered by the `share` unit tests
-  and by `contra-perf`; a browser opens a link from its `?set=` argument.
+  and by `caller-perf`; a browser opens a link from its `?set=` argument.
 
 ## Diagnostics
 
-Set `CONTRA_MCP_LOG` (or the upstream `EGUI_MCP_LOG`) to a `tracing` filter:
+Set `CALLER_MCP_LOG` (or the upstream `EGUI_MCP_LOG`) to a `tracing` filter:
 
 ```sh
-CONTRA_MCP_LOG=egui_mcp=debug,contra_mcp=debug cargo run -p contra-mcp
+CALLER_MCP_LOG=egui_mcp=debug,caller_mcp=debug cargo run -p caller-mcp
 ```
 
 The app logs inspection startup through `env_logger`; set `RUST_LOG` if you need
@@ -281,7 +281,7 @@ more detail.
 ## Headless documentation screenshots
 
 The docs site uses a separate headless renderer rather than the live MCP
-connection. It runs the same `ContraApp` with a silent transport, in-memory
+connection. It runs the same `CallerApp` with a silent transport, in-memory
 cache, stub speech, and no preference file. Run it when preparing a release,
 not in every feature worktree:
 
@@ -301,13 +301,13 @@ Pass `mobile` as the second argument to render the phone inspection set into
 `<out>/mobile` without touching the documentation manifest:
 
 ```sh
-cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile
+cargo run -p caller-app --features headless --bin caller-headless -- target/mobile-shots mobile
 ```
 
 ## Safety
 
 - Keep the inspection feature off in release builds. `cargo build --release -p
-  contra-app` does not enable it.
+  caller-app` does not enable it.
 - Bind inspection to loopback only. The protocol has no authentication or
   encryption.
 - Do not let the MCP server inherit an untrusted environment; it can send

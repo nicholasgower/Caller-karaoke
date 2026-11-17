@@ -39,7 +39,7 @@ state, and error banner, not only to the two screens with phone screenshots.
 - Render the phone pass and look at every image:
 
   ```sh
-  cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile
+  cargo run -p caller-app --features headless --bin caller-headless -- target/mobile-shots mobile
   ```
 
   The images land in `target/mobile-shots/mobile/` and are not committed.
@@ -89,7 +89,7 @@ For docs-only work, `npm run start:docs` skips the build. A tracked
 `npm run build:app` replaces the placeholder; do not commit the staged build.
 
 The app is built with the public URL `/app/`; keep that in step with
-`baseUrl` in `docusaurus.config.ts` or set `CONTRA_WEB_PUBLIC_URL`.
+`baseUrl` in `docusaurus.config.ts` or set `CALLER_WEB_PUBLIC_URL`.
 
 To review the hosted app at phone width, run
 `npm run preview:ios -- --path /play/` after building the site.

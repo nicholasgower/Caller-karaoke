@@ -822,7 +822,7 @@ pub const MAX_PID_KD: f32 = 0.5;
 /// How much human timing the band gets.
 ///
 /// The dance grid stays exact, and every onset is bounded (see
-/// `contra_music::humanize`); the bounds scale with [`Self::amount`].
+/// `caller_music::humanize`); the bounds scale with [`Self::amount`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct HumanizeOptions {
@@ -928,7 +928,7 @@ pub enum DancerSound {
 ///
 /// The app derives these from the dance card and the renderer mixes them under
 /// the band, so the music follows the dance rather than a fixed pattern. The
-/// layer is temporarily disabled in 0.1.0; see `contra_core::dancer_sounds`.
+/// layer is temporarily disabled in 0.1.0; see `caller_core::dancer_sounds`.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DancerSoundEvent {
     /// Dance beat where the sound starts. May repeat every pass.

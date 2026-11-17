@@ -1,4 +1,4 @@
-//! The `contra-mcp` MCP server: the egui UI tools plus session-tab tools.
+//! The `caller-mcp` MCP server: the egui UI tools plus session-tab tools.
 //!
 //! The generic input tools (`click`, `drag`, `press_key`, …) come from
 //! [`egui_mcp::UiServer`]; this server owns the connection lifecycle and adds
@@ -40,7 +40,7 @@ type ToolError = String;
 const NOT_CONNECTED: &str = "no app connected — call `attach` first";
 
 #[derive(Clone)]
-pub struct ContraServer {
+pub struct CallerServer {
     /// The generic egui tools' connection.
     ui: Arc<Mutex<Option<UiServer>>>,
     /// The session tools' connection.
@@ -52,7 +52,7 @@ pub struct ContraServer {
     session_router: ToolRouter<Self>,
 }
 
-impl ContraServer {
+impl CallerServer {
     pub fn new() -> Self {
         Self {
             ui: Arc::new(Mutex::new(None)),
@@ -72,7 +72,7 @@ impl ContraServer {
     }
 }
 
-impl Default for ContraServer {
+impl Default for CallerServer {
     fn default() -> Self {
         Self::new()
     }
@@ -175,8 +175,8 @@ pub struct SwipeArgs {
 // ---------------------------------------------------------------------------------------
 
 #[tool_router(router = lifecycle_router)]
-impl ContraServer {
-    /// Connect to a running Contra Karaoke window (a build with the
+impl CallerServer {
+    /// Connect to a running Caller Karaoke window (a build with the
     /// `inspection` feature, launched with `EGUI_INSPECTION` set).
     /// Defaults to 127.0.0.1:5719 and retries until `timeout_secs` elapses.
     /// On success the app-driving and session tools start working.
@@ -261,7 +261,7 @@ impl ContraServer {
 // ---------------------------------------------------------------------------------------
 
 #[tool_router(router = session_router)]
-impl ContraServer {
+impl CallerServer {
     /// Read the Session tab as data: the tab in front, transport state and beat,
     /// tempo, volume, and the Loop, Cycle tunes, Count-in, and Speak calls
     /// toggles. While Preferences is open, also whether **Undo** and **Redo**
@@ -406,7 +406,7 @@ impl ContraServer {
 // MCP handler
 // ---------------------------------------------------------------------------------------
 
-const INSTRUCTIONS: &str = r#"This server drives a live Contra Karaoke window: it reads the app's accessibility tree and synthesizes real input events. Work in an observe → act → verify loop.
+const INSTRUCTIONS: &str = r#"This server drives a live Caller Karaoke window: it reads the app's accessibility tree and synthesizes real input events. Work in an observe → act → verify loop.
 
 Getting started:
 - Call `attach` first (check `status` if unsure); app-driving tools return "no app connected" until then.
@@ -424,10 +424,10 @@ Conventions:
 - Everything is in logical points: raw `pos`, `resize` dimensions, `get_widget` bounds, and a default `screenshot` (`pixels_per_point: 1.0`). A widget's bounds centre is where `click` lands.
 - Locators (`id`, `role`, `content_contains`, …) resolve to the widget's current position and survive layout changes; prefer them over `pos`."#;
 
-impl ServerHandler for ContraServer {
+impl ServerHandler for CallerServer {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("contra-mcp", env!("CARGO_PKG_VERSION")))
+            .with_server_info(Implementation::new("caller-mcp", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
     }
 
@@ -479,7 +479,7 @@ impl ServerHandler for ContraServer {
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     use rmcp::{ServiceExt as _, transport};
 
-    let server = ContraServer::new();
+    let server = CallerServer::new();
     let running = server.serve(transport::stdio()).await?;
     let _reason = running.waiting().await?;
     Ok(())
@@ -491,7 +491,7 @@ mod tests {
 
     #[test]
     fn both_tool_sets_are_listed() {
-        let server = ContraServer::new();
+        let server = CallerServer::new();
         let names: Vec<String> = server
             .all_tools()
             .into_iter()
@@ -519,14 +519,14 @@ mod tests {
 
     #[test]
     fn the_tool_list_carries_both_cache_hints() {
-        let result = serde_json::to_value(tool_list(ContraServer::new().all_tools())).unwrap();
+        let result = serde_json::to_value(tool_list(CallerServer::new().all_tools())).unwrap();
         assert!(result["ttlMs"].is_u64(), "ttlMs missing: {}", result);
         assert_eq!(result["cacheScope"], "public");
     }
 
     #[test]
     fn the_session_tools_have_descriptions() {
-        let server = ContraServer::new();
+        let server = CallerServer::new();
         for name in [
             "session_state",
             "session_action",
@@ -544,7 +544,7 @@ mod tests {
 
     #[test]
     fn the_session_tools_are_registered_with_handlers() {
-        let server = ContraServer::new();
+        let server = CallerServer::new();
         assert!(server.session_router.has_route("session_state"));
         assert!(server.session_router.has_route("session_action"));
         assert!(server.session_router.has_route("session_set"));

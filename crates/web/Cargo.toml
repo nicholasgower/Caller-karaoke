@@ -1,5 +1,5 @@
 [package]
-name = "contra-web"
+name = "caller-web"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,5 +11,5 @@ repository.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-contra-app = { version = "0.1.0", path = "../app" }
+caller-app = { version = "0.1.0", path = "../app" }
 wasm-bindgen = "0.2"

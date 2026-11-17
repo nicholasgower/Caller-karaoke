@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SAMPLES = path.join(ROOT, "samples");
-const USER_AGENT = "ContraKaraoke/0.1.0 (sample fetch; +https://github.com/nicholasgower/Contra-karaoke)";
+const USER_AGENT = "CallerKaraoke/0.1.0 (sample fetch; +https://github.com/nicholasgower/Caller-karaoke)";
 const DELAY_MS = 1200;
 const RETRIES = 4;
 

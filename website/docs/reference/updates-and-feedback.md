@@ -1,6 +1,6 @@
 ---
 title: Updates and feedback
-description: Check GitHub for a newer Contra Karaoke release and send feedback from the Preferences header.
+description: Check GitHub for a newer Caller Karaoke release and send feedback from the Preferences header.
 sidebar_position: 8
 ---
 
@@ -42,7 +42,7 @@ names the reason and you can try again later.
 ## Submit feedback
 
 **Submit feedback** opens
-[github.com/nicholasgower/Contra-karaoke/issues](https://github.com/nicholasgower/Contra-karaoke/issues)
+[github.com/nicholasgower/Caller-karaoke/issues](https://github.com/nicholasgower/Caller-karaoke/issues)
 in your browser. Reading issues does not need an account; posting one uses your
 GitHub account. Include the app version from **Preferences → About** and, for a
 bug, what you did and what happened.

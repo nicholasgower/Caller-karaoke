@@ -1,6 +1,6 @@
 # Credits
 
-Contra Karaoke is MIT-licensed. This file credits the libraries, fonts, data,
+Caller Karaoke is MIT-licensed. This file credits the libraries, fonts, data,
 and build tools used by the project.
 
 ## Rust libraries
@@ -119,7 +119,7 @@ See the `egui`/`epaint` source for the exact font files and notices.
 
 - **Fluid R3 GM** — <https://github.com/Jacalz/fluid-soundfont> (the file
   distributed in the Debian `fluid-soundfont-gm` package). Copyright © 2000–2002,
-  2008 Frank Wen; © 2008 Toby Smithe. MIT licensed. Contra Karaoke bundles a
+  2008 Frank Wen; © 2008 Toby Smithe. MIT licensed. Caller Karaoke bundles a
   **subset** (`assets/defaults/fluid-r3-gm-subset.sf2`) containing only the GM
   programs the instrument preferences use: Acoustic Grand Piano (0), Accordion
   (21), Acoustic Guitar (steel, 25), Violin (40), Alto Sax (65), Tenor Sax (66)
@@ -178,7 +178,7 @@ See the `egui`/`epaint` source for the exact font files and notices.
   fetches and caches the site's search pages and JSON records on demand and
   does not redistribute the database or its dance cards. The site's
   [glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm)
-  is the source consulted for the vocabulary in Contra Karaoke's in-app Dance
+  is the source consulted for the vocabulary in Caller Karaoke's in-app Dance
   glossary. The app definitions are short original summaries written for this
   project, not copied glossary text, and the external glossary is not bundled.
 - **ABC Session Tunes** — <https://abcsessiontunes.com>. Tune transcriptions
@@ -189,11 +189,11 @@ See the `egui`/`epaint` source for the exact font files and notices.
 ## Design inspiration
 
 - **abctools** by Michael Eskin — <https://github.com/seisiuneer/abctools>. The
-  idea of editing ABC text next to a rendered score inspired Contra Karaoke's
+  idea of editing ABC text next to a rendered score inspired Caller Karaoke's
   saved-tune ABC editor. No code from abctools is copied or linked; the editor
   in this repository is an independent, minimal implementation.
 
-Contra Karaoke does not redistribute the source databases. Online content is
+Caller Karaoke does not redistribute the source databases. Online content is
 fetched on demand and cached locally.
 
 The `samples/` directory contains a small curated set of downloaded dance and

@@ -42,12 +42,12 @@ ignore = [
   "RUSTSEC-2026-0372", # zvariant_derive (accesskit)
   # chrono was soft-deprecated upstream (chronotope/chrono#1768) and the RustSec
   # unmaintained advisory landed on 2026-11-17. It is not in the app's tree:
-  # `cargo tree -p contra-app -i chrono` is empty. It arrives only through the
-  # development-only contra-mcp crate, from rmcp's model timestamps and the
+  # `cargo tree -p caller-app -i chrono` is empty. It arrives only through the
+  # development-only caller-mcp crate, from rmcp's model timestamps and the
   # schemars `chrono04` feature rmcp enables. Track rmcp's own migration
   # (modelcontextprotocol/rust-sdk#1469) instead of forking a crate we never
   # call, and drop this entry once rmcp ships without it.
-  { id = "RUSTSEC-2026-0543", reason = "dev-only transitive dep of contra-mcp (rmcp timestamps)" },
+  { id = "RUSTSEC-2026-0543", reason = "dev-only transitive dep of caller-mcp (rmcp timestamps)" },
 ]
 
 [sources]

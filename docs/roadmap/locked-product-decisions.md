@@ -2,9 +2,9 @@
 
 | Decision | Choice |
 | --- | --- |
-| Product name | **Contra Karaoke** |
-| Crate/binary prefix | `contra-karaoke`, `contra-core`, `contra-music`, `contra-sources`, `contra-app` |
-| Android application ID | `org.contrakaraoke.app` |
+| Product name | **Caller Karaoke** |
+| Crate/binary prefix | `caller-karaoke`, `caller-core`, `caller-music`, `caller-sources`, `caller-app` |
+| Android application ID | `org.callerkaraoke.app` |
 | Desktop UI toolkit | `eframe` / `egui` |
 | Audio I/O | `cpal` |
 | ABC parsing | `abc-parser` plus a project-owned sequencer |

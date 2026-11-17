@@ -1,4 +1,4 @@
-//! End-to-end check that the `contra-mcp` binary speaks MCP over stdio.
+//! End-to-end check that the `caller-mcp` binary speaks MCP over stdio.
 //!
 //! This does not need a running app: `initialize` and `tools/list` are served
 //! before `attach`, which is exactly the handshake an MCP client performs.
@@ -12,12 +12,12 @@ use serde_json::{Value, json};
 
 #[test]
 fn lists_app_driving_tools_over_stdio() {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_contra-mcp"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_caller-mcp"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
-        .expect("spawn contra-mcp");
+        .expect("spawn caller-mcp");
 
     let mut stdin = child.stdin.take().expect("child stdin");
     let stdout = child.stdout.take().expect("child stdout");
@@ -45,7 +45,7 @@ fn lists_app_driving_tools_over_stdio() {
             "params": {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {},
-                "clientInfo": { "name": "contra-mcp-test", "version": "0" }
+                "clientInfo": { "name": "caller-mcp-test", "version": "0" }
             }
         }),
         json!({

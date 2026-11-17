@@ -10,6 +10,7 @@
 | 2026-11-15 | Add alto sax, tenor sax, and clarinet melody choices and a verified rebuild wrapper | Real contra pickup bands carry winds; `scripts/rebuild-soundfont.py` regenerates the subset from a pinned MIT source with SHA-256 checks, and `scripts/soundfont-keep.txt` is the one keep-list. The font grows to ~22 MB, still a fraction of the 141 MB bank |
 | 2026-11-14 | Cloudflare Worker proxy | Only practical way to give WASM online search without redistributing content |
 | 2026-11-14 | App name Contra Karaoke | Matches repository and product intent |
+| 2026-11-17 | Rename the app to Caller Karaoke (`caller-karaoke`, crates `caller-*`, Android ID `org.callerkaraoke.app`, docs host `callerkaraoke.nicholasgower.com`) | Owner instruction: the product is a caller trainer, so the name names the caller, not the dance. Files exported under the old format marker still import |
 | 2026-11-14 | Version stays 0.1.0 | Owner instruction until declared released |
 | 2026-11-14 | Dated nightly tags + rolling nightly | Traceable builds without changing semantic version |
 | 2026-11-15 | Refresh documentation screenshots only at release prep | Per-worktree regeneration was slow and noisy; prose still tracks every change |

@@ -19,9 +19,9 @@ message in Preferences.
 | A call seems late or early | Check **Calling lead** and the alias length. A longer call is moved earlier automatically. |
 | The first call appears during the count-in | Expected. The first call starts before beat 0. |
 | Keyboard shortcuts do nothing | Click a non-text area first. Space, R, Esc, the number keys 1-4, and Enter are ignored while a text field has focus. |
-| A media key does nothing | The operating system sends the key to the active media player. Pause any other player, or use **Space** in Contra Karaoke. On Android, check that the app is still running; the media session is not a foreground service, so Android can stop playback in the background. The browser build has no media session in 0.1.0. |
+| A media key does nothing | The operating system sends the key to the active media player. Pause any other player, or use **Space** in Caller Karaoke. On Android, check that the app is still running; the media session is not a foreground service, so Android can stop playback in the background. The browser build has no media session in 0.1.0. |
 | **Check for updates** cannot reach GitHub | Check the network and try again later. The message under the Preferences title gives the HTTP status or network error. A browser may block the request through an extension or a privacy setting; the desktop and Android builds fetch directly. |
-| **Submit feedback** did not open a page | The button asks the operating system for the default browser. Check the default-browser setting, or open [the issue tracker](https://github.com/nicholasgower/Contra-karaoke/issues) manually. |
+| **Submit feedback** did not open a page | The button asks the operating system for the default browser. Check the default-browser setting, or open [the issue tracker](https://github.com/nicholasgower/Caller-karaoke/issues) manually. |
 | Search returns an error | Dismiss it and retry. Cached content may still be available. In a browser, check the web proxy URL/token. |
 | Search results look old | The cache is 7 days for searches and 30 days for details. Clear it from **Preferences → Data & Storage**. |
 | No spoken calls | Check the **Speak calls** toggle, **Rate**, the selected **Voice**, and that the music is playing. On desktop or Android, wait for the first voice preparation or select **Retry neural voice**. |
@@ -99,13 +99,13 @@ loaded. Choose **Use bundled** and try a different file.
 
 ## Window and displays
 
-Contra Karaoke asks for the keyboard focus when it starts, so it opens in front
+Caller Karaoke asks for the keyboard focus when it starts, so it opens in front
 of the program that launched it: the window is shown only after its first frame
 is painted, and an explicit focus request keeps it from appearing behind the
 terminal or file manager. The request is made during startup only; if you move
 to another window, the app does not take the focus back.
 
-Contra Karaoke keeps its logical window size when you drag it between monitors
+Caller Karaoke keeps its logical window size when you drag it between monitors
 with different display scaling, so the controls and the dance card stay the size
 you expect. The size is corrected when the drag ends, so the window stays under
 the cursor while you move it. The sheet-music preview is rasterized again for

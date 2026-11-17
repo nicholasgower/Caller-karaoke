@@ -40,7 +40,7 @@ jobs:
             libgl1-mesa-dev libgtk-3-dev libspeechd-dev speech-dispatcher
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Check the development MCP path
-        run: cargo check -p contra-app --features inspection
+        run: cargo check -p caller-app --features inspection
 
   test:
     strategy:
@@ -77,7 +77,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
-      - run: cargo check -p contra-app --target wasm32-unknown-unknown
+      - run: cargo check -p caller-app --target wasm32-unknown-unknown
       - name: Install Trunk
         run: |
           curl -L --fail --retry 3 \

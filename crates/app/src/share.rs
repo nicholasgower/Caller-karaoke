@@ -24,7 +24,7 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use serde::{Deserialize, Serialize};
 
-use contra_core::{Dance, Tune};
+use caller_core::{Dance, Tune};
 
 /// URL argument that carries the payload.
 pub(crate) const PARAM: &str = "set";
@@ -74,7 +74,7 @@ impl SharePayload {
     pub(crate) fn validate(&self) -> Result<(), String> {
         if self.schema_version != SCHEMA_VERSION {
             return Err(format!(
-                "This link uses share format {}, which this version of Contra Karaoke does not understand.",
+                "This link uses share format {}, which this version of Caller Karaoke does not understand.",
                 self.schema_version
             ));
         }
@@ -199,7 +199,7 @@ pub(crate) fn decode(code: &str) -> Result<SharePayload, String> {
     }
     let body = code
         .strip_prefix(CODE_PREFIX)
-        .ok_or_else(|| "This is not a Contra Karaoke share link.".to_string())?;
+        .ok_or_else(|| "This is not a Caller Karaoke share link.".to_string())?;
     let compressed = decode_base64url(body)?;
     let mut decoder = ZlibDecoder::new(compressed.as_slice()).take(MAX_JSON_BYTES as u64 + 1);
     let mut json = Vec::new();
@@ -328,7 +328,7 @@ fn base64_value(byte: u8) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use contra_core::{Figure, SourceRef};
+    use caller_core::{Figure, SourceRef};
 
     fn dance() -> Dance {
         Dance {

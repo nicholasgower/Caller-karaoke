@@ -66,9 +66,9 @@ and import.
 ## Credit
 
 The idea of editing ABC beside a rendered score comes from Michael Eskin's
-[abctools](https://github.com/seisiuneer/abctools). Contra Karaoke's editor is an
+[abctools](https://github.com/seisiuneer/abctools). Caller Karaoke's editor is an
 independent, minimal implementation and does not include code from that project.
 The possible next steps are listed in the
-[ABC editor roadmap](https://github.com/nicholasgower/Contra-karaoke/blob/dev/docs/roadmap/abc-editor.md).
+[ABC editor roadmap](https://github.com/nicholasgower/Caller-karaoke/blob/dev/docs/roadmap/abc-editor.md).
 
 Next: [Session controls](/docs/guides/session-controls).

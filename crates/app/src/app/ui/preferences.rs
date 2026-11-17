@@ -6,7 +6,7 @@ use super::{
 use crate::app::history::HistoryAction;
 use crate::app::*;
 use crate::updates::{self, UpdateStatus};
-use contra_core::{
+use caller_core::{
     CardPadding, ChorusPreset, EchoPreset, MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP,
     ReverbPreset,
 };
@@ -98,14 +98,14 @@ pub(in crate::app) struct PreferencesSection {
     /// Stable name a search result uses to reveal this section. It is not a
     /// user-facing label; the section draws its own heading.
     pub anchor: &'static str,
-    pub draw: fn(&mut ContraApp, &mut egui::Ui, bool),
+    pub draw: fn(&mut CallerApp, &mut egui::Ui, bool),
 }
 
 impl PreferencesSection {
     const fn new(
         category: PreferencesCategory,
         anchor: &'static str,
-        draw: fn(&mut ContraApp, &mut egui::Ui, bool),
+        draw: fn(&mut CallerApp, &mut egui::Ui, bool),
     ) -> Self {
         Self {
             category,
@@ -548,7 +548,7 @@ fn matching_settings(query: &str) -> Vec<&'static PreferenceSetting> {
 /// The About section, named so the shell tests can assert that the version,
 /// author, and project links are drawn from Preferences and nowhere else.
 #[cfg(test)]
-pub(in crate::app) const ABOUT_SECTION: fn(&mut ContraApp, &mut egui::Ui, bool) = about;
+pub(in crate::app) const ABOUT_SECTION: fn(&mut CallerApp, &mut egui::Ui, bool) = about;
 
 /// The "Preferences" title, with the feedback and update actions on its right.
 ///
@@ -556,7 +556,7 @@ pub(in crate::app) const ABOUT_SECTION: fn(&mut ContraApp, &mut egui::Ui, bool) 
 /// top-right corner and **Submit feedback** to its left. At phone width the
 /// buttons stack under the title and stay right-aligned, so the two long labels
 /// never force the page wider than the 360-point minimum window.
-fn preferences_header(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn preferences_header(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     if compact {
         preferences_title(ui);
         ui.horizontal(|ui| {
@@ -587,7 +587,7 @@ fn preferences_title(ui: &mut egui::Ui) {
 }
 
 /// The two header actions, added right to left.
-fn preferences_actions(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn preferences_actions(app: &mut CallerApp, ui: &mut egui::Ui) {
     let checking = app.updates.is_checking();
     let check = ui
         .add_enabled(!checking, egui::Button::new("Check for updates"))
@@ -612,7 +612,7 @@ fn preferences_actions(app: &mut ContraApp, ui: &mut egui::Ui) {
 /// This is deliberately inline rather than a modal: a check is a background
 /// question, and its answer must not interrupt a running session. Nothing is
 /// downloaded or installed; a newer release is shown as a link to its page.
-fn update_status(app: &ContraApp, ui: &mut egui::Ui) {
+fn update_status(app: &CallerApp, ui: &mut egui::Ui) {
     let muted = theme::muted(ui);
     match app.updates.status() {
         UpdateStatus::Idle => {}
@@ -664,7 +664,7 @@ fn update_status(app: &ContraApp, ui: &mut egui::Ui) {
     }
 }
 
-impl ContraApp {
+impl CallerApp {
     pub(in crate::app) fn preferences_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
@@ -845,7 +845,7 @@ impl ContraApp {
 ///
 /// The visible label names the action; the accessible name is "Search
 /// settings", so an agent can find the field without guessing the prompt.
-fn preferences_search_box(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn preferences_search_box(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     if compact {
         ui.label(
             egui::RichText::new("Find a setting")
@@ -1020,7 +1020,7 @@ fn category_row(ui: &mut egui::Ui, category: PreferencesCategory) -> bool {
             }))
 }
 
-fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn role_terms(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Role terms");
     // The stored selection, not an inference from the terms: choosing Custom
     // keeps the editable fields on screen even when the words still match a
@@ -1096,7 +1096,7 @@ fn role_terms(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
 /// a rebuild is pending, and lets the field lose focus before the timeline is
 /// rebuilt. The active flag is cleared at the start of every preferences
 /// frame, so a stale focus state cannot defer the rebuild forever.
-fn edit_role_term(app: &mut ContraApp, ui: &mut egui::Ui, field: RoleField) {
+fn edit_role_term(app: &mut CallerApp, ui: &mut egui::Ui, field: RoleField) {
     let terms = &mut app.prefs.role_terms;
     let buffer = match field {
         RoleField::LeftSingular => &mut terms.left_singular,
@@ -1126,7 +1126,7 @@ enum RoleField {
     RightPlural,
 }
 
-fn instruments(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Instruments");
     ui.label(
         egui::RichText::new(
@@ -1474,7 +1474,7 @@ fn rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
         });
 }
 
-fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn appearance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Theme");
     ui.horizontal(|ui| {
         for option in Theme::ALL {
@@ -1531,7 +1531,7 @@ fn appearance(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
 /// The keyboard chords do the same thing; the buttons exist so the feature is
 /// discoverable and works on a touch screen, where there is no Ctrl key. Both
 /// carry an accessible name and are disabled when their stack is empty.
-fn undo_redo_buttons(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn undo_redo_buttons(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     let size = if compact {
         egui::vec2(112.0, theme::TOUCH_TARGET)
     } else {
@@ -1561,7 +1561,7 @@ fn undo_redo_buttons(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     });
 }
 
-fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn calling_lead(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Calling lead");
     ui.checkbox(&mut app.prefs.lead.auto, "Automatic syllable-based lead");
     if app.prefs.lead.auto {
@@ -1605,7 +1605,7 @@ fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                 ui,
                 egui::Slider::new(
                     value,
-                    contra_core::MIN_PADDING_SECONDS..=contra_core::MAX_PADDING_SECONDS,
+                    caller_core::MIN_PADDING_SECONDS..=caller_core::MAX_PADDING_SECONDS,
                 )
                 .step_by(0.1)
                 .fixed_decimals(1)
@@ -1628,7 +1628,7 @@ fn calling_lead(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
-fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn speech(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Text to speech");
     if ui
         .checkbox(&mut app.prefs.tts_enabled, "Speak calls")
@@ -1681,7 +1681,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     let rate_response = slider_row(ui, compact, "Rate", &mut app.prefs.tts_rate, |ui, rate| {
         number_slider(
             ui,
-            egui::Slider::new(rate, contra_core::MIN_TTS_RATE..=contra_core::MAX_TTS_RATE)
+            egui::Slider::new(rate, caller_core::MIN_TTS_RATE..=caller_core::MAX_TTS_RATE)
                 .step_by(0.1)
                 .fixed_decimals(1),
         )
@@ -1694,7 +1694,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
         egui::ComboBox::from_id_salt("tts_tone")
             .selected_text(app.prefs.tts_tone.label())
             .show_ui(ui, |ui| {
-                for tone in contra_core::CallTone::ALL {
+                for tone in caller_core::CallTone::ALL {
                     ui.selectable_value(&mut app.prefs.tts_tone, tone, tone.label());
                 }
             });
@@ -1715,7 +1715,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
                     ui,
                     egui::Slider::new(
                         deliveries,
-                        contra_core::MIN_TTS_DELIVERIES..=contra_core::MAX_TTS_DELIVERIES,
+                        caller_core::MIN_TTS_DELIVERIES..=caller_core::MAX_TTS_DELIVERIES,
                     )
                     .integer(),
                 )
@@ -1781,7 +1781,7 @@ fn speech(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     }
 }
 
-fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn playback(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.checkbox(&mut app.prefs.loop_enabled, "Loop the dance and music");
     ui.checkbox(&mut app.prefs.count_in_enabled, "Four-beat count-in");
     ui.checkbox(
@@ -1947,15 +1947,15 @@ fn playback(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
 /// out-of-range or inverted pair into a usable slider range without silently
 /// snapping the caller's current tempo.
 fn normalize_tempo_range(min_bpm: &mut f64, max_bpm: &mut f64) {
-    *min_bpm = min_bpm.clamp(contra_core::Tempo::MIN_BPM, contra_core::Tempo::MAX_BPM);
-    *max_bpm = max_bpm.clamp(contra_core::Tempo::MIN_BPM, contra_core::Tempo::MAX_BPM);
+    *min_bpm = min_bpm.clamp(caller_core::Tempo::MIN_BPM, caller_core::Tempo::MAX_BPM);
+    *max_bpm = max_bpm.clamp(caller_core::Tempo::MIN_BPM, caller_core::Tempo::MAX_BPM);
     if *min_bpm > *max_bpm {
         std::mem::swap(min_bpm, max_bpm);
     }
     if *min_bpm >= *max_bpm {
-        if *max_bpm >= contra_core::Tempo::MAX_BPM {
-            *max_bpm = contra_core::Tempo::MAX_BPM;
-            *min_bpm = contra_core::Tempo::MAX_BPM - 1.0;
+        if *max_bpm >= caller_core::Tempo::MAX_BPM {
+            *max_bpm = caller_core::Tempo::MAX_BPM;
+            *min_bpm = caller_core::Tempo::MAX_BPM - 1.0;
         } else {
             *max_bpm = *min_bpm + 1.0;
         }
@@ -1966,7 +1966,7 @@ fn normalize_tempo_range(min_bpm: &mut f64, max_bpm: &mut f64) {
 const DEFAULT_TEMPO_MIN_BPM: f64 = 200.0;
 const DEFAULT_TEMPO_MAX_BPM: f64 = 300.0;
 
-fn tempo_range(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn tempo_range(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Tempo range");
     ui.label(
         egui::RichText::new(
@@ -1981,7 +1981,7 @@ fn tempo_range(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     inline_field(ui, compact, "Minimum", |ui| {
         ui.add(
             egui::DragValue::new(&mut min)
-                .range(contra_core::Tempo::MIN_BPM..=contra_core::Tempo::MAX_BPM)
+                .range(caller_core::Tempo::MIN_BPM..=caller_core::Tempo::MAX_BPM)
                 .speed(1.0)
                 .suffix(" BPM")
                 // A typed number applies when editing finishes. Parsing every
@@ -1996,7 +1996,7 @@ fn tempo_range(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     inline_field(ui, compact, "Maximum", |ui| {
         ui.add(
             egui::DragValue::new(&mut max)
-                .range(contra_core::Tempo::MIN_BPM..=contra_core::Tempo::MAX_BPM)
+                .range(caller_core::Tempo::MIN_BPM..=caller_core::Tempo::MAX_BPM)
                 .speed(1.0)
                 .suffix(" BPM")
                 .update_while_editing(false),
@@ -2016,7 +2016,7 @@ fn tempo_range(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
-fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
+fn soundfont(app: &mut CallerApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Soundfont");
     let current = app
         .prefs
@@ -2046,7 +2046,7 @@ fn soundfont(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.separator();
 }
 
-fn effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn effects(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Effects");
     ui.label(
         egui::RichText::new(
@@ -2113,7 +2113,7 @@ fn effects(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
 /// The source menu moved to the Download dance page, next to the search form it
 /// controls. Saved dances keep their own source, so switching it there never
 /// rewrites the library; it only changes where the next download comes from.
-fn data_sources(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
+fn data_sources(app: &mut CallerApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Data sources");
     ui.label(
         egui::RichText::new(
@@ -2139,7 +2139,7 @@ fn data_sources(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
     ui.separator();
 }
 
-fn web_proxy(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
+fn web_proxy(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Web data proxy");
     ui.label(
         egui::RichText::new(
@@ -2179,7 +2179,7 @@ fn web_proxy(app: &mut ContraApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
-fn maintenance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
+fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, _compact: bool) {
     ui.heading("Maintenance");
     ui.horizontal_wrapped(|ui| {
         if ui.button("Export MIDI…").clicked() {
@@ -2211,7 +2211,7 @@ fn maintenance(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
 ///
 /// The report walks the libraries and buffers, so it is built on demand rather
 /// than every frame. It is a diagnostic: nothing in the session depends on it.
-fn memory_use(app: &mut ContraApp, ui: &mut egui::Ui) {
+fn memory_use(app: &mut CallerApp, ui: &mut egui::Ui) {
     ui.label(egui::RichText::new("Memory use").strong());
     ui.label(
         egui::RichText::new(

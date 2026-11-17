@@ -8,7 +8,7 @@
 //! This is pure app-level logic: it reads the library and the preference but
 //! never saves, renders, or plays anything.
 
-use contra_core::{Library, Tune, TuneRotation, TuneSetSource};
+use caller_core::{Library, Tune, TuneRotation, TuneSetSource};
 
 /// The tunes a rotation resolves to, plus a fallback marker for the status line.
 #[derive(Clone, Debug, PartialEq)]
@@ -65,7 +65,7 @@ fn explicit_tunes(library: &Library<Tune>, rotation: &TuneRotation) -> Vec<Tune>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use contra_core::SourceRef;
+    use caller_core::SourceRef;
 
     fn tune(id: &str, title: &str) -> Tune {
         Tune {

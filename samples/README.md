@@ -30,15 +30,15 @@ databases or crawl beyond the curated list.
 samples/
   manifest.json                 machine-readable index + provenance + what each item tests
   dances/
-    <id>-<slug>.json            normalized dance (contra_core::Dance shape)
+    <id>-<slug>.json            normalized dance (caller_core::Dance shape)
     <id>-<slug>.html            raw ContraDB page, byte-for-byte
   tunes/
-    <id>-<slug>.json            normalized tune (contra_core::Tune shape)
+    <id>-<slug>.json            normalized tune (caller_core::Tune shape)
     <id>-<slug>.abc             ABC text on its own
     <id>-<slug>.api.json        raw ABC Session Tunes detail response
 ```
 
-The normalized JSON maps directly onto the `contra-core` domain models:
+The normalized JSON maps directly onto the `caller-core` domain models:
 
 ```json
 {

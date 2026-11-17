@@ -1,5 +1,5 @@
 [package]
-name = "contra-app"
+name = "caller-app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,30 +8,30 @@ rust-version.workspace = true
 repository.workspace = true
 description = "Contra dance caller trainer with ABC music playback and early call timing"
 build = "build.rs"
-# `contra-headless` is a development-only helper behind the `headless` feature;
-# plain `cargo run -p contra-app` must launch the real app.
-default-run = "contra-karaoke"
+# `caller-headless` is a development-only helper behind the `headless` feature;
+# plain `cargo run -p caller-app` must launch the real app.
+default-run = "caller-karaoke"
 
 [lib]
-name = "contra_app"
+name = "caller_app"
 crate-type = ["cdylib", "lib"]
 
 [[bin]]
-name = "contra-karaoke"
+name = "caller-karaoke"
 path = "src/main.rs"
 
 [[bin]]
-name = "contra-headless"
-path = "src/bin/contra-headless.rs"
+name = "caller-headless"
+path = "src/bin/caller-headless.rs"
 required-features = ["headless"]
 
 [[bin]]
-name = "contra-perf"
-path = "src/bin/contra-perf.rs"
+name = "caller-perf"
+path = "src/bin/caller-perf.rs"
 required-features = ["headless"]
 
 [features]
-# Development-only: lets `contra-mcp` attach to a running app and drive it.
+# Development-only: lets `caller-mcp` attach to a running app and drive it.
 # Off by default so release artifacts do not carry the inspection listener.
 inspection = ["eframe/inspection"]
 # Development-only: renders the real app without a window or audio device.
@@ -41,9 +41,9 @@ headless = ["dep:egui_kittest"]
 acorde.workspace = true
 acorde-render-svg.workspace = true
 arc-swap.workspace = true
-contra-core = { version = "0.1.0", path = "../core" }
-contra-music = { version = "0.1.0", path = "../music" }
-contra-sources = { version = "0.1.0", path = "../sources" }
+caller-core = { version = "0.1.0", path = "../core" }
+caller-music = { version = "0.1.0", path = "../music" }
+caller-sources = { version = "0.1.0", path = "../sources" }
 cpal.workspace = true
 directories.workspace = true
 egui_kittest = { workspace = true, optional = true }
@@ -148,8 +148,8 @@ web-sys = { version = "0.3", features = [
 ] }
 
 [package.metadata.android]
-package = "org.contrakaraoke.app"
-apk_name = "contra-karaoke"
+package = "org.callerkaraoke.app"
+apk_name = "caller-karaoke"
 build_targets = ["armv7-linux-androideabi", "aarch64-linux-android"]
 resources = "../../packaging/android/res"
 
@@ -163,7 +163,7 @@ name = "android.permission.INTERNET"
 name = "android.permission.POST_NOTIFICATIONS"
 
 [package.metadata.android.application]
-label = "Contra Karaoke"
+label = "Caller Karaoke"
 icon = "@mipmap/ic_launcher"
 # The tts crate's Android backend calls into rs.tts.Bridge, which is packaged
 # as classes.dex by packaging/android/build-apk.py.
@@ -176,7 +176,7 @@ extract_native_libs = true
 [package.metadata.android.application.activity]
 # Load the native library from an app class so JNI_OnLoad's FindClass uses the
 # app class loader and can see rs.tts.Bridge.
-name = "org.contrakaraoke.app.MainActivity"
+name = "org.callerkaraoke.app.MainActivity"
 
 [package.metadata.android.sdk]
 min_sdk_version = 26
@@ -191,15 +191,15 @@ depends = "$auto"
 section = "sound"
 priority = "optional"
 assets = [
-  ["target/release/contra-karaoke", "usr/bin/", "755"],
+  ["target/release/caller-karaoke", "usr/bin/", "755"],
   # Asset paths are relative to this crate's directory, so workspace-root
   # paths need the same `../../` prefix as `license-file`.
-  ["../../packaging/linux/contra-karaoke.desktop", "usr/share/applications/", "644"],
-  ["../../assets/icons/contra-karaoke-16.png", "usr/share/icons/hicolor/16x16/apps/contra-karaoke.png", "644"],
-  ["../../assets/icons/contra-karaoke-32.png", "usr/share/icons/hicolor/32x32/apps/contra-karaoke.png", "644"],
-  ["../../assets/icons/contra-karaoke-48.png", "usr/share/icons/hicolor/48x48/apps/contra-karaoke.png", "644"],
-  ["../../assets/icons/contra-karaoke-64.png", "usr/share/icons/hicolor/64x64/apps/contra-karaoke.png", "644"],
-  ["../../assets/icons/contra-karaoke-128.png", "usr/share/icons/hicolor/128x128/apps/contra-karaoke.png", "644"],
-  ["../../assets/icons/contra-karaoke-256.png", "usr/share/icons/hicolor/256x256/apps/contra-karaoke.png", "644"],
-  ["../../assets/icons/contra-karaoke.svg", "usr/share/icons/hicolor/scalable/apps/contra-karaoke.svg", "644"],
+  ["../../packaging/linux/caller-karaoke.desktop", "usr/share/applications/", "644"],
+  ["../../assets/icons/caller-karaoke-16.png", "usr/share/icons/hicolor/16x16/apps/caller-karaoke.png", "644"],
+  ["../../assets/icons/caller-karaoke-32.png", "usr/share/icons/hicolor/32x32/apps/caller-karaoke.png", "644"],
+  ["../../assets/icons/caller-karaoke-48.png", "usr/share/icons/hicolor/48x48/apps/caller-karaoke.png", "644"],
+  ["../../assets/icons/caller-karaoke-64.png", "usr/share/icons/hicolor/64x64/apps/caller-karaoke.png", "644"],
+  ["../../assets/icons/caller-karaoke-128.png", "usr/share/icons/hicolor/128x128/apps/caller-karaoke.png", "644"],
+  ["../../assets/icons/caller-karaoke-256.png", "usr/share/icons/hicolor/256x256/apps/caller-karaoke.png", "644"],
+  ["../../assets/icons/caller-karaoke.svg", "usr/share/icons/hicolor/scalable/apps/caller-karaoke.svg", "644"],
 ]

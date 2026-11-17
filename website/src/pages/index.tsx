@@ -10,11 +10,11 @@ import styles from './index.module.css';
 export default function Home(): React.ReactElement {
   const {siteConfig} = useDocusaurusContext();
   return (
-    <Layout title="Contra Karaoke" description={siteConfig.tagline}>
+    <Layout title="Caller Karaoke" description={siteConfig.tagline}>
       <header className={styles.hero}>
         <div className="container">
           <p className={styles.kicker}>Caller training for contra dances</p>
-          <h1 className={styles.title}>Contra Karaoke</h1>
+          <h1 className={styles.title}>Caller Karaoke</h1>
           <p className={styles.subtitle}>{siteConfig.tagline}</p>
           <p className={styles.lede}>
             The dance card and the music move together. Each call appears and is

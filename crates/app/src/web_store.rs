@@ -3,9 +3,13 @@
 #[cfg(target_arch = "wasm32")]
 use web_sys::window;
 
-const PREFS_KEY: &str = "contra-karaoke.prefs";
-const CACHE_PREFIX: &str = "contra-karaoke.cache.";
-const LIBRARY_PREFIX: &str = "contra-karaoke.library.";
+const PREFS_KEY: &str = "caller-karaoke.prefs";
+const CACHE_PREFIX: &str = "caller-karaoke.cache.";
+const LIBRARY_PREFIX: &str = "caller-karaoke.library.";
+// Keys written before the rename. They are still read so a returning visitor
+// keeps their preferences and saved dances; the next write uses the new keys.
+const LEGACY_PREFS_KEY: &str = "contra-karaoke.prefs";
+const LEGACY_LIBRARY_PREFIX: &str = "contra-karaoke.library.";
 
 #[cfg(target_arch = "wasm32")]
 fn storage() -> Option<web_sys::Storage> {
@@ -14,7 +18,12 @@ fn storage() -> Option<web_sys::Storage> {
 
 #[cfg(target_arch = "wasm32")]
 pub fn read_prefs() -> Option<String> {
-    storage()?.get_item(PREFS_KEY).ok().flatten()
+    let storage = storage()?;
+    storage
+        .get_item(PREFS_KEY)
+        .ok()
+        .flatten()
+        .or_else(|| storage.get_item(LEGACY_PREFS_KEY).ok().flatten())
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -26,10 +35,17 @@ pub fn write_prefs(json: &str) {
 
 #[cfg(target_arch = "wasm32")]
 pub fn read_library(name: &str) -> Option<String> {
-    storage()?
+    let storage = storage()?;
+    storage
         .get_item(&format!("{LIBRARY_PREFIX}{name}"))
         .ok()
         .flatten()
+        .or_else(|| {
+            storage
+                .get_item(&format!("{LEGACY_LIBRARY_PREFIX}{name}"))
+                .ok()
+                .flatten()
+        })
 }
 #[cfg(target_arch = "wasm32")]
 pub fn write_library(name: &str, json: &str) {
@@ -126,7 +142,7 @@ fn copy_with_textarea(document: &web_sys::Document, text: &str) -> bool {
 pub struct LocalStorageCache;
 
 #[cfg(target_arch = "wasm32")]
-impl contra_sources::CacheStore for LocalStorageCache {
+impl caller_sources::CacheStore for LocalStorageCache {
     fn read(&self, key: &str) -> Option<Vec<u8>> {
         let storage = storage()?;
         storage

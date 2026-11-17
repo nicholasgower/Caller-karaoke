@@ -1,10 +1,10 @@
 ---
 title: Build and run
-description: Build Contra Karaoke from source on Windows or Linux and start the desktop app.
+description: Build Caller Karaoke from source on Windows or Linux and start the desktop app.
 sidebar_position: 5
 ---
 
-Contra Karaoke is a Rust workspace with five crates: `core` (domain and
+Caller Karaoke is a Rust workspace with five crates: `core` (domain and
 timing), `music` (ABC, arrangement, synthesis), `sources` (ContraDB and ABC
 Session Tunes), `app` (the shared `eframe`/`egui` application), and `web` (the
 WASM entry point and Trunk page).
@@ -29,13 +29,13 @@ installed Windows voices.
 ## Run a development build
 
 <Steps>
-  <CommandStep command="git clone https://github.com/nicholasgower/Contra-karaoke.git">
+  <CommandStep command="git clone https://github.com/nicholasgower/Caller-karaoke.git">
     Clone the repository.
   </CommandStep>
-  <CommandStep command="cd Contra-karaoke">
+  <CommandStep command="cd Caller-karaoke">
     Enter the workspace.
   </CommandStep>
-  <CommandStep command="cargo run -p contra-app">
+  <CommandStep command="cargo run -p caller-app">
     Build and launch the desktop app.
   </CommandStep>
 </Steps>
@@ -46,11 +46,11 @@ minutes. Later builds are incremental.
 ## Build a release binary
 
 <Steps>
-  <CommandStep command="cargo build --release -p contra-app">
+  <CommandStep command="cargo build --release -p caller-app">
     Build with optimizations.
   </CommandStep>
-  <CommandStep command="target/release/contra-karaoke">
-    Run the release binary on Linux. On Windows use `target\release\contra-karaoke.exe`.
+  <CommandStep command="target/release/caller-karaoke">
+    Run the release binary on Linux. On Windows use `target\release\caller-karaoke.exe`.
   </CommandStep>
 </Steps>
 
@@ -89,7 +89,7 @@ python packaging/android/build-apk.py
 
 The script wraps `cargo apk`, adds the `rs.tts.Bridge` class used by the Android
 TTS backend, aligns the archive, and signs it. The output is
-`target/release/apk/contra-karaoke.apk`.
+`target/release/apk/caller-karaoke.apk`.
 
 See [Install on Android](/docs/getting-started/install-android) for the device-testing status and
 limitations.

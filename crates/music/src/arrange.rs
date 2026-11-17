@@ -1,7 +1,7 @@
 //! Turn a parsed score into a dance-length music loop and generate the
 //! accompaniment.
 
-use contra_core::{AccompanimentInstrument, AccompanimentRhythm, EndingOptions, VariationOptions};
+use caller_core::{AccompanimentInstrument, AccompanimentRhythm, EndingOptions, VariationOptions};
 
 use crate::chord::{Chord, resolve_chords};
 use crate::score::{ChordEvent, Key, Meter, NoteEvent, Score};

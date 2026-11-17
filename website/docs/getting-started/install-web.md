@@ -4,7 +4,7 @@ description: Play the hosted browser build, or serve your own WASM build and con
 sidebar_position: 3
 ---
 
-Contra Karaoke has a browser build (WASM) that shares the desktop UI. It uses
+Caller Karaoke has a browser build (WASM) that shares the desktop UI. It uses
 cpal's WebAudio backend, keeps preferences and source responses in
 `localStorage`, and needs a proxy for online search because the upstream sites
 do not allow browser requests from this origin.
@@ -119,8 +119,8 @@ content. Online search will fail.
 
 ## What is stored in the browser
 
-- Preferences are stored in `localStorage` under `contra-karaoke.prefs`.
-- Source responses are stored under keys beginning `contra-karaoke.cache.`.
+- Preferences are stored in `localStorage` under `caller-karaoke.prefs`.
+- Source responses are stored under keys beginning `caller-karaoke.cache.`.
 - Clearing **Preferences → Data & Storage → Clear source cache** removes cached
   source responses; it does not clear your preferences.
 - Reloading the page keeps both. Clearing site data removes both.

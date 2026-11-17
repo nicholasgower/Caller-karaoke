@@ -46,13 +46,13 @@ function asset(
   return {file, action, label, detail, url: releaseAssetUrl(file)};
 }
 
-const WINDOWS_INSTALLER = `ContraKaraoke-${RELEASE_VERSION}-windows-x64-setup.exe`;
-const WINDOWS_PORTABLE = `ContraKaraoke-${RELEASE_VERSION}-windows-x64-portable.zip`;
+const WINDOWS_INSTALLER = `CallerKaraoke-${RELEASE_VERSION}-windows-x64-setup.exe`;
+const WINDOWS_PORTABLE = `CallerKaraoke-${RELEASE_VERSION}-windows-x64-portable.zip`;
 // cargo-deb appends the Debian revision, so the asset is `…_0.1.0-1_amd64.deb`.
-const LINUX_DEB = `contra-app_${RELEASE_VERSION}-1_amd64.deb`;
-const LINUX_APPIMAGE = `ContraKaraoke-${RELEASE_VERSION}-x86_64.AppImage`;
-const ANDROID_APK = 'contra-karaoke.apk';
-const WEB_ZIP = `contra-karaoke-${RELEASE_VERSION}-web.zip`;
+const LINUX_DEB = `caller-app_${RELEASE_VERSION}-1_amd64.deb`;
+const LINUX_APPIMAGE = `CallerKaraoke-${RELEASE_VERSION}-x86_64.AppImage`;
+const ANDROID_APK = 'caller-karaoke.apk';
+const WEB_ZIP = `caller-karaoke-${RELEASE_VERSION}-web.zip`;
 
 const WINDOWS: DownloadOptions = {
   name: 'Windows',

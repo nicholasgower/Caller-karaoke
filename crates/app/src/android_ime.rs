@@ -534,7 +534,7 @@ pub(crate) use bridge::{drain_events, suppress_backend_ime, sync_text_input};
 
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeImeText(
+pub extern "system" fn Java_org_callerkaraoke_app_MainActivity_nativeImeText(
     mut env: jni::JNIEnv<'_>,
     _class: jni::objects::JClass<'_>,
     text: jni::objects::JString<'_>,
@@ -548,7 +548,7 @@ pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeImeText(
 
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeImeKey(
+pub extern "system" fn Java_org_callerkaraoke_app_MainActivity_nativeImeKey(
     _env: *mut core::ffi::c_void,
     _class: *mut core::ffi::c_void,
     key: i32,

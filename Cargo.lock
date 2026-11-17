@@ -756,6 +756,114 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
+name = "caller-app"
+version = "0.1.0"
+dependencies = [
+ "acorde",
+ "acorde-render-svg",
+ "android_logger",
+ "arc-swap",
+ "caller-core",
+ "caller-music",
+ "caller-sources",
+ "console_error_panic_hook",
+ "cpal",
+ "directories",
+ "eframe",
+ "egui_kittest",
+ "ehttp",
+ "env_logger",
+ "epaint_default_fonts",
+ "flate2",
+ "image",
+ "jni 0.21.1",
+ "js-sys",
+ "log",
+ "misaki-rs",
+ "ndk-context",
+ "ort",
+ "percent-encoding",
+ "raw-window-handle",
+ "resvg",
+ "rfd",
+ "rustysynth",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "souvlaki",
+ "tar",
+ "tts",
+ "ureq",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+ "winit",
+ "winres",
+ "zip",
+]
+
+[[package]]
+name = "caller-core"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "caller-mcp"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+ "accesskit_consumer",
+ "egui",
+ "egui_mcp",
+ "rmcp",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "caller-music"
+version = "0.1.0"
+dependencies = [
+ "abc-parser",
+ "caller-core",
+ "midly",
+ "rustysynth",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "caller-sources"
+version = "0.1.0"
+dependencies = [
+ "caller-core",
+ "scraper",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.21",
+ "url",
+ "web-time",
+]
+
+[[package]]
+name = "caller-web"
+version = "0.1.0"
+dependencies = [
+ "caller-app",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "calloop"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -943,114 +1051,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9eb6feb175df65d0a3ccd3e73484e940d0ac664e8034f0519fd49a93db3071d9"
 dependencies = [
  "rustversion",
-]
-
-[[package]]
-name = "contra-app"
-version = "0.1.0"
-dependencies = [
- "acorde",
- "acorde-render-svg",
- "android_logger",
- "arc-swap",
- "console_error_panic_hook",
- "contra-core",
- "contra-music",
- "contra-sources",
- "cpal",
- "directories",
- "eframe",
- "egui_kittest",
- "ehttp",
- "env_logger",
- "epaint_default_fonts",
- "flate2",
- "image",
- "jni 0.21.1",
- "js-sys",
- "log",
- "misaki-rs",
- "ndk-context",
- "ort",
- "percent-encoding",
- "raw-window-handle",
- "resvg",
- "rfd",
- "rustysynth",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "souvlaki",
- "tar",
- "tts",
- "ureq",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
- "winit",
- "winres",
- "zip",
-]
-
-[[package]]
-name = "contra-core"
-version = "0.1.0"
-dependencies = [
- "regex",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "contra-mcp"
-version = "0.1.0"
-dependencies = [
- "accesskit",
- "accesskit_consumer",
- "egui",
- "egui_mcp",
- "rmcp",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "contra-music"
-version = "0.1.0"
-dependencies = [
- "abc-parser",
- "contra-core",
- "midly",
- "rustysynth",
- "serde",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "contra-sources"
-version = "0.1.0"
-dependencies = [
- "contra-core",
- "scraper",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "thiserror 2.0.21",
- "url",
- "web-time",
-]
-
-[[package]]
-name = "contra-web"
-version = "0.1.0"
-dependencies = [
- "contra-app",
- "wasm-bindgen",
 ]
 
 [[package]]

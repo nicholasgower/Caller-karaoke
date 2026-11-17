@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512" viewBox="0 0 512 512">
-  <title>contra-karaoke-icon</title>
+  <title>caller-karaoke-icon</title>
   <g id="Layer_1" data-name="Layer 1">
     <path id="tile" d="M96 0 L416 0 C469.019 0 512 42.981 512 96 L512 416 C512 469.019 469.019 512 416 512 L96 512 C42.981 512 0 469.019 0 416 L0 96 C0 42.981 42.981 0 96 0 Z" fill="#141414"/>
     <line id="set-link" x1="128" y1="268" x2="168" y2="268" fill="none" stroke="#e6e6e6" stroke-width="13" stroke-miterlimit="10" stroke-dasharray="16 13"/>

@@ -17,11 +17,11 @@ the app is in the background. The integration has one sibling per platform:
 | Platform | Session | Lives in |
 | --- | --- | --- |
 | Windows | System Media Transport Controls | `crates/app/src/media_keys.rs` (`souvlaki`, window handle from `raw-window-handle`) |
-| Linux | MPRIS (`org.contrakaraoke.ContraKaraoke`) | `crates/app/src/media_keys.rs` (`souvlaki` with the zbus backend) |
-| Android | `android.media.session.MediaSession` + MediaStyle notification | `packaging/android/java/org/contrakaraoke/app/MainActivity.java`, bridged by `crates/app/src/media_keys.rs` |
+| Linux | MPRIS (`org.callerkaraoke.CallerKaraoke`) | `crates/app/src/media_keys.rs` (`souvlaki` with the zbus backend) |
+| Android | `android.media.session.MediaSession` + MediaStyle notification | `packaging/android/java/org/callerkaraoke/app/MainActivity.java`, bridged by `crates/app/src/media_keys.rs` |
 
 The session shows the loaded dance as the title, the tune as the artist, and
-*Contra Karaoke* as the album. Keep the three in step when the metadata or the
+*Caller Karaoke* as the album. Keep the three in step when the metadata or the
 transport commands change: they all map onto `MediaCommand`.
 
 Platform icons and the source SVG are shared from `assets/icons/`. See

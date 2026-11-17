@@ -1,4 +1,4 @@
-// Build assets/icons/contra-karaoke.ico from the PNG sizes beside it.
+// Build assets/icons/caller-karaoke.ico from the PNG sizes beside it.
 //
 // The ICO entries are stored as PNG images, which Windows has read since
 // Vista. Run it after regenerating the PNGs: `node scripts/make-icon-ico.mjs`.
@@ -13,7 +13,7 @@ const sizes = [16, 32, 48, 64, 128, 256];
 
 const images = sizes.map((size) => ({
   size,
-  bytes: readFileSync(join(icons, `contra-karaoke-${size}.png`)),
+  bytes: readFileSync(join(icons, `caller-karaoke-${size}.png`)),
 }));
 
 // ICONDIR (6 bytes) then one ICONDIRENTRY (16 bytes) per image, then the
@@ -38,5 +38,5 @@ images.forEach((image, index) => {
 });
 
 const ico = Buffer.concat([header, ...images.map((image) => image.bytes)]);
-writeFileSync(join(icons, "contra-karaoke.ico"), ico);
-console.log(`wrote contra-karaoke.ico (${sizes.join(", ")} px)`);
+writeFileSync(join(icons, "caller-karaoke.ico"), ico);
+console.log(`wrote caller-karaoke.ico (${sizes.join(", ")} px)`);

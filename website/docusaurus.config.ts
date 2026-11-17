@@ -2,14 +2,14 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Contra Karaoke',
+  title: 'Caller Karaoke',
   tagline: 'Learn to call contra dances in time with the music',
   favicon: 'img/favicon.svg',
-  url: 'https://contrakaraoke.nicholasgower.com',
+  url: 'https://callerkaraoke.nicholasgower.com',
   // Keep in sync with the hosted app public URL in scripts/build-web-app.mjs.
   baseUrl: '/',
   organizationName: 'nicholasgower',
-  projectName: 'Contra-karaoke',
+  projectName: 'Caller-karaoke',
   trailingSlash: true,
   onBrokenLinks: 'throw',
   onBrokenAnchors: 'throw',
@@ -29,7 +29,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl:
-            'https://github.com/nicholasgower/Contra-karaoke/edit/main/website/',
+            'https://github.com/nicholasgower/Caller-karaoke/edit/main/website/',
         },
         blog: false,
         theme: {
@@ -56,7 +56,7 @@ const config: Config = {
       respectPrefersColorScheme: false,
     },
     navbar: {
-      title: 'Contra Karaoke',
+      title: 'Caller Karaoke',
       items: [
         {
           type: 'docSidebar',
@@ -100,13 +100,13 @@ const config: Config = {
         {
           title: 'Project',
           items: [
-            {label: 'GitHub', href: 'https://github.com/nicholasgower/Contra-karaoke'},
-            {label: 'Roadmap', href: 'https://github.com/nicholasgower/Contra-karaoke/blob/main/ROADMAP.md'},
-            {label: 'License', href: 'https://github.com/nicholasgower/Contra-karaoke/blob/main/LICENSE'},
+            {label: 'GitHub', href: 'https://github.com/nicholasgower/Caller-karaoke'},
+            {label: 'Roadmap', href: 'https://github.com/nicholasgower/Caller-karaoke/blob/main/ROADMAP.md'},
+            {label: 'License', href: 'https://github.com/nicholasgower/Caller-karaoke/blob/main/LICENSE'},
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Contra Karaoke. MIT licensed.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Caller Karaoke. MIT licensed.`,
     },
     tableOfContents: {
       minHeadingLevel: 2,

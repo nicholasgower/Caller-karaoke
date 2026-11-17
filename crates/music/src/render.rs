@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use contra_core::{
+use caller_core::{
     AccompanimentInstrument, AccompanimentRhythm, AudioEffects, BandSlot, Countermelody,
     DancerSoundEvent, EndingOptions, HumanizeOptions, InstrumentCopies, MelodyInstrument,
     OutputMode, Percussion, PercussionRhythm, VariationOptions,

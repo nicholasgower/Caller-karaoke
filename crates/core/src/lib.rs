@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Pure domain logic for Contra Karaoke.
+//! Pure domain logic for Caller Karaoke.
 //!
 //! This crate contains no UI, network, audio, or platform code.
 

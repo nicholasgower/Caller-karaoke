@@ -8,7 +8,7 @@
  */
 export const RELEASE_VERSION = '0.1.0';
 
-export const REPO = 'nicholasgower/Contra-karaoke';
+export const REPO = 'nicholasgower/Caller-karaoke';
 
 export const RELEASES_URL = `https://github.com/${REPO}/releases`;
 

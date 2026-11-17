@@ -1,12 +1,12 @@
 # website
 
-User documentation for Contra Karaoke, built with Docusaurus 3.10.
+User documentation for Caller Karaoke, built with Docusaurus 3.10.
 
 ## Status
 
 The guide is written against the 0.1.0 development build (desktop + web MVP;
 Android configured but device-testing pending). In-app screenshots are rendered
-by the headless `contra-headless` binary and annotated with PhotoCraft. The
+by the headless `caller-headless` binary and annotated with PhotoCraft. The
 remaining placeholders are the manual Windows, Linux, web, and Android
 installation captures.
 
@@ -36,7 +36,7 @@ npm run clear
 commands to install what is missing; use `npm run start:docs` when you are only
 changing prose or screenshots.
 
-The site is served from the root of <https://contrakaraoke.nicholasgower.com/>
+The site is served from the root of <https://callerkaraoke.nicholasgower.com/>
 (`baseUrl: '/'`). Test the built site at the server root. `static/CNAME` pins
 the GitHub Pages custom domain; keep it in step with `url` in
 `docusaurus.config.ts`.
@@ -55,7 +55,7 @@ how to build the app, so `/play` degrades to that explanation instead of a bare
 `static/app/` are generated and ignored by Git; do not commit the staged build,
 even though the placeholder shares its path. A plain `npm run build` without
 Rust therefore produces a site whose `/play` frame shows the placeholder.
-Override the public URL with `CONTRA_WEB_PUBLIC_URL` if you deploy the site at a
+Override the public URL with `CALLER_WEB_PUBLIC_URL` if you deploy the site at a
 different base path.
 
 ## Mobile preview

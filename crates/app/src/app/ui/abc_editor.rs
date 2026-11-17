@@ -77,7 +77,7 @@ pub(in crate::app) fn parse_error(abc: &str) -> Option<String> {
     if abc.trim().is_empty() {
         return Some("The ABC text is empty.".to_string());
     }
-    contra_music::parse_abc(abc)
+    caller_music::parse_abc(abc)
         .err()
         .map(|error| error.to_string())
 }
@@ -118,7 +118,7 @@ enum EditorAction {
     Restore,
 }
 
-impl ContraApp {
+impl CallerApp {
     pub(in crate::app) fn abc_editor_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
@@ -356,7 +356,7 @@ impl ContraApp {
 
 /// The Android export prompt: the file is already saved, and the share sheet is
 /// one tap away. Other platforms never set the request.
-pub(in crate::app) fn share_prompt(app: &mut ContraApp, ui: &mut egui::Ui) {
+pub(in crate::app) fn share_prompt(app: &mut CallerApp, ui: &mut egui::Ui) {
     let Some(share) = app.share_request.clone() else {
         return;
     };
@@ -382,7 +382,7 @@ pub(in crate::app) fn share_prompt(app: &mut ContraApp, ui: &mut egui::Ui) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use contra_core::{Library, SourceRef};
+    use caller_core::{Library, SourceRef};
 
     fn tune() -> Tune {
         Tune {

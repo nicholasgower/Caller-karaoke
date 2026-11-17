@@ -21,7 +21,7 @@ wrangler secret put PROXY_TOKEN
 ```
 
 Copy the deployed URL (for example
-`https://contra-karaoke-proxy.example.workers.dev`) into
+`https://caller-karaoke-proxy.example.workers.dev`) into
 **Preferences → Web data proxy** in the web app. If you set a token, enter the
 same token there.
 

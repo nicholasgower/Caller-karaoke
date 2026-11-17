@@ -5,20 +5,20 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
-use contra_core::{
+use caller_core::{
     AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, BandPart, BandSlot,
     BandVoice, COUNT_IN_BEATS, Countermelody, DEFAULT_DANCE_SOURCE, Dance, DancerSoundEvent,
     EndingOptions, FolderFilter, HumanizeOptions, InstrumentCopies, Library, MelodyInstrument,
     MoveKind, OutputMode, Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset,
     ScheduledCall, Theme, TimelineConfig, Tune, TuneSetSource, VariationOptions, dancer_sounds,
 };
-use contra_music::{
+use caller_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_band, parse_abc,
     render,
 };
 #[cfg(not(target_arch = "wasm32"))]
-use contra_sources::FileCache;
-use contra_sources::{
+use caller_sources::FileCache;
+use caller_sources::{
     Cache, DanceProvider, DanceQuery, DanceSearchPage, DanceSort, DanceSummary, FilterKind,
     TuneQuery, TuneSearchPage, TuneSummary, dance_provider,
 };
@@ -193,7 +193,7 @@ fn visible_tabs(glossary_enabled: bool) -> impl Iterator<Item = &'static TabDef>
 /// One screen: how to draw it and where Escape leads from it.
 struct ScreenDef {
     screen: Screen,
-    draw: fn(&mut ContraApp, &mut egui::Ui, f64),
+    draw: fn(&mut CallerApp, &mut egui::Ui, f64),
     escape: Option<Screen>,
 }
 
@@ -249,31 +249,31 @@ const SCREENS: [ScreenDef; 9] = [
 
 // The registry needs uniform draw functions; the screens themselves have
 // different signatures.
-fn draw_session(app: &mut ContraApp, ui: &mut egui::Ui, beat: f64) {
+fn draw_session(app: &mut CallerApp, ui: &mut egui::Ui, beat: f64) {
     app.session_ui(ui, beat);
 }
-fn draw_dance_library(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_dance_library(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.dance_library_ui(ui);
 }
-fn draw_dance_download(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_dance_download(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.dance_download_ui(ui);
 }
-fn draw_tune_library(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_tune_library(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.tune_library_ui(ui);
 }
-fn draw_tune_download(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_tune_download(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.tune_download_ui(ui);
 }
-fn draw_abc_editor(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_abc_editor(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.abc_editor_ui(ui);
 }
-fn draw_preferences(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_preferences(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.preferences_ui(ui);
 }
-fn draw_aliases(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_aliases(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.aliases_ui(ui);
 }
-fn draw_glossary(app: &mut ContraApp, ui: &mut egui::Ui, _beat: f64) {
+fn draw_glossary(app: &mut CallerApp, ui: &mut egui::Ui, _beat: f64) {
     app.glossary_ui(ui);
 }
 
@@ -416,7 +416,7 @@ fn history_shortcut(input: &mut egui::InputState) -> Option<HistoryAction> {
         .then_some(HistoryAction::Undo)
 }
 
-pub struct ContraApp {
+pub struct CallerApp {
     prefs: Preferences,
     prefs_path: Option<PathBuf>,
     /// Directory for the saved dance and tune libraries; `None` in the
@@ -445,7 +445,7 @@ pub struct ContraApp {
     screen_anim: f32,
     /// The screen the animation progress belongs to; a mismatch restarts it.
     screen_anim_screen: Screen,
-    /// True for `contra-headless`: ignore global shortcuts so the renderer can
+    /// True for `caller-headless`: ignore global shortcuts so the renderer can
     /// hold an arbitrary screen and state.
     headless: bool,
     /// Keeps the window's logical size when it moves to a monitor with a
@@ -815,7 +815,7 @@ fn prepare_tune(
     })
 }
 
-impl ContraApp {
+impl CallerApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         Self::new_with_data_dir(cc, None)
     }
@@ -834,7 +834,7 @@ impl ContraApp {
         let (config_dir, cache_dir) = if let Some(base) = data_dir {
             (base.join("config"), base.join("cache"))
         } else {
-            let project = directories::ProjectDirs::from("org", "contrakaraoke", "ContraKaraoke");
+            let project = directories::ProjectDirs::from("org", "callerkaraoke", "CallerKaraoke");
             if let Some(project) = project {
                 (
                     project.config_dir().to_path_buf(),
@@ -843,14 +843,14 @@ impl ContraApp {
             } else {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    let base = std::env::temp_dir().join("contra-karaoke");
+                    let base = std::env::temp_dir().join("caller-karaoke");
                     (base.join("config"), base.join("cache"))
                 }
                 #[cfg(target_arch = "wasm32")]
                 {
                     (
-                        PathBuf::from("contra-karaoke-config"),
-                        PathBuf::from("contra-karaoke-cache"),
+                        PathBuf::from("caller-karaoke-config"),
+                        PathBuf::from("caller-karaoke-cache"),
                     )
                 }
             }
@@ -935,7 +935,7 @@ impl ContraApp {
         {
             None => None,
             Some(path) => match std::fs::read(path) {
-                Ok(bytes) => match contra_music::soundfont::load_soundfont(&bytes) {
+                Ok(bytes) => match caller_music::soundfont::load_soundfont(&bytes) {
                     Ok(soundfont) => Some(soundfont),
                     Err(error) => {
                         soundfont_error = Some(format!(
@@ -1247,7 +1247,7 @@ impl ContraApp {
     /// An id this build does not know (a hand-edited file or a preference from
     /// a newer build) falls back to ContraDB instead of breaking the screen.
     fn dance_source(&self) -> &'static dyn DanceProvider {
-        dance_provider(&self.prefs.dance_source).unwrap_or(&contra_sources::CONTRADB)
+        dance_provider(&self.prefs.dance_source).unwrap_or(&caller_sources::CONTRADB)
     }
 
     /// Switch the **Download dance** source and drop results from the old one.
@@ -1559,7 +1559,7 @@ impl ContraApp {
                 // the old membership.
                 if matches!(
                     self.prefs.tune_rotation.source,
-                    contra_core::TuneSetSource::Folder(_)
+                    caller_core::TuneSetSource::Folder(_)
                 ) {
                     self.rotation_settings_changed();
                 }
@@ -1608,7 +1608,7 @@ impl ContraApp {
     }
 
     /// Construct the real app without opening a window, audio device, TTS voice,
-    /// network client, or user preference file. Used by `contra-headless` and
+    /// network client, or user preference file. Used by `caller-headless` and
     /// screenshot tests.
     #[cfg(any(feature = "headless", test))]
     pub fn new_headless(cc: &eframe::CreationContext<'_>) -> Self {
@@ -1629,7 +1629,7 @@ impl ContraApp {
 
         let source = SourceClient::new(
             source_tx,
-            Cache::new(contra_sources::MemoryCache::default()),
+            Cache::new(caller_sources::MemoryCache::default()),
             None,
             None,
         );
@@ -1967,7 +1967,7 @@ impl ContraApp {
                 return;
             };
             match std::fs::read(&path) {
-                Ok(bytes) => match contra_music::soundfont::load_soundfont(&bytes) {
+                Ok(bytes) => match caller_music::soundfont::load_soundfont(&bytes) {
                     Ok(soundfont) => self.soundfont = Some(soundfont),
                     Err(error) => {
                         self.soundfont_error = Some(format!(
@@ -2359,7 +2359,7 @@ impl ContraApp {
             count_in_beats,
             sample_rate: self.audio.sample_rate(),
             variation_passes: if self.prefs.accompaniment_variations {
-                contra_music::VARIATION_PASSES
+                caller_music::VARIATION_PASSES
             } else {
                 1
             },
@@ -2655,7 +2655,7 @@ impl ContraApp {
     /// The tune after the one now playing, or `None` when cycling cannot run.
     fn next_rotation_tune(&self) -> Option<Tune> {
         let tunes = self.rotation_tunes();
-        if !contra_core::TuneRotation::can_rotate(tunes.len()) {
+        if !caller_core::TuneRotation::can_rotate(tunes.len()) {
             return None;
         }
         let current = tunes.iter().position(|tune| {
@@ -3333,7 +3333,7 @@ impl ContraApp {
                 return;
             };
             let variation_passes = if self.prefs.accompaniment_variations {
-                contra_music::VARIATION_PASSES
+                caller_music::VARIATION_PASSES
             } else {
                 1
             };
@@ -3369,7 +3369,7 @@ impl ContraApp {
                 return;
             };
             match std::fs::read(&path) {
-                Ok(bytes) => match contra_music::soundfont::load_soundfont(&bytes) {
+                Ok(bytes) => match caller_music::soundfont::load_soundfont(&bytes) {
                     Ok(soundfont) => {
                         let name = path
                             .file_stem()
@@ -3403,7 +3403,7 @@ impl ContraApp {
         path: Option<String>,
     ) {
         self.soundfont = Some(soundfont);
-        self.prefs.soundfont = Some(contra_core::SoundFontSetting { name, path });
+        self.prefs.soundfont = Some(caller_core::SoundFontSetting { name, path });
         self.mark_render_pending_other();
         // The bundled font is still lazily reloadable; keeping it parsed while
         // a user bank is active would retain two sample sets in memory.
@@ -3424,7 +3424,7 @@ impl ContraApp {
     }
 }
 
-impl ContraApp {
+impl CallerApp {
     /// One frame of session work: everything playback needs that draws nothing.
     ///
     /// `eframe` calls [`eframe::App::logic`] but not [`eframe::App::ui`] while
@@ -3845,7 +3845,7 @@ impl ContraApp {
     }
 }
 
-impl eframe::App for ContraApp {
+impl eframe::App for CallerApp {
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         #[cfg(target_os = "android")]
         {
@@ -4101,7 +4101,7 @@ fn header_ui(
         let font = egui::TextStyle::Heading.resolve(ui.style());
         ui.painter()
             .layout_no_wrap(
-                "Contra Karaoke".to_owned(),
+                "Caller Karaoke".to_owned(),
                 font,
                 egui::Color32::PLACEHOLDER,
             )
@@ -4174,7 +4174,7 @@ fn header_ui(
                         // and the long tab labels keeps the navigation to one
                         // row and leaves that height for the prompt and card.
                         if heading_width > 0.0 {
-                            let heading = ui.heading("Contra Karaoke");
+                            let heading = ui.heading("Caller Karaoke");
                             header.heading = Some(heading.rect);
                             ui.add_space(12.0);
                         }
@@ -4500,7 +4500,7 @@ fn build_cache(cache_dir: &Path) -> Cache {
     {
         FileCache::new(cache_dir.join("sources"))
             .map(Cache::new)
-            .unwrap_or_else(|_| Cache::new(contra_sources::MemoryCache::default()))
+            .unwrap_or_else(|_| Cache::new(caller_sources::MemoryCache::default()))
     }
     #[cfg(target_arch = "wasm32")]
     {
@@ -4782,7 +4782,7 @@ mod tests {
         let dance = crate::defaults::default_dance();
         let mut prefs = Preferences::default();
         prefs.select_role_preset(RolePreset::Custom);
-        prefs.role_terms = contra_core::RoleTerms {
+        prefs.role_terms = caller_core::RoleTerms {
             left_singular: "port".into(),
             left_plural: "ports".into(),
             right_singular: "starboard".into(),
@@ -5738,10 +5738,10 @@ mod tests {
         not(target_arch = "wasm32"),
         not(target_os = "android")
     ))]
-    fn hidden_app() -> (ContraApp, egui::Context) {
+    fn hidden_app() -> (CallerApp, egui::Context) {
         let ctx = egui::Context::default();
         let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-        let mut app = ContraApp::new_headless(&cc);
+        let mut app = CallerApp::new_headless(&cc);
         // `new_headless` installs a silent loop, so nothing needs rendering.
         app.needs_render = false;
         app.prefs.tts_enabled = true;
@@ -5985,7 +5985,7 @@ mod tests {
     fn turning_the_count_in_off_before_play_rebuilds_without_one() {
         let ctx = egui::Context::default();
         let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-        let mut app = ContraApp::new_headless(&cc);
+        let mut app = CallerApp::new_headless(&cc);
         app.needs_render = false;
 
         app.prefs.count_in_enabled = false;
@@ -6055,7 +6055,7 @@ mod tests {
     fn a_failed_count_in_rebuild_falls_back_without_a_count_in() {
         let ctx = egui::Context::default();
         let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-        let mut app = ContraApp::new_headless(&cc);
+        let mut app = CallerApp::new_headless(&cc);
         app.needs_render = false;
         app.prefs.count_in_enabled = false;
         // A card that cannot produce calls fails the build. The fallback must
@@ -6103,8 +6103,8 @@ mod tests {
     fn switching_the_dance_source_clears_the_old_results() {
         let ctx = egui::Context::default();
         let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-        let mut app = ContraApp::new_headless(&cc);
-        let other = contra_sources::dance_providers()
+        let mut app = CallerApp::new_headless(&cc);
+        let other = caller_sources::dance_providers()
             .iter()
             .find(|provider| provider.id() != app.prefs.dance_source)
             .map(|provider| provider.id().to_string())
@@ -6133,7 +6133,7 @@ mod tests {
     fn a_render_key_ignores_ui_only_preferences_and_tracks_audio() {
         let ctx = egui::Context::default();
         let cc = eframe::CreationContext::_new_kittest(ctx);
-        let mut app = ContraApp::new_headless(&cc);
+        let mut app = CallerApp::new_headless(&cc);
         let base = app.render_key();
 
         app.prefs.theme = if app.prefs.theme == Theme::Dark {
@@ -6161,7 +6161,7 @@ mod tests {
     fn a_finished_prefetch_fills_the_cache_and_starts_a_pending_play() {
         let ctx = egui::Context::default();
         let cc = eframe::CreationContext::_new_kittest(ctx);
-        let mut app = ContraApp::new_headless(&cc);
+        let mut app = CallerApp::new_headless(&cc);
         app.headless = false;
 
         let score = parse_abc(&app.tune.abc).expect("the bundled tune parses");
@@ -6218,10 +6218,10 @@ mod tests {
         not(target_arch = "wasm32"),
         not(target_os = "android")
     ))]
-    fn history_app() -> (ContraApp, egui::Context) {
+    fn history_app() -> (CallerApp, egui::Context) {
         let ctx = egui::Context::default();
         let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-        let mut app = ContraApp::new_headless(&cc);
+        let mut app = CallerApp::new_headless(&cc);
         app.needs_render = false;
         (app, ctx)
     }
@@ -6397,7 +6397,7 @@ mod tests {
 
         let mut other = app.dance.clone();
         other.source =
-            contra_core::SourceRef::new("contradb", "9999", "https://example.test/dances/9999");
+            caller_core::SourceRef::new("contradb", "9999", "https://example.test/dances/9999");
         other.title = "Another Dance".into();
         app.dance = other;
         app.prefs.last_dance = Some(app.dance.source.clone());

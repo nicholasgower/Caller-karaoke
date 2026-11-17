@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Contra Karaoke
+Name=Caller Karaoke
 Comment=Contra dance caller trainer
-Exec=contra-karaoke
-Icon=contra-karaoke
+Exec=caller-karaoke
+Icon=caller-karaoke
 Terminal=false
 Categories=AudioVideo;Audio;Education;
 Keywords=contra;dance;caller;music;ABC;
@@ -11,7 +11,7 @@ Keywords=contra;dance;caller;music;ABC;
 # opens focused instead of behind the launcher under focus-stealing prevention.
 StartupNotify=true
 # winit derives WM_CLASS from the executable's file name, so the packaged
-# binary (/usr/bin/contra-karaoke, or usr/bin/contra-karaoke inside the
+# binary (/usr/bin/caller-karaoke, or usr/bin/caller-karaoke inside the
 # AppImage) reports this class. Renaming the executable means changing this
 # value too, or the panel keeps a second, anonymous window entry.
-StartupWMClass=contra-karaoke
+StartupWMClass=caller-karaoke

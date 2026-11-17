@@ -4,9 +4,9 @@
 
 | Platform | Build | Artifact |
 | --- | --- | --- |
-| Windows x64 | `cargo build --release` + Inno Setup | `ContraKaraoke-<version>-x64-setup.exe`, `...-portable.zip` |
+| Windows x64 | `cargo build --release` + Inno Setup | `CallerKaraoke-<version>-x64-setup.exe`, `...-portable.zip` |
 | Linux x86_64 | `cargo build --release` | `.deb` via `cargo-deb`, `.AppImage`, `.flatpak` |
-| Web | `trunk build --release` + `wasm-opt` | `contra-karaoke-web.zip`, hosted copy under the docs site `/app/` |
+| Web | `trunk build --release` + `wasm-opt` | `caller-karaoke-web.zip`, hosted copy under the docs site `/app/` |
 | Android | `python packaging/android/build-apk.py` (wraps `cargo apk`) | universal APK (arm64 + armv7), minSdk 26 |
 
 Notes:

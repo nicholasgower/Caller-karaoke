@@ -2,7 +2,7 @@
 
 use std::sync::LazyLock;
 
-use contra_core::{Dance, Figure, SourceRef};
+use caller_core::{Dance, Figure, SourceRef};
 use scraper::{Html, Selector};
 use serde::Deserialize;
 use serde_json::json;

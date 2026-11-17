@@ -5,7 +5,7 @@
 //! without a browser.
 
 use super::*;
-use contra_core::{Figure, SourceRef};
+use caller_core::{Figure, SourceRef};
 
 fn test_tune(id: &str, title: &str) -> Tune {
     Tune {
@@ -55,10 +55,10 @@ fn payload() -> SharePayload {
     }
 }
 
-fn test_app() -> (ContraApp, egui::Context) {
+fn test_app() -> (CallerApp, egui::Context) {
     let ctx = egui::Context::default();
     let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-    let app = ContraApp::new_headless(&cc);
+    let app = CallerApp::new_headless(&cc);
     (app, ctx)
 }
 
@@ -245,7 +245,7 @@ fn the_share_panel_fits_desktop_and_phone_widths() {
             .with_size(egui::vec2(width, 800.0))
             .with_theme(egui::Theme::Dark)
             .build_ui_state(
-                |ui, app: &mut ContraApp| {
+                |ui, app: &mut CallerApp| {
                     egui::Frame::NONE.show(ui, |ui| app.share_link_ui(ui, compact));
                 },
                 app,

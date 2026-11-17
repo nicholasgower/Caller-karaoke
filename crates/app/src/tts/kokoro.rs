@@ -6,7 +6,7 @@
 //!
 //! Text is phonemized with Misaki's pure-Rust G2P (the front end Kokoro was
 //! trained on). The reviewed dance-term overrides in
-//! [`contra_core::pronounce`] are injected into that lexicon, then the
+//! [`caller_core::pronounce`] are injected into that lexicon, then the
 //! resulting IPA is normalized to Kokoro's trained alphabet before tokenizing.
 
 use std::collections::HashMap;
@@ -17,8 +17,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 
-use contra_core::CallTone;
-use contra_core::pronounce;
+use caller_core::CallTone;
+use caller_core::pronounce;
 #[cfg(target_os = "linux")]
 use flate2::read::GzDecoder;
 use misaki_rs::lexicon::PhonemeEntry;
@@ -192,7 +192,7 @@ impl KokoroSpeech {
         let worker_generation = Arc::clone(&generation);
         let worker_cache_bytes = Arc::clone(&cache_bytes);
         std::thread::Builder::new()
-            .name("contra-kokoro".into())
+            .name("caller-kokoro".into())
             .spawn(move || {
                 Worker::new(cache_dir, output_sample_rate, worker_cache_bytes).run(
                     commands,
@@ -287,7 +287,7 @@ impl Worker {
             output_sample_rate,
             rate: 1.0,
             tone: CallTone::default(),
-            deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+            deliveries: caller_core::DEFAULT_TTS_DELIVERIES,
             voice: crate::tts::voice(crate::tts::DEFAULT_VOICE_ID),
             enabled: false,
             engine: None,
@@ -343,8 +343,8 @@ impl Worker {
                 }
                 Command::SetRate(rate) => {
                     self.rate = rate.clamp(
-                        contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
-                        contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+                        caller_core::MIN_TTS_RATE * caller_core::TTS_RATE_SCALE,
+                        caller_core::MAX_TTS_RATE * caller_core::TTS_RATE_SCALE,
                     );
                     self.clear_cache();
                 }
@@ -357,8 +357,8 @@ impl Worker {
                 }
                 Command::SetDeliveries(deliveries) => {
                     let deliveries = deliveries.clamp(
-                        contra_core::MIN_TTS_DELIVERIES,
-                        contra_core::MAX_TTS_DELIVERIES,
+                        caller_core::MIN_TTS_DELIVERIES,
+                        caller_core::MAX_TTS_DELIVERIES,
                     );
                     if self.deliveries == deliveries {
                         continue;
@@ -704,8 +704,8 @@ impl Worker {
             Command::Stop => PrewarmAction::Abort,
             Command::SetRate(rate) => {
                 self.rate = rate.clamp(
-                    contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
-                    contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+                    caller_core::MIN_TTS_RATE * caller_core::TTS_RATE_SCALE,
+                    caller_core::MAX_TTS_RATE * caller_core::TTS_RATE_SCALE,
                 );
                 self.clear_cache();
                 PrewarmAction::Abort
@@ -720,8 +720,8 @@ impl Worker {
             }
             Command::SetDeliveries(deliveries) => {
                 let deliveries = deliveries.clamp(
-                    contra_core::MIN_TTS_DELIVERIES,
-                    contra_core::MAX_TTS_DELIVERIES,
+                    caller_core::MIN_TTS_DELIVERIES,
+                    caller_core::MAX_TTS_DELIVERIES,
                 );
                 if self.deliveries == deliveries {
                     return PrewarmAction::Continue;
@@ -1282,7 +1282,7 @@ fn download(
     let temporary = path.with_extension("part");
     let _ = fs::remove_file(&temporary);
     let mut response = ureq::get(asset.url)
-        .header("User-Agent", "contra-karaoke/0.1.0")
+        .header("User-Agent", "caller-karaoke/0.1.0")
         .call()
         .map_err(|error| format!("could not download {}: {error}", asset.name))?;
     let mut reader = response.body_mut().as_reader();
@@ -1533,7 +1533,7 @@ fn init_onnx(
                 path.display()
             )
         })?
-        .with_name("contra-karaoke")
+        .with_name("caller-karaoke")
         .build()
         .map_err(|error| format!("could not start ONNX Runtime: {error}"))
 }
@@ -1551,7 +1551,7 @@ fn init_onnx(
                 path.display()
             )
         })?
-        .with_name("contra-karaoke")
+        .with_name("caller-karaoke")
         .build()
         .map_err(|error| format!("could not start ONNX Runtime: {error}"))
 }
@@ -1562,7 +1562,7 @@ fn init_onnx(
     _progress: &mut dyn FnMut(&str, u64, u64),
 ) -> Result<ort::environment::Environment, String> {
     // packaging/android/build-apk.py puts libonnxruntime.so next to
-    // libcontra_app.so in the APK's native library directory. Prefer that exact
+    // libcaller_app.so in the APK's native library directory. Prefer that exact
     // directory from /proc/self/maps over a bare soname lookup, then fall back
     // to the soname so a differently packaged build can still load it.
     let path = android_runtime_path();
@@ -1581,7 +1581,7 @@ fn start_onnx(path: &Path) -> Result<ort::environment::Environment, String> {
         .map_err(|_| {
             "the neural voice is not available in this build; using the platform voice".to_string()
         })?
-        .with_name("contra-karaoke")
+        .with_name("caller-karaoke")
         .build()
         .map_err(|error| format!("could not start ONNX Runtime: {error}"))
 }
@@ -1600,7 +1600,7 @@ fn runtime_beside_app_library(maps: &str) -> Option<PathBuf> {
         };
         let path = path.strip_suffix(" (deleted)").unwrap_or(path);
         let path = Path::new(path);
-        if path.file_name().and_then(|name| name.to_str()) != Some("libcontra_app.so") {
+        if path.file_name().and_then(|name| name.to_str()) != Some("libcaller_app.so") {
             continue;
         }
         return path
@@ -1797,13 +1797,13 @@ mod tests {
     fn finds_the_runtime_next_to_the_app_library() {
         let maps = "\
 7f0000000000-7f0000001000 r-xp 00000000 fd:00 123 /system/lib64/libc.so
-7f0000100000-7f0000300000 r-xp 00000000 fd:00 456 /data/app/~~token/org.contrakaraoke.app-abc/lib/arm64/libcontra_app.so
-7f0000300000-7f0000301000 r--p 00000000 fd:00 789 /data/app/~~token/org.contrakaraoke.app-abc/lib/arm64/libonnxruntime.so
+7f0000100000-7f0000300000 r-xp 00000000 fd:00 456 /data/app/~~token/org.callerkaraoke.app-abc/lib/arm64/libcaller_app.so
+7f0000300000-7f0000301000 r--p 00000000 fd:00 789 /data/app/~~token/org.callerkaraoke.app-abc/lib/arm64/libonnxruntime.so
 ";
         assert_eq!(
             runtime_beside_app_library(maps),
             Some(PathBuf::from(
-                "/data/app/~~token/org.contrakaraoke.app-abc/lib/arm64/libonnxruntime.so"
+                "/data/app/~~token/org.callerkaraoke.app-abc/lib/arm64/libonnxruntime.so"
             ))
         );
         assert_eq!(runtime_beside_app_library(""), None);
@@ -2041,7 +2041,7 @@ mod tests {
             .map(|duration| duration.as_nanos())
             .unwrap_or(0);
         std::env::temp_dir().join(format!(
-            "contra-kokoro-{label}-{}-{stamp}",
+            "caller-kokoro-{label}-{}-{stamp}",
             std::process::id()
         ))
     }
@@ -2207,13 +2207,13 @@ mod tests {
     #[test]
     fn bundled_dance_calls_are_clear() {
         let dance = crate::defaults::default_dance();
-        let timeline = contra_core::PracticeTimeline::build(
+        let timeline = caller_core::PracticeTimeline::build(
             &dance,
-            &contra_core::AliasTable::default(),
-            &contra_core::RoleTerms::default(),
-            &contra_core::LeadSettings::default(),
-            contra_core::Tempo::default(),
-            contra_core::TimelineConfig::default(),
+            &caller_core::AliasTable::default(),
+            &caller_core::RoleTerms::default(),
+            &caller_core::LeadSettings::default(),
+            caller_core::Tempo::default(),
+            caller_core::TimelineConfig::default(),
         )
         .expect("timeline");
         for call in &timeline.calls {
@@ -2335,8 +2335,8 @@ mod tests {
     #[test]
     #[ignore = "downloads and loads the Kokoro model"]
     fn synthesizes_a_reviewed_call_from_the_real_model() {
-        let cache = std::env::var("CONTRA_KOKORO_CACHE")
-            .expect("set CONTRA_KOKORO_CACHE to a directory with the Kokoro assets");
+        let cache = std::env::var("CALLER_KOKORO_CACHE")
+            .expect("set CALLER_KOKORO_CACHE to a directory with the Kokoro assets");
         let environment =
             init_onnx(Path::new(&cache), &mut |_, _, _| {}).expect("load ONNX Runtime");
         let voice = crate::tts::voice(crate::tts::DEFAULT_VOICE_ID);

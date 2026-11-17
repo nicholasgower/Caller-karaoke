@@ -9,8 +9,8 @@ cd crates/web && trunk build --release
 ```
 
 The entry point is `crates/web/src/lib.rs`; Trunk boots the app on the
-`#contra-canvas` element. Output is written to `dist/web`. Package it as
-`contra-karaoke-0.1.0-web.zip` for a release.
+`#caller-canvas` element. Output is written to `dist/web`. Package it as
+`caller-karaoke-0.1.0-web.zip` for a release.
 
 The Cloudflare Worker proxy in `proxy/` supplies CORS-safe source access; set
 its URL under Preferences. Prefs and source responses are stored in

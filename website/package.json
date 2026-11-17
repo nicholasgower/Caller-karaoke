@@ -1,8 +1,8 @@
 {
-  "name": "contra-karaoke-docs",
+  "name": "caller-karaoke-docs",
   "version": "0.1.0",
   "private": true,
-  "description": "User documentation for Contra Karaoke",
+  "description": "User documentation for Caller Karaoke",
   "scripts": {
     "docusaurus": "docusaurus",
     "prestart": "npm run build:app",

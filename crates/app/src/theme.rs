@@ -1,6 +1,6 @@
-//! Themes for Contra Karaoke: dark grey (the default) and a warm light cream.
+//! Themes for Caller Karaoke: dark grey (the default) and a warm light cream.
 
-use contra_core::Theme;
+use caller_core::Theme;
 use eframe::egui;
 
 /// Minimum height of a control in the phone session layout, in points.

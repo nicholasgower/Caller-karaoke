@@ -1,10 +1,10 @@
 ---
 title: Install on Windows
-description: Run the Windows installer or portable ZIP, or build Contra Karaoke from source.
+description: Run the Windows installer or portable ZIP, or build Caller Karaoke from source.
 sidebar_position: 1
 ---
 
-Contra Karaoke is distributed as a 64-bit Windows installer and a portable ZIP
+Caller Karaoke is distributed as a 64-bit Windows installer and a portable ZIP
 in the latest release. There is no stable signed release yet, so
 Windows may show a SmartScreen warning.
 
@@ -19,9 +19,9 @@ Windows may show a SmartScreen warning.
 
 <DownloadButton platform="windows" />
 
-The main button downloads `ContraKaraoke-0.1.0-windows-x64-setup.exe`, the
+The main button downloads `CallerKaraoke-0.1.0-windows-x64-setup.exe`, the
 installer. The menu on the button offers
-`ContraKaraoke-0.1.0-windows-x64-portable.zip`, the portable build. Release
+`CallerKaraoke-0.1.0-windows-x64-portable.zip`, the portable build. Release
 artifacts carry version 0.1.0 and may be replaced by a later build. They are
 not code-signed.
 
@@ -32,7 +32,7 @@ not code-signed.
 <Steps>
   <Step shot="install-windows-wizard">
     Run the setup program. The wizard opens on **Select Destination Location**,
-    which defaults to `C:\Program Files\Contra Karaoke`; choose whether to
+    which defaults to `C:\Program Files\Caller Karaoke`; choose whether to
     create a desktop shortcut, then finish the install.
   </Step>
   <Step shot="install-windows-smartscreen">
@@ -50,7 +50,7 @@ uninstaller. It does not install a service.
 <Steps>
   <Step shot="install-windows-portable">
     Extract the ZIP to a folder you can write to, then run
-    `contra-karaoke.exe`.
+    `caller-karaoke.exe`.
   </Step>
 </Steps>
 
@@ -71,11 +71,11 @@ disabling security features.
 
 ## Media keys and the system media overlay
 
-Contra Karaoke registers with System Media Transport Controls, so the keyboard's
+Caller Karaoke registers with System Media Transport Controls, so the keyboard's
 **Play/Pause** key, the media overlay that appears when you press it, and the
 media controls in the Quick Settings panel drive the session from any window.
 The overlay shows the loaded dance as the title, the tune as the artist, and
-*Contra Karaoke* as the album, so you can see what is loaded without focusing
+*Caller Karaoke* as the album, so you can see what is loaded without focusing
 the app.
 
 - **Play** starts or resumes the session.
@@ -89,7 +89,7 @@ there instead; pause that app or use the app's own **Play/Pause** button.
 
 ## Uninstall
 
-Use **Settings → Apps → Installed apps → Contra Karaoke → Uninstall**. For the
+Use **Settings → Apps → Installed apps → Caller Karaoke → Uninstall**. For the
 portable build, delete the extracted folder. Removing the app does not
 automatically remove the per-user cache or preferences.
 

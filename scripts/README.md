@@ -7,7 +7,7 @@ the application.
 - `check.sh` — the same checks on Linux/macOS.
 - `inspect.ps1` / `inspect.sh` — run the desktop app with the `inspection`
   feature for MCP automation (see `docs/automation.md`).
-- `profile.ps1` / `profile.sh` — build `contra-perf` in release mode and print
+- `profile.ps1` / `profile.sh` — build `caller-perf` in release mode and print
   the CPU profile of every screen and user-facing action. Pass a sample count
   as the first argument; five samples is the default. The report names the
   functions over the frame or action budget and writes nothing except to
@@ -59,9 +59,9 @@ After a rebuild, confirm the file still matches the full bank for the kept
 programs:
 
 ```sh
-cargo test -p contra-music --test bundled_soundfont
-CONTRA_REFERENCE_SF2=/path/to/FluidR3_GM.sf2 \
-    cargo test -p contra-music --test bundled_soundfont -- --ignored
+cargo test -p caller-music --test bundled_soundfont
+CALLER_REFERENCE_SF2=/path/to/FluidR3_GM.sf2 \
+    cargo test -p caller-music --test bundled_soundfont -- --ignored
 ```
 
 `crates/music/tests/bundled_soundfont.rs` also checks that the keep-list matches

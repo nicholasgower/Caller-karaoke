@@ -12,8 +12,8 @@
 
 use super::*;
 use crate::app::ui::preferences::{PreferencesCategory, PreferencesPage};
-use contra_core::SourceRef;
-use contra_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary};
+use caller_core::SourceRef;
+use caller_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary};
 use eframe::egui;
 use eframe::egui::accesskit;
 use egui_kittest::Harness;
@@ -41,8 +41,8 @@ const SCREENS: [Screen; 8] = [
     Screen::Glossary,
 ];
 
-fn demo_app(cc: &mut eframe::CreationContext<'_>) -> ContraApp {
-    let mut app = ContraApp::new_headless(cc);
+fn demo_app(cc: &mut eframe::CreationContext<'_>) -> CallerApp {
+    let mut app = CallerApp::new_headless(cc);
     app.clear_render_pending();
     app.animations_off_for_test();
 
@@ -114,7 +114,7 @@ fn demo_app(cc: &mut eframe::CreationContext<'_>) -> ContraApp {
     app
 }
 
-impl ContraApp {
+impl CallerApp {
     /// The headless renderer already turns animations off in preferences; keep
     /// the helper explicit so a layout test can never sit mid-transition.
     fn animations_off_for_test(&mut self) {
@@ -149,7 +149,7 @@ impl ContraApp {
 }
 
 /// Every node rectangle in the current tree, with its role and label.
-fn node_rects(harness: &Harness<'_, ContraApp>) -> Vec<(egui::Rect, accesskit::Role, String)> {
+fn node_rects(harness: &Harness<'_, CallerApp>) -> Vec<(egui::Rect, accesskit::Role, String)> {
     let mut nodes = Vec::new();
     for node in harness.root().children_recursive() {
         let access = node.accesskit_node();
@@ -729,7 +729,7 @@ fn hovering_a_dance_card_term_shows_its_glossary_definition() {
 /// events any backend synthesizes from it, in the same frame. A test that sends
 /// pointer events alone is a mouse gesture, which the app deliberately ignores
 /// for tab changes.
-fn touch_drag(harness: &mut Harness<'_, ContraApp>, from: egui::Pos2, to: egui::Pos2) {
+fn touch_drag(harness: &mut Harness<'_, CallerApp>, from: egui::Pos2, to: egui::Pos2) {
     const STEPS: u32 = 4;
     let touch = |phase, pos| egui::Event::Touch {
         device_id: egui::TouchDeviceId(1),
@@ -771,7 +771,7 @@ fn touch_drag(harness: &mut Harness<'_, ContraApp>, from: egui::Pos2, to: egui::
 }
 
 /// Tap once with a finger, the way a touch screen reports it.
-fn touch_tap(harness: &mut Harness<'_, ContraApp>, pos: egui::Pos2) {
+fn touch_tap(harness: &mut Harness<'_, CallerApp>, pos: egui::Pos2) {
     let touch = |phase, pos| egui::Event::Touch {
         device_id: egui::TouchDeviceId(1),
         id: egui::TouchId(1),

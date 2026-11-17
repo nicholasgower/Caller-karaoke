@@ -13,10 +13,10 @@ Then build:
 
 ```sh
 flatpak-builder --force-clean --repo=repo build-dir \
-  packaging/flatpak/org.contrakaraoke.ContraKaraoke.yml
+  packaging/flatpak/org.callerkaraoke.CallerKaraoke.yml
 flatpak build-bundle repo \
-  dist/ContraKaraoke-0.1.0.flatpak \
-  org.contrakaraoke.ContraKaraoke
+  dist/CallerKaraoke-0.1.0.flatpak \
+  org.callerkaraoke.CallerKaraoke
 ```
 
 The manifest runs Cargo offline against the generated sources. The desktop voice

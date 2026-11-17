@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Contra Karaoke are documented here.
+All notable changes to Caller Karaoke are documented here.
 
 ## [Unreleased]
 

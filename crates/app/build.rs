@@ -21,8 +21,8 @@ const ONNX_RUNTIME_DLL: &str = "onnxruntime-win-x64-1.31.0/lib/onnxruntime.dll";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=../../assets/icons/contra-karaoke.ico");
-    println!("cargo:rerun-if-env-changed=CONTRA_ONNX_RUNTIME_DLL");
+    println!("cargo:rerun-if-changed=../../assets/icons/caller-karaoke.ico");
+    println!("cargo:rerun-if-env-changed=CALLER_ONNX_RUNTIME_DLL");
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
@@ -45,11 +45,11 @@ fn main() {
         return;
     }
 
-    if let Ok(path) = env::var("CONTRA_ONNX_RUNTIME_DLL") {
+    if let Ok(path) = env::var("CALLER_ONNX_RUNTIME_DLL") {
         let source = PathBuf::from(path);
         fs::copy(&source, &destination).unwrap_or_else(|error| {
             panic!(
-                "could not copy CONTRA_ONNX_RUNTIME_DLL from {}: {error}",
+                "could not copy CALLER_ONNX_RUNTIME_DLL from {}: {error}",
                 source.display()
             )
         });
@@ -59,7 +59,7 @@ fn main() {
     let bytes = download().unwrap_or_else(|error| {
         panic!(
             "could not download ONNX Runtime {version} for the Kokoro voice: {error}\n\
-             Set CONTRA_ONNX_RUNTIME_DLL to a local onnxruntime.dll to build offline.",
+             Set CALLER_ONNX_RUNTIME_DLL to a local onnxruntime.dll to build offline.",
             version = "1.31.0"
         )
     });
@@ -72,7 +72,7 @@ fn main() {
 
 fn download() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut response = ureq::get(ONNX_RUNTIME_ZIP)
-        .header("User-Agent", "contra-karaoke-build")
+        .header("User-Agent", "caller-karaoke-build")
         .call()?;
     let bytes = response
         .body_mut()
@@ -113,9 +113,9 @@ fn sha256_hex(bytes: &[u8]) -> String {
 #[cfg(windows)]
 fn embed_windows_resources() {
     let mut resource = winres::WindowsResource::new();
-    resource.set_icon("../../assets/icons/contra-karaoke.ico");
+    resource.set_icon("../../assets/icons/caller-karaoke.ico");
     resource.set("FileDescription", "Contra dance caller trainer");
-    resource.set("ProductName", "Contra Karaoke");
+    resource.set("ProductName", "Caller Karaoke");
     resource.set("LegalCopyright", "MIT licensed");
     if let Err(error) = resource.compile() {
         println!("cargo:warning=Windows icon and metadata not embedded: {error}");

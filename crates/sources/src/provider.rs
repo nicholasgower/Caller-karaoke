@@ -1,6 +1,6 @@
 //! Provider traits and source-neutral search types.
 
-use contra_core::{Dance, Tune};
+use caller_core::{Dance, Tune};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HttpMethod {

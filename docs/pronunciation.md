@@ -1,6 +1,6 @@
 # Dance-term pronunciation review
 
-Contra Karaoke speaks calls with the local Kokoro-82M voice on desktop and
+Caller Karaoke speaks calls with the local Kokoro-82M voice on desktop and
 Android. Kokoro
 does not read English letter by letter; it consumes phonemes from Misaki's
 grapheme-to-phoneme (G2P) model. That model is accurate for most of the contra
@@ -33,7 +33,7 @@ rendered alias, and “and a half” becomes “an a half” for both backends. 
 then receives the connected tail `nəhˈæf` instead of `ænd ɐ hˈæf`, so the count
 does not arrive as four separated words.
 
-The check is automated by `cargo test -p contra-app`. The default test suite
+The check is automated by `cargo test -p caller-app`. The default test suite
 does not download anything.
 
 ## Corrections
@@ -113,12 +113,12 @@ padding in Preferences. The timeline calibration itself is unchanged.
 
 ```sh
 # Phoneme review, role terms, counts, and the bundled dance. No network.
-cargo test -p contra-app
+cargo test -p caller-app
 
 # Real model inference. Point the cache at a directory containing
 # kokoro-v1.0/model_quantized.onnx, af_heart.bin, and config.json.
-CONTRA_KOKORO_CACHE=/path/to/cache \
-  cargo test -p contra-app synthesizes_a_reviewed_call_from_the_real_model -- --ignored
+CALLER_KOKORO_CACHE=/path/to/cache \
+  cargo test -p caller-app synthesizes_a_reviewed_call_from_the_real_model -- --ignored
 ```
 
 The ignored test loads the ONNX Runtime (embedded on Windows, downloaded on

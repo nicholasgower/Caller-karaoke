@@ -295,7 +295,7 @@ fn matches_ratio(expected: egui::Vec2, size: egui::Vec2, scale: f32) -> bool {
 /// and 256 px covers the largest size Windows asks for at common scale
 /// factors. The mark itself lives in `assets/icons/`.
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
-const ICON_PNG: &[u8] = include_bytes!("../../../assets/icons/contra-karaoke-256.png");
+const ICON_PNG: &[u8] = include_bytes!("../../../assets/icons/caller-karaoke-256.png");
 
 /// Decode the bundled icon for the platform window.
 ///

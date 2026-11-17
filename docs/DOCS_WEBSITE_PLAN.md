@@ -5,7 +5,7 @@
 **Date:** 2026-11-14
 **Owner:** docs track, running alongside app generation
 **Targets:** Docusaurus 3.10 · Node 24 LTS · `egui`/`eframe` 0.37 · `egui_kittest` 0.37 · Rust 1.95
-**Applies to:** Contra Karaoke 0.1.0 nightly
+**Applies to:** Caller Karaoke 0.1.0 nightly
 
 This plan describes a public GitHub Pages documentation site in which every
 in-app instruction is paired with a screenshot generated from the real
@@ -27,7 +27,7 @@ that now exists on `main`.
 | Area | Current code |
 | --- | --- |
 | Entry point | `crates/app/src/main.rs` — native `eframe` bootstrap |
-| Application state | `crates/app/src/app.rs` — `ContraApp`, `eframe::App::ui`, startup I/O, source events, playback, preferences |
+| Application state | `crates/app/src/app.rs` — `CallerApp`, `eframe::App::ui`, startup I/O, source events, playback, preferences |
 | Screens | `crates/app/src/ui.rs` — included into `app.rs`; session, dance picker, tune picker, preferences, aliases |
 | Audio | `crates/app/src/audio.rs` — concrete `cpal` engine with `silent()` fallback |
 | Sources | `crates/app/src/source.rs` — concrete `ehttp` client, cache, proxy |
@@ -43,10 +43,10 @@ that now exists on `main`.
 - The app now has `crates/app/src/lib.rs` with shared desktop, web, and Android
   entry points, `crates/web` for the Trunk/WASM page, and `crates/mcp` plus an
   `inspection` feature for live agent automation.
-- `ContraApp::new` still reads real config/cache directories, opens the audio
+- `CallerApp::new` still reads real config/cache directories, opens the audio
   device, initializes system TTS, and may read a user soundfont at startup; the
   bundled font loads on the first render.
-  `ContraApp::new_headless` and `contra-headless` provide the deterministic
+  `CallerApp::new_headless` and `caller-headless` provide the deterministic
   render path used for documentation.
 - Playback is a concrete `AudioEngine`; the headless build adds a silent clock
   and seek helpers, but there is no general playback trait.
@@ -97,8 +97,8 @@ documentation site.
 
 ### 0.3 Headless renderer (implemented)
 
-`crates/app` has a `headless` feature and a `contra-headless` binary. It
-constructs the real `ContraApp` with a silent transport, in-memory source cache,
+`crates/app` has a `headless` feature and a `caller-headless` binary. It
+constructs the real `CallerApp` with a silent transport, in-memory source cache,
 stub speech backend, and no preference file, then renders it through
 `egui_kittest` with wgpu. No window, audio device, network, or system TTS is
 opened.
@@ -123,7 +123,7 @@ remaining images are OS installer dialogs that are not part of the app. The old
 ### 1.1 Goals
 
 1. Publish user documentation at
-   `https://contrakaraoke.nicholasgower.com/` from `main`.
+   `https://callerkaraoke.nicholasgower.com/` from `main`.
 2. Explain the complete implemented 0.1.0 journey: install, choose a dance,
    choose a tune, configure roles/aliases/instruments/timing, run a session,
    use TTS, clear the source cache, export MIDI, troubleshoot.
@@ -200,7 +200,7 @@ real app.
 | Data | Bundled defaults + synthetic fixtures, offline | Deterministic, no network, no licensing surprises |
 | Storage | PNGs committed under `website/static/img/screens/` | Reviewable diffs, fast docs builds |
 | Instruction API | `<Step shot="id">` MDX component | Makes “instruction without screenshot” impossible |
-| App baseline | `108e1de`, headless renderer added | Library, `contra-headless`, sheet-music preview, keyboard shortcuts, Kokoro voices, and live MCP inspection exist |
+| App baseline | `108e1de`, headless renderer added | Library, `caller-headless`, sheet-music preview, keyboard shortcuts, Kokoro voices, and live MCP inspection exist |
 | Manual images | Windows/Android OS dialogs only | Automating OS UI is disproportionate for three images |
 | Analytics | None | Matches app privacy rules |
 
@@ -334,7 +334,7 @@ website/screenshots/manifest.json  (authored: id, scenario, viewport, alt, capti
                 │
                 ├──────────────► cargo xtask screenshots
                 │                     │
-                │                     ├─ build real ContraApp with screenshot deps
+                │                     ├─ build real CallerApp with screenshot deps
                 │                     ├─ drive it with egui_kittest (AccessKit)
                 │                     ├─ render @2× with wgpu, crop via label bounds
                 │                     └─ write PNG + website/screenshots/generated.json
@@ -357,8 +357,8 @@ TTS, or user config. Current code blocks each of those:
 
 | Requirement | Current code | Required change |
 | --- | --- | --- |
-| Library entry | `src/lib.rs` exists and exports `ContraApp`; platform entry points are shared | Keep it; expose the test constructor below |
-| Constructor | `ContraApp::new(cc)` reads prefs, creates dirs, opens audio/TTS, loads SF2 | Add `ContraApp::with_deps(cc, AppDeps)`; `new` delegates |
+| Library entry | `src/lib.rs` exists and exports `CallerApp`; platform entry points are shared | Keep it; expose the test constructor below |
+| Constructor | `CallerApp::new(cc)` reads prefs, creates dirs, opens audio/TTS, loads SF2 | Add `CallerApp::with_deps(cc, AppDeps)`; `new` delegates |
 | Playback | Concrete `AudioEngine`; `current_beat` is 0 without a buffer | Add `Playback` trait + `FakePlayback` (preferred), or `AudioEngine::silent` + `seek_beat`/`force_finished` test helpers |
 | Sources | Concrete `SourceClient`; `ehttp` only | Add a fixture backend or `SourceService` trait; fixture returns results/errors synchronously |
 | TTS | `Speech::new()` initializes the system voice | Add `Speech::stub()` or a `Speaker` trait |
@@ -377,7 +377,7 @@ pub mod defaults;
 pub mod source;
 pub mod theme;
 pub mod tts;
-pub use app::ContraApp;
+pub use app::CallerApp;
 ```
 
 ```rust
@@ -393,7 +393,7 @@ pub struct AppDeps {
     pub ready: bool,
 }
 
-impl ContraApp {
+impl CallerApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         Self::with_deps(cc, AppDeps::native())
     }
@@ -412,7 +412,7 @@ startup I/O from the test path.
 If the app track prefers a smaller change, the minimum viable seam is:
 
 - `src/lib.rs` + public modules;
-- `ContraApp::with_deps`;
+- `CallerApp::with_deps`;
 - `AudioEngine::silent` + `seek_beat` + `force_finished`;
 - `Speech::stub` (available, no-op);
 - `SourceClient::fixture` that sends prebuilt `SourceEvent`s;
@@ -422,7 +422,7 @@ If the app track prefers a smaller change, the minimum viable seam is:
 Do not add `cfg` branches inside the UI. The screenshots must render the same
 code paths users see.
 
-> The implemented capture path is `contra-headless` (§0.3) and
+> The implemented capture path is `caller-headless` (§0.3) and
 > `website/scripts/capture-screenshots.mjs`. The `xtask`/`egui_kittest` sketches
 > in this section describe the original design; use the headless binary for
 > current captures.
@@ -511,7 +511,7 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
-contra-app = { path = "../crates/app" }
+caller-app = { path = "../crates/app" }
 egui_kittest = { version = "0.37", features = ["eframe", "wgpu"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 serde.workspace = true
@@ -558,7 +558,7 @@ fn capture(spec: &ShotSpec) -> anyhow::Result<image::RgbaImage> {
             ctx.style_mut(|s| s.animation_time = 0.0);
         })
         .build_eframe(|cc| {
-            contra_app::ContraApp::with_deps(cc, screenshot_deps(spec))
+            caller_app::CallerApp::with_deps(cc, screenshot_deps(spec))
         });
 
     scenarios::run(&spec.scenario, &mut harness)?;
@@ -573,7 +573,7 @@ fn capture(spec: &ShotSpec) -> anyhow::Result<image::RgbaImage> {
     })
 }
 
-fn settle(h: &mut Harness<contra_app::ContraApp>) {
+fn settle(h: &mut Harness<caller_app::CallerApp>) {
     h.run_steps(3);
 }
 ```
@@ -928,12 +928,12 @@ to `'throw'`, add local search, commit `package-lock.json`, add `.nvmrc` with
 
 ```ts
 const config: Config = {
-  title: 'Contra Karaoke',
+  title: 'Caller Karaoke',
   tagline: 'Learn to call contra dances in time with the music',
-  url: 'https://contrakaraoke.nicholasgower.com',
+  url: 'https://callerkaraoke.nicholasgower.com',
   baseUrl: '/',
   organizationName: 'nicholasgower',
-  projectName: 'Contra-karaoke',
+  projectName: 'Caller-karaoke',
   trailingSlash: true,
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'throw',
@@ -942,7 +942,7 @@ const config: Config = {
   presets: [['classic', {
     docs: {
       sidebarPath: './sidebars.ts',
-      editUrl: 'https://github.com/nicholasgower/Contra-karaoke/edit/main/website/',
+      editUrl: 'https://github.com/nicholasgower/Caller-karaoke/edit/main/website/',
     },
     blog: false,
     theme: { customCss: './src/css/custom.css' },
@@ -960,11 +960,11 @@ const config: Config = {
       respectPrefersColorScheme: false,
     },
     navbar: {
-      title: 'Contra Karaoke',
+      title: 'Caller Karaoke',
       items: [
         { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Guide' },
         { to: '/download', label: 'Download', position: 'left' },
-        { href: 'https://github.com/nicholasgower/Contra-karaoke', label: 'GitHub', position: 'right' },
+        { href: 'https://github.com/nicholasgower/Caller-karaoke', label: 'GitHub', position: 'right' },
       ],
     },
     footer: { style: 'dark' },
@@ -1048,7 +1048,7 @@ Use a muted Prism theme for code.
 
 ### 6.7 Download page
 
-- Link to `https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly`.
+- Link to `https://github.com/nicholasgower/Caller-karaoke/releases/tag/nightly`.
 - List expected artifact names; note nightly names include date/SHA.
 - Explain SmartScreen and unsigned nightly builds.
 - No GitHub API fetch at build/runtime.
@@ -1348,8 +1348,8 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 **App seams (blocking):**
 
 - [ ] Add `crates/app/src/lib.rs`; move `mod` declarations from `main.rs`;
-      make `main.rs` use `contra_app::ContraApp`.
-- [ ] Add `AppDeps` and `ContraApp::with_deps`; keep `new()` as the native
+      make `main.rs` use `caller_app::CallerApp`.
+- [ ] Add `AppDeps` and `CallerApp::with_deps`; keep `new()` as the native
       wrapper. No startup I/O when deps are supplied.
 - [ ] Add a fixture source backend and a no-op prefs path.
 - [ ] Add test playback (trait or `AudioEngine` helpers) and `Speech::stub`.
@@ -1416,7 +1416,7 @@ Total: roughly 4–6 weeks part-time, with Phase 0 overlapping app work.
 
 ## 12. Open questions
 
-1. **Custom domain?** Settled: served at `contrakaraoke.nicholasgower.com` from
+1. **Custom domain?** Settled: served at `callerkaraoke.nicholasgower.com` from
    the domain root.
 2. **Commit screenshots?** Recommend yes; revisit at ~25 MB.
 3. **Host the web app on the same Pages site?** Recommend no; separate pipeline.
@@ -1440,7 +1440,7 @@ These labels assume the label pass in §4.4 has landed.
 ```rust
 // xtask/src/screenshots/scenarios.rs
 
-pub fn run(name: &str, h: &mut Harness<ContraApp>) -> anyhow::Result<()> {
+pub fn run(name: &str, h: &mut Harness<CallerApp>) -> anyhow::Result<()> {
     match name {
         "main_idle" => {
             // default dance/tune; screenshot deps set needs_render=true
@@ -1508,7 +1508,7 @@ pub fn run(name: &str, h: &mut Harness<ContraApp>) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn settle(h: &mut Harness<ContraApp>) {
+fn settle(h: &mut Harness<CallerApp>) {
     h.run_steps(3);
 }
 ```
@@ -1530,7 +1530,7 @@ network, audio device, or system TTS.
 ## 15. Appendix C — App-track checklist, against current files
 
 - [x] `crates/app/src/lib.rs` exists; `main.rs` is a thin platform wrapper.
-- [ ] `app.rs`: `pub struct AppDeps`; `ContraApp::with_deps`; `new` delegates.
+- [ ] `app.rs`: `pub struct AppDeps`; `CallerApp::with_deps`; `new` delegates.
 - [ ] `app.rs`: `prefs_path: Option<PathBuf>`; `save_prefs` no-ops when `None`.
 - [ ] `audio.rs`: `Playback` trait + `FakePlayback`, or `silent` + `seek_beat` +
       `force_finished`.

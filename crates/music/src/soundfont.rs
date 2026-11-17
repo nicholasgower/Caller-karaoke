@@ -5,7 +5,7 @@
 //! one the user supplied — and renders the same note events as the built-in
 //! synth using General MIDI programs.
 //!
-//! Each pitched [`contra_core::BandSlot`] is rendered by its own synthesizer
+//! Each pitched [`caller_core::BandSlot`] is rendered by its own synthesizer
 //! instance with one MIDI channel per player. The slot's pan and player spread
 //! become channel pan controllers; the slot's depth is applied after the stereo
 //! render, when the pair is placed into the mono, stereo, or surround layout.
@@ -216,7 +216,7 @@ impl SlotRenderer {
     #[allow(clippy::too_many_arguments)]
     fn new(
         request: &RenderRequest,
-        slot: &contra_core::BandSlot,
+        slot: &caller_core::BandSlot,
         program: u8,
         count_in: bool,
         ending: Option<&crate::arrange::Ending>,
@@ -567,7 +567,7 @@ fn normalize(samples: &mut [f32]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use contra_core::OutputMode;
+    use caller_core::OutputMode;
 
     const TEST_FONT: &[u8] = include_bytes!("../../../assets/defaults/fluid-r3-gm-subset.sf2");
 
@@ -579,26 +579,26 @@ mod tests {
         RenderRequest {
             arrangement: crate::arrange::Arrangement::from_score(&score, 64.0),
             bpm: 240.0,
-            melody: contra_core::MelodyInstrument::Fiddle,
-            accompaniment: contra_core::AccompanimentInstrument::Piano,
-            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::Countermelody::Accordion,
-            band: contra_core::default_band(),
+            melody: caller_core::MelodyInstrument::Fiddle,
+            accompaniment: caller_core::AccompanimentInstrument::Piano,
+            accompaniment_rhythm: caller_core::AccompanimentRhythm::Auto,
+            second_accompaniment: caller_core::Countermelody::Accordion,
+            band: caller_core::default_band(),
             output: OutputMode::Stereo,
-            copies: contra_core::InstrumentCopies::default(),
-            variations: contra_core::VariationOptions::default(),
-            humanize_options: contra_core::HumanizeOptions::default(),
-            ending_options: contra_core::EndingOptions::default(),
+            copies: caller_core::InstrumentCopies::default(),
+            variations: caller_core::VariationOptions::default(),
+            humanize_options: caller_core::HumanizeOptions::default(),
+            ending_options: caller_core::EndingOptions::default(),
             dancer_sounds: false,
             dancer_sound_volume: 0.0,
             dancer_sound_events: Vec::new(),
-            percussion: contra_core::Percussion::Off,
-            percussion_rhythm: contra_core::PercussionRhythm::Auto,
+            percussion: caller_core::Percussion::Off,
+            percussion_rhythm: caller_core::PercussionRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,
-            effects: contra_core::AudioEffects::default(),
-            count_in_beats: contra_core::COUNT_IN_BEATS,
+            effects: caller_core::AudioEffects::default(),
+            count_in_beats: caller_core::COUNT_IN_BEATS,
             sample_rate: 24_000,
             variation_passes: crate::VARIATION_PASSES,
             ending: true,

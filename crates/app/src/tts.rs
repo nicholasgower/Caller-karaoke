@@ -5,7 +5,7 @@
 //! the app still speaks calls on first run, offline, on web where the neural
 //! model is not built, or on Android when the packaged runtime cannot load.
 //! Both backends receive the reviewed dance-term respellings from
-//! [`contra_core::pronounce`].
+//! [`caller_core::pronounce`].
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -13,8 +13,8 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use crate::audio::AudioEngine;
-use contra_core::CallTone;
-use contra_core::pronounce;
+use caller_core::CallTone;
+use caller_core::pronounce;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod kokoro;
@@ -140,7 +140,7 @@ pub struct Speech {
     enabled: bool,
     rate: f32,
     tone: CallTone,
-    /// Prepared deliveries per call text; see [`contra_core::Preferences::tts_deliveries`].
+    /// Prepared deliveries per call text; see [`caller_core::Preferences::tts_deliveries`].
     ///
     /// The platform voice always speaks one delivery, so this is only read by
     /// the desktop coordinator.
@@ -200,7 +200,7 @@ impl Speech {
                 enabled: false,
                 rate: 1.0,
                 tone: CallTone::default(),
-                deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+                deliveries: caller_core::DEFAULT_TTS_DELIVERIES,
                 delivery_cursor: HashMap::new(),
                 last_calls: Vec::new(),
                 #[cfg(test)]
@@ -230,7 +230,7 @@ impl Speech {
                 enabled: false,
                 rate: 1.0,
                 tone: CallTone::default(),
-                deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+                deliveries: caller_core::DEFAULT_TTS_DELIVERIES,
                 delivery_cursor: HashMap::new(),
                 last_calls: Vec::new(),
                 #[cfg(test)]
@@ -261,7 +261,7 @@ impl Speech {
             enabled: false,
             rate: 1.0,
             tone: CallTone::default(),
-            deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+            deliveries: caller_core::DEFAULT_TTS_DELIVERIES,
             delivery_cursor: HashMap::new(),
             last_calls: Vec::new(),
             #[cfg(test)]
@@ -293,7 +293,7 @@ impl Speech {
             enabled: false,
             rate: 1.0,
             tone: CallTone::default(),
-            deliveries: contra_core::DEFAULT_TTS_DELIVERIES,
+            deliveries: caller_core::DEFAULT_TTS_DELIVERIES,
             delivery_cursor: HashMap::new(),
             last_calls: Vec::new(),
             #[cfg(test)]
@@ -444,8 +444,8 @@ impl Speech {
     /// the new set; the on-disk cache keeps work that is still valid.
     pub fn set_deliveries(&mut self, deliveries: u8) {
         let deliveries = deliveries.clamp(
-            contra_core::MIN_TTS_DELIVERIES,
-            contra_core::MAX_TTS_DELIVERIES,
+            caller_core::MIN_TTS_DELIVERIES,
+            caller_core::MAX_TTS_DELIVERIES,
         );
         if self.deliveries == deliveries {
             return;
@@ -499,8 +499,8 @@ impl Speech {
 
     pub fn set_rate(&mut self, rate: f32) {
         self.rate = rate.clamp(
-            contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
-            contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+            caller_core::MIN_TTS_RATE * caller_core::TTS_RATE_SCALE,
+            caller_core::MAX_TTS_RATE * caller_core::TTS_RATE_SCALE,
         );
         self.delivery_cursor.clear();
         self.platform.set_rate(self.rate);
@@ -697,8 +697,8 @@ impl PlatformSpeech {
 
     fn set_rate(&mut self, rate: f32) {
         self.rate = rate.clamp(
-            contra_core::MIN_TTS_RATE * contra_core::TTS_RATE_SCALE,
-            contra_core::MAX_TTS_RATE * contra_core::TTS_RATE_SCALE,
+            caller_core::MIN_TTS_RATE * caller_core::TTS_RATE_SCALE,
+            caller_core::MAX_TTS_RATE * caller_core::TTS_RATE_SCALE,
         );
         self.apply_rate();
     }
@@ -816,12 +816,12 @@ mod tests {
         speech.set_deliveries(9);
         assert_eq!(
             speech.deliveries_for_test(),
-            contra_core::MAX_TTS_DELIVERIES
+            caller_core::MAX_TTS_DELIVERIES
         );
         speech.set_deliveries(0);
         assert_eq!(
             speech.deliveries_for_test(),
-            contra_core::MIN_TTS_DELIVERIES
+            caller_core::MIN_TTS_DELIVERIES
         );
     }
 

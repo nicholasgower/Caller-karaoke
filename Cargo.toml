@@ -15,7 +15,7 @@ edition = "2024"
 license = "MIT"
 authors = ["Nicholas Gower"]
 rust-version = "1.95"
-repository = "https://github.com/nicholasgower/Contra-karaoke"
+repository = "https://github.com/nicholasgower/Caller-karaoke"
 
 [workspace.dependencies]
 abc-parser = "0.4"

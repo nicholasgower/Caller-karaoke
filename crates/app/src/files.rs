@@ -8,14 +8,20 @@
 
 use std::path::Path;
 
-use contra_core::{Dance, Figure, SourceRef, Tune};
+use caller_core::{Dance, Figure, SourceRef, Tune};
 use sha2::{Digest, Sha256};
 
 /// Marker written at the top of an exported dance document.
 ///
 /// A bare [`Dance`] is also accepted on import, so the marker exists to reject
 /// an unrelated JSON object rather than to make the file readable.
-pub const DANCE_FORMAT: &str = "contra-karaoke-dance";
+pub const DANCE_FORMAT: &str = "caller-karaoke-dance";
+/// Markers still accepted on import.
+///
+/// Files exported under the app's earlier name carry this marker. Reading them
+/// keeps a caller's saved cards usable without a conversion step; new exports
+/// always write [`DANCE_FORMAT`].
+pub const LEGACY_DANCE_FORMATS: &[&str] = &["contra-karaoke-dance"];
 /// Schema version of the exported dance document.
 pub const DANCE_VERSION: u32 = 1;
 /// Provider key used for content that did not come from a remote source.
@@ -232,6 +238,13 @@ enum FigureFile {
     },
 }
 
+/// Whether `format` is a marker this build writes or still reads.
+fn is_dance_format(format: &str) -> bool {
+    std::iter::once(DANCE_FORMAT)
+        .chain(LEGACY_DANCE_FORMATS.iter().copied())
+        .any(|known| format.eq_ignore_ascii_case(known))
+}
+
 /// Parse a dance exchange document or a plain/ContraDB-shaped dance object.
 ///
 /// The dance is validated before it is returned, so a caller can insert it into
@@ -241,10 +254,10 @@ pub fn dance_from_json(text: &str) -> Result<Dance, String> {
         .map_err(|error| format!("Not a readable dance file: {error}"))?;
 
     if let Some(format) = &file.format
-        && !format.eq_ignore_ascii_case(DANCE_FORMAT)
+        && !is_dance_format(format)
     {
         return Err(format!(
-            "This is not a Contra Karaoke dance file (format \"{format}\")."
+            "This is not a Caller Karaoke dance file (format \"{format}\")."
         ));
     }
     if let Some(version) = file.version
@@ -391,7 +404,7 @@ pub fn tune_from_abc(file_name: &str, text: &str) -> Result<AbcImport, String> {
     // or rejected, depending on the blank lines. Cut the file at the next tune
     // so a book of tunes still imports its first one cleanly.
     let (abc, additional_tunes) = first_tune(abc);
-    let score = contra_music::parse_abc(abc).map_err(|error| error.to_string())?;
+    let score = caller_music::parse_abc(abc).map_err(|error| error.to_string())?;
     let fallback_title = file_stem(file_name);
     let title = header_value(abc, 'T')
         .map(|title| title.trim().to_string())
@@ -419,15 +432,15 @@ pub fn tune_from_abc(file_name: &str, text: &str) -> Result<AbcImport, String> {
 }
 
 /// The display spelling of a parsed key, including its mode.
-fn key_label(key: &contra_music::Key) -> String {
+fn key_label(key: &caller_music::Key) -> String {
     let suffix = match key.mode {
-        contra_music::Mode::Major => "",
-        contra_music::Mode::Minor => "m",
-        contra_music::Mode::Dorian => " dor",
-        contra_music::Mode::Mixolydian => " mix",
-        contra_music::Mode::Phrygian => " phr",
-        contra_music::Mode::Lydian => " lyd",
-        contra_music::Mode::Locrian => " loc",
+        caller_music::Mode::Major => "",
+        caller_music::Mode::Minor => "m",
+        caller_music::Mode::Dorian => " dor",
+        caller_music::Mode::Mixolydian => " mix",
+        caller_music::Mode::Phrygian => " phr",
+        caller_music::Mode::Lydian => " lyd",
+        caller_music::Mode::Locrian => " loc",
     };
     format!("{}{suffix}", key.tonic_name)
 }
@@ -743,7 +756,7 @@ mod platform {
 /// Called by `MainActivity` after the system document picker returns a file.
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeImportedFile(
+pub extern "system" fn Java_org_callerkaraoke_app_MainActivity_nativeImportedFile(
     mut env: jni::JNIEnv<'_>,
     _class: jni::objects::JClass<'_>,
     kind: i32,
@@ -886,7 +899,7 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use contra_core::Dance;
+    use caller_core::Dance;
 
     fn sample_dance() -> Dance {
         crate::defaults::default_dance()
@@ -910,6 +923,16 @@ mod tests {
         assert!(json.contains(&format!("\"version\": {DANCE_VERSION}")));
         assert!(json.contains("\"figures\""));
         let restored = dance_from_json(&json).expect("parse the exported document");
+        assert_eq!(restored, dance);
+    }
+
+    #[test]
+    fn dances_saved_under_the_old_name_still_import() {
+        let dance = sample_dance();
+        let mut document: serde_json::Value =
+            serde_json::from_str(&dance_json(&dance).expect("serialize")).expect("valid json");
+        document["format"] = serde_json::Value::String("contra-karaoke-dance".to_owned());
+        let restored = dance_from_json(&document.to_string()).expect("legacy document imports");
         assert_eq!(restored, dance);
     }
 
@@ -963,7 +986,7 @@ mod tests {
         );
         assert!(
             dance_from_json(
-                r#"{"format":"contra-karaoke-dance","version":99,"title":"x","figures":[{"text":"swing","beats":8}]}"#
+                r#"{"format":"caller-karaoke-dance","version":99,"title":"x","figures":[{"text":"swing","beats":8}]}"#
             )
             .is_err(),
             "a newer document is not silently accepted"

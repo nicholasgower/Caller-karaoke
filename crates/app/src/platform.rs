@@ -10,7 +10,7 @@
 /// be offered everywhere, for example:
 ///
 /// ```ignore
-/// if !matches!(contra_app::platform(), "web" | "android") {
+/// if !matches!(caller_app::platform(), "web" | "android") {
 ///     show_soundfont_file_picker(ui);
 /// }
 /// ```

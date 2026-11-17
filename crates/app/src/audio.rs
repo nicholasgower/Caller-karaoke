@@ -5,8 +5,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
 use arc_swap::ArcSwapOption;
 #[cfg(any(feature = "headless", test))]
-use contra_core::COUNT_IN_BEATS;
-use contra_music::AudioBuffer;
+use caller_core::COUNT_IN_BEATS;
+use caller_music::AudioBuffer;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
 pub struct AudioEngine {
@@ -364,7 +364,7 @@ where
         .map(|buffer| buffer.as_ref());
     let output_channels = music.map(|buffer| buffer.channels.max(1)).unwrap_or(2);
     let output_mode = mode_of(output_channels);
-    let caller_gains = contra_music::layout::caller_gains(output_mode);
+    let caller_gains = caller_music::layout::caller_gains(output_mode);
     let looping = shared.looping.load(Ordering::Relaxed);
     let ending_requested = shared.ending.load(Ordering::Relaxed);
     let mut music_position = shared.position.load(Ordering::Relaxed);
@@ -376,7 +376,7 @@ where
     let mut speech_position = shared.speech_position.load(Ordering::Relaxed);
 
     for frame in data.chunks_mut(channels) {
-        let mut staged = [0.0f32; contra_music::layout::MAX_CHANNELS];
+        let mut staged = [0.0f32; caller_music::layout::MAX_CHANNELS];
 
         if let Some(buffer) = music {
             if ending_requested {
@@ -479,11 +479,11 @@ where
 }
 
 /// The layout a rendered buffer uses, from its channel count.
-fn mode_of(channels: u16) -> contra_core::OutputMode {
+fn mode_of(channels: u16) -> caller_core::OutputMode {
     match channels {
-        1 => contra_core::OutputMode::Mono,
-        5 => contra_core::OutputMode::Surround,
-        _ => contra_core::OutputMode::Stereo,
+        1 => caller_core::OutputMode::Mono,
+        5 => caller_core::OutputMode::Surround,
+        _ => caller_core::OutputMode::Stereo,
     }
 }
 

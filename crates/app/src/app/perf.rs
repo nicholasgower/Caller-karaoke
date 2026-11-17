@@ -1,7 +1,7 @@
 //! CPU profiler for every user-facing action.
 //!
 //! This is a development-only tool behind the `headless` feature. It drives
-//! the real [`ContraApp`] through `egui_kittest`, just like the documentation
+//! the real [`CallerApp`] through `egui_kittest`, just like the documentation
 //! screenshot renderer, and times:
 //!
 //! * one frame on every screen at desktop and phone widths,
@@ -23,18 +23,18 @@
 use std::error::Error;
 use std::time::Instant;
 
-use contra_core::{
+use caller_core::{
     Dance, FolderFilter, Library, MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP,
     SourceRef, Tune,
 };
-use contra_music::humanize::{Humanizer, Voice};
-use contra_music::{Arrangement, export_midi_with_band, parse_abc, render};
+use caller_music::humanize::{Humanizer, Voice};
+use caller_music::{Arrangement, export_midi_with_band, parse_abc, render};
 use eframe::egui::{self, Vec2};
 use egui_kittest::Harness;
 
 use super::ui::AbcEditorState;
 use super::ui::preferences::{PreferencesCategory, PreferencesPage};
-use super::{ContraApp, Screen};
+use super::{CallerApp, Screen};
 use crate::library;
 use crate::share;
 
@@ -125,7 +125,7 @@ impl Report {
 
     fn print(&self) {
         let elapsed = self.started.elapsed().as_secs_f64();
-        println!("Contra Karaoke CPU profile");
+        println!("Caller Karaoke CPU profile");
         println!("==========================");
         println!(
             "Build: {} · {} actions measured in {:.1} s",
@@ -271,7 +271,7 @@ fn timed<F: FnMut()>(mut f: F, samples: usize) -> Vec<f64> {
 }
 
 /// Build the in-process app used by every measurement.
-fn harness() -> Harness<'static, ContraApp> {
+fn harness() -> Harness<'static, CallerApp> {
     Harness::builder()
         .with_size(DESKTOP)
         .with_pixels_per_point(1.0)
@@ -281,11 +281,11 @@ fn harness() -> Harness<'static, ContraApp> {
         .with_accessibility_check(false)
         .allow_missing_glyphs()
         .with_max_steps(10)
-        .build_eframe(|cc| ContraApp::new_headless(cc))
+        .build_eframe(|cc| CallerApp::new_headless(cc))
 }
 
 /// Put the app in a quiet idle state before a frame benchmark.
-fn idle(app: &mut ContraApp) {
+fn idle(app: &mut CallerApp) {
     app.needs_render = false;
     app.pending_audio = false;
     app.render_loading = false;
@@ -297,7 +297,7 @@ fn idle(app: &mut ContraApp) {
 }
 
 /// Time `samples` frames after two warm-up frames.
-fn frame_times(harness: &mut Harness<'_, ContraApp>, samples: usize) -> Vec<f64> {
+fn frame_times(harness: &mut Harness<'_, CallerApp>, samples: usize) -> Vec<f64> {
     harness.run_steps(1);
     harness.run_steps(1);
     // Guard against a harness update that only runs `logic` and skips the UI:
@@ -395,8 +395,8 @@ fn stress_tune_library(count: usize) -> Library<Tune> {
     library
 }
 
-fn dance_search_results() -> contra_sources::DanceSearchPage {
-    use contra_sources::{DanceSearchPage, DanceSummary};
+fn dance_search_results() -> caller_sources::DanceSearchPage {
+    use caller_sources::{DanceSearchPage, DanceSummary};
     DanceSearchPage {
         total: 23,
         page: 1,
@@ -418,8 +418,8 @@ fn dance_search_results() -> contra_sources::DanceSearchPage {
     }
 }
 
-fn tune_search_results() -> contra_sources::TuneSearchPage {
-    use contra_sources::{TuneSearchPage, TuneSummary};
+fn tune_search_results() -> caller_sources::TuneSearchPage {
+    use caller_sources::{TuneSearchPage, TuneSummary};
     TuneSearchPage {
         total: 8,
         page: 1,
@@ -439,7 +439,7 @@ fn tune_search_results() -> contra_sources::TuneSearchPage {
 
 /// Profile every screen frame at a desktop size.
 fn profile_screen_frames(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     report: &mut Report,
     samples: usize,
 ) {
@@ -460,77 +460,77 @@ fn profile_screen_frames(
     let screens: &[(&str, &str, Screen)] = &[
         (
             "Session · ready",
-            "ContraApp::ui → draw_session → ContraApp::session_ui",
+            "CallerApp::ui → draw_session → CallerApp::session_ui",
             Screen::Session,
         ),
         (
             "Select dance",
-            "ContraApp::ui → draw_dance_library → ContraApp::dance_library_ui",
+            "CallerApp::ui → draw_dance_library → CallerApp::dance_library_ui",
             Screen::DancePicker,
         ),
         (
             "Download dance",
-            "ContraApp::ui → draw_dance_download → ContraApp::dance_download_ui",
+            "CallerApp::ui → draw_dance_download → CallerApp::dance_download_ui",
             Screen::DanceDownload,
         ),
         (
             "Select tune",
-            "ContraApp::ui → draw_tune_library → ContraApp::tune_library_ui",
+            "CallerApp::ui → draw_tune_library → CallerApp::tune_library_ui",
             Screen::TunePicker,
         ),
         (
             "Download tune · sheet",
-            "ContraApp::ui → draw_tune_download → ContraApp::tune_download_ui → SheetPreview::ui",
+            "CallerApp::ui → draw_tune_download → CallerApp::tune_download_ui → SheetPreview::ui",
             Screen::TuneDownload,
         ),
         (
             "ABC editor",
-            "ContraApp::ui → draw_abc_editor → ContraApp::abc_editor_ui",
+            "CallerApp::ui → draw_abc_editor → CallerApp::abc_editor_ui",
             Screen::AbcEditor,
         ),
         (
             "Preferences · Calling",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → preferences_header/role_terms/speech",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui → preferences_header/role_terms/speech",
             Screen::Preferences,
         ),
         (
             "Preferences · Band & Sound",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → instruments/soundfont/effects",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui → instruments/soundfont/effects",
             Screen::Preferences,
         ),
         (
             "Preferences · Playback",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → playback",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui → playback",
             Screen::Preferences,
         ),
         (
             "Preferences · Appearance",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → appearance",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui → appearance",
             Screen::Preferences,
         ),
         (
             "Preferences · Data & Storage",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → data_sources/web_proxy/maintenance",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui → data_sources/web_proxy/maintenance",
             Screen::Preferences,
         ),
         (
             "Preferences · About",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → about",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui → about",
             Screen::Preferences,
         ),
         (
             "Preferences · Search",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui → matching_settings + preferences_search_results",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui → matching_settings + preferences_search_results",
             Screen::Preferences,
         ),
         (
             "Aliases",
-            "ContraApp::ui → draw_aliases → ContraApp::aliases_ui",
+            "CallerApp::ui → draw_aliases → CallerApp::aliases_ui",
             Screen::Aliases,
         ),
         (
             "Glossary",
-            "ContraApp::ui → draw_glossary → ContraApp::glossary_ui",
+            "CallerApp::ui → draw_glossary → CallerApp::glossary_ui",
             Screen::Glossary,
         ),
     ];
@@ -602,7 +602,7 @@ fn profile_screen_frames(
     report.record(
         "frame",
         "Session · playing",
-        "ContraApp::ui → ContraApp::tick → update_speech + draw_session",
+        "CallerApp::ui → CallerApp::tick → update_speech + draw_session",
         FRAME_BUDGET_MS,
         times,
         "playing at beat 4 with the prompt card and dance card live",
@@ -671,7 +671,7 @@ fn profile_touch_tab_swipe(report: &mut Report) {
     report.record(
         "frame · touch",
         "Session · touch tab swipe",
-        "ContraApp::ui → tab_swipe → touch_started + swipe_target",
+        "CallerApp::ui → tab_swipe → touch_started + swipe_target",
         FRAME_BUDGET_MS,
         vec![elapsed],
         "one frame that acts on the finger move from Session to Select dance",
@@ -704,7 +704,7 @@ fn profile_touch_slider_guard(report: &mut Report, samples: usize) {
     report.record(
         "frame · touch",
         "Preferences · Playback (slider guard)",
-        "ContraApp::ui → preference sliders → scroll_safe_slider → draw_locked_slider",
+        "CallerApp::ui → preference sliders → scroll_safe_slider → draw_locked_slider",
         FRAME_BUDGET_MS,
         times,
         "every slider is in the new padlocked, tap-to-unlock state",
@@ -712,57 +712,57 @@ fn profile_touch_slider_guard(report: &mut Report, samples: usize) {
 }
 
 /// Phone screens are a separate layout with scrolling and stacked panes.
-fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Report, samples: usize) {
+fn profile_phone_frames(harness: &mut Harness<'_, CallerApp>, report: &mut Report, samples: usize) {
     harness.set_size(PHONE);
     let screens: &[(&str, &str, Screen)] = &[
         (
             "Session",
-            "ContraApp::ui → draw_session → ContraApp::session_ui (compact)",
+            "CallerApp::ui → draw_session → CallerApp::session_ui (compact)",
             Screen::Session,
         ),
         (
             "Select dance",
-            "ContraApp::ui → draw_dance_library → ContraApp::dance_library_ui (compact)",
+            "CallerApp::ui → draw_dance_library → CallerApp::dance_library_ui (compact)",
             Screen::DancePicker,
         ),
         (
             "Download dance",
-            "ContraApp::ui → draw_dance_download → ContraApp::dance_download_ui (compact)",
+            "CallerApp::ui → draw_dance_download → CallerApp::dance_download_ui (compact)",
             Screen::DanceDownload,
         ),
         (
             "Select tune",
-            "ContraApp::ui → draw_tune_library → ContraApp::tune_library_ui (compact)",
+            "CallerApp::ui → draw_tune_library → CallerApp::tune_library_ui (compact)",
             Screen::TunePicker,
         ),
         (
             "Download tune",
-            "ContraApp::ui → draw_tune_download → ContraApp::tune_download_ui (compact)",
+            "CallerApp::ui → draw_tune_download → CallerApp::tune_download_ui (compact)",
             Screen::TuneDownload,
         ),
         (
             "Preferences",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui (compact) → preferences_header",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui (compact) → preferences_header",
             Screen::Preferences,
         ),
         (
             "Preferences · Playback",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui (compact) → playback",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui (compact) → playback",
             Screen::Preferences,
         ),
         (
             "Preferences · Search",
-            "ContraApp::ui → draw_preferences → ContraApp::preferences_ui (compact) → matching_settings + preferences_search_results",
+            "CallerApp::ui → draw_preferences → CallerApp::preferences_ui (compact) → matching_settings + preferences_search_results",
             Screen::Preferences,
         ),
         (
             "Aliases",
-            "ContraApp::ui → draw_aliases → ContraApp::aliases_ui (compact)",
+            "CallerApp::ui → draw_aliases → CallerApp::aliases_ui (compact)",
             Screen::Aliases,
         ),
         (
             "Glossary",
-            "ContraApp::ui → draw_glossary → ContraApp::glossary_ui (compact)",
+            "CallerApp::ui → draw_glossary → CallerApp::glossary_ui (compact)",
             Screen::Glossary,
         ),
     ];
@@ -802,7 +802,7 @@ fn profile_phone_frames(harness: &mut Harness<'_, ContraApp>, report: &mut Repor
 }
 
 /// Synchronous actions behind the controls.
-fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, samples: usize) {
+fn profile_actions(harness: &mut Harness<'_, CallerApp>, report: &mut Report, samples: usize) {
     // First Play: parse the ABC, arrange it, load the bundled SoundFont, and
     // synthesize the loop. This is the one action that does everything at once.
     {
@@ -817,7 +817,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Play · first run",
-            "ContraApp::play → ensure_ready → apply_audio_settings → render_music",
+            "CallerApp::play → ensure_ready → apply_audio_settings → render_music",
             ACTION_BUDGET_MS,
             vec![elapsed],
             "headless/no-prefetch fallback: ABC parse + SoundFont load + full synth render; the desktop prefetch path is measured below",
@@ -831,7 +831,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Play · resume",
-            "ContraApp::play",
+            "CallerApp::play",
             ACTION_BUDGET_MS,
             times,
             "buffer already rendered",
@@ -851,7 +851,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Reuse cached render",
-            "ContraApp::render_music (RAM cache hit)",
+            "CallerApp::render_music (RAM cache hit)",
             ACTION_BUDGET_MS,
             times,
             "same tune, preferences, sample rate, and count-in as the last render",
@@ -863,7 +863,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Pause",
-            "ContraApp::pause",
+            "CallerApp::pause",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -875,7 +875,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Restart",
-            "ContraApp::restart",
+            "CallerApp::restart",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -887,7 +887,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Play/Pause toggle",
-            "ContraApp::toggle_playback",
+            "CallerApp::toggle_playback",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -904,7 +904,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "End tune",
-            "ContraApp::end_tune",
+            "CallerApp::end_tune",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -928,7 +928,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Tempo change · timeline",
-            "ContraApp::rebuild_timeline → build_timeline_with_count_in",
+            "CallerApp::rebuild_timeline → build_timeline_with_count_in",
             ACTION_BUDGET_MS,
             times,
             "the timeline half of a live tempo change",
@@ -942,7 +942,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Tempo change · render",
-            "ContraApp::render_music → parse_abc + Arrangement::from_score + render",
+            "CallerApp::render_music → parse_abc + Arrangement::from_score + render",
             ACTION_BUDGET_MS,
             times,
             "the music half of a live tempo change; the old buffer keeps playing",
@@ -959,7 +959,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Tempo change · apply",
-            "ContraApp::apply_audio_settings → rebuild_timeline + render_music",
+            "CallerApp::apply_audio_settings → rebuild_timeline + render_music",
             ACTION_BUDGET_MS,
             times,
             "synchronous fallback (headless/web or a failed prefetch); the desktop UI defers below",
@@ -977,7 +977,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Tempo change · start background render",
-            "ContraApp::start_prefetch → prepare_tune (worker thread)",
+            "CallerApp::start_prefetch → prepare_tune (worker thread)",
             ACTION_BUDGET_MS,
             dispatch,
             "the UI only hands the key and settings to the worker",
@@ -1000,7 +1000,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Tempo change · install from cache",
-            "ContraApp::apply_audio_settings → rebuild_timeline + render_music (cache hit)",
+            "CallerApp::apply_audio_settings → rebuild_timeline + render_music (cache hit)",
             ACTION_BUDGET_MS,
             times,
             "the new loop was synthesized while the old one kept playing",
@@ -1022,7 +1022,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Calling lead change",
-            "ContraApp::rebuild_timeline → build_timeline_with_count_in",
+            "CallerApp::rebuild_timeline → build_timeline_with_count_in",
             ACTION_BUDGET_MS,
             times,
             "every lead/alias/role edit rebuilds the call schedule",
@@ -1045,7 +1045,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Caller volume",
-            "ContraApp::save_prefs + AudioEngine::set_caller_volume",
+            "CallerApp::save_prefs + AudioEngine::set_caller_volume",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1068,7 +1068,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Band volume",
-            "ContraApp::save_prefs + AudioEngine::set_volume",
+            "CallerApp::save_prefs + AudioEngine::set_volume",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1088,7 +1088,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Count-in toggle",
-            "ContraApp::reconcile_preferences → apply_count_in_change",
+            "CallerApp::reconcile_preferences → apply_count_in_change",
             ACTION_BUDGET_MS,
             times,
             "not started: timeline rebuild and render flag only",
@@ -1107,7 +1107,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Loop toggle",
-            "ContraApp::save_prefs + AudioEngine::set_looping",
+            "CallerApp::save_prefs + AudioEngine::set_looping",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1129,7 +1129,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Speak calls toggle",
-            "ContraApp::save_prefs + Speech::set_enabled",
+            "CallerApp::save_prefs + Speech::set_enabled",
             ACTION_BUDGET_MS,
             times,
             "stub speech; a real neural voice preparation is asynchronous",
@@ -1148,7 +1148,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Deliveries per call",
-            "ContraApp::reconcile_preferences → Speech::set_deliveries",
+            "CallerApp::reconcile_preferences → Speech::set_deliveries",
             ACTION_BUDGET_MS,
             times,
             "stub speech; extra deliveries prepare asynchronously",
@@ -1163,7 +1163,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "library",
             "Use this dance",
-            "ContraApp::use_dance → download_dance + rebuild_timeline + save_prefs",
+            "CallerApp::use_dance → download_dance + rebuild_timeline + save_prefs",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1176,7 +1176,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "library",
             "Use this tune",
-            "ContraApp::use_tune → download_tune + rotation_settings_changed + save_prefs",
+            "CallerApp::use_tune → download_tune + rotation_settings_changed + save_prefs",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1189,7 +1189,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "library",
             "Add/remove tune from set",
-            "ContraApp::toggle_rotation_tune",
+            "CallerApp::toggle_rotation_tune",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1201,11 +1201,11 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
             || {
                 let source = if matches!(
                     app.prefs.tune_rotation.source,
-                    contra_core::TuneSetSource::List
+                    caller_core::TuneSetSource::List
                 ) {
-                    contra_core::TuneSetSource::Folder("Reels".into())
+                    caller_core::TuneSetSource::Folder("Reels".into())
                 } else {
-                    contra_core::TuneSetSource::List
+                    caller_core::TuneSetSource::List
                 };
                 app.set_tune_set_source(source);
             },
@@ -1214,7 +1214,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "library",
             "Switch tune set source",
-            "ContraApp::set_tune_set_source",
+            "CallerApp::set_tune_set_source",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1235,7 +1235,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "library",
             "Add custom alias",
-            "ContraApp::add_custom_alias → AliasTable::set_custom + rebuild_timeline",
+            "CallerApp::add_custom_alias → AliasTable::set_custom + rebuild_timeline",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1254,7 +1254,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "library",
             "Commit custom role terms",
-            "ContraApp::commit_role_terms → rebuild_timeline",
+            "CallerApp::commit_role_terms → rebuild_timeline",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1266,7 +1266,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "library",
             "Save preferences",
-            "ContraApp::save_prefs → Preferences::to_json",
+            "CallerApp::save_prefs → Preferences::to_json",
             ACTION_BUDGET_MS,
             times,
             "headless has no file path, so this times serialization and the clone",
@@ -1296,7 +1296,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Share link · build",
-            "ContraApp::share_link → share::encode",
+            "CallerApp::share_link → share::encode",
             ACTION_BUDGET_MS,
             times,
             "deflates the dance card and four tunes' ABC into a URL argument",
@@ -1332,7 +1332,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "session",
             "Share link · open",
-            "ContraApp::apply_share_code → apply_share_payload → use_dance + use_tune",
+            "CallerApp::apply_share_code → apply_share_payload → use_dance + use_tune",
             ACTION_BUDGET_MS,
             times,
             "saves the shared cards, rebuilds the timeline, and selects the opening tune",
@@ -1354,7 +1354,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "history",
             "Undo one edit",
-            "ContraApp::restore_snapshot → rebuild_timeline + save_prefs",
+            "CallerApp::restore_snapshot → rebuild_timeline + save_prefs",
             ACTION_BUDGET_MS,
             times,
             "the work behind an undo or redo that changed the call timeline",
@@ -1371,7 +1371,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "history",
             "Snapshot for history",
-            "ContraApp::snapshot",
+            "CallerApp::snapshot",
             ACTION_BUDGET_MS,
             times,
             "runs every frame the UI is visible",
@@ -1383,13 +1383,13 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         let app = harness.state_mut();
         let before = app.prefs.clone();
         app.prefs.role_terms =
-            contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
-        app.prefs.role_preset = contra_core::RolePreset::LadiesGentlemen;
+            caller_core::RoleTerms::preset(caller_core::RolePreset::LadiesGentlemen);
+        app.prefs.role_preset = caller_core::RolePreset::LadiesGentlemen;
         let times = timed(|| app.reconcile_preferences(before.clone()), samples);
         report.record(
             "preferences",
             "Role preset change",
-            "ContraApp::reconcile_preferences → rebuild_timeline",
+            "CallerApp::reconcile_preferences → rebuild_timeline",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1403,7 +1403,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "preferences",
             "Accompaniment variation toggle",
-            "ContraApp::reconcile_preferences → refresh_render_flags",
+            "CallerApp::reconcile_preferences → refresh_render_flags",
             ACTION_BUDGET_MS,
             times,
             "queues a render; the render itself is timed under music",
@@ -1417,7 +1417,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "preferences",
             "Tempo controller gain change",
-            "ContraApp::reconcile_preferences → refresh_render_flags",
+            "CallerApp::reconcile_preferences → refresh_render_flags",
             ACTION_BUDGET_MS,
             times,
             "the new Kp/Ki/Kd sliders; the PID table is rebuilt with the next music render",
@@ -1426,16 +1426,16 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
     {
         let app = harness.state_mut();
         let before = app.prefs.clone();
-        app.prefs.theme = if app.prefs.theme == contra_core::Theme::Dark {
-            contra_core::Theme::Light
+        app.prefs.theme = if app.prefs.theme == caller_core::Theme::Dark {
+            caller_core::Theme::Light
         } else {
-            contra_core::Theme::Dark
+            caller_core::Theme::Dark
         };
         let times = timed(|| app.reconcile_preferences(before.clone()), samples);
         report.record(
             "preferences",
             "Theme toggle",
-            "ContraApp::reconcile_preferences → save_prefs",
+            "CallerApp::reconcile_preferences → save_prefs",
             ACTION_BUDGET_MS,
             times,
             "theme::apply runs at the top of the next frame",
@@ -1447,7 +1447,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "preferences",
             "Save after a settings edit",
-            "ContraApp::save_prefs",
+            "CallerApp::save_prefs",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1491,7 +1491,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
         report.record(
             "preferences",
             "Memory table",
-            "ContraApp::memory_report",
+            "CallerApp::memory_report",
             ACTION_BUDGET_MS,
             times,
             "scans the loaded SoundFont sample data and font atlas",
@@ -1501,7 +1501,7 @@ fn profile_actions(harness: &mut Harness<'_, ContraApp>, report: &mut Report, sa
 
 /// Pure helpers that back import, export, sheet music, and playback.
 fn profile_pure_functions(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     report: &mut Report,
     samples: usize,
 ) {
@@ -1520,7 +1520,7 @@ fn profile_pure_functions(
         report.record(
             "import/export",
             "Import an ABC file",
-            "files::tune_from_abc → contra_music::parse_abc",
+            "files::tune_from_abc → caller_music::parse_abc",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1622,7 +1622,7 @@ fn profile_pure_functions(
         report.record(
             "music",
             "Parse ABC",
-            "contra_music::parse_abc",
+            "caller_music::parse_abc",
             ACTION_BUDGET_MS,
             times,
             "",
@@ -1707,7 +1707,7 @@ fn profile_pure_functions(
         report.record(
             "music",
             "Synthesize the loop · variations",
-            "contra_music::render (VARIATION_PASSES)",
+            "caller_music::render (VARIATION_PASSES)",
             ACTION_BUDGET_MS,
             times,
             "the default: one 64-beat loop with accompaniment variations",
@@ -1723,7 +1723,7 @@ fn profile_pure_functions(
         report.record(
             "music",
             "Synthesize the loop · single pass",
-            "contra_music::render (variation_passes = 1)",
+            "caller_music::render (variation_passes = 1)",
             ACTION_BUDGET_MS,
             times,
             "same loop with accompaniment variations off",
@@ -1740,7 +1740,7 @@ fn profile_pure_functions(
                     app.prefs.accompaniment_rhythm,
                     app.prefs.percussion_rhythm,
                     app.prefs.tempo_bpm,
-                    contra_music::VARIATION_PASSES,
+                    caller_music::VARIATION_PASSES,
                     &app.prefs.variation_options,
                     app.prefs.effects,
                 );
@@ -1750,14 +1750,14 @@ fn profile_pure_functions(
         report.record(
             "music",
             "Export MIDI",
-            "contra_music::export_midi_with_band",
+            "caller_music::export_midi_with_band",
             ACTION_BUDGET_MS,
             times,
             "the file dialog and disk write are outside this measurement",
         );
     }
 
-    // Break the synth render into the stages `contra_music::render` runs in
+    // Break the synth render into the stages `caller_music::render` runs in
     // order, so the report says whether the voices or the effects dominate.
     if let Some(soundfont) = soundfont.as_ref() {
         let arrangement = Arrangement::from_score(&score, 64.0);
@@ -1766,22 +1766,22 @@ fn profile_pure_functions(
             .request(arrangement);
         let times = timed(
             || {
-                let _ = contra_music::soundfont::render_soundfont(&request, soundfont);
+                let _ = caller_music::soundfont::render_soundfont(&request, soundfont);
             },
             samples,
         );
         report.record(
             "music · stage",
             "Synthesize sampled voices",
-            "contra_music::soundfont::render_soundfont",
+            "caller_music::soundfont::render_soundfont",
             ACTION_BUDGET_MS,
             times,
             "before percussion and effects; one sampled pass per band slot",
         );
-        match contra_music::soundfont::render_soundfont(&request, soundfont) {
+        match caller_music::soundfont::render_soundfont(&request, soundfont) {
             Ok(mut buffer) => {
                 let start = Instant::now();
-                contra_music::effects::apply(
+                caller_music::effects::apply(
                     &mut buffer.samples,
                     buffer.sample_rate,
                     buffer.channels,
@@ -1790,7 +1790,7 @@ fn profile_pure_functions(
                 report.record(
                     "music · stage",
                     "Apply effects",
-                    "contra_music::effects::apply",
+                    "caller_music::effects::apply",
                     ACTION_BUDGET_MS,
                     vec![start.elapsed().as_secs_f64() * 1000.0],
                     "chorus, echo, reverb, and limiter",
@@ -1924,14 +1924,14 @@ fn profile_prefetched_play(report: &mut Report) {
     report.record(
         "session",
         "Play · after startup prefetch",
-        "ContraApp::play → ensure_ready → apply_audio_settings → cached render_music",
+        "CallerApp::play → ensure_ready → apply_audio_settings → cached render_music",
         ACTION_BUDGET_MS,
         vec![elapsed],
         "the normal desktop first Play: the idle prefetch already filled the RAM cache",
     );
 }
 
-/// Entry point used by the `contra-perf` binary.
+/// Entry point used by the `caller-perf` binary.
 pub fn run() -> Result<(), Box<dyn Error>> {
     let samples = std::env::args()
         .nth(1)
@@ -1946,7 +1946,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     report.record(
         "startup",
         "Launch the app",
-        "ContraApp::new_headless + egui context + harness",
+        "CallerApp::new_headless + egui context + harness",
         STARTUP_BUDGET_MS,
         vec![startup_ms],
         "headless: defaults, in-memory cache, stub speech, no audio device or network",

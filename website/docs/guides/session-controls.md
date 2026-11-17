@@ -317,7 +317,7 @@ enabled again), the four prepared deliveries per call (set **Deliveries per
 call** to 1 to skip them), and the four music variation passes per render (turn
 **Vary the music on each loop** off for one pass). Cycling tunes also keeps the
 next rendered tune in memory. See the
-[memory notes](https://github.com/nicholasgower/Contra-karaoke/blob/dev/docs/memory.md)
+[memory notes](https://github.com/nicholasgower/Caller-karaoke/blob/dev/docs/memory.md)
 for the measured numbers and the remaining options.
 
 ## About and project links

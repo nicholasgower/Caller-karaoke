@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a signed Contra Karaoke APK.
+"""Build a signed Caller Karaoke APK.
 
 `cargo apk` produces the native APK, but it cannot compile Java. The `tts`
 crate's Android backend requires the `rs.tts.Bridge` class at runtime, and the
@@ -30,10 +30,10 @@ REPO = Path(__file__).resolve().parents[2]
 APP_MANIFEST = REPO / "crates" / "app" / "Cargo.toml"
 BRIDGE = REPO / "packaging" / "android" / "java" / "rs" / "tts" / "Bridge.java"
 MAIN_ACTIVITY = (
-    REPO / "packaging" / "android" / "java" / "org" / "contrakaraoke" / "app" / "MainActivity.java"
+    REPO / "packaging" / "android" / "java" / "org" / "callerkaraoke" / "app" / "MainActivity.java"
 )
 TTS_PACKAGE = "rs/tts/Bridge.class"
-MAIN_ACTIVITY_PACKAGE = "org/contrakaraoke/app"
+MAIN_ACTIVITY_PACKAGE = "org/callerkaraoke/app"
 
 # ONNX Runtime for the local Kokoro voice. Only libonnxruntime.so is taken from
 # the AAR; the Java bindings and the JNI wrapper are not used.
@@ -191,7 +191,7 @@ def debug_keystore(env: dict[str, str], java_home: Path) -> Path:
 
 
 def build_rust(profile: str, target: str | None, env: dict[str, str], keystore: Path | None) -> None:
-    args = ["cargo", "apk", "build", "--lib", "-p", "contra-app"]
+    args = ["cargo", "apk", "build", "--lib", "-p", "caller-app"]
     if profile == "release":
         args.append("--release")
     if target:
@@ -263,14 +263,14 @@ def sha256_file(path: Path) -> str:
 
 
 def find_ort_aar() -> Path:
-    override = os.environ.get("CONTRA_ORT_ANDROID_AAR")
+    override = os.environ.get("CALLER_ORT_ANDROID_AAR")
     if override:
         aar = Path(override)
         if not aar.is_file():
-            raise SystemExit(f"CONTRA_ORT_ANDROID_AAR does not exist: {aar}")
+            raise SystemExit(f"CALLER_ORT_ANDROID_AAR does not exist: {aar}")
         if sha256_file(aar) != ORT_AAR_SHA256:
             raise SystemExit(
-                "CONTRA_ORT_ANDROID_AAR does not match the pinned ONNX Runtime "
+                "CALLER_ORT_ANDROID_AAR does not match the pinned ONNX Runtime "
                 f"{ORT_AAR_VERSION} AAR"
             )
         return aar
@@ -283,7 +283,7 @@ def find_ort_aar() -> Path:
     partial = cache.with_suffix(".aar.part")
     print(f"+ download {ORT_AAR_URL}", flush=True)
     request = urllib.request.Request(
-        ORT_AAR_URL, headers={"User-Agent": "contra-karaoke-build"}
+        ORT_AAR_URL, headers={"User-Agent": "caller-karaoke-build"}
     )
     with urllib.request.urlopen(request, timeout=300) as response, partial.open(
         "wb"
@@ -305,7 +305,7 @@ def apk_native_abis(apk: Path) -> list[str]:
                 name.split("/")[1]
                 for name in archive.namelist()
                 if name.startswith("lib/")
-                and name.endswith("/libcontra_app.so")
+                and name.endswith("/libcaller_app.so")
                 and len(name.split("/")) == 3
             }
         )
@@ -320,7 +320,7 @@ def inject_assets(
 ) -> None:
     abis = apk_native_abis(apk)
     if not abis:
-        raise SystemExit(f"{apk} has no lib/<abi>/libcontra_app.so entries")
+        raise SystemExit(f"{apk} has no lib/<abi>/libcaller_app.so entries")
     ort_libraries: dict[str, str] = {}
     if ort_aar is not None:
         with zipfile.ZipFile(ort_aar) as runtime:
@@ -433,15 +433,15 @@ def main() -> int:
     if not args.skip_build:
         build_rust(profile, args.target, env, None if args.debug else keystore)
 
-    apk = REPO / "target" / profile / "apk" / "contra-karaoke.apk"
+    apk = REPO / "target" / profile / "apk" / "caller-karaoke.apk"
     if not apk.is_file():
         raise SystemExit(f"{apk} was not produced")
 
-    work = Path(tempfile.mkdtemp(prefix="contra-android-", dir=REPO / "target"))
+    work = Path(tempfile.mkdtemp(prefix="caller-android-", dir=REPO / "target"))
     try:
         classes_dex = build_dex(env, sdk, java_home, work)
         ort_aar = None if args.without_kokoro else find_ort_aar()
-        unsigned = work / "contra-karaoke-unsigned.apk"
+        unsigned = work / "caller-karaoke-unsigned.apk"
         inject_assets(apk, classes_dex, unsigned, ort_aar=ort_aar)
         final = args.output or apk
         final.parent.mkdir(parents=True, exist_ok=True)

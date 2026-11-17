@@ -2,7 +2,7 @@ use super::*;
 use crate::app::*;
 use eframe::egui;
 
-impl ContraApp {
+impl CallerApp {
     pub(in crate::app) fn aliases_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);

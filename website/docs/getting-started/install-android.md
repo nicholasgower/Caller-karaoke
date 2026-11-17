@@ -31,11 +31,11 @@ build it yourself:
   </CommandStep>
   <CommandStep command="python packaging/android/build-apk.py">
     Build the APK, add the TTS Java bridge, and sign it. The result is
-    `target/release/apk/contra-karaoke.apk`.
+    `target/release/apk/caller-karaoke.apk`.
   </CommandStep>
 </Steps>
 
-The package ID is `org.contrakaraoke.app`. The script signs with the debug
+The package ID is `org.callerkaraoke.app`. The script signs with the debug
 keystore unless `CARGO_APK_RELEASE_KEYSTORE` and
 `CARGO_APK_RELEASE_KEYSTORE_PASSWORD` are set, so treat the default artifact as
 a test build. The platform TTS backend needs the `rs.tts.Bridge` class that the
@@ -50,11 +50,11 @@ crashes while loading the native library.
     apps for the file manager or browser you used.
   </Step>
   <Step shot="install-android-app">
-    Confirm the install and open Contra Karaoke.
+    Confirm the install and open Caller Karaoke.
   </Step>
 </Steps>
 
-With ADB, `adb install path/to/contra-karaoke.apk` performs the same install.
+With ADB, `adb install path/to/caller-karaoke.apk` performs the same install.
 
 ## First launch
 
@@ -70,7 +70,7 @@ whether a SoundFont was loaded in the issue report.
 
 Android delivers headset buttons, Bluetooth controls, the lock screen, and the
 system media player to the app's media session. The session shows the loaded
-dance as the title, the tune as the artist, and *Contra Karaoke* as the album,
+dance as the title, the tune as the artist, and *Caller Karaoke* as the album,
 with a Play/Pause control.
 
 - **Play** starts or resumes the session; **Pause** pauses it and keeps the beat
@@ -133,7 +133,7 @@ Android stops the app in the background, playback stops with it.
 
 ## Uninstall
 
-Use Android's **Settings → Apps → Contra Karaoke → Uninstall**. Uninstalling
+Use Android's **Settings → Apps → Caller Karaoke → Uninstall**. Uninstalling
 removes the app's private preferences and cache.
 
 ## Build from source

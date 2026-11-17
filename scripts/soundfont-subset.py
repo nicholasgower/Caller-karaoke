@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Produce a small SF2 from a larger one, keeping only chosen GM programs.
 
-Contra Karaoke bundles a subset of FluidR3_GM (MIT) so the default playback
+Caller Karaoke bundles a subset of FluidR3_GM (MIT) so the default playback
 uses sampled instruments without shipping the whole 141 MB bank. Nothing in the
 Rust crates can write an SF2, and the usual editors (Polyphone, Swami) are
 GPL GUI tools, so this dependency-free script does the edit.
@@ -273,7 +273,7 @@ def subset(source: SoundFont, keep_programs: set[int]) -> bytes:
         info.append((key, source.data[body : body + size]))
     body, size = source.chunks["INFO/INAM"]
     original = name_of(source.data[body : body + size]).decode("latin-1")
-    info.append(("INAM", (original + " (Contra Karaoke subset)").encode("latin-1") + b"\0"))
+    info.append(("INAM", (original + " (Caller Karaoke subset)").encode("latin-1") + b"\0"))
     for key in ("ICRD", "IENG", "ICOP", "ICMT"):
         if "INFO/" + key in source.chunks:
             body, size = source.chunks["INFO/" + key]
@@ -281,7 +281,7 @@ def subset(source: SoundFont, keep_programs: set[int]) -> bytes:
     info.append(
         (
             "ISFT",
-            b"contra-karaoke soundfont-subset.py\0",
+            b"caller-karaoke soundfont-subset.py\0",
         )
     )
     # rustysynth's INFO reader ignores the RIFF pad byte after an odd-sized

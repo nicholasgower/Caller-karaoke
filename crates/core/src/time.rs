@@ -1,6 +1,6 @@
 //! Explicit musical time units.
 //!
-//! Contra Karaoke has three time domains and they must not be mixed
+//! Caller Karaoke has three time domains and they must not be mixed
 //! implicitly:
 //!
 //! * [`Beats`] — dance beats (half a bar; 64 per standard 32-bar tune).

@@ -6,8 +6,8 @@ script downloads the official MIT-licensed runtime once and embeds
 first use. For an offline or audited build, point the script at a local copy:
 
 ```powershell
-$env:CONTRA_ONNX_RUNTIME_DLL = "C:\path\to\onnxruntime.dll"
-cargo build --release -p contra-app
+$env:CALLER_ONNX_RUNTIME_DLL = "C:\path\to\onnxruntime.dll"
+cargo build --release -p caller-app
 ```
 
 The voice model itself is downloaded from Hugging Face on first use and cached;
@@ -16,18 +16,18 @@ it is not part of the installer.
 Build the release binary first:
 
 ```powershell
-cargo build --release -p contra-app
+cargo build --release -p caller-app
 ```
 
-Portable format: copy `target\release\contra-karaoke.exe` plus `LICENSE`,
+Portable format: copy `target\release\caller-karaoke.exe` plus `LICENSE`,
 `README.md`, `CREDITS.md`, and `CHANGELOG.md` into a folder and ZIP it.
 
 Installer: install [Inno Setup](https://jrsoftware.org/isinfo.php) and run:
 
 ```powershell
-iscc packaging\windows\contra-karaoke.iss `
+iscc packaging\windows\caller-karaoke.iss `
   /DAppVersion=0.1.0 `
-  /DOutputBaseFilename=ContraKaraoke-0.1.0-x64-setup
+  /DOutputBaseFilename=CallerKaraoke-0.1.0-x64-setup
 ```
 
 The installer is written to `dist\`. The release workflow passes the workspace

@@ -1,6 +1,6 @@
 # Memory use
 
-This page records where Contra Karaoke's memory goes, what is measured in the
+This page records where Caller Karaoke's memory goes, what is measured in the
 app, and which reductions are already available. Numbers vary by platform,
 window size, GPU driver, and whether the neural voice has ever run. The values
 below were measured on Windows with a 48 kHz stereo output and the bundled
@@ -39,7 +39,7 @@ the table above.
 app and has a **Refresh memory use** button. The same table is printed by:
 
 ```sh
-cargo test -p contra-app memory_report -- --nocapture
+cargo test -p caller-app memory_report -- --nocapture
 ```
 
 Representative output from the test (headless, 1280×800, speech off, four

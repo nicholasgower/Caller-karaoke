@@ -5,7 +5,7 @@ sidebar_position: 4
 ---
 
 ContraDB cards use role words such as `ladles` and `gentlespoons`. Callers use
-many vocabularies. Contra Karaoke replaces recognised role words in both the
+many vocabularies. Caller Karaoke replaces recognised role words in both the
 dance card and the rendered calls.
 
 ## Open the setting

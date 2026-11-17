@@ -8,7 +8,7 @@ the roadmap. It is both a design note and a backlog. The short version is:
 > that fit the music, teach before they prompt, say less as the dancers learn,
 > and stay ready to rescue the floor.
 
-Contra Karaoke already computes *when* a call should start. This chapter is
+Caller Karaoke already computes *when* a call should start. This chapter is
 about making the call itself worth hearing.
 
 ### 17.1 Two goals, one engine
@@ -342,7 +342,7 @@ card, the notes, and the aliases, and it can warn about missing information.
 
 ### 17.6 Data and algorithm sketch
 
-Keep the domain logic in `contra-core`; the UI only renders decisions.
+Keep the domain logic in `caller-core`; the UI only renders decisions.
 
 ```rust
 pub enum CallLength { Long, Medium, Short }

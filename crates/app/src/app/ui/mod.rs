@@ -20,7 +20,7 @@ mod widgets;
 
 use crate::theme;
 pub(in crate::app) use abc_editor::{AbcEditorState, share_prompt};
-use contra_core::{Dance, FolderFilter, Tune};
+use caller_core::{Dance, FolderFilter, Tune};
 use eframe::egui;
 #[cfg(feature = "headless")]
 pub(in crate::app) use glossary::show_tooltip_preview;
@@ -616,7 +616,7 @@ pub(super) enum CallPhase {
     Executing,
 }
 
-pub(super) fn phase_at(call: &contra_core::ScheduledCall, beat: f64) -> CallPhase {
+pub(super) fn phase_at(call: &caller_core::ScheduledCall, beat: f64) -> CallPhase {
     if beat < call.start_beat {
         CallPhase::Upcoming
     } else if beat < call.execute_beat {
@@ -711,7 +711,7 @@ pub(super) enum LibraryAction {
 
 /// The site name to show for a provider, for "Open on …" links and messages.
 pub(super) fn source_label(provider: &str) -> &'static str {
-    contra_sources::dance_provider(provider)
+    caller_sources::dance_provider(provider)
         .map(|provider| provider.display_name())
         .unwrap_or("the source")
 }
@@ -730,7 +730,7 @@ pub(super) enum FolderCommand {
         to: usize,
     },
     /// Use a folder (or the explicit list) as the tune set.
-    UseTuneSet(contra_core::TuneSetSource),
+    UseTuneSet(caller_core::TuneSetSource),
     /// Restore every split pane to its default width.
     ResetPanes,
 }
@@ -764,7 +764,7 @@ pub(super) struct FolderPanel<'a> {
 
 /// The tune-set controls the folder panel offers below the selected folder.
 pub(super) struct TuneSetPanel<'a> {
-    pub source: &'a contra_core::TuneSetSource,
+    pub source: &'a caller_core::TuneSetSource,
     pub count: usize,
 }
 
@@ -772,12 +772,12 @@ pub(super) struct TuneSetPanel<'a> {
 /// figure is being danced.
 pub(super) fn upcoming_move_card(
     ui: &mut egui::Ui,
-    next: &contra_core::ScheduledCall,
+    next: &caller_core::ScheduledCall,
     beat: f64,
     show_original: bool,
     glossary_enabled: bool,
     call_size: f32,
-) -> Option<&'static contra_core::glossary::GlossaryEntry> {
+) -> Option<&'static caller_core::glossary::GlossaryEntry> {
     ui.label(
         egui::RichText::new("UPCOMING MOVE")
             .small()
@@ -819,14 +819,14 @@ pub(super) struct SessionControlChanges {
     timeline_dirty: bool,
     music_dirty: bool,
     /// The count-in checkbox changed. Timeline, music, and transport apply
-    /// together through `ContraApp::apply_count_in_change`.
+    /// together through `CallerApp::apply_count_in_change`.
     count_in_dirty: bool,
     rotation_dirty: bool,
     save: bool,
     action: Option<&'static str>,
 }
 
-impl ContraApp {
+impl CallerApp {
     pub(super) fn pagination_ui(&mut self, ui: &mut egui::Ui, dance: bool) {
         // A source with one capped result list explains the cap on the screen
         // instead of offering Previous/Next that would repeat the same rows.

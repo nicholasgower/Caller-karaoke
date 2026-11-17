@@ -11,7 +11,7 @@ use std::path::Path;
 // the browser clock there and re-exports `std` everywhere else.
 use web_time::{SystemTime, UNIX_EPOCH};
 
-use contra_core::{Dance, Library, Tune};
+use caller_core::{Dance, Library, Tune};
 
 const DANCES_FILE: &str = "dances.json";
 const TUNES_FILE: &str = "tunes.json";
@@ -78,7 +78,7 @@ mod tests {
 
     fn temp_dir(name: &str) -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
-            "contra-library-{name}-{}-{}",
+            "caller-library-{name}-{}-{}",
             std::process::id(),
             now_seconds()
         ));

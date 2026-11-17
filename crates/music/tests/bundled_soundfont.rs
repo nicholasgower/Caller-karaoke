@@ -10,19 +10,19 @@
 //! 141 MB source bank. Run it after regenerating the subset:
 //!
 //! ```sh
-//! CONTRA_REFERENCE_SF2=/path/to/FluidR3_GM.sf2 \
-//!     cargo test -p contra-music --test bundled_soundfont -- --ignored
+//! CALLER_REFERENCE_SF2=/path/to/FluidR3_GM.sf2 \
+//!     cargo test -p caller-music --test bundled_soundfont -- --ignored
 //! ```
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use contra_core::{
+use caller_core::{
     AccompanimentInstrument, AccompanimentRhythm, COUNT_IN_BEATS, Countermelody, InstrumentCopies,
     MelodyInstrument,
 };
-use contra_music::soundfont::{load_soundfont, render_soundfont};
-use contra_music::{Arrangement, RenderRequest, parse_abc};
+use caller_music::soundfont::{load_soundfont, render_soundfont};
+use caller_music::{Arrangement, RenderRequest, parse_abc};
 use rustysynth::SoundFont;
 
 const FONT: &[u8] = include_bytes!("../../../assets/defaults/fluid-r3-gm-subset.sf2");
@@ -75,19 +75,19 @@ fn request() -> RenderRequest {
         second_accompaniment: Countermelody::Accordion,
         copies: InstrumentCopies::default(),
         band: Vec::new(),
-        output: contra_core::OutputMode::Stereo,
-        variations: contra_core::VariationOptions::default(),
-        humanize_options: contra_core::HumanizeOptions::default(),
-        ending_options: contra_core::EndingOptions::default(),
+        output: caller_core::OutputMode::Stereo,
+        variations: caller_core::VariationOptions::default(),
+        humanize_options: caller_core::HumanizeOptions::default(),
+        ending_options: caller_core::EndingOptions::default(),
         dancer_sounds: false,
         dancer_sound_volume: 0.0,
         dancer_sound_events: Vec::new(),
-        percussion: contra_core::Percussion::Off,
-        percussion_rhythm: contra_core::PercussionRhythm::Auto,
+        percussion: caller_core::Percussion::Off,
+        percussion_rhythm: caller_core::PercussionRhythm::Auto,
         melody_volume: 0.75,
         accompaniment_volume: 0.65,
         percussion_volume: 0.5,
-        effects: contra_core::AudioEffects::default(),
+        effects: caller_core::AudioEffects::default(),
         count_in_beats: COUNT_IN_BEATS,
         sample_rate: 24_000,
         variation_passes: 1,
@@ -162,40 +162,40 @@ fn bundled_font_renders_a_section_of_every_copy() {
     let font = bundled();
     let mut request = request();
     request.band = vec![
-        contra_core::BandSlot {
-            part: contra_core::BandPart::Melody,
-            voice: contra_core::BandVoice::Fiddle,
+        caller_core::BandSlot {
+            part: caller_core::BandPart::Melody,
+            voice: caller_core::BandVoice::Fiddle,
             players: 4,
             volume: 0.75,
             pan: -0.15,
             depth: 0.0,
         },
-        contra_core::BandSlot {
-            part: contra_core::BandPart::Accompaniment,
-            voice: contra_core::BandVoice::Piano,
+        caller_core::BandSlot {
+            part: caller_core::BandPart::Accompaniment,
+            voice: caller_core::BandVoice::Piano,
             players: 4,
             volume: 0.65,
             pan: 0.10,
             depth: 0.0,
         },
-        contra_core::BandSlot {
-            part: contra_core::BandPart::Countermelody,
-            voice: contra_core::BandVoice::Fiddle,
+        caller_core::BandSlot {
+            part: caller_core::BandPart::Countermelody,
+            voice: caller_core::BandVoice::Fiddle,
             players: 4,
             volume: 0.55,
             pan: 0.30,
             depth: 0.0,
         },
-        contra_core::BandSlot {
-            part: contra_core::BandPart::Percussion,
-            voice: contra_core::BandVoice::Drumset,
+        caller_core::BandSlot {
+            part: caller_core::BandPart::Percussion,
+            voice: caller_core::BandVoice::Drumset,
             players: 3,
             volume: 0.5,
             pan: 0.0,
             depth: 0.0,
         },
     ];
-    request.percussion = contra_core::Percussion::Drumset;
+    request.percussion = caller_core::Percussion::Drumset;
     let section = render_soundfont(&request, &font).expect("renders the full section");
     let peak = section
         .samples
@@ -256,7 +256,7 @@ fn request_loop_pass_samples(request: &RenderRequest) -> u64 {
 }
 
 /// RMS of the loop region, which excludes the count-in.
-fn loop_rms(buffer: &contra_music::AudioBuffer) -> f64 {
+fn loop_rms(buffer: &caller_music::AudioBuffer) -> f64 {
     let start = buffer.loop_start_sample as usize * buffer.channels as usize;
     let end = buffer.loop_end_sample as usize * buffer.channels as usize;
     let sum: f64 = buffer.samples[start..end]
@@ -270,8 +270,8 @@ fn loop_rms(buffer: &contra_music::AudioBuffer) -> f64 {
 fn percussion_mixes_with_the_bundled_font() {
     let font = bundled();
     let mut request = request();
-    request.percussion = contra_core::Percussion::Drumset;
-    let buffer = contra_music::render(&request, Some(&font)).expect("renders trio with drums");
+    request.percussion = caller_core::Percussion::Drumset;
+    let buffer = caller_music::render(&request, Some(&font)).expect("renders trio with drums");
     let peak = buffer
         .samples
         .iter()
@@ -351,10 +351,10 @@ fn every_melody_and_accompaniment_choice_is_audible() {
 }
 
 #[test]
-#[ignore = "needs the 141 MB reference bank in CONTRA_REFERENCE_SF2"]
+#[ignore = "needs the 141 MB reference bank in CALLER_REFERENCE_SF2"]
 fn bundled_font_matches_the_reference() {
-    let Ok(reference_path) = std::env::var("CONTRA_REFERENCE_SF2") else {
-        panic!("set CONTRA_REFERENCE_SF2 to the full FluidR3_GM.sf2");
+    let Ok(reference_path) = std::env::var("CALLER_REFERENCE_SF2") else {
+        panic!("set CALLER_REFERENCE_SF2 to the full FluidR3_GM.sf2");
     };
     let reference_bytes = std::fs::read(reference_path).expect("reference font reads");
     let reference = load_soundfont(&reference_bytes).expect("reference font loads");

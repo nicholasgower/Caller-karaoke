@@ -4,7 +4,7 @@ description: What is not finished or not available in the 0.1.0 development buil
 sidebar_position: 5
 ---
 
-Contra Karaoke is usable on desktop and in the browser, but 0.1.0 is still a
+Caller Karaoke is usable on desktop and in the browser, but 0.1.0 is still a
 development release. These are the limitations to know before relying on it.
 
 ## Platforms

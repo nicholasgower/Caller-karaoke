@@ -4,7 +4,7 @@ description: Build a band from a user-editable instrument list, set per-instrume
 sidebar_position: 6
 ---
 
-Contra Karaoke imitates a small contra band. The band is a list you edit: by
+Caller Karaoke imitates a small contra band. The band is a list you edit: by
 default it has two melody fiddles, a piano, two countermelody fiddles, and three
 foot taps, so a session sounds like a full band on first launch. Playback uses
 sampled instruments from a bundled subset of the Fluid R3 GM soundfont, so no

@@ -2,7 +2,7 @@ use super::*;
 use crate::app::*;
 use eframe::egui;
 
-impl ContraApp {
+impl CallerApp {
     pub(in crate::app) fn tune_download_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
@@ -312,7 +312,7 @@ impl ContraApp {
             let in_rotation = self.tune_in_rotation(&tune);
             let folder_set = matches!(
                 self.prefs.tune_rotation.source,
-                contra_core::TuneSetSource::Folder(_)
+                caller_core::TuneSetSource::Folder(_)
             );
             // The preview actions share the column on a desktop and stack at
             // full width on a phone, so every row is a 44-point target.
@@ -356,7 +356,7 @@ impl ContraApp {
                         .on_hover_text("Switch the tune set from the folder to the chosen tunes")
                         .clicked()
                     {
-                        self.set_tune_set_source(contra_core::TuneSetSource::List);
+                        self.set_tune_set_source(caller_core::TuneSetSource::List);
                     }
                 } else if ui
                     .add_sized(
@@ -440,7 +440,7 @@ impl ContraApp {
     }
 }
 
-fn tune_summary(ui: &mut egui::Ui, tune: &contra_sources::TuneSummary, downloaded: bool) {
+fn tune_summary(ui: &mut egui::Ui, tune: &caller_sources::TuneSummary, downloaded: bool) {
     ui.label(egui::RichText::new(&tune.title).strong());
     ui.label(
         egui::RichText::new(format!(

@@ -1,4 +1,4 @@
-# Contra Karaoke
+# Caller Karaoke
 
 A caller-training app for contra dancing. It behaves like a karaoke machine for
 callers: the dance card and a moving call prompt show what to say, while
@@ -13,7 +13,7 @@ Android. Version **0.1.0** is the current development version.
 - Native desktop application (Windows and Linux) built with `eframe`/`egui`.
 - Browser build (WASM) with cpal WebAudio playback, localStorage prefs/cache,
   and the same UI. A hosted copy runs on the
-  [documentation site](https://contrakaraoke.nicholasgower.com/play/).
+  [documentation site](https://callerkaraoke.nicholasgower.com/play/).
 - Shareable web session links (`#set=`) that embed the dance and ordered tune
   set, so a setup opens in another browser without a download.
 - ContraDB dance search and HTML dance-card parsing, plus The Caller's Box
@@ -38,7 +38,7 @@ Android. Version **0.1.0** is the current development version.
 ## Quick start
 
 ```sh
-cargo run -p contra-app
+cargo run -p caller-app
 ```
 
 You need a recent stable Rust toolchain (expected MSRV 1.95). On Linux, install
@@ -193,7 +193,7 @@ with the bundled defaults and cached content.
 Playback uses a bundled subset of the MIT-licensed Fluid R3 GM soundfont, so no
 download is needed for realistic samples. To use a different bank, load an
 `.sf2` under **Preferences → Soundfont**; choose **Use bundled** to go back. A
-file you load is remembered locally and is never redistributed by Contra
+file you load is remembered locally and is never redistributed by Caller
 Karaoke. You are responsible for its license.
 
 ## Building and testing
@@ -202,7 +202,7 @@ Karaoke. You are responsible for its license.
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo build --release -p contra-app
+cargo build --release -p caller-app
 ```
 
 Web:
@@ -214,7 +214,7 @@ cd crates/web && trunk build --release
 ```
 
 The documentation site hosts a copy of this build at
-<https://contrakaraoke.nicholasgower.com/play/>. The docs workflow stages it
+<https://callerkaraoke.nicholasgower.com/play/>. The docs workflow stages it
 under `website/static/app/` with `npm run build:app` in `website/`, which
 `npm start` also runs. The staged build is generated and not committed; a small
 fallback page is tracked so `/play` explains itself when the app is absent.
@@ -228,7 +228,7 @@ python packaging/android/build-apk.py
 ```
 
 The script adds the `rs.tts.Bridge` class needed by the platform TTS backend and
-signs the APK. The output is `target/release/apk/contra-karaoke.apk`.
+signs the APK. The output is `target/release/apk/caller-karaoke.apk`.
 
 Windows installer and portable archive are built from
 `packaging/windows/`; Linux `.deb`, AppImage, and Flatpak files live under
@@ -243,18 +243,18 @@ do not carry the listener.
 
 ```sh
 # bash
-EGUI_INSPECTION=127.0.0.1:5719 cargo run -p contra-app --features inspection
-cargo run -p contra-mcp
+EGUI_INSPECTION=127.0.0.1:5719 cargo run -p caller-app --features inspection
+cargo run -p caller-mcp
 ```
 
 ```powershell
 # PowerShell
 $env:EGUI_INSPECTION = "127.0.0.1:5719"
-cargo run -p contra-app --features inspection
-cargo run -p contra-mcp
+cargo run -p caller-app --features inspection
+cargo run -p caller-mcp
 ```
 
-`contra-mcp` speaks MCP over stdio. The repository's `.mcp.json` registers it
+`caller-mcp` speaks MCP over stdio. The repository's `.mcp.json` registers it
 for clients that read that file. Call `attach` in the client, then use
 `screenshot`, `widget_tree`, `click`, `type_text`, `press_key`, `wait_for`, and
 the other tools. The session tab also has purpose-built tools: `session_state`

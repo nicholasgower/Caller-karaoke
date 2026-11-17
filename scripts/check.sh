@@ -8,7 +8,7 @@ echo "==> cargo clippy"
 cargo clippy --workspace --all-targets -- -D warnings
 
 echo "==> cargo check (inspection feature)"
-cargo check -p contra-app --features inspection
+cargo check -p caller-app --features inspection
 
 echo "==> cargo test"
 cargo test --workspace

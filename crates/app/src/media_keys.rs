@@ -173,8 +173,8 @@ mod platform {
             #[cfg(not(target_os = "windows"))]
             let hwnd: Option<*mut std::ffi::c_void> = None;
             let mut controls = MediaControls::new(PlatformConfig {
-                dbus_name: "org.contrakaraoke.ContraKaraoke",
-                display_name: "Contra Karaoke",
+                dbus_name: "org.callerkaraoke.CallerKaraoke",
+                display_name: "Caller Karaoke",
                 hwnd,
             })
             .ok()?;
@@ -236,7 +236,7 @@ mod platform {
             let metadata = MediaMetadata {
                 title: Some(dance),
                 artist: Some(tune),
-                album: Some("Contra Karaoke"),
+                album: Some("Caller Karaoke"),
                 ..Default::default()
             };
             let _ = self.controls.set_metadata(metadata);
@@ -424,7 +424,7 @@ mod platform {
     ///
     /// The session itself lives in `MainActivity`: only Java can register a
     /// `MediaSession` and post the MediaStyle notification. The activity sends
-    /// play, pause, and toggle through [`Java_org_contrakaraoke_app_MainActivity_nativeMediaCommand`],
+    /// play, pause, and toggle through [`Java_org_callerkaraoke_app_MainActivity_nativeMediaCommand`],
     /// so the transport sees the same [`MediaCommand`] values as on desktop.
     pub struct MediaKeys {
         /// The state last published, so an idle frame does not repeat it.
@@ -486,7 +486,7 @@ mod platform {
             let published = with_activity(|env, class| {
                 let title = env.new_string(dance)?;
                 let artist = env.new_string(tune)?;
-                let album = env.new_string("Contra Karaoke")?;
+                let album = env.new_string("Caller Karaoke")?;
                 env.call_static_method(
                     class,
                     "setMediaMetadata",
@@ -513,7 +513,7 @@ mod platform {
 /// (see [`platform::attach_activity`]).
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeAttachActivity(
+pub extern "system" fn Java_org_callerkaraoke_app_MainActivity_nativeAttachActivity(
     mut env: jni::JNIEnv<'_>,
     class: jni::objects::JClass<'_>,
 ) {
@@ -528,7 +528,7 @@ pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeAttachActiv
 /// disagree about a future command without crashing the session.
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeMediaCommand(
+pub extern "system" fn Java_org_callerkaraoke_app_MainActivity_nativeMediaCommand(
     _env: *mut core::ffi::c_void,
     _class: *mut core::ffi::c_void,
     command: i32,

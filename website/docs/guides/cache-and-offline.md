@@ -1,10 +1,10 @@
 ---
 title: Cache and offline
-description: How Contra Karaoke caches dances, tunes, and searches, how stale content is used, and how to clear the cache or configure the web proxy.
+description: How Caller Karaoke caches dances, tunes, and searches, how stale content is used, and how to clear the cache or configure the web proxy.
 sidebar_position: 9
 ---
 
-Contra Karaoke fetches dances from the selected dance source (ContraDB by
+Caller Karaoke fetches dances from the selected dance source (ContraDB by
 default, or The Caller's Box) and tunes from ABC Session Tunes. Content you
 **download** in **Select dance → Download dance** or **Select tune → Download
 tune** is saved to your local library and works offline. Separately, the app

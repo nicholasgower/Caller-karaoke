@@ -1,4 +1,4 @@
-package org.contrakaraoke.app;
+package org.callerkaraoke.app;
 
 import android.app.NativeActivity;
 import android.app.Notification;
@@ -55,7 +55,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class MainActivity extends NativeActivity {
     static {
-        System.loadLibrary("contra_app");
+        System.loadLibrary("caller_app");
     }
 
     /** Command codes; they must match `MediaCommand` in `media_keys.rs`. */
@@ -69,9 +69,9 @@ public class MainActivity extends NativeActivity {
     private static final int REQUEST_IMPORT = 2;
     /** Largest file the document picker will read, in bytes. */
     private static final int MAX_IMPORT_BYTES = 4 * 1024 * 1024;
-    private static final String ACTION_PLAY = "org.contrakaraoke.app.action.PLAY";
-    private static final String ACTION_PAUSE = "org.contrakaraoke.app.action.PAUSE";
-    private static final String ACTION_TOGGLE = "org.contrakaraoke.app.action.TOGGLE";
+    private static final String ACTION_PLAY = "org.callerkaraoke.app.action.PLAY";
+    private static final String ACTION_PAUSE = "org.callerkaraoke.app.action.PAUSE";
+    private static final String ACTION_TOGGLE = "org.callerkaraoke.app.action.TOGGLE";
 
     private static MediaSession mediaSession;
     private static Context appContext;
@@ -81,9 +81,9 @@ public class MainActivity extends NativeActivity {
     private static int importKind;
     private static BroadcastReceiver notificationReceiver;
     private static boolean playing;
-    private static String title = "Contra Karaoke";
+    private static String title = "Caller Karaoke";
     private static String artist = "";
-    private static String album = "Contra Karaoke";
+    private static String album = "Caller Karaoke";
     /**
      * The invisible field that gives this native activity a working soft keyboard.
      *
@@ -162,7 +162,7 @@ public class MainActivity extends NativeActivity {
         if (mediaSession != null) {
             return;
         }
-        MediaSession session = new MediaSession(this, "ContraKaraoke");
+        MediaSession session = new MediaSession(this, "CallerKaraoke");
         session.setCallback(new MediaSession.Callback() {
             @Override
             public void onPlay() {
@@ -554,7 +554,7 @@ public class MainActivity extends NativeActivity {
         values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
         values.put(
                 MediaStore.MediaColumns.RELATIVE_PATH,
-                Environment.DIRECTORY_DOWNLOADS + "/Contra Karaoke");
+                Environment.DIRECTORY_DOWNLOADS + "/Caller Karaoke");
         values.put(MediaStore.MediaColumns.IS_PENDING, 1);
         Uri uri = null;
         try {

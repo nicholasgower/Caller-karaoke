@@ -6,7 +6,7 @@ The release matrix is defined in `.github/workflows/release.yml`.
 | --- | --- | --- |
 | Windows x64 | `-setup.exe`, `-portable.zip` | Inno Setup, Compress-Archive |
 | Linux x86_64 | `.deb`, `.AppImage`, `.flatpak` | cargo-deb, appimagetool, flatpak-builder |
-| Web | `contra-karaoke-web.zip` | Trunk + wasm-opt |
+| Web | `caller-karaoke-web.zip` | Trunk + wasm-opt |
 | Android | `.apk` | cargo-apk, minSdk 26 |
 
 Releases are cut by hand with `node scripts/release.mjs <patch|minor|major|X.Y.Z>`.

@@ -54,7 +54,7 @@ SOURCE_SF2_MEMBER = "GM&SF3/FluidR3_GM.sf2"
 SOURCE_SF2_SHA256 = "74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0"
 SOURCE_SF2_BYTES = 148_398_306
 
-USER_AGENT = "contra-karaoke-soundfont-rebuild/1.0 (+https://github.com/nicholasgower/Contra-karaoke)"
+USER_AGENT = "caller-karaoke-soundfont-rebuild/1.0 (+https://github.com/nicholasgower/Caller-karaoke)"
 
 
 def load_subsetter():
@@ -322,9 +322,9 @@ def main(argv: list[str]) -> int:
     report(output, keep, subsetter)
 
     print()
-    print("Next: cargo test -p contra-music --test bundled_soundfont")
+    print("Next: cargo test -p caller-music --test bundled_soundfont")
     print(
-        "      CONTRA_REFERENCE_SF2=%s cargo test -p contra-music "
+        "      CALLER_REFERENCE_SF2=%s cargo test -p caller-music "
         "--test bundled_soundfont -- --ignored" % source
     )
     return 0

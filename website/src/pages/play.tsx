@@ -11,7 +11,7 @@ export default function Play(): React.ReactElement {
   return (
     <Layout
       title="Play in your browser"
-      description="Try Contra Karaoke without installing it. The hosted browser build plays the bundled dance and tune; online search needs a data proxy."
+      description="Try Caller Karaoke without installing it. The hosted browser build plays the bundled dance and tune; online search needs a data proxy."
       noFooter
     >
       <main className={styles.page}>
@@ -36,7 +36,7 @@ export default function Play(): React.ReactElement {
         <iframe
           className={styles.frame}
           src={appUrl}
-          title="Contra Karaoke browser app"
+          title="Caller Karaoke browser app"
           allow="autoplay; fullscreen"
         />
       </main>

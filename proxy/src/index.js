@@ -1,4 +1,4 @@
-// MIT-licensed CORS proxy for the Contra Karaoke web build.
+// MIT-licensed CORS proxy for the Caller Karaoke web build.
 //
 // Deploy with `wrangler deploy` from this directory. Prefer setting a
 // PROXY_TOKEN secret and entering the same token in the app's Preferences.
@@ -78,7 +78,7 @@ export default {
     const headers = new Headers();
     headers.set(
       "User-Agent",
-      "ContraKaraoke/0.1 (+https://github.com/nicholasgower/Contra-karaoke)",
+      "CallerKaraoke/0.1 (+https://github.com/nicholasgower/Caller-karaoke)",
     );
     const contentType = request.headers.get("content-type");
     if (contentType) {

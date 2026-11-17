@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use contra_core::{Dance, SourceRef, Tune};
+use caller_core::{Dance, SourceRef, Tune};
 use rustysynth::SoundFont;
 
 const DEFAULT_DANCE_JSON: &str = include_str!("../../../assets/defaults/another_last_dance.json");
@@ -28,7 +28,7 @@ pub fn default_dance() -> Dance {
 /// rendering path needs it. `None` means the built-in procedural synth takes
 /// over, which keeps the app playable if the asset is ever missing.
 pub fn default_soundfont() -> Option<Arc<SoundFont>> {
-    contra_music::soundfont::load_soundfont(DEFAULT_SOUNDFONT).ok()
+    caller_music::soundfont::load_soundfont(DEFAULT_SOUNDFONT).ok()
 }
 
 pub fn default_tune() -> Tune {
@@ -56,16 +56,16 @@ mod tests {
     #[test]
     fn bundled_soundfont_covers_the_instrument_choices() {
         let font = default_soundfont().expect("the bundled soundfont loads");
-        let mut programs: Vec<u8> = contra_core::MelodyInstrument::ALL
+        let mut programs: Vec<u8> = caller_core::MelodyInstrument::ALL
             .iter()
             .map(|instrument| instrument.gm_program())
             .chain(
-                contra_core::AccompanimentInstrument::ALL
+                caller_core::AccompanimentInstrument::ALL
                     .iter()
                     .map(|instrument| instrument.gm_program()),
             )
             .chain(
-                contra_core::Countermelody::ALL
+                caller_core::Countermelody::ALL
                     .iter()
                     .filter_map(|instrument| instrument.gm_program()),
             )
@@ -86,8 +86,8 @@ mod tests {
     fn bundled_defaults_have_the_same_length() {
         let dance = default_dance();
         let tune = default_tune();
-        let score = contra_music::parse_abc(&tune.abc).expect("bundled tune parses");
-        let arrangement = contra_music::Arrangement::from_score(&score, 64.0);
+        let score = caller_music::parse_abc(&tune.abc).expect("bundled tune parses");
+        let arrangement = caller_music::Arrangement::from_score(&score, 64.0);
 
         assert_eq!(dance.total_beats(), 64.0);
         assert_eq!(arrangement.body_beats, 64.0);

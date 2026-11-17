@@ -1,7 +1,7 @@
 //! Source-agnostic dance and figure models.
 //!
 //! The models deliberately avoid any knowledge of ContraDB's HTML or JSON.
-//! A provider in `contra-sources` turns a site response into these types.
+//! A provider in `caller-sources` turns a site response into these types.
 
 use serde::{Deserialize, Serialize};
 

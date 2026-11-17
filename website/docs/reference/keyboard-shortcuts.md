@@ -4,7 +4,7 @@ description: Play, pause, restart, open Preferences, and leave a picker without 
 sidebar_position: 1
 ---
 
-Contra Karaoke has a small keyboard shortcut set. Shortcuts are ignored while a
+Caller Karaoke has a small keyboard shortcut set. Shortcuts are ignored while a
 text field or another control has keyboard focus, so typing a dance title does
 not start or stop the music. On Windows, Linux, and Android, the operating
 system's media controls drive the transport from outside the app; see
@@ -85,11 +85,11 @@ Windows media overlay, the media widget in a Linux panel (including the Cinnamon
 sound applet on Linux Mint), and on Android the headset and Bluetooth buttons,
 the lock screen, and the media notification.
 
-Contra Karaoke registers a media session with the platform — System Media
+Caller Karaoke registers a media session with the platform — System Media
 Transport Controls on Windows, MPRIS on Linux, and `MediaSession` on Android —
 so the operating system routes the button to the app while it is the active
 player. The system media controls show the loaded dance as the title, the tune
-as the artist, and *Contra Karaoke* as the album.
+as the artist, and *Caller Karaoke* as the album.
 
 - **Play** starts or resumes the session.
 - **Pause** pauses it and stops speech. The beat is kept, so the next Play
@@ -102,7 +102,7 @@ notification permission only hides the notification; the headset, Bluetooth,
 lock-screen, and system controls still work.
 
 If another app is playing media, the operating system may send the key there
-instead; pause that app or use **Space** in Contra Karaoke. The browser build
+instead; pause that app or use **Space** in Caller Karaoke. The browser build
 does not register a media session in 0.1.0, so use **Space** in the page.
 
 Next: [How calls are timed](/docs/reference/how-calls-are-timed).

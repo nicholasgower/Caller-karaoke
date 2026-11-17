@@ -7,10 +7,10 @@ use eframe::egui;
 /// reference text should not interrupt the session on every screen or swallow
 /// the transport shortcuts while it is open. Preferences already applies the
 /// phone spacing, so this only adds the separating rule and the content.
-pub(in crate::app) fn about(app: &mut ContraApp, ui: &mut egui::Ui, _compact: bool) {
+pub(in crate::app) fn about(app: &mut CallerApp, ui: &mut egui::Ui, _compact: bool) {
     let top_left = ui.cursor().min;
     ui.separator();
-    ui.heading("About Contra Karaoke");
+    ui.heading("About Caller Karaoke");
     ui.label(
         egui::RichText::new(format!("Version {}", env!("CARGO_PKG_VERSION")))
             .color(theme::muted(ui)),

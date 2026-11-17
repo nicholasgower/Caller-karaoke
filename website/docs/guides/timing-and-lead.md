@@ -4,7 +4,7 @@ description: Understand why calls start before the move, and adjust automatic or
 sidebar_position: 7
 ---
 
-Contra Karaoke's central rule is simple: **the call must finish before the
+Caller Karaoke's central rule is simple: **the call must finish before the
 dancers move**. The app places the call earlier by a lead computed from the
 rendered words.
 

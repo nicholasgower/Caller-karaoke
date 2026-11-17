@@ -3,7 +3,7 @@
 ### 4.1 Workspace layout
 
 ```
-contra-karaoke/
+caller-karaoke/
   Cargo.toml                 workspace, shared version 0.1.0
   crates/
     core/                    domain, timing, aliases, role terms, preferences

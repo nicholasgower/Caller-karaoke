@@ -4,7 +4,7 @@ description: Look up contra dance terms in the app, follow a link from a call or
 sidebar_position: 7
 ---
 
-Contra Karaoke includes a short glossary of the dance terms that appear in a
+Caller Karaoke includes a short glossary of the dance terms that appear in a
 dance card and in the rendered calls. It is a reading aid for a caller who meets
 an unfamiliar figure during a session; it does not change the card, the timing,
 or the music.
@@ -59,7 +59,7 @@ match.
 
 The reference is based on [The Caller's Box glossary of contra dance
 figures](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm). The
-definitions in Contra Karaoke are short original summaries written for this
+definitions in Caller Karaoke are short original summaries written for this
 app, not copied entries. Follow the source link in the app for the full
 definitions, notation, and regional variants.
 

@@ -11,7 +11,7 @@
 
 use std::f32::consts::TAU;
 
-use contra_core::{AudioEffects, ChorusPreset, EchoPreset, ReverbPreset};
+use caller_core::{AudioEffects, ChorusPreset, EchoPreset, ReverbPreset};
 
 /// Apply the selected effects to an interleaved buffer.
 ///

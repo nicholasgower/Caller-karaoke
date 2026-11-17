@@ -9,7 +9,7 @@
 
 use std::sync::LazyLock;
 
-use contra_core::{Dance, Figure, SourceRef};
+use caller_core::{Dance, Figure, SourceRef};
 use scraper::{Html, Selector};
 use serde::Deserialize;
 use url::Url;
@@ -26,7 +26,7 @@ pub static CALLERS_BOX: CallersBox = CallersBox;
 const BASE: &str = "https://www.ibiblio.org/contradance/thecallersbox/";
 
 /// Identifies this app to the site, as its operators ask of automated clients.
-const USER_AGENT: &str = "ContraKaraoke/0.1 (+https://github.com/nicholasgower/Contra-karaoke)";
+const USER_AGENT: &str = "CallerKaraoke/0.1 (+https://github.com/nicholasgower/Caller-karaoke)";
 
 /// Formation values the site's search form sends. The field is an exact match,
 /// so the picker offers the site's own list instead of a free-text value.
@@ -537,7 +537,7 @@ mod tests {
             request
                 .headers
                 .iter()
-                .any(|(name, value)| name == "User-Agent" && value.contains("ContraKaraoke"))
+                .any(|(name, value)| name == "User-Agent" && value.contains("CallerKaraoke"))
         );
     }
 

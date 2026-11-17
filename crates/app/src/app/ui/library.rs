@@ -21,7 +21,7 @@ enum RowMenuChoice {
     Delete,
 }
 
-impl ContraApp {
+impl CallerApp {
     pub(in crate::app) fn dance_library_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
@@ -67,7 +67,7 @@ impl ContraApp {
                     [width, theme::TOUCH_TARGET],
                     egui::Button::new("Import dance JSON"),
                 )
-                .on_hover_text("Add a saved dance from a Contra Karaoke JSON file")
+                .on_hover_text("Add a saved dance from a Caller Karaoke JSON file")
                 .clicked()
             {
                 import = true;
@@ -85,7 +85,7 @@ impl ContraApp {
                     }
                     if ui
                         .button("Import dance JSON")
-                        .on_hover_text("Add a saved dance from a Contra Karaoke JSON file")
+                        .on_hover_text("Add a saved dance from a Caller Karaoke JSON file")
                         .clicked()
                     {
                         import = true;
@@ -262,7 +262,7 @@ impl ContraApp {
     fn dance_library_body(&mut self, ui: &mut egui::Ui, compact: bool, pane_height: f32) {
         let animate = self.prefs.animations_enabled;
         let glossary_enabled = self.prefs.glossary_enabled;
-        let mut entries: Vec<contra_core::LibraryEntry<Dance>> = self
+        let mut entries: Vec<caller_core::LibraryEntry<Dance>> = self
             .dance_library
             .search(&self.dance_library_query, &self.dance_library_folder)
             .into_iter()
@@ -746,7 +746,7 @@ impl ContraApp {
 
     fn tune_library_body(&mut self, ui: &mut egui::Ui, compact: bool, pane_height: f32) {
         let animate = self.prefs.animations_enabled;
-        let mut entries: Vec<contra_core::LibraryEntry<Tune>> = self
+        let mut entries: Vec<caller_core::LibraryEntry<Tune>> = self
             .tune_library
             .search(&self.tune_library_query, &self.tune_library_folder)
             .into_iter()
@@ -975,7 +975,7 @@ impl ContraApp {
         let in_rotation = self.tune_in_rotation(tune);
         let folder_set = matches!(
             self.prefs.tune_rotation.source,
-            contra_core::TuneSetSource::Folder(_)
+            caller_core::TuneSetSource::Folder(_)
         );
         let folders = self.tune_library.folders.clone();
         let folder = self
@@ -1135,7 +1135,7 @@ impl ContraApp {
             LibraryAction::EditTuneAbc(tune) => self.edit_tune_abc(&tune),
             LibraryAction::OpenGlossary(term) => self.open_glossary(Some(term)),
             LibraryAction::UseChosenTuneSet => {
-                self.set_tune_set_source(contra_core::TuneSetSource::List)
+                self.set_tune_set_source(caller_core::TuneSetSource::List)
             }
         }
     }
@@ -1211,11 +1211,11 @@ impl ContraApp {
                 self.renaming_tune_folder = None;
                 self.tune_library_folder = FolderFilter::Folder(new.clone());
                 let set_followed = renamed_from.as_deref().is_some_and(|old| {
-                    matches!(&active_set, contra_core::TuneSetSource::Folder(name) if name == old)
+                    matches!(&active_set, caller_core::TuneSetSource::Folder(name) if name == old)
                 });
                 if set_followed {
                     self.prefs.tune_rotation.source =
-                        contra_core::TuneSetSource::Folder(new.clone());
+                        caller_core::TuneSetSource::Folder(new.clone());
                     self.rotation_settings_changed();
                     self.save_prefs();
                 }
@@ -1227,9 +1227,9 @@ impl ContraApp {
                     self.tune_library_folder = FolderFilter::Unfiled;
                 }
                 self.renaming_tune_folder = None;
-                let set_followed = active_set == contra_core::TuneSetSource::Folder(name.clone());
+                let set_followed = active_set == caller_core::TuneSetSource::Folder(name.clone());
                 if set_followed {
-                    self.prefs.tune_rotation.source = contra_core::TuneSetSource::List;
+                    self.prefs.tune_rotation.source = caller_core::TuneSetSource::List;
                     self.rotation_settings_changed();
                     self.save_prefs();
                 }
@@ -1574,21 +1574,21 @@ fn folder_panel_ui(ui: &mut egui::Ui, panel: FolderPanel<'_>) -> Option<FolderCo
             );
             let folder_is_set = matches!(
                 tune_set.source,
-                contra_core::TuneSetSource::Folder(name) if *name == folder
+                caller_core::TuneSetSource::Folder(name) if *name == folder
             );
             if folder_is_set {
                 if block_button(ui, "Use the chosen tunes")
                     .on_hover_text("Stop following this folder and use the chosen tune list")
                     .clicked()
                 {
-                    command = Some(FolderCommand::UseTuneSet(contra_core::TuneSetSource::List));
+                    command = Some(FolderCommand::UseTuneSet(caller_core::TuneSetSource::List));
                 }
             } else if block_button(ui, "Use this folder as the tune set")
                 .on_hover_text("Every tune in this folder joins the tune set, now and later")
                 .clicked()
             {
                 command = Some(FolderCommand::UseTuneSet(
-                    contra_core::TuneSetSource::Folder(folder.clone()),
+                    caller_core::TuneSetSource::Folder(folder.clone()),
                 ));
             }
         }
@@ -1625,10 +1625,10 @@ fn folder_panel_ui(ui: &mut egui::Ui, panel: FolderPanel<'_>) -> Option<FolderCo
     command
 }
 
-fn apply_folder_command<T: contra_core::LibraryItem>(
+fn apply_folder_command<T: caller_core::LibraryItem>(
     library: &mut Library<T>,
     command: FolderCommand,
-) -> Result<FolderOutcome, contra_core::FolderError> {
+) -> Result<FolderOutcome, caller_core::FolderError> {
     match command {
         FolderCommand::Create(name) => {
             library.create_folder(&name)?;
@@ -1647,12 +1647,12 @@ fn apply_folder_command<T: contra_core::LibraryItem>(
             if library.move_folder(from, to) {
                 Ok(FolderOutcome::Reordered(to))
             } else {
-                Err(contra_core::FolderError::Missing)
+                Err(caller_core::FolderError::Missing)
             }
         }
         // Handled by the app before the library is touched.
         FolderCommand::UseTuneSet(_) | FolderCommand::ResetPanes => {
-            Err(contra_core::FolderError::Missing)
+            Err(caller_core::FolderError::Missing)
         }
     }
 }
@@ -1754,7 +1754,7 @@ fn row_context_menu(
 
 fn saved_dance_row(
     ui: &mut egui::Ui,
-    entry: &contra_core::LibraryEntry<Dance>,
+    entry: &caller_core::LibraryEntry<Dance>,
     selected: Option<(&str, &str)>,
     folders: &[String],
     animate: bool,
@@ -1828,7 +1828,7 @@ fn saved_dance_row(
 /// one click target so the card previews the dance when it is clicked.
 fn dance_row_body(
     ui: &mut egui::Ui,
-    entry: &contra_core::LibraryEntry<Dance>,
+    entry: &caller_core::LibraryEntry<Dance>,
     compact: bool,
 ) -> egui::Response {
     let body = ui
@@ -1876,7 +1876,7 @@ fn saved_dance_preview(
     folder: Option<&str>,
     compact: bool,
     glossary_enabled: bool,
-    padding: contra_core::CardPadding,
+    padding: caller_core::CardPadding,
 ) -> Option<LibraryAction> {
     let mut action = None;
     ui.heading(&dance.title);
@@ -1975,7 +1975,7 @@ fn saved_dance_preview(
 
 fn saved_tune_row(
     ui: &mut egui::Ui,
-    entry: &contra_core::LibraryEntry<Tune>,
+    entry: &caller_core::LibraryEntry<Tune>,
     selected_id: Option<&str>,
     folders: &[String],
     animate: bool,
@@ -2039,7 +2039,7 @@ fn saved_tune_row(
 /// one click target so the card previews the tune when it is clicked.
 fn tune_row_body(
     ui: &mut egui::Ui,
-    entry: &contra_core::LibraryEntry<Tune>,
+    entry: &caller_core::LibraryEntry<Tune>,
     compact: bool,
 ) -> egui::Response {
     let body = ui

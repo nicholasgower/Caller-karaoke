@@ -1,6 +1,6 @@
 # AGENTS.md — Project guidelines
 
-This file is for anyone (human or AI) changing Contra Karaoke. Read it together
+This file is for anyone (human or AI) changing Caller Karaoke. Read it together
 with `ROADMAP.md` before starting. The workspace is scaffolded; the desktop and
 web builds work, and Android/release hardening are the remaining roadmap work.
 
@@ -8,15 +8,15 @@ web builds work, and Android/release hardening are the remaining roadmap work.
 
 ## 1. Project facts
 
-- **Product:** Contra Karaoke — a contra-dance caller trainer.
+- **Product:** Caller Karaoke — a contra-dance caller trainer.
 - **What it does:** plays ABC-sourced music in sync with a dance card and shows
   each call early enough that dancers hear it before executing the move.
 - **Targets:** Windows, Linux, web (WASM), Android.
 - **Language/UI:** Rust, `eframe`/`egui`.
 - **Version:** **0.1.0** until the project owner explicitly says otherwise.
 - **License:** MIT. The existing `LICENSE` copyright line must not be changed.
-- **Bundle identity:** `org.contrakaraoke.app` (Android), package prefix
-  `contra-karaoke` / `contra-*`.
+- **Bundle identity:** `org.callerkaraoke.app` (Android), package prefix
+  `caller-karaoke` / `caller-*`.
 - **Default dance:** Another Last Dance (ContraDB 2409).
 - **Default tune:** Sandy Boys (ABC Session Tunes 75815).
 
@@ -153,14 +153,14 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo check --workspace
-cargo run -p contra-app
+cargo run -p caller-app
 ```
 
 Development-only UI automation (see `docs/automation.md`):
 
 ```sh
-EGUI_INSPECTION=127.0.0.1:5719 cargo run -p contra-app --features inspection
-cargo run -p contra-mcp
+EGUI_INSPECTION=127.0.0.1:5719 cargo run -p caller-app --features inspection
+cargo run -p caller-mcp
 ```
 
 Release-only documentation screenshots (no window, audio device, or network;
@@ -177,7 +177,7 @@ Phone-width inspection pass (renders every screen and dialog at 390×844 into
 `target/mobile-shots/mobile`; safe to run in any worktree):
 
 ```sh
-cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile
+cargo run -p caller-app --features headless --bin caller-headless -- target/mobile-shots mobile
 ```
 
 Web:
@@ -241,7 +241,7 @@ separately.
   migration when a field changes.
 - Public items in library crates get doc comments. Explain "why" in comments,
   not "what".
-- Runtime platform checks use `contra_app::platform()`; `cfg!` is not the
+- Runtime platform checks use `caller_app::platform()`; `cfg!` is not the
   default for them. See §11 for when `#[cfg]` is still required.
 - Keep functions small enough to test; extract pure helpers from UI code.
 - Use `tracing`/`log` for diagnostics. Do not log ABC bodies, tokens, or user
@@ -353,7 +353,7 @@ engine.
   `COMPACT_WIDTH` breakpoint and the layout helpers in
   `crates/app/src/app/ui/mod.rs`; do not add a second breakpoint or assume a
   wide-only column layout. The headless renderer has a phone pass for this
-  (`cargo run -p contra-app --features headless --bin contra-headless -- target/mobile-shots mobile`)
+  (`cargo run -p caller-app --features headless --bin caller-headless -- target/mobile-shots mobile`)
   and the MCP `resize` tool can resize the live app. Fix what the phone pass
   reveals instead of documenting it as a limitation.
 - Tabs at the top; session controls below; dance information occupies the
@@ -365,11 +365,11 @@ engine.
 - All controls need labels/accessibility names.
 - **Every user input must be emulatable through the MCP server.** If a person
   can click, type, drag, scroll, or press a key on a control, an agent must be
-  able to do the same over `contra-mcp`: give the control an accessible name so
+  able to do the same over `caller-mcp`: give the control an accessible name so
   the generic tools can find it, and add a session tool when the state or value
   is not visible in the widget tree. A new interaction is not done until an
   agent has reproduced it; "it works when I click it" is not enough.
-- **Every user-facing function must have a test in `contra-perf`.** A new
+- **Every user-facing function must have a test in `caller-perf`.** A new
   screen, action, or control is not done until `crates/app/src/app/perf.rs`
   measures it. The measurement must name the function path, cover the desktop
   and phone layouts where they differ, and be run with
@@ -380,7 +380,7 @@ engine.
   or otherwise cached in RAM before the user calls it; prefetch it on a worker
   where the platform has one. Only then optimize the remaining logic. Do not
   accept a synchronous UI-thread render, scan, or blocking wait when the work
-  can be moved earlier or off the UI thread. Re-run `contra-perf` and record
+  can be moved earlier or off the UI thread. Re-run `caller-perf` and record
   the before/after medians in the change description.
 - **Performance trade-offs.** When startup time conflicts with action response
   time, choose the lower action response time. When CPU time conflicts with RAM
@@ -422,7 +422,7 @@ engine.
   app; fall back to the bundled instruments (then the built-in synth).
 - Keep platform-specific code in `app`, behind `cfg` or small traits. Do not
   sprinkle `cfg` through domain logic.
-- Runtime platform decisions go through `contra_app::platform()`
+- Runtime platform decisions go through `caller_app::platform()`
   (`crates/app/src/platform.rs`). It returns `"web"` for the browser build and
   the target OS otherwise: `"windows"`, `"linux"`, `"android"`, `"macos"`, and
   so on. Use it when the code compiles on every target and only the behavior,
@@ -443,8 +443,8 @@ engine.
 ## 12. Testing requirements
 
 - Add tests with every behavior change.
-- Every user-facing function has a `contra-perf` measurement; add or update it
-  with every UI, session, picker, or preference change. `contra-perf` is the
+- Every user-facing function has a `caller-perf` measurement; add or update it
+  with every UI, session, picker, or preference change. `caller-perf` is the
   source of truth for the frame, action, and startup budgets (16.67 ms, 100 ms,
   and 250 ms).
 - A user-facing action over its budget is a defect, not a note. Optimize it,
@@ -545,12 +545,12 @@ A change is done when:
 - [ ] New UI follows the grey theme and is usable at phone width.
 - [ ] Every new user input can be emulated through the MCP server (see §9), and
       the accessible name or session tool that makes it possible is documented.
-- [ ] Every new or changed user-facing function has a `contra-perf` test (see
+- [ ] Every new or changed user-facing function has a `caller-perf` test (see
       §9 and §12) and its median is inside the frame, action, or startup
       budget, or the over-budget function was optimized.
 - [ ] Over-budget functions were optimized by moving cacheable work
       (parsing, arrangement, synthesis, rendered buffers, library scans) into
-      RAM before the call, with the before/after `contra-perf` medians recorded.
+      RAM before the call, with the before/after `caller-perf` medians recorded.
 - [ ] Every screen, picker, modal, empty state, and error banner was inspected
       at 1280×800 and 390×844 (and at the 360-point minimum width), with no
       horizontal overflow and no 44 px touch target removed.

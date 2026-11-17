@@ -13,10 +13,10 @@ export default function Download(): React.ReactElement {
   return (
     <Layout
       title="Download"
-      description="Download the latest Contra Karaoke release for Windows, Linux, web, or Android"
+      description="Download the latest Caller Karaoke release for Windows, Linux, web, or Android"
     >
       <main className="container margin-vert--lg">
-        <h1>Download Contra Karaoke</h1>
+        <h1>Download Caller Karaoke</h1>
         <p>
           Version <strong>{RELEASE_VERSION}</strong>. Choose a build below; each
           button downloads the release file directly. Builds are not code-signed
@@ -29,7 +29,7 @@ export default function Download(): React.ReactElement {
             <h2>Windows</h2>
             <DownloadButton platform="windows" />
             <p>
-              The installer sets up Contra Karaoke in Program Files; the portable
+              The installer sets up Caller Karaoke in Program Files; the portable
               ZIP runs from any folder without installing. Both need 64-bit
               Windows 10 or 11. See{' '}
               <Link to="/docs/getting-started/install-windows">Install on Windows</Link>.
@@ -81,9 +81,9 @@ export default function Download(): React.ReactElement {
           1.95 as its minimum.
         </p>
         <pre>
-          <code>{`git clone https://github.com/nicholasgower/Contra-karaoke.git
-cd Contra-karaoke
-cargo run -p contra-app`}</code>
+          <code>{`git clone https://github.com/nicholasgower/Caller-karaoke.git
+cd Caller-karaoke
+cargo run -p caller-app`}</code>
         </pre>
         <p>
           See <Link to="/docs/getting-started/build-and-run">Build and run</Link>{' '}

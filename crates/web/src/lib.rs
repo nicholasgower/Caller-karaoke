@@ -1,9 +1,9 @@
-//! Web entry point for Contra Karaoke.
+//! Web entry point for Caller Karaoke.
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 pub fn start() -> Result<(), wasm_bindgen::JsValue> {
-    contra_app::start_web()
+    caller_app::start_web()
 }
 
 /// Native builds of this package are only used for workspace checks.

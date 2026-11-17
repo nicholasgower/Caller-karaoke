@@ -3,7 +3,7 @@ use crate::app::*;
 use crate::audio::AudioEngine;
 use crate::theme;
 use crate::tts::Speech;
-use contra_core::{CardPadding, Preferences};
+use caller_core::{CardPadding, Preferences};
 use eframe::egui;
 
 /// The instrument line under the tune.
@@ -39,8 +39,8 @@ fn part_copy_label(instrument: &str, players: usize) -> String {
 /// before the window changed therefore stays selectable instead of snapping to
 /// an endpoint.
 fn tempo_slider_bounds(min_bpm: f64, max_bpm: f64, current_bpm: f64) -> (f64, f64) {
-    let min = min_bpm.clamp(contra_core::Tempo::MIN_BPM, contra_core::Tempo::MAX_BPM);
-    let max = max_bpm.clamp(contra_core::Tempo::MIN_BPM, contra_core::Tempo::MAX_BPM);
+    let min = min_bpm.clamp(caller_core::Tempo::MIN_BPM, caller_core::Tempo::MAX_BPM);
+    let max = max_bpm.clamp(caller_core::Tempo::MIN_BPM, caller_core::Tempo::MAX_BPM);
     let (low, high) = if min <= max { (min, max) } else { (max, min) };
     (low.min(current_bpm), high.max(current_bpm))
 }
@@ -530,8 +530,8 @@ fn prompt_card_min_height(
 /// footer stays empty too and never echoes the call already on the card.
 fn card_footer(
     mode: CardMode,
-    next: Option<&contra_core::ScheduledCall>,
-) -> Option<&contra_core::ScheduledCall> {
+    next: Option<&caller_core::ScheduledCall>,
+) -> Option<&caller_core::ScheduledCall> {
     if mode == CardMode::UpcomingMove {
         return None;
     }
@@ -542,10 +542,10 @@ fn card_footer(
 /// it executes and the beat its own call starts.
 fn prompt_card_footer(
     ui: &mut egui::Ui,
-    next: &contra_core::ScheduledCall,
+    next: &caller_core::ScheduledCall,
     compact: bool,
     glossary_enabled: bool,
-) -> Option<&'static contra_core::glossary::GlossaryEntry> {
+) -> Option<&'static caller_core::glossary::GlossaryEntry> {
     let timing = if compact {
         format!(
             "beat {:.0} · call {:.1}",
@@ -593,7 +593,7 @@ fn dance_card_header(ui: &mut egui::Ui, compact: bool, glossary_enabled: bool) -
     open
 }
 
-impl ContraApp {
+impl CallerApp {
     pub(in crate::app) fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
         let layout = session_layout(ui.available_width(), ui.available_height());
         if layout.page_scroll {
@@ -884,8 +884,8 @@ impl ContraApp {
                             ui,
                             egui::Slider::new(
                                 passes,
-                                contra_core::TuneRotation::MIN_PASSES
-                                    ..=contra_core::TuneRotation::MAX_PASSES,
+                                caller_core::TuneRotation::MIN_PASSES
+                                    ..=caller_core::TuneRotation::MAX_PASSES,
                             )
                             .text("times through"),
                         )
@@ -1048,7 +1048,7 @@ impl ContraApp {
         ui: &mut egui::Ui,
         beat: f64,
         compact: bool,
-    ) -> Option<&'static contra_core::glossary::GlossaryEntry> {
+    ) -> Option<&'static caller_core::glossary::GlossaryEntry> {
         let active = if self.started {
             self.timeline
                 .scheduled_call_at(beat, self.prefs.loop_enabled)
@@ -1364,7 +1364,7 @@ impl ContraApp {
         ui: &mut egui::Ui,
         beat: f64,
         full_width: bool,
-    ) -> Option<&'static contra_core::glossary::GlossaryEntry> {
+    ) -> Option<&'static caller_core::glossary::GlossaryEntry> {
         let animate = self.prefs.animations_enabled;
         // The padding setting tightens both the box around each figure and the
         // gap between its lines, so a compact card fits the whole dance on
@@ -1392,7 +1392,7 @@ impl ContraApp {
         full_width: bool,
         padding: CardPadding,
         animate: bool,
-    ) -> Option<&'static contra_core::glossary::GlossaryEntry> {
+    ) -> Option<&'static caller_core::glossary::GlossaryEntry> {
         let mut cursor = 0.0;
         let mut clicked = None;
         for (figure_index, figure) in self.dance.figures.iter().enumerate() {
@@ -1404,7 +1404,7 @@ impl ContraApp {
                 active_figure,
                 animate,
             );
-            let calls: Vec<(usize, contra_core::CallEvent)> = self
+            let calls: Vec<(usize, caller_core::CallEvent)> = self
                 .timeline
                 .calls
                 .iter()
@@ -1529,10 +1529,10 @@ mod tests {
         text: &str,
         start_beat: f64,
         execute_beat: f64,
-    ) -> contra_core::ScheduledCall {
-        contra_core::ScheduledCall {
+    ) -> caller_core::ScheduledCall {
+        caller_core::ScheduledCall {
             index,
-            call: contra_core::CallEvent {
+            call: caller_core::CallEvent {
                 figure_index: index,
                 phrase: None,
                 call_start_beat: start_beat,

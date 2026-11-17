@@ -3,8 +3,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use contra_core::{Dance, Tune};
-use contra_sources::{
+use caller_core::{Dance, Tune};
+use caller_sources::{
     Cache, DanceProvider, DanceQuery, DanceSearchPage, HttpMethod, HttpRequest, TuneProvider,
     TuneQuery, TuneSearchPage, dance_provider, tune_provider,
 };

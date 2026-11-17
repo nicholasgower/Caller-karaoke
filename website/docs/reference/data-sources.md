@@ -4,7 +4,7 @@ description: Where dances and tunes come from, how the app fetches and caches th
 sidebar_position: 3
 ---
 
-Contra Karaoke separates source parsing from the session engine. The parsers
+Caller Karaoke separates source parsing from the session engine. The parsers
 implement generic provider traits and do not leak a site's HTML or JSON shapes
 into `core` or `music`. The download screen reads each provider's `FilterSpec`
 list, so it shows the fields a source supports and hides the rest. Tune
@@ -169,7 +169,7 @@ to ABC Session Tunes.
 
 Dance transcriptions and ABC transcriptions belong to their contributors, and
 The Caller's Box data belongs to its editors and the dance authors who gave
-permission. Contra Karaoke stores downloads locally for the user but does not
+permission. Caller Karaoke stores downloads locally for the user but does not
 ship a dance or tune database. The two bundled defaults are included with
 source URLs and credit. If you publish screenshots or example cards, keep the
 attribution.

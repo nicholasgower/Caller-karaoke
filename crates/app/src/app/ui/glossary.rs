@@ -10,7 +10,7 @@
 use super::*;
 use crate::app::*;
 use crate::theme;
-use contra_core::glossary::{self, GlossaryEntry};
+use caller_core::glossary::{self, GlossaryEntry};
 use eframe::egui;
 use std::time::Duration;
 
@@ -185,7 +185,7 @@ fn push_plain_text(ui: &mut egui::Ui, text: &str, style: &impl Fn(&str) -> egui:
     }
 }
 
-impl ContraApp {
+impl CallerApp {
     /// Open the glossary tab, optionally highlighting one entry.
     ///
     /// A term selected in a call, on the dance card, or in a dance preview

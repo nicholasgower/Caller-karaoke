@@ -31,11 +31,11 @@ const result = spawnSync(
   [
     'run',
     '-p',
-    'contra-app',
+    'caller-app',
     '--features',
     'headless',
     '--bin',
-    'contra-headless',
+    'caller-headless',
     '--',
     rawDir,
   ],

@@ -101,7 +101,7 @@ saved to your dances and opened in the preview, but the loaded dance is not
 replaced until you select **Use**.
 
 Select a saved dance, then **Export as JSON** to write the versioned exchange
-document. It contains `format: "contra-karaoke-dance"`, `version: 1`, the dance
+document. It contains `format: "caller-karaoke-dance"`, `version: 1`, the dance
 fields, and every figure, so the file can be read back by this app or inspected
 by another tool. The desktop build uses a save dialog, the browser downloads the
 file, and Android saves it in the app's export folder and offers **Share**.
@@ -234,7 +234,7 @@ bundled default is *Another Last Dance* by Erik Hoffman (ContraDB 2409).
 
 The Caller's Box additionally publishes a [contra move
 glossary](https://www.ibiblio.org/contradance/thecallersbox/Glossary.htm) that
-explains the shorthand used in its cards. Contra Karaoke's own [Dance
+explains the shorthand used in its cards. Caller Karaoke's own [Dance
 glossary](/docs/reference/glossary) turns many of those terms into links in the
 call prompt and dance card.
 

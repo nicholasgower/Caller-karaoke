@@ -4,7 +4,7 @@ description: Switch between the dark and light grey themes, and understand the c
 sidebar_position: 10
 ---
 
-Contra Karaoke uses a neutral grey interface with limited colour. The large
+Caller Karaoke uses a neutral grey interface with limited colour. The large
 prompt card adds a glanceable cue: green while the caller must speak the shown
 call now, red while the card looks ahead to the next move, and grey for ready,
 count-in, dancing, and completion. The label text still says **CALL NOW** or
@@ -26,7 +26,7 @@ The light theme uses the same structure with its own warm cream palette: a
 paper-toned page (`#ece7d6`), near-black text (`#26241c`), muted brown-grey
 secondary text, and off-white call cards. It follows the ContraDB site's cream
 background rather than pure white, which glares under stage lights. Every light
-surface keeps body and muted text at 4.5:1 or better, including the **Contra
+surface keeps body and muted text at 4.5:1 or better, including the **Caller
 Karaoke** wordmark and tab labels in the header. It is intended for bright rooms
 and projectors.
 

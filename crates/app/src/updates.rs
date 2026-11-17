@@ -15,12 +15,12 @@ use std::time::Duration;
 use serde::Deserialize;
 
 /// Project addresses shared by the header actions, About, and the update check.
-pub(crate) const REPOSITORY_URL: &str = "https://github.com/nicholasgower/Contra-karaoke";
-pub(crate) const DOCUMENTATION_URL: &str = "https://contrakaraoke.nicholasgower.com/";
-pub(crate) const ISSUES_URL: &str = "https://github.com/nicholasgower/Contra-karaoke/issues";
-pub(crate) const RELEASES_URL: &str = "https://github.com/nicholasgower/Contra-karaoke/releases";
+pub(crate) const REPOSITORY_URL: &str = "https://github.com/nicholasgower/Caller-karaoke";
+pub(crate) const DOCUMENTATION_URL: &str = "https://callerkaraoke.nicholasgower.com/";
+pub(crate) const ISSUES_URL: &str = "https://github.com/nicholasgower/Caller-karaoke/issues";
+pub(crate) const RELEASES_URL: &str = "https://github.com/nicholasgower/Caller-karaoke/releases";
 const LATEST_RELEASE_API: &str =
-    "https://api.github.com/repos/nicholasgower/Contra-karaoke/releases/latest";
+    "https://api.github.com/repos/nicholasgower/Caller-karaoke/releases/latest";
 
 /// The version compiled into this build.
 pub(crate) const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -169,7 +169,7 @@ fn latest_release_request() -> ehttp::Request {
         ("Accept", "application/vnd.github+json"),
         (
             "User-Agent",
-            concat!("Contra-Karaoke/", env!("CARGO_PKG_VERSION")),
+            concat!("Caller-Karaoke/", env!("CARGO_PKG_VERSION")),
         ),
     ];
     // Browsers set their own User-Agent and forbid scripts from replacing it.

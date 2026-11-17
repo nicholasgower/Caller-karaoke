@@ -203,7 +203,7 @@ function framePage({device, width, height, sitePath}) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contra Karaoke · ${device.label} preview</title>
+<title>Caller Karaoke · ${device.label} preview</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
@@ -254,7 +254,7 @@ function framePage({device, width, height, sitePath}) {
   <div class="stage">
     <div class="device">
       <div class="screen">
-        <iframe src="${sitePath}" title="Contra Karaoke website with an ${device.label} user agent"></iframe>
+        <iframe src="${sitePath}" title="Caller Karaoke website with an ${device.label} user agent"></iframe>
       </div>
     </div>
     <p class="meta"><strong>${device.label} preview</strong> · ${width} × ${height} · iOS user agent injected</p>${scaleHint}
@@ -267,7 +267,7 @@ function send(res, status, type, body) {
   res.writeHead(status, {
     'Content-Type': type,
     'Cache-Control': 'no-store',
-    'X-Contra-Preview': 'ios',
+    'X-Caller-Preview': 'ios',
   });
   res.end(body);
 }
@@ -292,7 +292,7 @@ async function appBundleWarning() {
   if (!existsSync(appIndex)) return null;
 
   const indexHtml = readFileSync(appIndex, 'utf8');
-  if (!/TrunkApplicationStarted|contra-web/.test(indexHtml)) return null;
+  if (!/TrunkApplicationStarted|caller-web/.test(indexHtml)) return null;
 
   const entries = await readdir(appDir);
   if (entries.some((entry) => entry.endsWith('.wasm'))) return null;

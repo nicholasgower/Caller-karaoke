@@ -19,7 +19,7 @@ const repoRoot = path.resolve(websiteRoot, '..');
 const webCrate = path.join(repoRoot, 'crates', 'web');
 const trunkOutput = path.join(repoRoot, 'dist', 'web');
 const staged = path.join(websiteRoot, 'static', 'app');
-const publicUrl = process.env.CONTRA_WEB_PUBLIC_URL ?? '/app/';
+const publicUrl = process.env.CALLER_WEB_PUBLIC_URL ?? '/app/';
 
 function setupHelp({missingTrunk, missingTarget}) {
   console.error('\nCannot build the hosted browser app:');

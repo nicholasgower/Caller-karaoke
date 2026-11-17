@@ -1,0 +1,31 @@
+app-id: org.callerkaraoke.CallerKaraoke
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: caller-karaoke
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --socket=pulseaudio
+  - --share=network
+  - --talk-name=org.freedesktop.Speech.Dispatcher
+modules:
+  - name: caller-karaoke
+    buildsystem: simple
+    build-options:
+      env:
+        CARGO_NET_OFFLINE: 'true'
+    build-commands:
+      - cargo build --release --offline -p caller-app
+      - install -Dm755 target/release/caller-karaoke /app/bin/caller-karaoke
+      - install -Dm644 packaging/linux/caller-karaoke.desktop /app/share/applications/org.callerkaraoke.CallerKaraoke.desktop
+      - install -Dm644 assets/icons/caller-karaoke.svg /app/share/icons/hicolor/scalable/apps/caller-karaoke.svg
+      - install -Dm644 assets/icons/caller-karaoke-256.png /app/share/icons/hicolor/256x256/apps/caller-karaoke.png
+      - install -Dm644 LICENSE /app/share/licenses/org.callerkaraoke.CallerKaraoke/LICENSE
+      - install -Dm644 CREDITS.md /app/share/doc/org.callerkaraoke.CallerKaraoke/CREDITS.md
+    sources:
+      - type: dir
+        path: ../..
+      - cargo-sources.json

@@ -120,11 +120,11 @@ Dancer sounds are a separate layer derived from the dance card:
 - **The whole layer is temporarily disabled in 0.1.0.** The derived rhythms
   (claps on a balance's first two beats; one stomp at a figure's start and one
   on its last beat) do not match the sounds dancers actually make for the
-  figures. `contra_core::dancer_sounds` returns no events; the switch
+  figures. `caller_core::dancer_sounds` returns no events; the switch
   `DANCER_SOUNDS_ENABLED` in `crates/core/src/dancer.rs` turns it back on once
   the rhythms are corrected (see §16). Foot stomps have their own
   `FOOT_STOMPS_ENABLED` because their timing is the known-wrong part.
-- The derivation takes the dance card only (`contra_core::dancer_sounds`) and
+- The derivation takes the dance card only (`caller_core::dancer_sounds`) and
   returns `DancerSoundEvent`s on the dance-beat grid. A plain dance produces no
   events.
 - Render the sounds with short procedural voices after the effect chain, so

@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn file_cache_stores_hashed_keys() {
         let root = std::env::temp_dir().join(format!(
-            "contra-karaoke-cache-test-{}-{}",
+            "caller-karaoke-cache-test-{}-{}",
             std::process::id(),
             now_seconds()
         ));

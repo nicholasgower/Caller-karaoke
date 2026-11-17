@@ -1,10 +1,10 @@
 ---
 title: Privacy
-description: What Contra Karaoke stores, what it sends, and what it does not collect.
+description: What Caller Karaoke stores, what it sends, and what it does not collect.
 sidebar_position: 4
 ---
 
-Contra Karaoke has no accounts, no telemetry, and no analytics. The application
+Caller Karaoke has no accounts, no telemetry, and no analytics. The application
 does not send usage data to the project.
 
 ## What stays on your machine

@@ -13,7 +13,7 @@
 //! The latency is a fixed offset, not drift: every note of a copy is late by
 //! the same few milliseconds, so all copies stay on the same 64-beat grid.
 
-use contra_core::InstrumentCopies;
+use caller_core::InstrumentCopies;
 
 /// Most copies a melodic part can have.
 pub const MAX_COPIES: usize = 4;

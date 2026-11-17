@@ -1,6 +1,6 @@
 //! Dancer sounds: the stomps and claps the dancers make during a figure.
 //!
-//! The events come from the dance card (see `contra_core::dancer_sounds`) and
+//! The events come from the dance card (see `caller_core::dancer_sounds`) and
 //! are already on the dance-beat grid. The whole layer is temporarily disabled
 //! at the source in 0.1.0, but the voices stay here so it can be re-enabled
 //! without touching the renderer. This module only renders the events, with
@@ -10,7 +10,7 @@
 
 use std::f32::consts::TAU;
 
-use contra_core::{DancerSound, DancerSoundEvent};
+use caller_core::{DancerSound, DancerSoundEvent};
 
 use crate::render::{AudioBuffer, RenderRequest};
 
@@ -221,16 +221,16 @@ mod tests {
         RenderRequest {
             arrangement,
             bpm: 240.0,
-            melody: contra_core::MelodyInstrument::Fiddle,
-            accompaniment: contra_core::AccompanimentInstrument::Piano,
-            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::Countermelody::Off,
-            copies: contra_core::InstrumentCopies::default(),
-            band: contra_core::default_band(),
-            output: contra_core::OutputMode::Stereo,
-            variations: contra_core::VariationOptions::default(),
-            humanize_options: contra_core::HumanizeOptions::default(),
-            ending_options: contra_core::EndingOptions::default(),
+            melody: caller_core::MelodyInstrument::Fiddle,
+            accompaniment: caller_core::AccompanimentInstrument::Piano,
+            accompaniment_rhythm: caller_core::AccompanimentRhythm::Auto,
+            second_accompaniment: caller_core::Countermelody::Off,
+            copies: caller_core::InstrumentCopies::default(),
+            band: caller_core::default_band(),
+            output: caller_core::OutputMode::Stereo,
+            variations: caller_core::VariationOptions::default(),
+            humanize_options: caller_core::HumanizeOptions::default(),
+            ending_options: caller_core::EndingOptions::default(),
             dancer_sounds: true,
             dancer_sound_volume: 0.35,
             dancer_sound_events: vec![
@@ -245,12 +245,12 @@ mod tests {
                     gain: 0.8,
                 },
             ],
-            percussion: contra_core::Percussion::Off,
-            percussion_rhythm: contra_core::PercussionRhythm::Auto,
+            percussion: caller_core::Percussion::Off,
+            percussion_rhythm: caller_core::PercussionRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.0,
-            effects: contra_core::AudioEffects::default(),
+            effects: caller_core::AudioEffects::default(),
             count_in_beats: 0.0,
             sample_rate: 24_000,
             variation_passes: 1,

@@ -1,10 +1,10 @@
 ---
-title: What is Contra Karaoke?
+title: What is Caller Karaoke?
 description: A caller trainer that shows each contra dance call before the dancers need to move, in sync with ABC-sourced music.
 sidebar_position: 1
 ---
 
-Contra Karaoke is a practice tool for contra dance callers. It behaves like a
+Caller Karaoke is a practice tool for contra dance callers. It behaves like a
 karaoke machine for the caller: the dance card and a large moving prompt show
 what to say, while a band-style arrangement of an ABC tune plays underneath.
 
@@ -64,7 +64,7 @@ Linux) and the browser app (WASM) are implemented. Android is configured and
 buildable, but still needs real-device testing. Release hardening and release
 packaging are in progress.
 
-Screenshots of the app are rendered by the real headless `contra-headless`
+Screenshots of the app are rendered by the real headless `caller-headless`
 binary. A few OS installer dialogs remain labelled placeholders until they are
 captured manually.
 
@@ -75,7 +75,7 @@ captured manually.
 | Web (WASM) | Browser build; a hosted copy runs on this site, and the downloaded bundle needs a static server and a data proxy for online search and downloads |
 | Android | Configured with minSdk 26; APK build and real-device testing still in progress |
 
-## Get Contra Karaoke
+## Get Caller Karaoke
 
 <DownloadButton />
 

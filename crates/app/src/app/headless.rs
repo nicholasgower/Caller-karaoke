@@ -1,20 +1,20 @@
 //! Headless screenshot renderer for the documentation site.
 //!
-//! This runs the real `ContraApp` UI through `egui_kittest` with a silent
+//! This runs the real `CallerApp` UI through `egui_kittest` with a silent
 //! transport, in-memory source cache, and no preference file. No window,
 //! audio device, network client, or system TTS is opened.
 
 use std::error::Error;
 use std::path::Path;
 
-use contra_core::{Dance, FolderFilter, Library, LibraryEntry, SourceRef, Tune};
-use contra_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary};
+use caller_core::{Dance, FolderFilter, Library, LibraryEntry, SourceRef, Tune};
+use caller_sources::{DanceSearchPage, DanceSummary, TuneSearchPage, TuneSummary};
 use eframe::egui::{self, Vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 
 use super::ui::preferences::{PreferencesCategory, PreferencesPage};
-use super::{ContraApp, Screen};
+use super::{CallerApp, Screen};
 
 const DESKTOP: Vec2 = Vec2::new(1280.0, 800.0);
 const MOBILE: Vec2 = Vec2::new(390.0, 844.0);
@@ -40,7 +40,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         .with_accessibility_check(false)
         .allow_missing_glyphs()
         .with_max_steps(10)
-        .build_eframe(|cc| ContraApp::new_headless(cc));
+        .build_eframe(|cc| CallerApp::new_headless(cc));
 
     if mobile {
         let out = out.join("mobile");
@@ -60,7 +60,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 /// Launch state, the transport, and the live session states.
-fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), Box<dyn Error>> {
+fn session_shots(harness: &mut Harness<'_, CallerApp>, out: &Path) -> Result<(), Box<dyn Error>> {
     // Launch state: READY, defaults, music not rendered yet.
     {
         let app = harness.state_mut();
@@ -87,46 +87,46 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
         let app = harness.state_mut();
         app.prefs.tempo_bpm = 240.0;
         app.prefs.band = vec![
-            contra_core::BandSlot {
-                part: contra_core::BandPart::Melody,
-                voice: contra_core::BandVoice::Accordion,
+            caller_core::BandSlot {
+                part: caller_core::BandPart::Melody,
+                voice: caller_core::BandVoice::Accordion,
                 players: 2,
                 volume: 0.75,
                 pan: -0.15,
                 depth: 0.0,
             },
-            contra_core::BandSlot {
-                part: contra_core::BandPart::Accompaniment,
-                voice: contra_core::BandVoice::Guitar,
+            caller_core::BandSlot {
+                part: caller_core::BandPart::Accompaniment,
+                voice: caller_core::BandVoice::Guitar,
                 players: 2,
                 volume: 0.65,
                 pan: 0.10,
                 depth: 0.10,
             },
-            contra_core::BandSlot {
-                part: contra_core::BandPart::Countermelody,
-                voice: contra_core::BandVoice::Fiddle,
+            caller_core::BandSlot {
+                part: caller_core::BandPart::Countermelody,
+                voice: caller_core::BandVoice::Fiddle,
                 players: 2,
                 volume: 0.55,
                 pan: 0.30,
                 depth: 0.05,
             },
-            contra_core::BandSlot {
-                part: contra_core::BandPart::Percussion,
-                voice: contra_core::BandVoice::Drumset,
+            caller_core::BandSlot {
+                part: caller_core::BandPart::Percussion,
+                voice: caller_core::BandVoice::Drumset,
                 players: 2,
                 volume: 0.5,
                 pan: 0.0,
                 depth: 0.20,
             },
         ];
-        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Shuffle;
+        app.prefs.percussion_rhythm = caller_core::PercussionRhythm::Shuffle;
     }
     capture(harness, out, "transport-summary")?;
     {
         let app = harness.state_mut();
-        app.prefs.band = contra_core::default_band();
-        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Auto;
+        app.prefs.band = caller_core::default_band();
+        app.prefs.percussion_rhythm = caller_core::PercussionRhythm::Auto;
         app.prefs.master_volume = 0.5;
     }
     capture(harness, out, "transport-volume")?;
@@ -196,10 +196,10 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
     {
         let app = harness.state_mut();
         app.prefs.role_terms =
-            contra_core::RoleTerms::preset(contra_core::RolePreset::LadiesGentlemen);
-        app.prefs.role_preset = contra_core::RolePreset::LadiesGentlemen;
+            caller_core::RoleTerms::preset(caller_core::RolePreset::LadiesGentlemen);
+        app.prefs.role_preset = caller_core::RolePreset::LadiesGentlemen;
         app.prefs.aliases.set_override(
-            contra_core::MoveKind::BalanceAndSwing,
+            caller_core::MoveKind::BalanceAndSwing,
             "partners balance and swing with your partner",
         );
         app.rebuild_timeline();
@@ -217,9 +217,9 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
 
     {
         let app = harness.state_mut();
-        app.prefs.aliases = contra_core::AliasTable::default();
-        app.prefs.role_terms = contra_core::RoleTerms::default();
-        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
+        app.prefs.aliases = caller_core::AliasTable::default();
+        app.prefs.role_terms = caller_core::RoleTerms::default();
+        app.prefs.role_preset = caller_core::RolePreset::LarksRobins;
         app.prefs.loop_enabled = false;
         app.prefs.tts_enabled = false;
         app.audio.set_looping(false);
@@ -245,7 +245,7 @@ fn session_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(),
 
 /// The saved-dance library and its folder search.
 fn dance_library_shots(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     out: &Path,
 ) -> Result<(), Box<dyn Error>> {
     // Saved-dance library: all saved cards with a preview, then a search
@@ -280,7 +280,7 @@ fn dance_library_shots(
 
 /// Downloading a dance: search, sort, filters, and preview.
 fn dance_picker_shots(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     out: &Path,
 ) -> Result<(), Box<dyn Error>> {
     // Download dance keeps the existing ContraDB search and preview UI.
@@ -308,12 +308,12 @@ fn dance_picker_shots(
     capture(harness, out, "dance-picker-search")?;
     {
         let app = harness.state_mut();
-        app.picker.dance_query.sort = contra_sources::DanceSort::TitleAsc;
+        app.picker.dance_query.sort = caller_sources::DanceSort::TitleAsc;
     }
     capture(harness, out, "dance-sort")?;
     {
         let app = harness.state_mut();
-        app.picker.dance_query.sort = contra_sources::DanceSort::Relevancy;
+        app.picker.dance_query.sort = caller_sources::DanceSort::Relevancy;
         app.picker.dance_query.page = 2;
         app.picker.dance_results = Some(dance_results_page_two());
     }
@@ -384,7 +384,7 @@ fn dance_picker_shots(
 
 /// The saved-tune library and its folder search.
 fn tune_library_shots(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     out: &Path,
 ) -> Result<(), Box<dyn Error>> {
     // Saved-tune library: all saved tunes with a sheet-music preview, then a
@@ -420,7 +420,7 @@ fn tune_library_shots(
 
 /// Downloading a tune: search, filters, and sheet preview.
 fn tune_picker_shots(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     out: &Path,
 ) -> Result<(), Box<dyn Error>> {
     // Download tune keeps the existing search and sheet-music preview UI.
@@ -485,7 +485,7 @@ fn tune_picker_shots(
 
 /// Preferences, the alias editor, and maintenance.
 fn preference_shots(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     out: &Path,
 ) -> Result<(), Box<dyn Error>> {
     // Preferences and alias editor.
@@ -494,27 +494,27 @@ fn preference_shots(
         app.screen = Screen::Preferences;
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
         app.picker.tune_query.rhythm = None;
-        app.prefs.theme = contra_core::Theme::Dark;
+        app.prefs.theme = caller_core::Theme::Dark;
         app.error = None;
     }
     capture(harness, out, "prefs-open")?;
     {
         let app = harness.state_mut();
-        app.prefs.role_terms = contra_core::RoleTerms::default();
-        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
+        app.prefs.role_terms = caller_core::RoleTerms::default();
+        app.prefs.role_preset = caller_core::RolePreset::LarksRobins;
     }
     capture(harness, out, "prefs-roles-presets")?;
     {
         let app = harness.state_mut();
         // `RoleTerms::preset(Custom)` is identical to Larks/Robins, so use
         // clearly custom words to show the editable custom-role fields.
-        app.prefs.role_terms = contra_core::RoleTerms {
+        app.prefs.role_terms = caller_core::RoleTerms {
             left_singular: "port".into(),
             left_plural: "ports".into(),
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
-        app.prefs.role_preset = contra_core::RolePreset::Custom;
+        app.prefs.role_preset = caller_core::RolePreset::Custom;
     }
     capture(harness, out, "prefs-roles-custom")?;
     {
@@ -566,7 +566,7 @@ fn preference_shots(
         app.screen = Screen::Preferences;
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::BandAndSound);
         app.alias_filter.clear();
-        app.prefs.theme = contra_core::Theme::Dark;
+        app.prefs.theme = caller_core::Theme::Dark;
         app.prefs.tts_enabled = true;
         app.speech = crate::tts::Speech::stub();
         app.prefs.soundfont = None;
@@ -588,12 +588,12 @@ fn preference_shots(
             .prefs
             .band
             .iter_mut()
-            .find(|slot| slot.part == contra_core::BandPart::Accompaniment)
+            .find(|slot| slot.part == caller_core::BandPart::Accompaniment)
         {
-            accompaniment.voice = contra_core::BandVoice::Guitar;
+            accompaniment.voice = caller_core::BandVoice::Guitar;
             accompaniment.players = 2;
         }
-        app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::BoomChuck;
+        app.prefs.accompaniment_rhythm = caller_core::AccompanimentRhythm::BoomChuck;
     }
     capture(harness, out, "prefs-instrument-accompaniment")?;
     {
@@ -602,9 +602,9 @@ fn preference_shots(
             .prefs
             .band
             .iter_mut()
-            .find(|slot| slot.part == contra_core::BandPart::Countermelody)
+            .find(|slot| slot.part == caller_core::BandPart::Countermelody)
         {
-            countermelody.voice = contra_core::BandVoice::Fiddle;
+            countermelody.voice = caller_core::BandVoice::Fiddle;
             countermelody.players = 2;
         }
     }
@@ -615,24 +615,24 @@ fn preference_shots(
             .prefs
             .band
             .iter_mut()
-            .find(|slot| slot.part == contra_core::BandPart::Percussion)
+            .find(|slot| slot.part == caller_core::BandPart::Percussion)
         {
-            percussion.voice = contra_core::BandVoice::FootTaps;
+            percussion.voice = caller_core::BandVoice::FootTaps;
             percussion.players = 2;
         }
-        app.prefs.percussion_rhythm = contra_core::PercussionRhythm::Gallop;
+        app.prefs.percussion_rhythm = caller_core::PercussionRhythm::Gallop;
     }
     capture(harness, out, "prefs-instrument-percussion")?;
     {
         let app = harness.state_mut();
-        app.prefs.band = contra_core::default_band();
+        app.prefs.band = caller_core::default_band();
         app.prefs.caller_volume = 1.0;
     }
     capture(harness, out, "prefs-instrument-mix")?;
     {
         let app = harness.state_mut();
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::Playback);
-        app.prefs.accompaniment_rhythm = contra_core::AccompanimentRhythm::Auto;
+        app.prefs.accompaniment_rhythm = caller_core::AccompanimentRhythm::Auto;
         app.prefs.accompaniment_variations = true;
     }
     capture(harness, out, "prefs-accompaniment-variations")?;
@@ -662,14 +662,14 @@ fn preference_shots(
     capture(harness, out, "prefs-timing-rebuild")?;
     {
         let app = harness.state_mut();
-        app.prefs.tts_rate = contra_core::MAX_TTS_RATE;
+        app.prefs.tts_rate = caller_core::MAX_TTS_RATE;
     }
     capture(harness, out, "prefs-tts-rate")?;
     {
         let app = harness.state_mut();
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::BandAndSound);
         app.prefs.tts_rate = 1.0;
-        app.prefs.soundfont = Some(contra_core::SoundFontSetting {
+        app.prefs.soundfont = Some(caller_core::SoundFontSetting {
             name: "demo.sf2".into(),
             path: None,
         });
@@ -683,7 +683,7 @@ fn preference_shots(
     capture(harness, out, "prefs-sf2-removed")?;
     {
         let app = harness.state_mut();
-        app.prefs.soundfont = Some(contra_core::SoundFontSetting {
+        app.prefs.soundfont = Some(caller_core::SoundFontSetting {
             name: "demo.sf2".into(),
             path: None,
         });
@@ -725,7 +725,7 @@ fn preference_shots(
 }
 
 /// The light theme, error banners, and the phone layout.
-fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), Box<dyn Error>> {
+fn remaining_shots(harness: &mut Harness<'_, CallerApp>, out: &Path) -> Result<(), Box<dyn Error>> {
     // Alias custom section with the list filtered away.
     harness.set_size(DESKTOP);
     {
@@ -739,7 +739,7 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     {
         let app = harness.state_mut();
         app.alias_filter.clear();
-        app.prefs.theme = contra_core::Theme::Light;
+        app.prefs.theme = caller_core::Theme::Light;
         app.screen = Screen::Session;
         app.started = false;
         app.needs_render = false;
@@ -759,7 +759,7 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     // Errors are visible on the screen that produced them.
     {
         let app = harness.state_mut();
-        app.prefs.theme = contra_core::Theme::Dark;
+        app.prefs.theme = caller_core::Theme::Dark;
         app.screen = Screen::DanceDownload;
         app.speech = crate::tts::Speech::stub();
         app.prefs.tts_enabled = true;
@@ -857,7 +857,7 @@ fn remaining_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(
     Ok(())
 }
 
-fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), Box<dyn Error>> {
+fn mobile_shots(harness: &mut Harness<'_, CallerApp>, out: &Path) -> Result<(), Box<dyn Error>> {
     harness.set_size(MOBILE);
     // The phone build is touch-first. Teach egui that a finger has touched the
     // screen so the guarded sliders draw their padlocks in this set, just as
@@ -975,21 +975,21 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
         app.prefs_page = PreferencesPage::Categories;
-        app.prefs.role_terms = contra_core::RoleTerms::default();
-        app.prefs.role_preset = contra_core::RolePreset::LarksRobins;
-        app.prefs.theme = contra_core::Theme::Dark;
+        app.prefs.role_terms = caller_core::RoleTerms::default();
+        app.prefs.role_preset = caller_core::RolePreset::LarksRobins;
+        app.prefs.theme = caller_core::Theme::Dark;
     }
     capture(harness, out, "preferences")?;
     {
         let app = harness.state_mut();
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
-        app.prefs.role_terms = contra_core::RoleTerms {
+        app.prefs.role_terms = caller_core::RoleTerms {
             left_singular: "port".into(),
             left_plural: "ports".into(),
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
-        app.prefs.role_preset = contra_core::RolePreset::Custom;
+        app.prefs.role_preset = caller_core::RolePreset::Custom;
     }
     capture(harness, out, "preferences-custom-roles")?;
     harness.set_size(Vec2::new(390.0, 3600.0));
@@ -1069,13 +1069,13 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
-        app.prefs.role_terms = contra_core::RoleTerms {
+        app.prefs.role_terms = caller_core::RoleTerms {
             left_singular: "port".into(),
             left_plural: "ports".into(),
             right_singular: "starboard".into(),
             right_plural: "starboards".into(),
         };
-        app.prefs.role_preset = contra_core::RolePreset::Custom;
+        app.prefs.role_preset = caller_core::RolePreset::Custom;
     }
     capture(harness, out, "preferences-360")?;
     {
@@ -1102,7 +1102,7 @@ fn mobile_shots(harness: &mut Harness<'_, ContraApp>, out: &Path) -> Result<(), 
 }
 
 fn capture(
-    harness: &mut Harness<'_, ContraApp>,
+    harness: &mut Harness<'_, CallerApp>,
     out: &Path,
     id: &str,
 ) -> Result<(), Box<dyn Error>> {

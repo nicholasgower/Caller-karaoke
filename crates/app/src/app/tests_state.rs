@@ -13,12 +13,12 @@
 //!
 //! A widget that is hard to drive directly (a combo or a slider inside a
 //! scrolling form) is changed through its preference field and then run through
-//! the same [`ContraApp::reconcile_preferences`] pass the Preferences screen
+//! the same [`CallerApp::reconcile_preferences`] pass the Preferences screen
 //! uses. One kittest test clicks a real control twice to prove the path works
 //! through a drawn frame as well.
 
 use super::*;
-use contra_core::{
+use caller_core::{
     AccompanimentInstrument, AccompanimentRhythm, CallTone, CardPadding, Countermelody, EchoPreset,
 };
 use eframe::egui;
@@ -80,7 +80,7 @@ struct AppStateFingerprint {
     role_edit_pending: bool,
 }
 
-impl ContraApp {
+impl CallerApp {
     #[cfg(test)]
     fn fingerprint(&self) -> AppStateFingerprint {
         AppStateFingerprint {
@@ -336,8 +336,8 @@ const CONTROLS: &[Control] = &[
         name: "combo: reverb",
         change: |prefs| {
             prefs.effects.reverb = match prefs.effects.reverb {
-                contra_core::ReverbPreset::MediumRoom => contra_core::ReverbPreset::Off,
-                _ => contra_core::ReverbPreset::MediumRoom,
+                caller_core::ReverbPreset::MediumRoom => caller_core::ReverbPreset::Off,
+                _ => caller_core::ReverbPreset::MediumRoom,
             }
         },
     },
@@ -354,8 +354,8 @@ const CONTROLS: &[Control] = &[
         name: "combo: chorus",
         change: |prefs| {
             prefs.effects.chorus = match prefs.effects.chorus {
-                contra_core::ChorusPreset::Off => contra_core::ChorusPreset::Subtle,
-                _ => contra_core::ChorusPreset::Off,
+                caller_core::ChorusPreset::Off => caller_core::ChorusPreset::Subtle,
+                _ => caller_core::ChorusPreset::Off,
             }
         },
     },
@@ -409,15 +409,15 @@ const CONTROLS: &[Control] = &[
     },
     Control {
         name: "number: tts rate",
-        change: |prefs| prefs.tts_rate = (prefs.tts_rate + 0.1).min(contra_core::MAX_TTS_RATE),
+        change: |prefs| prefs.tts_rate = (prefs.tts_rate + 0.1).min(caller_core::MAX_TTS_RATE),
     },
     Control {
         name: "number: tts deliveries",
         change: |prefs| {
-            prefs.tts_deliveries = if prefs.tts_deliveries > contra_core::MIN_TTS_DELIVERIES {
+            prefs.tts_deliveries = if prefs.tts_deliveries > caller_core::MIN_TTS_DELIVERIES {
                 prefs.tts_deliveries - 1
             } else {
-                contra_core::MAX_TTS_DELIVERIES
+                caller_core::MAX_TTS_DELIVERIES
             }
         },
     },
@@ -446,10 +446,10 @@ const CONTROLS: &[Control] = &[
 ];
 
 /// A headless app in a stable, idle state.
-fn test_app() -> (ContraApp, egui::Context) {
+fn test_app() -> (CallerApp, egui::Context) {
     let ctx = egui::Context::default();
     let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-    let mut app = ContraApp::new_headless(&cc);
+    let mut app = CallerApp::new_headless(&cc);
     // The headless clock has a buffer; the test does not need a render for the
     // preference path. A spoken call is set so a rebuild that forgets it is
     // visible.
@@ -465,7 +465,7 @@ fn test_app() -> (ContraApp, egui::Context) {
 }
 
 /// Change a preference the way the Preferences screen does, then settle it.
-fn change(app: &mut ContraApp, control: &Control) {
+fn change(app: &mut CallerApp, control: &Control) {
     let before = app.prefs.clone();
     (control.change)(&mut app.prefs);
     app.reconcile_preferences(before);
@@ -567,7 +567,7 @@ fn a_timeline_edit_changed_back_keeps_the_call_already_spoken() {
 fn a_preference_edit_before_the_first_render_keeps_the_render_pending() {
     let ctx = egui::Context::default();
     let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-    let mut app = ContraApp::new_headless(&cc);
+    let mut app = CallerApp::new_headless(&cc);
     assert!(
         app.needs_render,
         "a fresh app has not rendered the music yet"
@@ -618,7 +618,7 @@ fn clicking_loop_twice_restores_the_session() {
         .allow_missing_glyphs()
         .with_max_steps(10)
         .build_eframe(|cc| {
-            let mut app = ContraApp::new_headless(cc);
+            let mut app = CallerApp::new_headless(cc);
             app.clear_render_pending();
             app.speech.prewarm(call_texts(&app.timeline));
             app.last_spoken = app.timeline.calls.first().map(|call| call.call_start_beat);
@@ -666,7 +666,7 @@ fn typing_into_a_number_box_does_not_rewrite_it_mid_entry() {
         .with_accessibility_check(false)
         .with_max_steps(10)
         .build_eframe(|cc| {
-            let mut app = ContraApp::new_headless(cc);
+            let mut app = CallerApp::new_headless(cc);
             app.clear_render_pending();
             app.screen = Screen::Preferences;
             app.prefs_page = crate::app::ui::preferences::PreferencesPage::Category(

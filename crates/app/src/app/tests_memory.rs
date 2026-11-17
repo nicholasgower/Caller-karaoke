@@ -1,13 +1,13 @@
 //! Memory-report tests.
 //!
 //! Build a representative prepared session, print the category table (run with
-//! `cargo test -p contra-app memory_report -- --nocapture`), and check that the
+//! `cargo test -p caller-app memory_report -- --nocapture`), and check that the
 //! big optional consumers disappear when they are switched off.
 
 use std::collections::BTreeSet;
 
 use super::*;
-use contra_music::{Arrangement, AudioBuffer, parse_abc};
+use caller_music::{Arrangement, AudioBuffer, parse_abc};
 use eframe::egui;
 
 /// A 64-beat pass at 240 BPM is 32 seconds. The ending adds about six seconds.
@@ -37,10 +37,10 @@ fn shaped_buffer(passes: u32) -> AudioBuffer {
     }
 }
 
-fn measured_app() -> (ContraApp, egui::Context) {
+fn measured_app() -> (CallerApp, egui::Context) {
     let ctx = egui::Context::default();
     let cc = eframe::CreationContext::_new_kittest(ctx.clone());
-    let mut app = ContraApp::new_headless(&cc);
+    let mut app = CallerApp::new_headless(&cc);
     app.clear_render_pending();
     // The real app prepares the calls as soon as it starts.
     app.speech.prewarm(call_texts(&app.timeline));

@@ -41,13 +41,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build release
-        run: cargo build --release -p contra-app
+        run: cargo build --release -p caller-app
       - name: Portable ZIP
         shell: pwsh
         run: |
-          $name = "ContraKaraoke-$env:VERSION-windows-x64-portable"
+          $name = "CallerKaraoke-$env:VERSION-windows-x64-portable"
           New-Item -ItemType Directory -Force dist/portable | Out-Null
-          Copy-Item target/release/contra-karaoke.exe dist/portable
+          Copy-Item target/release/caller-karaoke.exe dist/portable
           Copy-Item LICENSE,README.md,CREDITS.md,CHANGELOG.md dist/portable
           Compress-Archive -Path dist/portable/* -DestinationPath "dist/$name.zip"
       - name: Installer
@@ -55,9 +55,9 @@ jobs:
         run: |
           choco install innosetup --no-progress -y
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
-            packaging/windows/contra-karaoke.iss `
+            packaging/windows/caller-karaoke.iss `
             "/DAppVersion=$env:VERSION" `
-            "/DOutputBaseFilename=ContraKaraoke-$env:VERSION-windows-x64-setup"
+            "/DOutputBaseFilename=CallerKaraoke-$env:VERSION-windows-x64-setup"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -82,11 +82,11 @@ jobs:
             libx11-dev libxcursor-dev libxi-dev libxrandr-dev \
             libgl1-mesa-dev libgtk-3-dev libspeechd-dev speech-dispatcher
       - name: Build release
-        run: cargo build --release -p contra-app
+        run: cargo build --release -p caller-app
       - name: Install cargo-deb
         run: cargo install cargo-deb --locked
       - name: Debian package
-        run: cargo deb -p contra-app --no-build
+        run: cargo deb -p caller-app --no-build
       - name: AppImage
         run: VERSION="$VERSION" bash packaging/linux/build-appimage.sh
       - uses: actions/upload-artifact@v4
@@ -94,7 +94,7 @@ jobs:
           name: linux
           path: |
             target/debian/*.deb
-            dist/ContraKaraoke-*.AppImage
+            dist/CallerKaraoke-*.AppImage
 
   web:
     needs: version
@@ -120,7 +120,7 @@ jobs:
       - name: Package web app
         run: |
           cd dist
-          zip -r "contra-karaoke-$VERSION-web.zip" web
+          zip -r "caller-karaoke-$VERSION-web.zip" web
       - uses: actions/upload-artifact@v4
         with:
           name: web
@@ -160,7 +160,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: android
-          path: target/release/apk/contra-karaoke.apk
+          path: target/release/apk/caller-karaoke.apk
           if-no-files-found: error
 
   release:
@@ -192,7 +192,7 @@ jobs:
         shell: bash
         run: |
           {
-            echo "Contra Karaoke ${VERSION}."
+            echo "Caller Karaoke ${VERSION}."
             echo ""
             echo "- commit: \`${GITHUB_SHA}\`"
             echo "- built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -205,7 +205,7 @@ jobs:
           # at the same moment as the artifacts rather than at release start.
           tag_name: v${{ needs.version.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: Contra Karaoke v${{ needs.version.outputs.version }}
+          name: Caller Karaoke v${{ needs.version.outputs.version }}
           prerelease: false
           make_latest: true
           body_path: release-notes.md

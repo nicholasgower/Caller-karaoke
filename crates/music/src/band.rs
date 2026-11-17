@@ -4,10 +4,10 @@
 //! original three-role band may leave it empty; this module translates the
 //! legacy fields into one slot per role so old call sites and tests keep
 //! working. The list is always validated and always keeps at least one pitched
-//! slot, which is the same invariant [`contra_core::Preferences::band_slots`]
+//! slot, which is the same invariant [`caller_core::Preferences::band_slots`]
 //! enforces for the app.
 
-use contra_core::{BandPart, BandSlot, BandVoice, default_band};
+use caller_core::{BandPart, BandSlot, BandVoice, default_band};
 
 use crate::arrange::Ending;
 use crate::humanize::Voice;
@@ -101,7 +101,7 @@ pub fn notes_for_pass(request: &RenderRequest, slot: &BandSlot, pass: u32) -> Ve
             let instrument = slot
                 .voice
                 .accompaniment_instrument()
-                .unwrap_or(contra_core::AccompanimentInstrument::Piano);
+                .unwrap_or(caller_core::AccompanimentInstrument::Piano);
             request
                 .arrangement
                 .accompaniment_notes_for_pass_with_options(
@@ -171,25 +171,25 @@ mod tests {
         RenderRequest {
             arrangement: Arrangement::from_score(&score, 64.0),
             bpm: 240.0,
-            melody: contra_core::MelodyInstrument::Fiddle,
-            accompaniment: contra_core::AccompanimentInstrument::Piano,
-            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::Countermelody::Accordion,
+            melody: caller_core::MelodyInstrument::Fiddle,
+            accompaniment: caller_core::AccompanimentInstrument::Piano,
+            accompaniment_rhythm: caller_core::AccompanimentRhythm::Auto,
+            second_accompaniment: caller_core::Countermelody::Accordion,
             band: Vec::new(),
-            output: contra_core::OutputMode::Stereo,
-            copies: contra_core::InstrumentCopies::default(),
-            variations: contra_core::VariationOptions::default(),
-            humanize_options: contra_core::HumanizeOptions::default(),
-            ending_options: contra_core::EndingOptions::default(),
+            output: caller_core::OutputMode::Stereo,
+            copies: caller_core::InstrumentCopies::default(),
+            variations: caller_core::VariationOptions::default(),
+            humanize_options: caller_core::HumanizeOptions::default(),
+            ending_options: caller_core::EndingOptions::default(),
             dancer_sounds: false,
             dancer_sound_volume: 0.0,
             dancer_sound_events: Vec::new(),
-            percussion: contra_core::Percussion::Off,
-            percussion_rhythm: contra_core::PercussionRhythm::Auto,
+            percussion: caller_core::Percussion::Off,
+            percussion_rhythm: caller_core::PercussionRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,
-            effects: contra_core::AudioEffects::default(),
+            effects: caller_core::AudioEffects::default(),
             count_in_beats: 4.0,
             sample_rate: 24_000,
             variation_passes: 1,

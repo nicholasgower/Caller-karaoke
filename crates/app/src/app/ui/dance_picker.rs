@@ -2,7 +2,7 @@ use super::*;
 use crate::app::*;
 use eframe::egui;
 
-impl ContraApp {
+impl CallerApp {
     pub(in crate::app) fn dance_download_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
         apply_phone_spacing(ui, compact);
@@ -58,7 +58,7 @@ impl ContraApp {
             responsive_combo(combo, ui, true)
                 .selected_text(current.display_name())
                 .show_ui(ui, |ui| {
-                    for provider in contra_sources::dance_providers() {
+                    for provider in caller_sources::dance_providers() {
                         if ui
                             .selectable_label(
                                 provider.id() == current.id(),
@@ -77,7 +77,7 @@ impl ContraApp {
                 combo
                     .selected_text(current.display_name())
                     .show_ui(ui, |ui| {
-                        for provider in contra_sources::dance_providers() {
+                        for provider in caller_sources::dance_providers() {
                             if ui
                                 .selectable_label(
                                     provider.id() == current.id(),
@@ -497,7 +497,7 @@ impl ContraApp {
     }
 }
 
-fn dance_summary(ui: &mut egui::Ui, dance: &contra_sources::DanceSummary, downloaded: bool) {
+fn dance_summary(ui: &mut egui::Ui, dance: &caller_sources::DanceSummary, downloaded: bool) {
     ui.label(egui::RichText::new(&dance.title).strong());
     ui.label(
         egui::RichText::new(format!(

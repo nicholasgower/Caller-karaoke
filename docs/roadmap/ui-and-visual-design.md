@@ -128,11 +128,11 @@ hold, with dashed links joining the two couples that make a hands-four set.
   radius. The tile, not the page, carries the corners: the PNG keeps
   transparent corners, and the store and iOS copies are full-bleed squares
   because those platforms apply their own mask.
-- Source art and exports live in `assets/icons/`; `contra-karaoke.vectorcraft`
+- Source art and exports live in `assets/icons/`; `caller-karaoke.vectorcraft`
   is the editable master (one 512 × 512 artboard, named objects),
-  `contra-karaoke.svg` the vector export, and
+  `caller-karaoke.svg` the vector export, and
   `scripts/make-icon-ico.mjs` rebuilds the Windows `.ico` from the PNGs.
-- The desktop window embeds `contra-karaoke-256.png`; the web build copies the
+- The desktop window embeds `caller-karaoke-256.png`; the web build copies the
   SVG as its favicon; the Linux packages install the PNGs and the SVG under
   `hicolor`; Android uses the `mipmap-*` launchers in `packaging/android/res/`.
 - Below 32 px the couples merge into a pattern. A simplified 16/32 px variant

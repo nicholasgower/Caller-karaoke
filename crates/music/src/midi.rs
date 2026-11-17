@@ -17,7 +17,7 @@
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
-use contra_core::{
+use caller_core::{
     AccompanimentInstrument, AccompanimentRhythm, AudioEffects, BandPart, BandSlot, Countermelody,
     InstrumentCopies, MelodyInstrument, Percussion, PercussionRhythm, VariationOptions,
 };
@@ -725,7 +725,7 @@ fn key_signature(key: &crate::score::Key) -> (i8, bool) {
 mod tests {
     use super::*;
     use crate::abc::parse_abc;
-    use contra_core::BandVoice;
+    use caller_core::BandVoice;
 
     const TUNE: &str = "X:1\nT:Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n";
 
@@ -1215,9 +1215,9 @@ mod tests {
         let score = parse_abc(TUNE).expect("parse");
         let arrangement = Arrangement::from_score(&score, 64.0);
         let effects = AudioEffects {
-            reverb: contra_core::ReverbPreset::Off,
-            chorus: contra_core::ChorusPreset::Rich,
-            echo: contra_core::EchoPreset::Strong,
+            reverb: caller_core::ReverbPreset::Off,
+            chorus: caller_core::ChorusPreset::Rich,
+            echo: caller_core::EchoPreset::Strong,
         };
         let bytes = export_midi(
             &arrangement,
@@ -1259,9 +1259,9 @@ mod tests {
         apply_effects(
             &mut smf,
             AudioEffects {
-                reverb: contra_core::ReverbPreset::Hall,
-                chorus: contra_core::ChorusPreset::Subtle,
-                echo: contra_core::EchoPreset::Off,
+                reverb: caller_core::ReverbPreset::Hall,
+                chorus: caller_core::ChorusPreset::Subtle,
+                echo: caller_core::EchoPreset::Off,
             },
         );
         let mut changed = Vec::new();
@@ -1282,7 +1282,7 @@ mod tests {
     fn the_band_list_exports_one_track_per_player() {
         let score = parse_abc(TUNE).expect("parse");
         let arrangement = Arrangement::from_score(&score, 64.0);
-        let band = contra_core::default_band();
+        let band = caller_core::default_band();
         let bytes = export_midi_with_band(
             &arrangement,
             &band,

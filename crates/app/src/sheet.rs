@@ -1,11 +1,11 @@
 //! Sheet-music preview for ABC tunes.
 //!
-//! Playback keeps using `contra_music`'s ABC parser. This module is display
+//! Playback keeps using `caller_music`'s ABC parser. This module is display
 //! only: acorde engraves the tune, and resvg rasterizes the SVG into an egui
 //! texture. Keeping the engraver separate means a notation feature added for
 //! the preview can never change call timing.
 
-use contra_music::{Key, Mode};
+use caller_music::{Key, Mode};
 use eframe::egui;
 
 /// Logical width the engraver lays the score out for, in points.

@@ -12,7 +12,7 @@
 
 use std::f32::consts::TAU;
 
-use contra_core::{AccompanimentInstrument, BandSlot, BandVoice, MelodyInstrument, OutputMode};
+use caller_core::{AccompanimentInstrument, BandSlot, BandVoice, MelodyInstrument, OutputMode};
 
 use crate::arrange::EndingNote;
 use crate::humanize::{Humanizer, Voice, VoiceTiming, chord_members};
@@ -790,7 +790,7 @@ mod tests {
     use super::*;
     use crate::abc::parse_abc;
     use crate::arrange::Arrangement;
-    use contra_core::{BandPart, COUNT_IN_BEATS};
+    use caller_core::{BandPart, COUNT_IN_BEATS};
 
     const TUNE: &str = "X:1\nT:Test\nM:4/4\nL:1/8\nK:D\n\"D\"A2 A2 A2 A2 | \"G\"B2 B2 B2 B2|\n";
 
@@ -801,25 +801,25 @@ mod tests {
             bpm: 240.0,
             melody: MelodyInstrument::Fiddle,
             accompaniment: AccompanimentInstrument::Piano,
-            accompaniment_rhythm: contra_core::AccompanimentRhythm::Auto,
-            second_accompaniment: contra_core::Countermelody::Accordion,
+            accompaniment_rhythm: caller_core::AccompanimentRhythm::Auto,
+            second_accompaniment: caller_core::Countermelody::Accordion,
             // Empty means "use the legacy fields"; the band-list tests below
             // fill it explicitly, exactly as the app does.
             band: Vec::new(),
-            output: contra_core::OutputMode::Stereo,
-            copies: contra_core::InstrumentCopies::default(),
-            variations: contra_core::VariationOptions::default(),
-            humanize_options: contra_core::HumanizeOptions::default(),
-            ending_options: contra_core::EndingOptions::default(),
+            output: caller_core::OutputMode::Stereo,
+            copies: caller_core::InstrumentCopies::default(),
+            variations: caller_core::VariationOptions::default(),
+            humanize_options: caller_core::HumanizeOptions::default(),
+            ending_options: caller_core::EndingOptions::default(),
             dancer_sounds: false,
             dancer_sound_volume: 0.0,
             dancer_sound_events: Vec::new(),
-            percussion: contra_core::Percussion::Off,
-            percussion_rhythm: contra_core::PercussionRhythm::Auto,
+            percussion: caller_core::Percussion::Off,
+            percussion_rhythm: caller_core::PercussionRhythm::Auto,
             melody_volume: 0.75,
             accompaniment_volume: 0.65,
             percussion_volume: 0.5,
-            effects: contra_core::AudioEffects::default(),
+            effects: caller_core::AudioEffects::default(),
             count_in_beats: COUNT_IN_BEATS,
             sample_rate: 24_000,
             variation_passes: 1,
@@ -855,15 +855,15 @@ mod tests {
     #[test]
     fn playback_applies_the_selected_effects() {
         let dry = RenderRequest {
-            effects: contra_core::AudioEffects {
-                reverb: contra_core::ReverbPreset::Off,
-                chorus: contra_core::ChorusPreset::Off,
-                echo: contra_core::EchoPreset::Off,
+            effects: caller_core::AudioEffects {
+                reverb: caller_core::ReverbPreset::Off,
+                chorus: caller_core::ChorusPreset::Off,
+                echo: caller_core::EchoPreset::Off,
             },
             ..request()
         };
         let wet = RenderRequest {
-            effects: contra_core::AudioEffects::default(),
+            effects: caller_core::AudioEffects::default(),
             ..request()
         };
         let dry = crate::render::render(&dry, None).expect("render dry");
@@ -916,7 +916,7 @@ mod tests {
     fn the_countermelody_adds_a_third_voice() {
         let mut trio = request();
         let with = render_builtin(&trio);
-        trio.second_accompaniment = contra_core::Countermelody::Off;
+        trio.second_accompaniment = caller_core::Countermelody::Off;
         let without = render_builtin(&trio);
 
         assert_eq!(with.frames(), without.frames());
@@ -937,7 +937,7 @@ mod tests {
     fn extra_copies_thicken_the_section_without_moving_the_grid() {
         let single = render_builtin(&request());
         let mut section = request();
-        section.copies = contra_core::InstrumentCopies {
+        section.copies = caller_core::InstrumentCopies {
             melody: 2,
             accompaniment: 3,
             countermelody: 2,
@@ -969,18 +969,18 @@ mod tests {
             single.humanize_timing = humanize;
             let reference = loop_rms(&render_builtin(&single));
 
-            for count in 2..=contra_core::InstrumentCopies::MAX {
+            for count in 2..=caller_core::InstrumentCopies::MAX {
                 let mut melody_only = request();
                 melody_only.humanize_timing = humanize;
                 melody_only.copies.melody = count;
 
                 let mut band = request();
                 band.humanize_timing = humanize;
-                band.copies = contra_core::InstrumentCopies {
+                band.copies = caller_core::InstrumentCopies {
                     melody: count,
                     accompaniment: count,
                     countermelody: count,
-                    percussion: count.min(contra_core::InstrumentCopies::MAX_PERCUSSION),
+                    percussion: count.min(caller_core::InstrumentCopies::MAX_PERCUSSION),
                 };
 
                 for (label, request) in [("melody", melody_only), ("band", band)] {
@@ -1137,7 +1137,7 @@ mod tests {
 
     fn band_request() -> RenderRequest {
         let mut request = request();
-        request.band = contra_core::default_band();
+        request.band = caller_core::default_band();
         request.humanize_timing = false;
         request
     }
@@ -1241,10 +1241,10 @@ mod tests {
         assert_eq!(mono.frames(), stereo.frames());
         // With dry effects the mono render is the sample-for-sample average of
         // the stereo render.
-        mono_request.effects = contra_core::AudioEffects {
-            reverb: contra_core::ReverbPreset::Off,
-            chorus: contra_core::ChorusPreset::Off,
-            echo: contra_core::EchoPreset::Off,
+        mono_request.effects = caller_core::AudioEffects {
+            reverb: caller_core::ReverbPreset::Off,
+            chorus: caller_core::ChorusPreset::Off,
+            echo: caller_core::EchoPreset::Off,
         };
         stereo_request.effects = mono_request.effects;
         let mono = render_builtin(&mono_request);

@@ -34,7 +34,7 @@
 
 use std::f64::consts::TAU;
 
-use contra_core::{MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP};
+use caller_core::{MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP};
 
 use crate::arrange::Arrangement;
 use crate::render::RenderRequest;

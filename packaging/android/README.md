@@ -1,7 +1,7 @@
 # Android packaging
 
 Target: `aarch64-linux-android` and `armv7-linux-androideabi`, minSdk 26,
-targetSdk 35, package `org.contrakaraoke.app`.
+targetSdk 35, package `org.callerkaraoke.app`.
 
 The build uses `cargo-apk` with the eframe Android native-activity backend
 (`eframe` features `glow` + `android-native-activity`) and `cpal`'s AAudio
@@ -29,7 +29,7 @@ both as `classes.dex`, aligns the archive, and signs it:
 python packaging/android/build-apk.py
 ```
 
-The result is `target/release/apk/contra-karaoke.apk`. Add `--debug` for a
+The result is `target/release/apk/caller-karaoke.apk`. Add `--debug` for a
 debug build. `--target x86_64-linux-android` builds a single-ABI APK for an
 x86_64 emulator.
 
@@ -51,7 +51,7 @@ and the packaged ONNX Runtime binary use 16 KB page alignment for Android 15
 and newer.
 
 The AAR is cached under `target/android-ort/`; it is not committed. For an
-offline build, point `CONTRA_ORT_ANDROID_AAR` at the pinned AAR. Pass
+offline build, point `CALLER_ORT_ANDROID_AAR` at the pinned AAR. Pass
 `--without-kokoro` to build an APK with only the platform TTS backend, which is
 useful for testing the fallback or reducing the APK size.
 
@@ -70,7 +70,7 @@ and signs the final archive.
 
 `MainActivity` registers an `android.media.session.MediaSession` in `onCreate`
 and posts a `MediaStyle` notification whose title is the loaded dance, whose
-artist is the tune, and whose album is *Contra Karaoke*. Headset, Bluetooth,
+artist is the tune, and whose album is *Caller Karaoke*. Headset, Bluetooth,
 lock-screen, notification, and system media controls arrive at the session's
 `MediaSession.Callback` (and at a notification `BroadcastReceiver` on Android 12
 and older), which forwards them to Rust through the static native method
@@ -85,7 +85,7 @@ change on one side must change the other.
 `MainActivity` calls `nativeAttachActivity()` in `onCreate`, and Rust keeps the
 class as a global reference. The event loop runs on a native thread attached
 without the app class loader, so `FindClass` there raises
-`ClassNotFoundException` for `org.contrakaraoke.app.MainActivity`, and the
+`ClassNotFoundException` for `org.callerkaraoke.app.MainActivity`, and the
 pending exception aborts the process when the thread detaches. Every later
 media call goes through the handle the activity published instead.
 

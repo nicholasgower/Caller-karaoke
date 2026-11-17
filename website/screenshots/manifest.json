@@ -48,7 +48,7 @@
     },
     {
       "id": "about-window",
-      "alt": "The About category of the Preferences screen, showing Contra Karaoke, its version, a short description, By Nicholas Gower, and links to the website and the source code.",
+      "alt": "The About category of the Preferences screen, showing Caller Karaoke, its version, a short description, By Nicholas Gower, and links to the website and the source code.",
       "caption": "About is one of the Preferences categories, beside the settings list.",
       "status": "pending"
     },
@@ -646,7 +646,7 @@
     },
     {
       "id": "install-windows-wizard",
-      "alt": "The Inno Setup installer wizard for Contra Karaoke showing the Select Destination Location page, the C:\\Program Files\\Contra Karaoke folder, and the Next button.",
+      "alt": "The Inno Setup installer wizard for Caller Karaoke showing the Select Destination Location page, the C:\\Program Files\\Caller Karaoke folder, and the Next button.",
       "caption": "Follow the wizard, choose whether to create a desktop shortcut, and finish.",
       "status": "ready",
       "width": 998,
@@ -660,7 +660,7 @@
     },
     {
       "id": "install-windows-portable",
-      "alt": "A file-manager view of the extracted portable ZIP folder with contra-karaoke.exe listed beside the license, readme, credits, and changelog files.",
+      "alt": "A file-manager view of the extracted portable ZIP folder with caller-karaoke.exe listed beside the license, readme, credits, and changelog files.",
       "caption": "The portable build runs from its folder and does not write to the registry.",
       "status": "ready",
       "width": 1452,
@@ -668,31 +668,31 @@
     },
     {
       "id": "install-linux-deb",
-      "alt": "A file manager or terminal showing the downloaded Contra Karaoke Debian package.",
+      "alt": "A file manager or terminal showing the downloaded Caller Karaoke Debian package.",
       "caption": "Install the .deb with apt so dependencies are resolved.",
       "status": "pending"
     },
     {
       "id": "install-linux-appimage",
-      "alt": "A downloaded ContraKaraoke AppImage file marked executable.",
+      "alt": "A downloaded CallerKaraoke AppImage file marked executable.",
       "caption": "Run the AppImage directly, or use --appimage-extract-and-run without FUSE.",
       "status": "pending"
     },
     {
       "id": "install-web-browser",
-      "alt": "The Contra Karaoke browser build open in a tab with the session screen and a Play button.",
+      "alt": "The Caller Karaoke browser build open in a tab with the session screen and a Play button.",
       "caption": "Serve the bundle over HTTP and press Play once to allow audio.",
       "status": "pending"
     },
     {
       "id": "install-android-package",
-      "alt": "The Android package-installer confirmation for the Contra Karaoke APK, including the unknown-apps prompt.",
+      "alt": "The Android package-installer confirmation for the Caller Karaoke APK, including the unknown-apps prompt.",
       "caption": "Android may require permission to install apps from this source.",
       "status": "pending"
     },
     {
       "id": "install-android-app",
-      "alt": "The Contra Karaoke app open on an Android device showing the session screen.",
+      "alt": "The Caller Karaoke app open on an Android device showing the session screen.",
       "caption": "The Android build is still being device-tested.",
       "status": "pending"
     }

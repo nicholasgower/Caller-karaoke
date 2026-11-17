@@ -1,4 +1,4 @@
-//! `contra-mcp` — an MCP server for driving a live Contra Karaoke window.
+//! `caller-mcp` — an MCP server for driving a live Caller Karaoke window.
 //!
 //! It speaks MCP JSON-RPC over stdio. The app-driving tools (`screenshot`,
 //! `widget_tree`, `click`, `type_text`, `press_key`, …) work after `attach`
@@ -25,8 +25,8 @@ fn init_tracing() {
     use tracing_subscriber::EnvFilter;
 
     // `EGUI_MCP_LOG` is kept as a fallback so existing egui-mcp tooling keeps
-    // working; `CONTRA_MCP_LOG` wins when both are set.
-    let filter = EnvFilter::try_from_env("CONTRA_MCP_LOG")
+    // working; `CALLER_MCP_LOG` wins when both are set.
+    let filter = EnvFilter::try_from_env("CALLER_MCP_LOG")
         .or_else(|_| EnvFilter::try_from_env("EGUI_MCP_LOG"))
         .unwrap_or_else(|_| EnvFilter::new("egui_mcp=info,warn"));
     // stderr only: stdout carries the MCP JSON-RPC stream.

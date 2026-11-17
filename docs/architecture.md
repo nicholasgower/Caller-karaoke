@@ -50,7 +50,7 @@ Rules:
 ## Platform detection
 
 The desktop, web, and Android builds share one UI, so some differences are
-decided at runtime. `contra_app::platform()` (in `crates/app/src/platform.rs`)
+decided at runtime. `caller_app::platform()` (in `crates/app/src/platform.rs`)
 returns the target as a lowercase string: `"web"` for the
 `wasm32-unknown-unknown` browser build, otherwise the target OS (`"windows"`,
 `"linux"`, `"android"`, `"macos"`, and so on). It is a `const fn`, so a gate
@@ -59,11 +59,11 @@ costs nothing.
 Use it when both branches compile on every target:
 
 ```rust
-if contra_app::platform() == "android" {
+if caller_app::platform() == "android" {
     // Show the share sheet.
 }
 
-let neural_voice = !matches!(contra_app::platform(), "web" | "android");
+let neural_voice = !matches!(caller_app::platform(), "web" | "android");
 ```
 
 Keep `#[cfg]` for code that cannot compile elsewhere: file dialogs, `std::fs`,

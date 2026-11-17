@@ -13,7 +13,7 @@
 //! default output is unchanged. Mono sums the two sides and keeps their average
 //! level.
 
-use contra_core::OutputMode;
+use caller_core::OutputMode;
 
 /// The most channels any layout uses.
 pub const MAX_CHANNELS: usize = 5;

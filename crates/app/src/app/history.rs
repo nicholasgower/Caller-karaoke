@@ -12,7 +12,7 @@
 //! [`MergeKey`], so typing a word or dragging a slider is one step instead of
 //! one step per frame.
 
-use contra_core::{Dance, Preferences, Tune};
+use caller_core::{Dance, Preferences, Tune};
 use eframe::egui;
 
 /// How many states the undo stack keeps.
@@ -209,7 +209,7 @@ impl History {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use contra_core::MelodyInstrument;
+    use caller_core::MelodyInstrument;
 
     fn snapshot() -> Snapshot {
         Snapshot {

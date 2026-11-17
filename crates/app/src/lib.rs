@@ -1,7 +1,7 @@
-//! Contra Karaoke application library.
+//! Caller Karaoke application library.
 //!
 //! The desktop binary, Android native activity, and web entry point all share
-//! the same `ContraApp` state machine.
+//! the same `CallerApp` state machine.
 
 mod android_ime;
 pub mod app;
@@ -23,7 +23,7 @@ mod updates;
 mod web_store;
 mod window;
 
-pub use app::ContraApp;
+pub use app::CallerApp;
 pub use platform::platform;
 
 /// System-bar insets reported by the Android activity.
@@ -53,7 +53,7 @@ mod android_insets {
 
     /// Called from `MainActivity` with left, top, right, bottom in pixels.
     #[unsafe(no_mangle)]
-    pub extern "system" fn Java_org_contrakaraoke_app_MainActivity_nativeSetSystemBarInsets(
+    pub extern "system" fn Java_org_callerkaraoke_app_MainActivity_nativeSetSystemBarInsets(
         _env: *mut core::ffi::c_void,
         _class: *mut core::ffi::c_void,
         left: i32,
@@ -75,7 +75,7 @@ pub fn run_desktop() -> eframe::Result {
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_inner_size([1120.0, 780.0])
         .with_min_inner_size([360.0, 560.0])
-        .with_title("Contra Karaoke")
+        .with_title("Caller Karaoke")
         // Ask to be the focused window at launch. eframe shows the window
         // only after the first frame, which on its own can open it behind
         // the program that launched it; `window::LaunchFocus` requests the
@@ -89,9 +89,9 @@ pub fn run_desktop() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "Contra Karaoke",
+        "Caller Karaoke",
         options,
-        Box::new(|cc| Ok(Box::new(ContraApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(CallerApp::new(cc)))),
     )
 }
 
@@ -111,9 +111,9 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
         ..Default::default()
     };
     let _ = eframe::run_native(
-        "Contra Karaoke",
+        "Caller Karaoke",
         options,
-        Box::new(move |cc| Ok(Box::new(ContraApp::new_android(cc, data_dir.clone())))),
+        Box::new(move |cc| Ok(Box::new(CallerApp::new_android(cc, data_dir.clone())))),
     );
 }
 
@@ -128,8 +128,8 @@ pub fn start_web() -> Result<(), wasm_bindgen::JsValue> {
     let window = web_sys::window().ok_or("no window")?;
     let document = window.document().ok_or("no document")?;
     let canvas = document
-        .get_element_by_id("contra-canvas")
-        .ok_or("missing #contra-canvas")?;
+        .get_element_by_id("caller-canvas")
+        .ok_or("missing #caller-canvas")?;
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into()?;
 
     // A share link pasted into the address bar of the running page changes
@@ -153,7 +153,7 @@ pub fn start_web() -> Result<(), wasm_bindgen::JsValue> {
             .start(
                 canvas,
                 eframe::WebOptions::default(),
-                Box::new(|cc| Ok(Box::new(ContraApp::new_web(cc)))),
+                Box::new(|cc| Ok(Box::new(CallerApp::new_web(cc)))),
             )
             .await;
     });
