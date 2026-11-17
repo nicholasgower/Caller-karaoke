@@ -68,7 +68,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Must match the pin in rust-toolchain.toml: the repository override wins
+      # over any other installed toolchain, so the wasm target has to belong to
+      # 1.100.0 or cargo cannot find `core` for the target.
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
