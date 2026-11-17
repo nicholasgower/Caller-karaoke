@@ -88,8 +88,8 @@ For docs-only work, `npm run start:docs` skips the build. A tracked
 `/play` shows that explanation instead of a bare 404 when the build is absent.
 `npm run build:app` replaces the placeholder; do not commit the staged build.
 
-The app is built with the public URL `/Contra-karaoke/app/`; keep that in step
-with `baseUrl` in `docusaurus.config.ts` or set `CONTRA_WEB_PUBLIC_URL`.
+The app is built with the public URL `/app/`; keep that in step with
+`baseUrl` in `docusaurus.config.ts` or set `CONTRA_WEB_PUBLIC_URL`.
 
 To review the hosted app at phone width, run
 `npm run preview:ios -- --path /play/` after building the site.

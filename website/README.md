@@ -18,7 +18,7 @@ Windows/Android/Linux/web installer captures rather than app frames.
 
 ```sh
 npm install
-npm start            # builds the app, then http://localhost:3000/Contra-karaoke/
+npm start            # builds the app, then http://localhost:3000/
 npm run start:docs   # docs only: skips the browser build; /play shows a placeholder
 npm run build:app    # requires Rust + Trunk; stages the WASM app under static/app
 npm test             # screenshot manifest, uniqueness, and emphasis regions
@@ -36,14 +36,16 @@ npm run clear
 commands to install what is missing; use `npm run start:docs` when you are only
 changing prose or screenshots.
 
-The project base URL is `/Contra-karaoke/` for GitHub Pages. Test the built site
-under that path, not only at the server root.
+The site is served from the root of <https://contrakaraoke.nicholasgower.com/>
+(`baseUrl: '/'`). Test the built site at the server root. `static/CNAME` pins
+the GitHub Pages custom domain; keep it in step with `url` in
+`docusaurus.config.ts`.
 
 ## Hosted browser app
 
-The site serves a copy of the WASM app at `/Contra-karaoke/app/`, embedded by
+The site serves a copy of the WASM app at `/app/`, embedded by
 the `/play` page. `npm run build:app` runs Trunk against `crates/web`, builds
-with the public URL `/Contra-karaoke/app/`, and copies `dist/web` to
+with the public URL `/app/`, and copies `dist/web` to
 `static/app/`. `npm start` runs it automatically; the docs workflow runs it
 before `npm run check`.
 

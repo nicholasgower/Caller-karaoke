@@ -85,7 +85,7 @@ The first writing pass now exists under `website/`:
 - a 78-entry screenshot manifest with alt text and captions;
 - 69 rendered in-app screenshots plus nine manual OS placeholders;
 - a dependency-free manifest/docs checker (`npm run check:shots`);
-- a successful production build under `/Contra-karaoke/`.
+- a successful production build at the site root.
 
 Still missing: the screenshot verification workflow, manual OS installer
 images, and the first Pages deployment. The app test seam and real in-app
@@ -123,7 +123,7 @@ remaining images are OS installer dialogs that are not part of the app. The old
 ### 1.1 Goals
 
 1. Publish user documentation at
-   `https://nicholasgower.github.io/Contra-karaoke/` from `main`.
+   `https://contrakaraoke.nicholasgower.com/` from `main`.
 2. Explain the complete implemented 0.1.0 journey: install, choose a dance,
    choose a tune, configure roles/aliases/instruments/timing, run a session,
    use TTS, clear the source cache, export MIDI, troubleshoot.
@@ -192,7 +192,7 @@ real app.
 | Site | Docusaurus 3.10 classic, TypeScript, blog disabled | MDX components, static output, Pages-native |
 | Location | `website/` in this monorepo | Docs and screenshots version with the app |
 | Hosting | GitHub Actions → Pages artifact | Atomic deploys, no `gh-pages` branch |
-| URL | Project Pages, `baseUrl: '/Contra-karaoke/'` | Matches the repository URL |
+| URL | Custom domain, `baseUrl: '/'` | Served from the domain root |
 | Search | `@easyops-cn/docusaurus-search-local` | Offline index, MIT, no external service |
 | Screenshots | `egui_kittest` 0.37 + wgpu test renderer | Official egui harness; drives the real `eframe::App` through AccessKit |
 | Capture | Desktop 1280×800 @1×, mobile 390×844 @1× | 1280-wide PNGs stay under the docs size budget; text remains crisp at the 760 px display width |
@@ -930,8 +930,8 @@ to `'throw'`, add local search, commit `package-lock.json`, add `.nvmrc` with
 const config: Config = {
   title: 'Contra Karaoke',
   tagline: 'Learn to call contra dances in time with the music',
-  url: 'https://nicholasgower.github.io',
-  baseUrl: '/Contra-karaoke/',
+  url: 'https://contrakaraoke.nicholasgower.com',
+  baseUrl: '/',
   organizationName: 'nicholasgower',
   projectName: 'Contra-karaoke',
   trailingSlash: true,
@@ -1209,7 +1209,7 @@ cargo xtask screenshots --check
 
 cd website
 npm ci
-npm start          # http://localhost:3000/Contra-karaoke/
+npm start          # http://localhost:3000/
 npm run check
 ```
 
@@ -1248,7 +1248,7 @@ WSL/Docker or via the CI artifact.
 - Broken links/anchors/markdown throw.
 - TypeScript compile via build.
 - `useBaseUrl` everywhere; verify base path.
-- Serve with `docusaurus serve` under `/Contra-karaoke/`.
+- Serve with `docusaurus serve` at the site root.
 
 ### 8.3 Optional browser smoke test
 
@@ -1335,7 +1335,7 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 | Screenshot suite slow | Slow CI | Cache, `--filter`, parallel prefixes |
 | PNG bloat | Large clone | 2× only, 300 KB budget, lazy loading, LFS/artifacts if > 25 MB |
 | Manual OS images stale | Misleading install docs | Version-stamped `Figure`, release checklist |
-| Project Pages base URL | Broken assets | `useBaseUrl`, `trailingSlash: true`, base-path QA |
+| Site base URL | Broken assets | `useBaseUrl`, `trailingSlash: true`, base-path QA |
 | Docs claim unbuilt features | Wrong instructions | §3.4 exclusion list; review against the UI |
 | Samples leak into docs | Licensing risk | Fixture rule; checker review |
 
@@ -1369,7 +1369,7 @@ No GPL/AGPL/LGPL tooling. Run `cargo deny check` and `cargo machete`.
 - [x] Author the P1 manifest with alt/caption/viewport (78 planned shots).
 - [x] Add `check-screenshots.mjs` and `npm run check`.
 - [x] Write the first 25 user-facing pages and land a successful production
-      build under `/Contra-karaoke/`.
+      build at the site root.
 - [x] Implement the headless renderer and generate all in-app screenshots.
 - [ ] Add the screenshot verification workflow.
 - [ ] Capture the manual OS installer images.
@@ -1416,7 +1416,8 @@ Total: roughly 4–6 weeks part-time, with Phase 0 overlapping app work.
 
 ## 12. Open questions
 
-1. **Custom domain?** Start on the project Pages URL; add one later if desired.
+1. **Custom domain?** Settled: served at `contrakaraoke.nicholasgower.com` from
+   the domain root.
 2. **Commit screenshots?** Recommend yes; revisit at ~25 MB.
 3. **Host the web app on the same Pages site?** Recommend no; separate pipeline.
 4. **Manual Windows/Android images?** Recommend yes for three images; automate

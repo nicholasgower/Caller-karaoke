@@ -16,7 +16,7 @@ use serde::Deserialize;
 
 /// Project addresses shared by the header actions, About, and the update check.
 pub(crate) const REPOSITORY_URL: &str = "https://github.com/nicholasgower/Contra-karaoke";
-pub(crate) const DOCUMENTATION_URL: &str = "https://nicholasgower.github.io/Contra-karaoke/";
+pub(crate) const DOCUMENTATION_URL: &str = "https://contrakaraoke.nicholasgower.com/";
 pub(crate) const ISSUES_URL: &str = "https://github.com/nicholasgower/Contra-karaoke/issues";
 pub(crate) const RELEASES_URL: &str = "https://github.com/nicholasgower/Contra-karaoke/releases";
 const LATEST_RELEASE_API: &str =

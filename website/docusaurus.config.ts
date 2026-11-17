@@ -5,9 +5,9 @@ const config: Config = {
   title: 'Contra Karaoke',
   tagline: 'Learn to call contra dances in time with the music',
   favicon: 'img/favicon.svg',
-  url: 'https://nicholasgower.github.io',
+  url: 'https://contrakaraoke.nicholasgower.com',
   // Keep in sync with the hosted app public URL in scripts/build-web-app.mjs.
-  baseUrl: '/Contra-karaoke/',
+  baseUrl: '/',
   organizationName: 'nicholasgower',
   projectName: 'Contra-karaoke',
   trailingSlash: true,

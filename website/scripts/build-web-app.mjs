@@ -6,7 +6,7 @@
 // docs-only work that does not need Rust or Trunk.
 //
 // The public URL must match Docusaurus `baseUrl` plus `app/`, otherwise the
-// hashed JS/WASM assets resolve outside the Pages project path.
+// hashed JS/WASM assets resolve outside the site path.
 
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -19,7 +19,7 @@ const repoRoot = path.resolve(websiteRoot, '..');
 const webCrate = path.join(repoRoot, 'crates', 'web');
 const trunkOutput = path.join(repoRoot, 'dist', 'web');
 const staged = path.join(websiteRoot, 'static', 'app');
-const publicUrl = process.env.CONTRA_WEB_PUBLIC_URL ?? '/Contra-karaoke/app/';
+const publicUrl = process.env.CONTRA_WEB_PUBLIC_URL ?? '/app/';
 
 function setupHelp({missingTrunk, missingTarget}) {
   console.error('\nCannot build the hosted browser app:');
