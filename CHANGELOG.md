@@ -64,6 +64,7 @@ All notable changes to Contra Karaoke are documented here.
 - **release:** Link the download pages at the releases list
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 
 ### Features
@@ -200,6 +201,7 @@ All notable changes to Contra Karaoke are documented here.
 - **ci:** Install the wasm target on the pinned toolchain
 - **release:** Keep appimagetool out of the published artifacts
 - **docs:** Install the wasm target on the pinned toolchain
+- **release:** Snapshot the changelog even when the version is unchanged
 
 
 ### Performance
