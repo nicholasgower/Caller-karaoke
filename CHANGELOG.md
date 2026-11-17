@@ -11,18 +11,9 @@ All notable changes to Caller Karaoke are documented here.
 
 
 ### Documentation
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
 - **changelog:** End every entry with a period.
-- Update changelog [skip ci].
 - **website:** Serve the site from contrakaraoke.nicholasgower.com.
-- Update changelog [skip ci].
 - **website:** Lead the browser page with the hosted copy.
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
 
 
 ### Features
@@ -91,21 +82,8 @@ All notable changes to Caller Karaoke are documented here.
 - Describe the band list, data and storage, and memory paths.
 - Document the platform detection helper.
 - Describe prefetched playback and performance rules.
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
 - **website:** Serve the documentation site from nicholasgower.
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
 - **release:** Link the download pages at the releases list.
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
-- Update changelog [skip ci].
 
 
 ### Features

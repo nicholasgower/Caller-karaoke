@@ -29,6 +29,9 @@ commit_preprocessors = [
   { pattern = '\A([^\r\n]*?)[ \t]*[.!?]*(\r?\n|\z)', replace = "$1.$2" },
 ]
 commit_parsers = [
+  # The Changelog workflow commits the file it just generated. That commit is
+  # bookkeeping, not a change users can notice, so it stays out of the document.
+  { message = "(?i)^[a-z]+(\\([^)]*\\))?: update changelog", skip = true },
   { message = "^feat", group = "Features" },
   { message = "^fix", group = "Fixes" },
   { message = "^perf", group = "Performance" },
