@@ -808,7 +808,9 @@ mod tests {
     #[test]
     fn measured_allemande_call_gets_padding() {
         let aliases = AliasTable::default();
-        let call = aliases.render("ladles allemande left 1½", &RoleTerms::default());
+        // "larks" renders to itself, so this keeps the measured 9-syllable
+        // call as the regression case for the lead calculation.
+        let call = aliases.render("larks allemande left 1½", &RoleTerms::default());
         assert_eq!(call.text, "larks allemande left once and a half");
         assert_eq!(call.syllables, 9);
 

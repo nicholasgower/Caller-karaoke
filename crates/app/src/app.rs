@@ -4533,11 +4533,13 @@ mod tests {
             right_plural: "starboards".into(),
         };
         let timeline = build_timeline(&dance, &prefs, 0).expect("timeline");
+        // A lady is a robin-side dancer, so the card's "ladles" uses the
+        // custom right-side term, not the left-side one.
         assert!(
             timeline
                 .calls
                 .iter()
-                .any(|call| call.text.contains("ports allemande")),
+                .any(|call| call.text.contains("starboards allemande")),
             "{:?}",
             call_texts(&timeline)
         );
@@ -4545,7 +4547,7 @@ mod tests {
             !timeline
                 .calls
                 .iter()
-                .any(|call| call.text.contains("larks")),
+                .any(|call| call.text.contains("robins")),
             "{:?}",
             call_texts(&timeline)
         );

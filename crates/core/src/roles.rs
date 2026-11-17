@@ -45,17 +45,20 @@ impl RoleTerms {
                 right_singular: "raven".into(),
                 right_plural: "ravens".into(),
             },
+            // A gent finishes a swing on the left (the lark side); a lady
+            // finishes on the right (the robin side). Preset fields are in
+            // left-then-right order, so the gent terms come first here.
             RolePreset::LadiesGentlemen => Self {
-                left_singular: "lady".into(),
-                left_plural: "ladies".into(),
-                right_singular: "gentleman".into(),
-                right_plural: "gentlemen".into(),
+                left_singular: "gentleman".into(),
+                left_plural: "gentlemen".into(),
+                right_singular: "lady".into(),
+                right_plural: "ladies".into(),
             },
             RolePreset::WomenMen => Self {
-                left_singular: "woman".into(),
-                left_plural: "women".into(),
-                right_singular: "man".into(),
-                right_plural: "men".into(),
+                left_singular: "man".into(),
+                left_plural: "men".into(),
+                right_singular: "woman".into(),
+                right_plural: "women".into(),
             },
             RolePreset::LeadsFollows => Self {
                 left_singular: "lead".into(),
@@ -144,15 +147,15 @@ impl RolePreset {
     /// The menu label, always in left-then-right order.
     ///
     /// The model is [`RoleSide::Left`] and [`RoleSide::Right`], and every
-    /// label names the left-side term first ("Larks / Robins", "Ladies /
-    /// Gentlemen"). A dance card may write its pair in either order, but the
+    /// label names the left-side term first ("Larks / Robins", "Gentlemen /
+    /// Ladies"). A dance card may write its pair in either order, but the
     /// preset menu must not mix the two; a new preset follows the same rule.
     pub fn label(self) -> &'static str {
         match self {
             RolePreset::LarksRobins => "Larks / Robins",
             RolePreset::LarksRavens => "Larks / Ravens",
-            RolePreset::LadiesGentlemen => "Ladies / Gentlemen",
-            RolePreset::WomenMen => "Women / Men",
+            RolePreset::LadiesGentlemen => "Gentlemen / Ladies",
+            RolePreset::WomenMen => "Men / Women",
             RolePreset::LeadsFollows => "Leads / Follows",
             RolePreset::LeftsRights => "Lefts / Rights",
             RolePreset::Custom => "Custom",
@@ -189,21 +192,25 @@ static ROLE_RE: LazyLock<Regex> = LazyLock::new(|| {
 
 fn role_word(word: &str) -> Option<RoleWord> {
     let lower = word.to_ascii_lowercase();
+    // A gent (and its synonyms) is the lark/left-side role; a lady is the
+    // robin/right-side role. This matches where each dancer finishes a swing.
     let (side, plural) = match lower.as_str() {
-        "gentlespoons" | "gentlespoon" | "gentlemen" | "gentleman" | "gents" | "gent" => {
-            (RoleSide::Right, lower.ends_with('s'))
+        "gentlespoons" | "gentlespoon" | "gentleman" | "gentles" | "gents" | "gent" => {
+            (RoleSide::Left, lower.ends_with('s'))
         }
-        "ladles" | "ladle" | "ladies" | "lady" => (RoleSide::Left, lower.ends_with('s')),
+        // "gentlemen" is an irregular plural, like "men".
+        "gentlemen" => (RoleSide::Left, true),
+        "ladles" | "ladle" | "ladies" | "lady" => (RoleSide::Right, lower.ends_with('s')),
         "larks" | "lark" => (RoleSide::Left, lower.ends_with('s')),
         "leads" | "lead" | "lefts" => (RoleSide::Left, lower.ends_with('s')),
-        "women" | "woman" => (RoleSide::Left, lower == "women"),
+        "women" | "woman" => (RoleSide::Right, lower == "women"),
         "robins" | "robin" | "ravens" | "raven" => (RoleSide::Right, lower.ends_with('s')),
         "follows" | "follow" | "rights" => (RoleSide::Right, lower.ends_with('s')),
-        "men" | "man" => (RoleSide::Right, lower == "men"),
-        "gals" | "gal" => (RoleSide::Left, lower.ends_with('s')),
-        "guys" | "guy" => (RoleSide::Right, lower.ends_with('s')),
-        "belles" | "belle" => (RoleSide::Left, lower.ends_with('s')),
-        "beaus" | "beau" => (RoleSide::Right, lower.ends_with('s')),
+        "men" | "man" => (RoleSide::Left, lower == "men"),
+        "gals" | "gal" => (RoleSide::Right, lower.ends_with('s')),
+        "guys" | "guy" => (RoleSide::Left, lower.ends_with('s')),
+        "belles" | "belle" => (RoleSide::Right, lower.ends_with('s')),
+        "beaus" | "beau" => (RoleSide::Left, lower.ends_with('s')),
         _ => return None,
     };
     Some(RoleWord { side, plural })
@@ -241,25 +248,29 @@ mod tests {
     #[test]
     fn replaces_contradb_terms() {
         let terms = RoleTerms::default();
+        // A lady is a robin (right side); a gent is a lark (left side).
         assert_eq!(
             terms.apply("ladles allemande left 1½"),
-            "larks allemande left 1½"
+            "robins allemande left 1½"
         );
-        assert_eq!(terms.apply("gentlespoons chain"), "robins chain");
+        assert_eq!(terms.apply("gentlespoons chain"), "larks chain");
     }
 
     #[test]
     fn leaves_directions_alone() {
         let terms = RoleTerms::preset(RolePreset::LeftsRights);
-        assert_eq!(terms.apply("ladles allemande left"), "lefts allemande left");
+        assert_eq!(
+            terms.apply("gentlespoons allemande left"),
+            "lefts allemande left"
+        );
         assert_eq!(terms.apply("circle left 3 places"), "circle left 3 places");
     }
 
     #[test]
     fn preserves_capitalisation() {
         let terms = RoleTerms::default();
-        assert_eq!(terms.apply("Ladles chain"), "Larks chain");
-        assert_eq!(terms.apply("Gentlespoons swing"), "Robins swing");
+        assert_eq!(terms.apply("Ladles chain"), "Robins chain");
+        assert_eq!(terms.apply("Gentlespoons swing"), "Larks swing");
     }
 
     #[test]
@@ -307,9 +318,9 @@ mod tests {
         assert_eq!(terms.right_plural, "ravens");
         assert_eq!(
             terms.apply("ladles allemande left 1½"),
-            "larks allemande left 1½"
+            "ravens allemande left 1½"
         );
-        assert_eq!(terms.apply("gentlespoons chain"), "ravens chain");
+        assert_eq!(terms.apply("gentlespoons chain"), "larks chain");
         assert_eq!(RolePreset::detect(&terms), RolePreset::LarksRavens);
     }
 
@@ -330,11 +341,47 @@ mod tests {
         // A dance-card phrase and a spoken call phrase.
         assert_eq!(
             terms.apply("ladles allemande left 1½"),
-            "ports allemande left 1½"
+            "starboards allemande left 1½"
         );
-        assert_eq!(terms.apply("gentlespoons chain"), "starboards chain");
-        assert_eq!(terms.apply("swing your ladle"), "swing your port");
-        assert_eq!(terms.apply("gentlespoon do si do"), "starboard do si do");
+        assert_eq!(terms.apply("gentlespoons chain"), "ports chain");
+        assert_eq!(terms.apply("swing your ladle"), "swing your starboard");
+        assert_eq!(terms.apply("gentlespoon do si do"), "port do si do");
+    }
+
+    #[test]
+    fn lady_is_robin_and_gent_is_lark() {
+        // A gent finishes a swing on the left (lark); a lady on the right
+        // (robin). This must hold for every preset, not just the default.
+        for preset in [
+            RolePreset::LarksRobins,
+            RolePreset::LarksRavens,
+            RolePreset::LadiesGentlemen,
+            RolePreset::WomenMen,
+            RolePreset::LeadsFollows,
+            RolePreset::LeftsRights,
+        ] {
+            let terms = RoleTerms::preset(preset);
+            assert_eq!(
+                terms.apply("ladies chain"),
+                format!("{} chain", terms.right_plural),
+                "ladies must be the robin side at {preset:?}"
+            );
+            assert_eq!(
+                terms.apply("gentlemen chain"),
+                format!("{} chain", terms.left_plural),
+                "gentlemen must be the lark side at {preset:?}"
+            );
+            assert_eq!(
+                terms.apply("lady swing"),
+                format!("{} swing", terms.right_singular),
+                "lady must be the robin side at {preset:?}"
+            );
+            assert_eq!(
+                terms.apply("gentleman swing"),
+                format!("{} swing", terms.left_singular),
+                "gentleman must be the lark side at {preset:?}"
+            );
+        }
     }
 
     #[test]

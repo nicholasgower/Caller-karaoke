@@ -27,11 +27,15 @@ The presets are:
 
 - **Larks / Robins** — the default.
 - **Larks / Ravens**
-- **Ladies / Gentlemen**
-- **Women / Men**
+- **Gentlemen / Ladies**
+- **Men / Women**
 - **Leads / Follows**
 - **Lefts / Rights**
 - **Custom**
+
+A gent (or man) is the lark-side dancer, and a lady (or woman) is the
+robin-side dancer: the lark finishes a swing on the left and the robin on the
+right. That is why the traditional-term presets are named gent first.
 
 Every label names the left-side term first, then the right-side term
 (`Larks / Robins`), so the list reads the same way even when a dance card writes
@@ -65,9 +69,10 @@ a mixed card phrase is rewritten.
 Replacement is word-boundary based and applies to recognised role words,
 including:
 
-- ladles / ladies / larks / leads / lefts / women / gals / belles;
-- gentlespoons / gentlemen / gents / robins / ravens / follows / rights / men /
-  guys / beaus.
+- lark side (left): gentlespoons / gentlemen / gents / larks / leads / lefts /
+  men / guys / beaus;
+- robin side (right): ladles / ladies / robins / ravens / follows / rights /
+  women / gals / belles.
 
 It deliberately does **not** replace `shadow`, `neighbor`, or `partner`; those
 are not role-side terms. It also does not turn `circle left` into `circle

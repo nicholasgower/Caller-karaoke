@@ -75,8 +75,9 @@ The saved-tune library, available offline:
 Listed in this order:
 
 1. **Role terms** — default **Larks / Robins**.
-   Presets: Ladies/Gentlemen, Women/Men, Leads/Follows, Lefts/Rights, plus
-   custom left/right terms.
+   Presets: Gentlemen/Ladies, Men/Women, Leads/Follows, Lefts/Rights, plus
+   custom left/right terms (each named left side first; a gent is a lark, a
+   lady a robin).
    Replace ContraDB's default "ladles"/"gentlespoons" (and related forms) in
    both the card and the alias text.
 2. **Dance move aliases** — opens a sub-screen listing move types with editable
@@ -173,7 +174,7 @@ Default alias style examples:
 | Card figure | Default call |
 | --- | --- |
 | `neighbors do si do once` | `neighbors do-si-do` |
-| `ladles allemande left 1½` | `larks allemande left once and a half` |
+| `ladles allemande left 1½` | `robins allemande left once and a half` |
 | `partners balance & swing` | `partners balance and swing` |
 | `circle left 3 places` | `circle left three places` |
 | `neighbors swing` | `swing your neighbor` |
