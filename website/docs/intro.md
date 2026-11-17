@@ -61,7 +61,7 @@ redistribute a dance or tune database.
 
 These docs describe the 0.1.0 development build. The desktop app (Windows and
 Linux) and the browser app (WASM) are implemented. Android is configured and
-buildable, but still needs real-device testing. Release hardening and nightly
+buildable, but still needs real-device testing. Release hardening and release
 packaging are in progress.
 
 Screenshots of the app are rendered by the real headless `contra-headless`
@@ -70,8 +70,8 @@ captured manually.
 
 | Platform | Status |
 | --- | --- |
-| Windows x64 | Desktop build; installer and portable ZIP in the nightly release |
-| Linux x86_64 | Desktop build; `.deb` and AppImage in the nightly release |
+| Windows x64 | Desktop build; installer and portable ZIP in the latest release |
+| Linux x86_64 | Desktop build; `.deb` and AppImage in the latest release |
 | Web (WASM) | Browser build; a hosted copy runs on this site, and the downloaded bundle needs a static server and a data proxy for online search and downloads |
 | Android | Configured with minSdk 26; APK build and real-device testing still in progress |
 
@@ -82,4 +82,4 @@ continue to [Install on Windows](/docs/getting-started/install-windows),
 [build from source](/docs/getting-started/build-and-run). If you just want the
 short path, go to [Your first session](/docs/getting-started/first-session).
 See [Known limitations](/docs/reference/known-limitations) before relying on a
-nightly build.
+release build.

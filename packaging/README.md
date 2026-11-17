@@ -25,5 +25,5 @@ The session shows the loaded dance as the title, the tune as the artist, and
 transport commands change: they all map onto `MediaCommand`.
 
 Platform icons and the source SVG are shared from `assets/icons/`. See
-`docs/roadmap/ui-and-visual-design.md` §8.5. CI and nightly workflows consume
+`docs/roadmap/ui-and-visual-design.md` §8.5. CI and release workflows consume
 these files. See `ROADMAP.md` §9.

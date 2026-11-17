@@ -30,8 +30,8 @@ iscc packaging\windows\contra-karaoke.iss `
   /DOutputBaseFilename=ContraKaraoke-0.1.0-x64-setup
 ```
 
-The installer is written to `dist\`. Nightly CI overrides the version and
-filename with the current date and short SHA.
+The installer is written to `dist\`. The release workflow passes the workspace
+version from `Cargo.toml` as `AppVersion` and the output filename.
 
 ## Media keys
 

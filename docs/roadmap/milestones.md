@@ -80,12 +80,12 @@ placeholder screens.
 - [ ] Linux `.deb`, AppImage, and Flatpak.
 - [ ] Web bundle and hosted copy in the documentation site.
 - [ ] Android APK with minSdk 26.
-- [ ] `ci.yml`, `nightly.yml`, `changelog.yml`.
+- [ ] `ci.yml`, `release.yml`, `changelog.yml`, `scripts/release.mjs`.
 - [ ] `git-cliff` config and `CHANGELOG.md`.
 - [ ] `CREDITS.md`, README, and docs.
 - [ ] Artifact checksums and release notes.
 
-Exit: a push to `main` produces a complete nightly release.
+Exit: running `scripts/release.mjs` publishes a complete release.
 
 ### M6 — Release hardening
 

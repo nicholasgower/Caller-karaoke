@@ -6,18 +6,18 @@ export default function Download(): React.ReactElement {
   return (
     <Layout
       title="Download"
-      description="Download the nightly Contra Karaoke build for Windows, Linux, web, or Android"
+      description="Download the latest Contra Karaoke release for Windows, Linux, web, or Android"
     >
       <main className="container margin-vert--lg">
         <h1>Download Contra Karaoke</h1>
         <p>
           Contra Karaoke is at <strong>0.1.0</strong> and is still in development.
-          Nightly builds are produced on every push to <code>main</code> and
-          attached to the rolling{' '}
-          <a href="https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly">
-            nightly release
+          Releases are cut from <code>main</code> when a new version is ready and
+          published on the{' '}
+          <a href="https://github.com/nicholasgower/Contra-karaoke/releases">
+            releases page
           </a>
-          . There is no stable signed release yet.
+          . Builds are not code-signed yet.
         </p>
 
         <div className="row">
@@ -26,7 +26,7 @@ export default function Download(): React.ReactElement {
             <p>
               Download <code>ContraKaraoke-0.1.0-windows-x64-setup.exe</code> or{' '}
               <code>ContraKaraoke-0.1.0-windows-x64-portable.zip</code> from the
-              nightly release. The installer is unsigned; see{' '}
+              latest release. The installer is unsigned; see{' '}
               <Link to="/docs/getting-started/install-windows">Install on Windows</Link>{' '}
               before running it.
             </p>
@@ -35,7 +35,7 @@ export default function Download(): React.ReactElement {
             <h2>Linux</h2>
             <p>
               Download the <code>.deb</code> or{' '}
-              <code>ContraKaraoke-0.1.0-x86_64.AppImage</code> from the nightly
+              <code>ContraKaraoke-0.1.0-x86_64.AppImage</code> from the latest
               release. See{' '}
               <Link to="/docs/getting-started/install-linux">Install on Linux</Link>.
             </p>
@@ -52,7 +52,7 @@ export default function Download(): React.ReactElement {
           <div className="col col--6 margin-bottom--lg">
             <h2>Android</h2>
             <p>
-              Download the APK from the nightly release or build it with{' '}
+              Download the APK from the latest release or build it with{' '}
               <code>cargo-apk</code>. Android still needs real-device testing. See{' '}
               <Link to="/docs/getting-started/install-android">Install on Android</Link>.
             </p>
@@ -74,10 +74,10 @@ cargo run -p contra-app`}</code>
           for platform dependencies and the web/Android build commands.
         </p>
 
-        <h2>Nightly caveats</h2>
+        <h2>Release caveats</h2>
         <p>
-          Nightly artifacts use version 0.1.0, may be replaced by a later build,
-          and are not code-signed. Android CI uses the debug keystore unless
+          Release artifacts carry the version shown in the release name, may be
+          replaced by a later build, and are not code-signed. Android CI uses the debug keystore unless
           release signing secrets are configured. Verify checksums from the
           release before running an unsigned binary.
         </p>

@@ -13,7 +13,7 @@ do not allow browser requests from this origin.
 
 A copy of the browser build is hosted on this site at
 [Play in your browser](/play). It is built from `main` together with the
-documentation, so it can lag the nightly release.
+documentation, so it can lag the latest release.
 
 - Press **Play** in the app once to allow audio; browsers block sound until you
   interact with the page.
@@ -28,7 +28,7 @@ link above the frame.
 ## Get the build
 
 Download `contra-karaoke-0.1.0-web.zip` from the
-[nightly release](https://github.com/nicholasgower/Contra-karaoke/releases/tag/nightly),
+[releases page](https://github.com/nicholasgower/Contra-karaoke/releases),
 or build it from source:
 
 ```sh

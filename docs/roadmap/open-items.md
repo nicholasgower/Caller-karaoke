@@ -6,7 +6,8 @@
 - Review of default alias templates, call variants, and teaching scripts with
   an experienced caller.
 - Permission/attribution wording for the bundled default dance and tune.
-- Windows code signing (not required for nightly; note SmartScreen warnings).
+- Windows code signing (not required for these test builds; note SmartScreen
+  warnings).
 - A simplified 16/32 px app icon variant; the detailed mark (four couples,
   set links) turns into a pattern below 32 px.
 - Final visual polish.

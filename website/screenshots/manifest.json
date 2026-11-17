@@ -640,8 +640,8 @@
     },
     {
       "id": "install-windows-release",
-      "alt": "The GitHub nightly release page with the Windows setup executable and portable ZIP listed as assets.",
-      "caption": "Download the setup program or portable ZIP from the nightly release.",
+      "alt": "The GitHub release page with the Windows setup executable and portable ZIP listed as assets.",
+      "caption": "Download the setup program or portable ZIP from the latest release.",
       "status": "pending"
     },
     {
@@ -654,8 +654,8 @@
     },
     {
       "id": "install-windows-smartscreen",
-      "alt": "The Windows SmartScreen warning for an unsigned nightly installer, with the More info link visible.",
-      "caption": "Only run the unsigned nightly build if it came from this repository.",
+      "alt": "The Windows SmartScreen warning for an unsigned installer, with the More info link visible.",
+      "caption": "Only run the unsigned build if it came from this repository.",
       "status": "pending"
     },
     {

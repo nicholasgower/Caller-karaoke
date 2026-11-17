@@ -20,7 +20,7 @@ contra-karaoke/
   proxy/                     Cloudflare Worker for web CORS
   fixtures/                  small, attributed parser test fixtures
   docs/                      architecture, call timing, sources, packaging
-  .github/workflows/         CI, nightly, changelog, optional Pages deploy
+  .github/workflows/         CI, release, changelog, Pages deploy
   ROADMAP.md
   AGENTS.md
   CREDITS.md

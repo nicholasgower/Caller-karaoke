@@ -29,7 +29,7 @@ jobs:
         with:
           # Only the long-lived branches write caches. PR runs still restore
           # them, but must not fill the 10 GB repo cache quota, which would
-          # evict the entries that keep CI and Nightly fast.
+          # evict the entries that keep CI and Release fast.
           save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
       - name: Install Linux dependencies
         run: |
