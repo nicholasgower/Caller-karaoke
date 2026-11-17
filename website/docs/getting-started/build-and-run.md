@@ -110,12 +110,12 @@ limitations.
 
 ## Packaging status
 
-Releases are cut by hand from `main` with `node scripts/release.mjs`, which tags
-`v<version>`; the release workflow then attaches a Windows installer and portable
-ZIP, a Linux `.deb` and AppImage, a web ZIP, and an Android APK to that release.
-Feature work merges into `dev` first. Builds are not code-signed yet. Flatpak
-remains a source-tree packaging path. Use the [download page](/download) for the
-current release.
+Releases are cut by hand from `main` with `node scripts/release.mjs`, which
+starts the release workflow; once every build passes it tags `v<version>` and
+attaches a Windows installer and portable ZIP, a Linux `.deb` and AppImage, a web
+ZIP, and an Android APK to that release. Feature work merges into `dev` first.
+Builds are not code-signed yet. Flatpak remains a source-tree packaging path. Use
+the [download page](/download) for the current release.
 
 Do not follow a third-party install guide for 0.1.0; use this repository's
 release artifacts or build from source.
