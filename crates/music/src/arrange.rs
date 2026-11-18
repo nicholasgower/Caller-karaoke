@@ -590,6 +590,9 @@ impl Arrangement {
             }
             beat += step;
         }
+        // The countermelody is a fiddle line too, so the same bowing rules
+        // shape it when its rhythm happens to contain the figures.
+        crate::bowing::apply(&mut notes, self.meter);
         notes
     }
 
@@ -679,11 +682,14 @@ impl Arrangement {
     /// The melody for one loop pass.
     ///
     /// The plain tune is lifted above the accompaniment and accented on the
-    /// dance pulse. Later passes add deterministic melody variation allowed by
-    /// `options`: a little articulation, chord-tone harmony doubles on strong
-    /// beats, diatonic grace notes, and an occasional octave lift. Existing note
-    /// starts never move, so the dance timing and the 64-beat loop are
-    /// unchanged.
+    /// dance pulse. A quarter followed by two eighths before another quarter is
+    /// bowed as a fiddle figure: the eighths are re-struck and accented (see
+    /// [`crate::bowing`]). A run of four to eight successive eighths is instead
+    /// taken in one bow, each one ringing into the next. Later passes add
+    /// deterministic melody variation allowed by `options`: a little
+    /// articulation, chord-tone harmony doubles on strong beats, diatonic grace
+    /// notes, and an occasional octave lift. Existing note starts never move,
+    /// so the dance timing and the 64-beat loop are unchanged.
     pub fn melody_notes_for_pass(&self, pass: u32) -> Vec<NoteEvent> {
         self.melody_notes_for_pass_with_options(pass, &VariationOptions::default())
     }
@@ -701,6 +707,9 @@ impl Arrangement {
                 ..*note
             });
         }
+        // Shape the plain line before the ornaments: the bowing rules belong to
+        // the tune, and a grace note added later must not hide a figure.
+        crate::bowing::apply(&mut notes, self.meter);
         if pass > 0 {
             self.vary_melody(&mut notes, pass, options);
         }
@@ -1532,6 +1541,78 @@ mod tests {
         assert!(
             bar_start.velocity > second_beat.velocity,
             "the bar start should carry the strongest accent"
+        );
+    }
+
+    #[test]
+    fn a_quarter_two_eighths_quarter_is_bowed_with_a_new_stroke() {
+        let abc = "X:1\nT:T\nM:4/4\nL:1/8\nK:D\n\"D\"A2 AA A2 A2|\n";
+        let score = crate::abc::parse_abc(abc).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let melody = arrangement.melody_notes_for_pass(0);
+
+        let at = |beat: f64| {
+            melody
+                .iter()
+                .find(|note| (note.start_beat - beat).abs() < 1e-9)
+                .unwrap_or_else(|| panic!("no melody note at beat {beat}"))
+        };
+        let first_quarter = at(0.0);
+        let first_eighth = at(0.5);
+        let second_eighth = at(0.75);
+        let last_quarter = at(1.0);
+        for eighth in [first_eighth, second_eighth] {
+            assert!(
+                eighth.velocity > first_quarter.velocity && eighth.velocity > last_quarter.velocity,
+                "the two eighths must be accented above the surrounding quarters \
+                 ({} and {} vs {} and {})",
+                first_eighth.velocity,
+                second_eighth.velocity,
+                first_quarter.velocity,
+                last_quarter.velocity
+            );
+            assert!(
+                eighth.duration_beats < 0.25,
+                "the eighth at beat {} must be re-struck, not slurred",
+                eighth.start_beat
+            );
+        }
+        // The plain line keeps its written grid and the quarters keep their
+        // written length.
+        assert_eq!(first_quarter.duration_beats, 0.5);
+        assert_eq!(last_quarter.duration_beats, 0.5);
+        assert!(
+            melody
+                .iter()
+                .zip(arrangement.melody.iter())
+                .all(|(shaped, written)| (shaped.start_beat - written.start_beat).abs() < 1e-9)
+        );
+    }
+
+    #[test]
+    fn four_successive_eighths_are_tied_in_the_arranged_line() {
+        // Quarter, four eighths, quarter: one bar of running eighths between
+        // two quarter notes.
+        let abc = "X:1\nT:T\nM:4/4\nL:1/8\nK:D\n\"D\"A2 Bcdc A2|\n";
+        let score = crate::abc::parse_abc(abc).expect("parse");
+        let arrangement = Arrangement::from_score(&score, 64.0);
+        let melody = arrangement.melody_notes_for_pass(0);
+
+        let run: Vec<&NoteEvent> = melody
+            .iter()
+            .filter(|note| note.start_beat >= 0.5 - 1e-9 && note.start_beat < 1.5 - 1e-9)
+            .collect();
+        assert_eq!(run.len(), 4, "the bar should hold four eighth notes");
+        assert!(
+            run[..3].iter().all(|note| note.duration_beats > 0.25),
+            "the first three eighths should ring into the next one"
+        );
+        assert_eq!(run[3].duration_beats, 0.25, "the last eighth ends the bow");
+        assert!(
+            melody
+                .iter()
+                .zip(arrangement.melody.iter())
+                .all(|(shaped, written)| (shaped.start_beat - written.start_beat).abs() < 1e-9)
         );
     }
 

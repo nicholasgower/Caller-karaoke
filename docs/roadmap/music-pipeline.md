@@ -58,6 +58,18 @@ Generate a backing track from the chord track:
 - Respect the band's per-instrument volume settings; percussion has its own
   volume.
 - Lift the melody above the accompaniment and accent it on the dance pulse.
+- Bow the fiddle figure: a quarter note, two eighths, and another quarter are
+  played with a bow change. Both eighths are re-struck (a short fresh attack
+  instead of a slur) and accented above the quarters around them. The rule is
+  applied to the written tune before the variation ornaments, and it never
+  moves a note start, so the dance grid is unchanged. The melody and
+  countermelody parts are the fiddle lines; another voice playing one of those
+  parts inherits the same accents.
+- Tie running eighths: four to eight successive eighth notes are taken in one
+  bow. Each eighth rings into the next instead of being re-struck, so a full bar
+  of running eighths flows as a single stroke. A run longer than eight (more
+  than a 4/4 bar) is left alone, and a repeated pitch is re-struck rather than
+  overlapped so the notes stay distinct.
 - When variations are enabled, later passes add deterministic melody ornaments
   (diatonic grace notes, chord-tone doubles, occasional octave lifts) alongside
   the accompaniment variations. Each kind is a preference and can be turned off

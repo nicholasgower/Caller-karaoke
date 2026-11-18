@@ -5,6 +5,7 @@
 pub mod abc;
 pub mod arrange;
 pub mod band;
+pub mod bowing;
 pub mod chord;
 pub mod copies;
 pub mod dancer;
