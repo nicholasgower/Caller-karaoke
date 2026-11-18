@@ -14,6 +14,7 @@ All notable changes to Caller Karaoke are documented here.
 
 ### Documentation
 - **screenshots:** Refresh the documentation screenshot set.
+- **screenshots:** Number the search and alias screenshots.
 
 
 ### Features
