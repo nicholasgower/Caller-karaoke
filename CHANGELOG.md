@@ -2,6 +2,20 @@
 
 All notable changes to Caller Karaoke are documented here.
 
+## [Unreleased]
+
+### Build
+- **crates:** Add crates.io metadata and publish script.
+
+
+### CI
+- **release:** Publish the library crates after each release.
+
+
+### Features
+- **website:** Preload the hosted browser app on hover.
+
+
 ## [0.2.0] — 2026-11-17
 
 ### Chores
