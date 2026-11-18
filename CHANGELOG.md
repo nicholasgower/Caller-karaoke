@@ -21,6 +21,10 @@ All notable changes to Caller Karaoke are documented here.
 - **website:** Preload the hosted browser app on hover.
 
 
+### Fixes
+- **glossary:** Outline the followed entry in the documentation yellow.
+
+
 ## [0.2.0] — 2026-11-17
 
 ### Chores
