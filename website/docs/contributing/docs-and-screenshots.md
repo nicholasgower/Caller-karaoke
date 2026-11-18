@@ -136,6 +136,15 @@ and the size; the annotation step fails rather than drawing the ring in the
 wrong place. `npm test` checks that every ready shot has an entry and that every
 rectangle is inside its image.
 
+Add a `labels` array beside `regions` when a shot marks a sequence of controls:
+one digit from 1 to 9 per rectangle, for example `["1", "2", "3"]`. The
+annotation step then draws a numbered badge beside each ring, in the order the
+rings are listed, so the reader can follow the order of the steps. A badge sits
+to the left of its ring, or to the right when the ring touches the edge of the
+image; add `labelPositions` (one `[x, y]` centre per rectangle) when a dense
+screen leaves no free space and the badge would cover a label. Badge colour,
+size, and spacing live under `style.badge`.
+
 Until a shot is generated, `website/screenshots/manifest.json` marks it
 `pending`. The `<Shot>` component renders a labelled placeholder rather than a
 fake UI. Do not replace a placeholder with a screenshot of a mockup.

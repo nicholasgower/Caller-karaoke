@@ -14,11 +14,12 @@ rendered words, so a longer alias is automatically moved earlier.
 ## Open the alias editor
 
 <Steps>
-  <Step shot="prefs-open">
+  <Step shot="prefs-alias-open">
     Open **Preferences** with the gear button in the top-right corner.
   </Step>
   <Step shot="prefs-alias-list">
-    Select **Edit dance move aliases…** under **Role terms**.
+    Select **Calling** in the category list, then select **Edit dance move
+    aliases…** under **Role terms**.
   </Step>
 </Steps>
 

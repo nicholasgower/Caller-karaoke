@@ -511,6 +511,9 @@ fn preference_shots(
         app.error = None;
     }
     capture(harness, out, "prefs-open")?;
+    // The alias guide marks the three controls of its own path on the same
+    // screen: the gear, the Calling category, and the alias editor button.
+    capture(harness, out, "prefs-alias-open")?;
     {
         let app = harness.state_mut();
         app.prefs.role_terms = caller_core::RoleTerms::default();

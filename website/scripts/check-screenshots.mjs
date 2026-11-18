@@ -78,6 +78,47 @@ if (!fs.existsSync(emphasisPath)) {
         fail(`emphasis.json: "${id}" region ${JSON.stringify(region)} is outside the image`);
       }
     }
+    if (entry.labels !== undefined) {
+      if (!Array.isArray(entry.labels) || entry.labels.length !== (entry.regions ?? []).length) {
+        fail(`emphasis.json: "${id}" needs one label per emphasis region`);
+      } else {
+        for (const label of entry.labels) {
+          if (typeof label !== 'string' || !/^[1-9]$/.test(label)) {
+            fail(`emphasis.json: "${id}" has an invalid callout label ${JSON.stringify(label)}`);
+          }
+        }
+      }
+    }
+    if (entry.labelPositions !== undefined) {
+      if (
+        !Array.isArray(entry.labelPositions) ||
+        entry.labelPositions.length !== (entry.regions ?? []).length
+      ) {
+        fail(`emphasis.json: "${id}" needs one label position per emphasis region`);
+      } else {
+        for (const position of entry.labelPositions) {
+          if (!Array.isArray(position) || position.length !== 2) {
+            fail(
+              `emphasis.json: "${id}" has an invalid callout position ${JSON.stringify(position)}`,
+            );
+            continue;
+          }
+          const [x, y] = position;
+          if (
+            !Number.isInteger(x) ||
+            !Number.isInteger(y) ||
+            x < 0 ||
+            y < 0 ||
+            x > shot.width ||
+            y > shot.height
+          ) {
+            fail(
+              `emphasis.json: "${id}" has an invalid callout position ${JSON.stringify(position)}`,
+            );
+          }
+        }
+      }
+    }
   }
   for (const [id, shot] of shots) {
     if (shot.status === 'ready' && !configured.has(id)) {

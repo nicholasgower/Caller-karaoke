@@ -67,6 +67,16 @@ const color = style.color ?? '#ffc857';
 const width = style.width ?? 3;
 const radius = style.radius ?? 8;
 const shadow = style.shadow ?? {color: '#000000', opacity: 55, distance: 0, size: 6};
+// A numbered callout is a filled badge beside its focus ring. The digit is
+// point text; Arial Bold's digits are tabular, so nudging the origin by a fixed
+// fraction of the size keeps the glyph centred inside the circle.
+const badgeStyle = style.badge ?? {};
+const badgeFill = badgeStyle.fill ?? color;
+const badgeInk = badgeStyle.ink ?? '#141414';
+const badgeRadius = badgeStyle.radius ?? 13;
+const badgeGap = badgeStyle.gap ?? 8;
+const badgeSize = badgeStyle.size ?? 19;
+const badgeFont = badgeStyle.font ?? 'Arial';
 
 fs.mkdirSync(outDir, {recursive: true});
 
@@ -90,12 +100,24 @@ for (const shot of rendered) {
   }
 
   const regions = entry.regions ?? [];
+  const labels = entry.labels ?? [];
+  const positions = entry.labelPositions ?? [];
+  if (!Array.isArray(labels) || (labels.length !== 0 && labels.length !== regions.length)) {
+    fail(`${shot.id}: "labels" needs one entry per region`);
+  }
+  if (
+    !Array.isArray(positions) ||
+    (positions.length !== 0 && positions.length !== regions.length)
+  ) {
+    fail(`${shot.id}: "labelPositions" needs one [x, y] per region`);
+  }
   const target = path.join(outDir, `${shot.id}.png`);
   const temporary = path.join(outDir, `.${shot.id}.annotated.png`);
   fs.rmSync(temporary, {force: true});
 
   const args = ['run', source, '--metadata', 'none'];
-  for (const [x, y, w, h] of regions) {
+  for (const [index, region] of regions.entries()) {
+    const [x, y, w, h] = region;
     if (![x, y, w, h].every((value) => Number.isInteger(value)) || w <= 0 || h <= 0) {
       fail(`${shot.id}: invalid emphasis region ${JSON.stringify([x, y, w, h])}`);
     }
@@ -116,6 +138,57 @@ for (const shot of rendered) {
     );
     args.push('--cmd', 'layer.layerStyle.dropShadow');
     args.push('--params', JSON.stringify(shadow));
+
+    const label = labels[index];
+    if (label === undefined) continue;
+    if (typeof label !== 'string' || !/^[1-9]$/.test(label)) {
+      fail(`${shot.id}: callout ${index + 1} has an invalid label ${JSON.stringify(label)}`);
+    }
+    // Sit the badge to the left of the ring, or to its right when the ring
+    // touches the edge of the image; a shot can pin its own centres when the
+    // neighbours leave no free space.
+    let centerX = x - badgeGap - badgeRadius;
+    let centerY = y + h / 2;
+    if (centerX - badgeRadius < 4) centerX = x + w + badgeGap + badgeRadius;
+    const pinned = positions[index];
+    if (pinned !== undefined) {
+      if (
+        !Array.isArray(pinned) ||
+        pinned.length !== 2 ||
+        !pinned.every((value) => Number.isInteger(value)) ||
+        pinned[0] < badgeRadius ||
+        pinned[1] < badgeRadius ||
+        pinned[0] + badgeRadius > sourceWidth ||
+        pinned[1] + badgeRadius > sourceHeight
+      ) {
+        fail(`${shot.id}: callout ${index + 1} has an invalid position ${JSON.stringify(pinned)}`);
+      }
+      [centerX, centerY] = pinned;
+    }
+    args.push('--cmd', 'shape.create');
+    args.push(
+      '--params',
+      JSON.stringify({
+        kind: 'ellipse',
+        rect: [centerX - badgeRadius, centerY - badgeRadius, badgeRadius * 2, badgeRadius * 2],
+        fill: badgeFill,
+        stroke: null,
+        name: `Callout ${label}`,
+      }),
+    );
+    args.push('--cmd', 'type.create');
+    args.push(
+      '--params',
+      JSON.stringify({
+        x: Math.round(centerX - badgeSize * 0.32),
+        y: Math.round(centerY + badgeSize * 0.37),
+        text: label,
+        font: badgeFont,
+        fontStyle: 'Bold',
+        size: badgeSize,
+        color: badgeInk,
+      }),
+    );
   }
   if (regions.length === 0) {
     fs.copyFileSync(source, temporary);
