@@ -12,6 +12,10 @@ All notable changes to Caller Karaoke are documented here.
 - **release:** Publish the library crates after each release.
 
 
+### Documentation
+- **screenshots:** Refresh the documentation screenshot set.
+
+
 ### Features
 - **website:** Preload the hosted browser app on hover.
 
