@@ -43,13 +43,14 @@ The export contains:
   removes them from both playback and the file.
 
 The melody is lifted above the accompaniment and accented on the dance pulse.
-A quarter note, two eighths, and another quarter are written as the fiddle
-bow-change figure: both eighths carry a short re-struck attack and a small
-accent above the surrounding quarters. Four to eight successive eighth notes
-are written as one bow instead, each note held into the next. Later passes add
-deterministic melody ornaments, chord-tone harmony doubles, and an occasional
-octave lift. Existing note timing is unchanged, so the 64-beat grid still
-lines up with the dance.
+When **Fiddle bowing** is on (the default), a quarter note, two eighths, and
+another quarter are written as the bow-change figure: both eighths carry a
+short re-struck attack and a small accent above the surrounding quarters.
+Four to eight successive eighth notes are written as one bow instead, each
+note held into the next. Both rules can be switched off in Preferences. Later
+passes add deterministic melody ornaments, chord-tone harmony doubles, and an
+occasional octave lift. Existing note timing is unchanged, so the 64-beat grid
+still lines up with the dance.
 Players in a section are written on the same beats as their row — the
 millisecond spread the app uses for playback is a performance effect, not a
 change to the music — so the file stays grid-exact.

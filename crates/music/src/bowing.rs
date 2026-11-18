@@ -18,6 +18,8 @@
 //! The melody and countermelody parts are fiddle lines by default; a different
 //! voice playing one of those parts inherits the same bowing.
 
+use caller_core::BowingOptions;
+
 use crate::score::{Meter, NoteEvent};
 
 /// Velocity added to the two eighth notes of a bow-change figure.
@@ -71,14 +73,23 @@ struct Onset {
     indices: Vec<usize>,
 }
 
-/// Apply the fiddle rules to a written line and return how many it applied.
+/// Apply both fiddle rules to a written line and return how many it applied.
+///
+/// This is the default for callers that do not carry user settings; the app
+/// uses [`apply_with_options`] so each rule can be switched off.
+pub fn apply(notes: &mut [NoteEvent], meter: Meter) -> usize {
+    apply_with_options(notes, meter, &BowingOptions::default())
+}
+
+/// Apply the selected fiddle rules to a written line and return how many it
+/// applied.
 ///
 /// A bow-change figure is a quarter note, two eighths starting exactly where
 /// the previous note ends, and a quarter note closing the group. A tie is a run
 /// of [`MIN_TIED_EIGHTHS`] to [`MAX_TIED_EIGHTHS`] eighths in succession. A
 /// rest, a tie across a bar line that changes the length, or any other rhythm
 /// breaks both patterns.
-pub fn apply(notes: &mut [NoteEvent], meter: Meter) -> usize {
+pub fn apply_with_options(notes: &mut [NoteEvent], meter: Meter, options: &BowingOptions) -> usize {
     let quarter = meter.dance_beats_per_quarter();
     if !quarter.is_finite() || quarter <= 0.0 {
         return 0;
@@ -88,7 +99,14 @@ pub fn apply(notes: &mut [NoteEvent], meter: Meter) -> usize {
     // The rules never claim the same notes (two eighths between quarters are
     // not a run of four), so the order only decides which count is reported
     // first.
-    tie_runs(notes, &onsets, eighth) + bow_change_figures(notes, &onsets, quarter, eighth)
+    let mut applied = 0;
+    if options.tied_runs {
+        applied += tie_runs(notes, &onsets, eighth);
+    }
+    if options.bow_change {
+        applied += bow_change_figures(notes, &onsets, quarter, eighth);
+    }
+    applied
 }
 
 /// Tie every qualifying run of eighths in place.
@@ -410,6 +428,63 @@ mod tests {
             assert_eq!(note.velocity, 92, "a tied eighth is not re-accented");
             assert!(note.duration_beats >= 0.25);
         }
+    }
+
+    #[test]
+    fn each_rule_can_be_switched_off_on_its_own() {
+        // A bow-change figure followed by a four-eighth run.
+        let line = || {
+            let mut notes = reel_figure();
+            notes.extend(eighth_run(1.5, 4));
+            notes
+        };
+
+        let mut both = line();
+        assert_eq!(apply(&mut both, FOUR_FOUR), 2);
+
+        let mut bow_only = line();
+        let bow_options = BowingOptions {
+            bow_change: true,
+            tied_runs: false,
+        };
+        assert_eq!(
+            apply_with_options(&mut bow_only, FOUR_FOUR, &bow_options),
+            1
+        );
+        assert_eq!(bow_only[1].velocity, 92 + BOW_CHANGE_ACCENT);
+        assert!(
+            bow_only[4..7]
+                .iter()
+                .all(|note| note.duration_beats == 0.25),
+            "the run must stay un-tied when the tie rule is off"
+        );
+
+        let mut tie_only = line();
+        let tie_options = BowingOptions {
+            bow_change: false,
+            tied_runs: true,
+        };
+        assert_eq!(
+            apply_with_options(&mut tie_only, FOUR_FOUR, &tie_options),
+            1
+        );
+        assert_eq!(tie_only[1].velocity, 92);
+        assert!(
+            tie_only[4].duration_beats > 0.25,
+            "the run must still be tied when the figure rule is off"
+        );
+
+        let original = line();
+        let mut none = original.clone();
+        let off = BowingOptions {
+            bow_change: false,
+            tied_runs: false,
+        };
+        assert_eq!(apply_with_options(&mut none, FOUR_FOUR, &off), 0);
+        assert_eq!(
+            none, original,
+            "both rules off must leave the line exactly as written"
+        );
     }
 
     #[test]

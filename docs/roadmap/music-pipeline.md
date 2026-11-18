@@ -64,12 +64,14 @@ Generate a backing track from the chord track:
   applied to the written tune before the variation ornaments, and it never
   moves a note start, so the dance grid is unchanged. The melody and
   countermelody parts are the fiddle lines; another voice playing one of those
-  parts inherits the same accents.
+  parts inherits the same accents. It is the **Accent and re-strike the
+  bow-change figure** option in Preferences.
 - Tie running eighths: four to eight successive eighth notes are taken in one
   bow. Each eighth rings into the next instead of being re-struck, so a full bar
   of running eighths flows as a single stroke. A run longer than eight (more
   than a 4/4 bar) is left alone, and a repeated pitch is re-struck rather than
-  overlapped so the notes stay distinct.
+  overlapped so the notes stay distinct. It is the **Tie four to eight running
+  eighths** option in Preferences.
 - When variations are enabled, later passes add deterministic melody ornaments
   (diatonic grace notes, chord-tone doubles, occasional octave lifts) alongside
   the accompaniment variations. Each kind is a preference and can be turned off

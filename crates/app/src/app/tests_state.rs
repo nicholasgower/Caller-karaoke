@@ -205,6 +205,14 @@ const CONTROLS: &[Control] = &[
         },
     },
     Control {
+        name: "checkbox: bow-change figure",
+        change: |prefs| prefs.bowing_options.bow_change = !prefs.bowing_options.bow_change,
+    },
+    Control {
+        name: "checkbox: tied eighth runs",
+        change: |prefs| prefs.bowing_options.tied_runs = !prefs.bowing_options.tied_runs,
+    },
+    Control {
         name: "checkbox: humanize the band",
         change: |prefs| prefs.humanize_timing = !prefs.humanize_timing,
     },

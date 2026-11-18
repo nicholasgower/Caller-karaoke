@@ -394,6 +394,12 @@ const SETTINGS: &[PreferenceSetting] = &[
         keywords: "articulation double stops grace notes octave chord stabs melody alone",
     },
     PreferenceSetting {
+        title: "Fiddle bowing",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "bow accent tie eighth notes slur stroke fiddle",
+    },
+    PreferenceSetting {
         title: "Show original card text",
         category: PreferencesCategory::Playback,
         section: "playback",
@@ -1816,6 +1822,24 @@ fn playback(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             );
         });
     });
+    ui.add_space(4.0);
+    ui.label("Fiddle bowing");
+    ui.label(
+        egui::RichText::new(
+            "Shape the melody and countermelody as a fiddler would. Both rules follow the written \
+             rhythm, so no note moves off the beat.",
+        )
+        .small()
+        .color(theme::muted(ui)),
+    );
+    ui.checkbox(
+        &mut app.prefs.bowing_options.bow_change,
+        "Accent and re-strike the bow-change figure",
+    );
+    ui.checkbox(
+        &mut app.prefs.bowing_options.tied_runs,
+        "Tie four to eight running eighths",
+    );
     ui.checkbox(&mut app.prefs.show_original, "Show original card text");
     ui.checkbox(&mut app.prefs.humanize_timing, "Humanize the band");
     ui.label(

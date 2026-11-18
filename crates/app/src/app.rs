@@ -7,10 +7,11 @@ use std::time::Duration;
 
 use caller_core::{
     AccompanimentInstrument, AccompanimentRhythm, AliasTable, AudioEffects, BandPart, BandSlot,
-    BandVoice, COUNT_IN_BEATS, Countermelody, DEFAULT_DANCE_SOURCE, Dance, DancerSoundEvent,
-    EndingOptions, FolderFilter, HumanizeOptions, InstrumentCopies, Library, MelodyInstrument,
-    MoveKind, OutputMode, Percussion, PercussionRhythm, PracticeTimeline, Preferences, RolePreset,
-    ScheduledCall, Theme, TimelineConfig, Tune, TuneSetSource, VariationOptions, dancer_sounds,
+    BandVoice, BowingOptions, COUNT_IN_BEATS, Countermelody, DEFAULT_DANCE_SOURCE, Dance,
+    DancerSoundEvent, EndingOptions, FolderFilter, HumanizeOptions, InstrumentCopies, Library,
+    MelodyInstrument, MoveKind, OutputMode, Percussion, PercussionRhythm, PracticeTimeline,
+    Preferences, RolePreset, ScheduledCall, Theme, TimelineConfig, Tune, TuneSetSource,
+    VariationOptions, dancer_sounds,
 };
 use caller_music::{
     Arrangement, AudioBuffer, LengthMismatch, RenderRequest, export_midi_with_band, parse_abc,
@@ -747,6 +748,7 @@ struct RenderSettings {
     band: Vec<BandSlot>,
     output: OutputMode,
     variations: VariationOptions,
+    bowing_options: BowingOptions,
     humanize_options: HumanizeOptions,
     ending_options: EndingOptions,
     dancer_sounds: bool,
@@ -805,7 +807,8 @@ fn prepare_tune(
     generation: u64,
 ) -> Result<PreparedTune, String> {
     let score = parse_abc(&tune.abc).map_err(|error| format!("Could not parse tune: {error}"))?;
-    let arrangement = Arrangement::from_score(&score, 64.0);
+    let arrangement =
+        Arrangement::from_score_with_bowing(&score, 64.0, settings.bowing_options.clone());
     let buffer = render(&settings.request(arrangement.clone()), soundfont.as_ref())
         .map_err(|error| format!("Could not render music: {error}"))?;
     Ok(PreparedTune {
@@ -2346,6 +2349,7 @@ impl CallerApp {
             band: self.prefs.band_slots(),
             output: self.prefs.output_mode,
             variations: self.prefs.variation_options.clone(),
+            bowing_options: self.prefs.bowing_options.clone(),
             humanize_options: self.prefs.humanize_options.clone(),
             ending_options: self.prefs.ending_options.clone(),
             dancer_sounds: self.prefs.dancer_sounds,
@@ -3328,7 +3332,11 @@ impl CallerApp {
                     return;
                 }
             };
-            let arrangement = Arrangement::from_score(&score, 64.0);
+            let arrangement = Arrangement::from_score_with_bowing(
+                &score,
+                64.0,
+                self.prefs.bowing_options.clone(),
+            );
             let default_name = format!("{}.mid", files::safe_filename(&self.tune.title));
             let Some(path) = rfd::FileDialog::new()
                 .set_file_name(default_name)

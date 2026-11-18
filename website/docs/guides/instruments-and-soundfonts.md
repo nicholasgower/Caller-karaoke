@@ -201,15 +201,7 @@ carries and which players honor the echo send.
 </Steps>
 
 The melody is also lifted in velocity and accented on the dance pulse so it
-stays clearly above the accompaniment. A quarter note followed by two eighths
-and then another quarter is played as a fiddle bow-change figure: the eighths
-are re-struck on their own bows and accented above the quarters around them,
-so the figure lifts instead of running straight through. Four to eight
-successive eighth notes are instead tied into one bow: each eighth rings into
-the next, so a bar of running eighths flows as a single stroke. A repeated
-pitch is still re-struck, a run longer than eight is left alone, and no note
-moves off the beat. The shapes are part of the tune, so they are the same in
-playback and in an exported MIDI file. The variation is deterministic for a
+stays clearly above the accompaniment. The variation is deterministic for a
 given tune and arrangement; it keeps the selected rhythm and does not change
 the dance timing or the 64-beat loop length. On a melody-alone bar the
 countermelody rests too.
@@ -220,6 +212,26 @@ notes**, **Lift held notes an octave**, **Add chord stabs**, and **Let the
 melody play a bar alone**. Disabling one removes only that kind. The
 melody-alone bar is only chosen where the tune has enough notes to carry it, so
 a variation can never leave a silent measure.
+
+## Fiddle bowing
+
+Two bowing rules shape the melody and countermelody lines. Both are on by
+default and can be switched off separately in **Preferences → Playback →
+Fiddle bowing**:
+
+- **Accent and re-strike the bow-change figure** — a quarter note, two eighths,
+  and another quarter: the eighths are re-struck on their own bows and accented
+  above the quarters around them, so the figure lifts instead of running
+  straight through.
+- **Tie four to eight running eighths** — each eighth rings into the next, so a
+  bar of running eighths flows as a single stroke. A repeated pitch is still
+  re-struck, and a run longer than eight is left alone.
+
+Both rules follow the written rhythm and never move a note off the beat. They
+are applied to the tune before the loop variations, so the plain first pass and
+an exported MIDI file sound the same. The melody and countermelody are the
+fiddle lines; another voice playing one of those parts inherits the same
+bowing.
 
 ## Humanize the band
 

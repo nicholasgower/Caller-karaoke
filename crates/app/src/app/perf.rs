@@ -1760,7 +1760,8 @@ fn profile_pure_functions(
         app.prefs.accompaniment_variations = original;
     }
     {
-        let arrangement = Arrangement::from_score(&score, 64.0);
+        let arrangement =
+            Arrangement::from_score_with_bowing(&score, 64.0, app.prefs.bowing_options.clone());
         let times = timed(
             || {
                 let _ = export_midi_with_band(

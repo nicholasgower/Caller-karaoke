@@ -27,7 +27,8 @@ Android. Version **0.1.0** is the current development version.
   while the accompaniment adds emphasis notes and now and then leaves a bar to
   the melody alone. A quarter followed by two eighths before another quarter is
   bowed as a fiddle figure: the eighths are re-struck and accented. Four to
-  eight running eighths are tied into one bow instead.
+  eight running eighths are tied into one bow instead. Both bowing rules can be
+  switched off in Preferences.
 - Call timeline with syllable-based early calls, aliases, and role terms.
 - Local Kokoro-82M neural voice on desktop, with a platform TTS fallback on
   web/Android and a reviewed dance-term pronunciation lexicon.

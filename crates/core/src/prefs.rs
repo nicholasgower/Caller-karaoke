@@ -812,6 +812,30 @@ impl VariationOptions {
     ];
 }
 
+/// Which fiddle bowing rules shape the tune line.
+///
+/// Both rules follow the written rhythm and never move a note start, so the
+/// dance grid, the calls, and the 64-beat loop are unchanged. They apply to the
+/// melody and countermelody parts, which are the fiddle lines by default.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BowingOptions {
+    /// Accent the two eighths of a quarter-eighth-eighth-quarter figure and
+    /// re-strike them with a fresh bow.
+    pub bow_change: bool,
+    /// Tie four to eight successive eighth notes into one bow.
+    pub tied_runs: bool,
+}
+
+impl Default for BowingOptions {
+    fn default() -> Self {
+        Self {
+            bow_change: true,
+            tied_runs: true,
+        }
+    }
+}
+
 /// Largest humanize amount the preferences expose.
 ///
 /// One is the calibrated amount; twenty scales the timing or tuning effects to
@@ -1253,6 +1277,9 @@ pub struct Preferences {
     pub accompaniment_variations: bool,
     /// Which variation kinds are allowed; see [`VariationOptions`].
     pub variation_options: VariationOptions,
+    /// Which fiddle bowing rules shape the melody and countermelody lines; see
+    /// [`BowingOptions`].
+    pub bowing_options: BowingOptions,
     /// Give each player a tiny independent tempo drift, spread chord notes by a
     /// few milliseconds, and detune unfretted strings. Audio only; the
     /// count-in, the 64-beat grid, the calls, and MIDI export stay exact.
@@ -1678,6 +1705,7 @@ impl Default for Preferences {
             count_in_enabled: true,
             accompaniment_variations: true,
             variation_options: VariationOptions::default(),
+            bowing_options: BowingOptions::default(),
             humanize_timing: default_humanize_timing(),
             humanize_options: HumanizeOptions::default(),
             ending_options: EndingOptions::default(),
@@ -1933,6 +1961,7 @@ impl Preferences {
                 || self.count_in_enabled != old.count_in_enabled
                 || self.accompaniment_variations != old.accompaniment_variations
                 || self.variation_options != old.variation_options
+                || self.bowing_options != old.bowing_options
                 || self.humanize_timing != old.humanize_timing
                 || self.humanize_options != old.humanize_options
                 || self.ending_options != old.ending_options
@@ -2175,6 +2204,29 @@ mod tests {
         let json = changed.to_json().expect("serialize");
         let restored = Preferences::from_json(&json).expect("deserialize");
         assert!(!restored.humanize_timing);
+    }
+
+    #[test]
+    fn fiddle_bowing_is_on_by_default_and_marks_the_music_for_render() {
+        let old = Preferences::default();
+        assert!(old.bowing_options.bow_change);
+        assert!(old.bowing_options.tied_runs);
+
+        let changed = Preferences {
+            bowing_options: BowingOptions {
+                bow_change: false,
+                ..old.bowing_options.clone()
+            },
+            ..old.clone()
+        };
+        let changes = changed.changes_since(&old);
+        assert!(changes.audio, "a bowing change must re-render the music");
+        assert!(!changes.timeline, "it must not rebuild the call timeline");
+
+        let json = changed.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(!restored.bowing_options.bow_change);
+        assert!(restored.bowing_options.tied_runs);
     }
 
     #[test]

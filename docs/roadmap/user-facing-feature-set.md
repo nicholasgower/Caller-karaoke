@@ -130,7 +130,8 @@ Advanced settings:
   lifted and accented so it carries over the accompaniment, and a quarter note
   followed by two eighths before another quarter is bowed as a fiddle figure:
   the eighths are re-struck and accented. Four to eight running eighths are
-  tied into one bow instead.
+  tied into one bow instead. Both bowing rules can be switched off in
+  Preferences.
 - Cache size, clear cache, refresh cached content.
 - Web data proxy URL and token (web build only).
 

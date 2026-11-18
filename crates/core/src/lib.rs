@@ -26,8 +26,8 @@ pub use library::{
     FolderError, FolderFilter, LIBRARY_SCHEMA_VERSION, Library, LibraryEntry, LibraryItem,
 };
 pub use prefs::{
-    AccompanimentInstrument, AccompanimentRhythm, BandPart, BandSlot, BandVoice, CallTone,
-    CardPadding, ChangeSet, Countermelody, DEFAULT_DANCE_SOURCE, DEFAULT_TTS_DELIVERIES,
+    AccompanimentInstrument, AccompanimentRhythm, BandPart, BandSlot, BandVoice, BowingOptions,
+    CallTone, CardPadding, ChangeSet, Countermelody, DEFAULT_DANCE_SOURCE, DEFAULT_TTS_DELIVERIES,
     DancerSound, DancerSoundEvent, EndingOptions, HumanizeOptions, InstrumentCopies,
     MAX_HUMANIZE_AMOUNT, MAX_PID_KD, MAX_PID_KI, MAX_PID_KP, MAX_TTS_DELIVERIES, MAX_TTS_RATE,
     MIN_TTS_DELIVERIES, MIN_TTS_RATE, MelodyInstrument, OutputMode, Percussion, PercussionRhythm,

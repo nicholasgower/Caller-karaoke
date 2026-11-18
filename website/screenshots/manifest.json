@@ -338,8 +338,8 @@
     },
     {
       "id": "prefs-accompaniment-variations",
-      "alt": "The Playback section showing the master Vary the music and Humanize the band checkboxes with their per-kind options, timing and tuning sliders, and the gradual-ending checkboxes.",
-      "caption": "Humanize the band and the variations expose their parts; the fiddle drifts in intonation, and the ending eases in before resolving a fifth below.",
+      "alt": "The Playback section showing the master Vary the music and Humanize the band checkboxes with their per-kind options, timing and tuning sliders, fiddle bowing rules, and the gradual-ending checkboxes.",
+      "caption": "Music variations, fiddle bowing, and humanizing each expose their parts; the fiddle drifts in intonation and the ending eases in before resolving a fifth below.",
       "status": "ready",
       "width": 1280,
       "height": 1760
