@@ -17,8 +17,7 @@ export default function Home(): React.ReactElement {
           <h1 className={styles.title}>Caller Karaoke</h1>
           <p className={styles.subtitle}>{siteConfig.tagline}</p>
           <p className={styles.lede}>
-            The dance card and the music move together. Each call appears and is
-            spoken early enough that the words finish before the dancers move.
+            Play dance cues in sync with music. Each call is timed an amount optimal for calling.
           </p>
           <div className={styles.download}>
             <DownloadButton />
@@ -41,9 +40,8 @@ export default function Home(): React.ReactElement {
             </Link>
           </div>
           <p className={styles.note}>
-            0.1.0 release builds for Windows, Linux, web, and Android. A hosted
-            browser copy is available on this site. Android audio and TTS are
-            still being device-tested.
+            Release builds for Windows, Linux, web, and Android. A hosted
+            browser copy is available on this site.
           </p>
         </div>
       </header>
@@ -69,7 +67,7 @@ export default function Home(): React.ReactElement {
             <h2>Make the calls yours</h2>
             <p>
               Change role terms, edit move aliases, pick instruments, and adjust
-              how early calls begin. Longer calls are moved earlier automatically.
+              call timing. Call timing is adjusted based on length of call.
             </p>
             <Link to="/docs/guides/aliases">Editing aliases →</Link>
           </article>
