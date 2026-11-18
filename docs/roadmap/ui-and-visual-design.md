@@ -53,12 +53,19 @@ always had).
 No accent colours; the active call is distinguished by contrast, weight, and a
 border. All colours live in a theme module; do not hard-code colours in widgets.
 
-The one deliberate exception is the large prompt card: it is green while the
-caller must speak the shown call ("CALL NOW") and red while it looks ahead to
-the move after the one being danced ("UPCOMING MOVE"), so the state is
-readable at a glance across the room. The label text still states the state,
-so the fill is never the only cue, and both fills keep white text at 4.5:1 or
-better in the dark theme and dark text at 4.5:1 or better in the light theme.
+There are two deliberate exceptions. The first is the large prompt card: it is
+green while the caller must speak the shown call ("CALL NOW") and red while it
+looks ahead to the move after the one being danced ("UPCOMING MOVE"), so the
+state is readable at a glance across the room. The label text still states the
+state, so the fill is never the only cue, and both fills keep white text at
+4.5:1 or better in the dark theme and dark text at 4.5:1 or better in the light
+theme.
+
+The second is the outline around the glossary entry a caller followed from a
+call or card. It uses the same warm yellow as the documentation screenshots'
+focus ring, `#ffc857`, in both themes. The ring only ever surrounds the entry's
+own fill, the matched word is also underlined in the call, and the definition is
+already on screen, so the colour is a locator rather than the sole cue.
 
 ### 8.2 Responsive behaviour
 

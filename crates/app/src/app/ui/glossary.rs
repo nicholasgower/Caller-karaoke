@@ -321,12 +321,12 @@ impl CallerApp {
             for entry in entries {
                 let selected = focus.as_deref() == Some(entry.term);
                 let frame = if selected {
-                    // Keep the entry the caller followed visibly boxed, using
-                    // the theme's neutral selection stroke rather than a colour
-                    // that would compete with the card cues on the session.
+                    // Keep the entry the caller followed visibly boxed with the
+                    // documentation shots' yellow ring, so the app and the
+                    // screenshots mark an emphasized entry the same way.
                     egui::Frame::group(ui.style())
                         .fill(theme::call_active_bg(ui))
-                        .stroke(egui::Stroke::new(2.0, ui.visuals().selection.stroke.color))
+                        .stroke(egui::Stroke::new(2.0, theme::EMPHASIS_OUTLINE))
                 } else {
                     egui::Frame::group(ui.style())
                 };

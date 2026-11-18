@@ -10,6 +10,15 @@ use eframe::egui;
 /// layout keeps egui's 40 pt rows so it stays dense.
 pub const TOUCH_TARGET: f32 = 44.0;
 
+/// Outline around a glossary entry the caller followed from a call or card.
+///
+/// This is the warm yellow the documentation screenshots draw their focus ring
+/// with (`website/screenshots/emphasis.json`), so a shot and the running app
+/// point at an emphasized entry the same way. It is deliberately shared by both
+/// themes rather than tinted per palette: the shots use one yellow, and the
+/// outline always sits next to the entry's own fill instead of on the page.
+pub const EMPHASIS_OUTLINE: egui::Color32 = egui::Color32::from_rgb(0xff, 0xc8, 0x57);
+
 /// Colours for the parts of the UI that paint their own backgrounds and text
 /// instead of relying on egui's widget visuals.
 ///
@@ -343,6 +352,21 @@ mod tests {
                     "dark_mode={dark_mode} foreground={foreground:?} ratio={ratio}"
                 );
             }
+        }
+    }
+
+    /// The followed glossary entry is boxed in the same yellow the documentation
+    /// screenshots use for their emphasis ring, not the neutral selection
+    /// stroke, so the app and the shots agree on what a highlight looks like.
+    #[test]
+    fn glossary_emphasis_outline_is_the_documentation_yellow() {
+        assert_eq!(EMPHASIS_OUTLINE, egui::Color32::from_rgb(0xff, 0xc8, 0x57));
+        for dark_mode in [true, false] {
+            assert_ne!(
+                EMPHASIS_OUTLINE,
+                visuals_for(dark_mode).selection.stroke.color,
+                "dark_mode={dark_mode} the emphasis outline should not be the neutral selection colour"
+            );
         }
     }
 

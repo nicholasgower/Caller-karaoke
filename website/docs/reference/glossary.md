@@ -33,8 +33,8 @@ it does not rely on colour alone.
 Hovering a linked term shows its definition in a tooltip beside the pointer. On a
 touch screen, rest a finger on the term instead; the definition appears in a card
 at the top of the screen and stays briefly after the finger lifts. Selecting a
-term opens the glossary tab, and the entry for the selected term keeps an
-emphasized box around it so it is easy to find in the list.
+term opens the glossary tab, and the entry for the selected term keeps a yellow
+box around it so it is easy to find in the list.
 
 <Shot id="glossary-tooltip" />
 
