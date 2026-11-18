@@ -39,6 +39,8 @@ Notes:
 - Write release notes with the version, commit, and build time.
 - Create the `v<version>` tag at the built commit and publish the GitHub release.
 - Upload all artifacts with checksums.
+- Publish `caller-core` and then `caller-sources` to crates.io from the tagged
+  commit, in a final `crates` job (see §9.4).
 
 Releases are cut with `node scripts/release.mjs <patch|minor|major|X.Y.Z>`, which
 bumps the workspace version, commits, and pushes `main`. The workflow creates the
@@ -73,16 +75,23 @@ workspace; keeping them in the repository needs no split. `caller-sources`
 requires the same version of `caller-core` from the registry, so the order is
 fixed: core first, then sources.
 
-- After the `v<version>` tag exists, run `node scripts/publish-crates.mjs` from
-  `main`. It dry-runs both crates by default; `--yes` uploads in order.
-- The script refuses a dirty tree, a branch other than `main`, or a missing tag,
-  skips versions already on crates.io (so a rerun after a partial failure is
-  safe), and reads `CARGO_REGISTRY_TOKEN` (or `CRATES_API_KEY`) from the
-  environment or `--env-file` (default `.env`) without printing it.
+- `release.yml` has a final `crates` job that runs after the tag and release
+  exist, checks out the tag, and runs
+  `node scripts/publish-crates.mjs --yes --allow-branch` with the
+  `CARGO_REGISTRY_TOKEN` repository secret. Without that secret the job fails
+  with a message instead of silently skipping the crates.
+- Publishing last is deliberate: a crates.io version is immutable, so a crate
+  must never appear for a version whose platform builds failed. A failed publish
+  job leaves the release intact and can be re-run; the script skips versions
+  already on crates.io.
+- Run the script by hand only as a fallback when CI is unavailable: from `main`,
+  `node scripts/publish-crates.mjs` dry-runs both crates and `--yes` uploads.
+- The script refuses a dirty tree, a branch other than `main` (CI passes
+  `--allow-branch` for the detached tag checkout), or a missing tag, and reads
+  `CARGO_REGISTRY_TOKEN` (or `CRATES_API_KEY`) from the environment or
+  `--env-file` (default `.env`) without printing it.
 - A published version is immutable: yanking is the only undo. Never upload from
   an untagged or dirty commit.
-- `release.yml` never publishes crates. Uploading is a separate, manual step
-  that needs the owner's approval, like a release.
 
 ### 9.5 Release checklist
 
@@ -103,6 +112,6 @@ fixed: core first, then sources.
       attached to the release.
 - [ ] `CREDITS.md`, `LICENSE`, and `CHANGELOG.md` are present in the artifacts
       where applicable.
-- [ ] `node scripts/publish-crates.mjs --yes` has published `caller-core` and
-      `caller-sources` at the workspace version.
+- [ ] The `crates` job published `caller-core` and `caller-sources` at the
+      workspace version (re-run the job if it failed).
 - [ ] No third-party content beyond the attributed defaults is bundled.

@@ -493,18 +493,20 @@ test(music): cover 6/8 arrangement
   platform first and creates the `v<version>` tag and GitHub release only after
   all of them succeed, so a tag never exists before its artifacts. Pushing a
   branch or a tag never publishes a release by itself.
-- Publishing the library crates is its own manual step: after the `v<version>`
-  tag exists, run `node scripts/publish-crates.mjs` (dry run) and then `--yes`.
-  `release.yml` never publishes crates, and a crates.io version can only be
-  yanked, not replaced, so never upload from an untagged or dirty commit.
+- `release.yml` publishes `caller-core` and `caller-sources` to crates.io in a
+  final job, after the tag and release exist, using the `CARGO_REGISTRY_TOKEN`
+  repository secret. A crates.io version can only be yanked, not replaced, so
+  never upload from an untagged or dirty commit. To recover a failed publish
+  job, re-run it; `scripts/publish-crates.mjs` skips versions already on
+  crates.io. Running the script by hand is the fallback when CI is unavailable.
 - Before a release, refresh the documentation screenshots in one pass: run
   `cd website && npm run screenshots`, review every changed image, update the
   manifest dimensions and `emphasis.json` regions, and commit the refreshed
   PNGs. Ordinary feature work does not regenerate them.
 - Release artifacts: Windows installer + portable ZIP; Linux `.deb`, AppImage,
   Flatpak; web ZIP; Android APK.
-- Do not publish a release, tag, or deploy the proxy without the owner's
-  approval.
+- Do not publish a release, tag, or crate, or deploy the proxy, without the
+  owner's approval.
 
 ---
 

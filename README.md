@@ -295,8 +295,11 @@ cargo add caller-core
 cargo add caller-sources
 ```
 
-They are published by hand, from `main`, after the release tag exists. A dry
-run is the default:
+They are published automatically by `release.yml` in a final job, after the
+release tag exists and every platform build has passed. That job needs a
+`CARGO_REGISTRY_TOKEN` repository secret (a crates.io API token). A failed
+publish job can be re-run; the script skips versions already on crates.io. To
+publish by hand:
 
 ```sh
 node scripts/publish-crates.mjs          # dry run both crates

@@ -22,8 +22,9 @@ the application.
   uploads. It refuses a dirty tree, a branch other than `main`, or a missing
   `v<version>` tag, skips versions already on crates.io, and reads
   `CARGO_REGISTRY_TOKEN` (or `CRATES_API_KEY`) from the environment or
-  `--env-file` (default `.env`) without ever printing it. Run it from `main`
-  after the release tag exists.
+  `--env-file` (default `.env`) without ever printing it. `release.yml` runs it
+  after the release tag exists; run it by hand only to recover a failed publish
+  job.
 - `rebuild-soundfont.py` — regenerate
   `assets/defaults/fluid-r3-gm-subset.sf2` from the full Fluid R3 GM bank. Needs
   only Python 3: it downloads the pinned official release, verifies its
