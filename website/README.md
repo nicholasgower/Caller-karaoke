@@ -10,8 +10,9 @@ by the headless `caller-headless` binary and annotated with PhotoCraft. The
 remaining placeholders are the manual Windows, Linux, web, and Android
 installation captures.
 
-The current manifest has 88 planned shots; 71 are ready. Ten pending in-app
-shots are refreshed during release prep. The other seven are manual
+The current manifest has 90 planned shots; 80 are ready. Three pending in-app
+shots cover the slow ending and the tune set; the headless renderer does not
+capture those states yet. The other seven are manual
 Windows/Android/Linux/web installer captures rather than app frames.
 
 ## Commands

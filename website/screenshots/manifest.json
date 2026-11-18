@@ -26,43 +26,57 @@
       "id": "dance-library",
       "alt": "The Select dance screen with a saved-dance search field, a folder sidebar listing Warmups and Encores, three saved cards, and Another Last Dance selected for preview.",
       "caption": "Select dance lists your saved cards; search them, group them into folders, and load one without a network.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 800
     },
     {
       "id": "dance-library-search",
       "alt": "The Select dance screen with belle typed in the saved-dance search, the Warmups folder selected, one matching card, and its preview.",
       "caption": "Saved content is searched locally; the folder panel filters the list and offers rename and delete.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 800
     },
     {
       "id": "tune-library",
       "alt": "The Select tune screen with a saved-tune search field, a folder sidebar listing Reels and Jigs, three saved tunes, and Sandy Boys sheet music.",
       "caption": "Select tune lists your saved tunes with an offline sheet-music preview.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 800
     },
     {
       "id": "tune-library-search",
       "alt": "The Select tune screen with saint typed in the saved-tune search, the Reels folder selected, one matching tune, and its sheet music.",
       "caption": "The same saved-content search and folders apply to tunes.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 800
     },
     {
       "id": "about-window",
       "alt": "The About category of the Preferences screen, showing Caller Karaoke, its version, a short description, By Nicholas Gower, and links to the website and the source code.",
       "caption": "About is one of the Preferences categories, beside the settings list.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 800
     },
     {
       "id": "glossary",
       "alt": "The Dance glossary reference page with a filter field, a source link, a scrolling list of contra dance terms, and the Balance and swing entry boxed with an emphasis border.",
       "caption": "The in-app glossary is its own tab, opens at a linked term, and works offline.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 800
     },
     {
       "id": "glossary-tooltip",
-      "alt": "The session screen with a definition tooltip beside the pointer over the Balance and swing term, naming the term and explaining the balance-then-swing figure.",
+      "alt": "The session screen with a definition tooltip beside the hovered Balance and swing term, naming the term and explaining the balance-then-swing figure.",
       "caption": "Hovering a linked term on a desktop, or resting a finger on it on a phone, shows its short definition.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 800
     },
     {
       "id": "dance-picker-open",
@@ -74,11 +88,11 @@
     },
     {
       "id": "dance-picker-search",
-      "alt": "The Download dance screen with last typed in the Title field and a list of matching dances on the left, a downloaded badge on saved cards, and a dance preview on the right.",
+      "alt": "The Download dance screen with last typed in the Title field, a list of matching dances on the left with downloaded badges, and the preview pane on the right.",
       "caption": "Results show the title, choreographer, and formation; Preview opens the figures.",
       "status": "ready",
       "width": 1280,
-      "height": 800
+      "height": 1050
     },
     {
       "id": "dance-picker-preview",
@@ -86,11 +100,11 @@
       "caption": "Download the card for offline use or load it immediately; either action saves it to your library.",
       "status": "ready",
       "width": 1280,
-      "height": 800
+      "height": 1200
     },
     {
       "id": "main-dance-loaded",
-      "alt": "The session screen after choosing Another Last Dance, showing its title and figures in the dance card and the pending-rebuild message.",
+      "alt": "The session screen after choosing Another Last Dance, showing its title, figures, and tune summary in the dance card and the prompt ready to play.",
       "caption": "Using a dance returns to the session and marks the music for a rebuild.",
       "status": "ready",
       "width": 1280,
@@ -110,7 +124,7 @@
       "caption": "The preview engraves the ABC as sheet music; Download saves it and Use loads it.",
       "status": "ready",
       "width": 1280,
-      "height": 800
+      "height": 1100
     },
     {
       "id": "transport-tempo",
@@ -280,7 +294,7 @@
       "caption": "The default band is two melody fiddles, a piano, two countermelody fiddles, and three foot taps.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 2020
     },
     {
       "id": "prefs-instrument-accompaniment",
@@ -288,19 +302,23 @@
       "caption": "Any voice can take any part: a guitar accompaniment is its own row with its own players, level, and place.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 2020
     },
     {
       "id": "prefs-instrument-second",
       "alt": "Band & Sound with the Countermelody row set to Fiddle and two players, above the Percussion row.",
       "caption": "A countermelody row adds a second line without copying the melody row; the default is two countermelody fiddles.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 2020
     },
     {
       "id": "prefs-instrument-percussion",
       "alt": "Band & Sound with the Percussion row set to Foot taps and two players, the Percussion rhythm menu set to Gallop, and the optional note below the band list.",
       "caption": "Percussion is a band row: Foot taps play a one-and-a gallop, Drumset adds a full kit, and the rhythm menu changes the pattern.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1280,
+      "height": 2020
     },
     {
       "id": "prefs-instrument-mix",
@@ -308,7 +326,7 @@
       "caption": "The caller and the band have independent levels; dancer sounds are temporarily disabled while their rhythms are corrected.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 2020
     },
     {
       "id": "prefs-accompaniment-variations",
@@ -316,7 +334,7 @@
       "caption": "Humanize timing and music variations each expose their parts; the ending eases in over four beats and resolves a fifth below.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1760
     },
     {
       "id": "prefs-sf2-loaded",
@@ -324,7 +342,7 @@
       "caption": "A user-supplied SoundFont replaces the bundled instrument voices.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 2020
     },
     {
       "id": "prefs-sf2-removed",
@@ -332,7 +350,7 @@
       "caption": "Use bundled returns the session to the packaged instruments.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 2020
     },
     {
       "id": "error-sf2",
@@ -340,15 +358,15 @@
       "caption": "An unreadable or unsupported SoundFont leaves the previous instrument setup in place.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 2020
     },
     {
       "id": "prefs-timing-mode",
-      "alt": "The Calling lead section with Automatic syllable-based lead selected and the manual lead controls hidden.",
+      "alt": "The Calling lead section with Automatic syllable-based lead turned on, the minimum, maximum, and speech rate sliders, the safety padding, and the Rebuild call timing button.",
       "caption": "Automatic lead derives the call time from the rendered words.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1000
     },
     {
       "id": "prefs-timing-bounds",
@@ -356,7 +374,7 @@
       "caption": "The speech lead is clamped to one to five beats; the safety padding is added and the total rounds up to a whole beat.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1540
     },
     {
       "id": "prefs-timing-speech-rate",
@@ -364,7 +382,7 @@
       "caption": "A lower speech rate moves longer calls earlier.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1540
     },
     {
       "id": "prefs-timing-rebuild",
@@ -372,7 +390,7 @@
       "caption": "Rebuild the timeline after changing lead settings if the session does not do it automatically.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1540
     },
     {
       "id": "session-lead-countdown",
@@ -396,7 +414,7 @@
       "caption": "Desktop and Android use a local Kokoro voice; rate, tone, and deliveries per call change the spoken delivery without changing visual timing.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1540
     },
     {
       "id": "prefs-tts-unavailable",
@@ -404,7 +422,7 @@
       "caption": "If the system has no speech voice, visual calls still work.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1540
     },
     {
       "id": "prefs-cache-confirm",
@@ -412,7 +430,7 @@
       "caption": "Clearing the cache is a two-step action.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1980
     },
     {
       "id": "prefs-cache-cleared",
@@ -420,7 +438,7 @@
       "caption": "Clearing the source cache does not remove saved dances, tunes, or the bundled defaults.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1980
     },
     {
       "id": "prefs-proxy",
@@ -428,7 +446,7 @@
       "caption": "Desktop and Android fetch sources directly; the web build can use a proxy.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1980
     },
     {
       "id": "prefs-theme-light",
@@ -452,7 +470,7 @@
       "caption": "MIDI export is desktop-only in 0.1.0; clearing cache works on every platform, and Memory use lists the largest resident allocations.",
       "status": "ready",
       "width": 1280,
-      "height": 2250
+      "height": 1980
     },
     {
       "id": "error-network",
@@ -480,7 +498,7 @@
     },
     {
       "id": "dance-sort",
-      "alt": "The Download dance Sort menu open with Relevance, Title A–Z, Title Z–A, Choreographer A–Z, and Newest.",
+      "alt": "The Download dance Sort menu set to Title A–Z.",
       "caption": "Sorting applies the next time Search dances runs.",
       "status": "ready",
       "width": 1280,
@@ -500,7 +518,7 @@
       "caption": "The card can total fewer or more than 64 beats; the music keeps its 64-beat grid.",
       "status": "ready",
       "width": 1280,
-      "height": 800
+      "height": 1200
     },
     {
       "id": "error-dance-load",
@@ -520,7 +538,7 @@
     },
     {
       "id": "tune-filter-key",
-      "alt": "The Download tune Key menu open with Any key, D major, G major, A major, and the other curated keys.",
+      "alt": "The Download tune screen with Key set to A mixolydian and matching results.",
       "caption": "The key menu uses a curated list of common contra keys.",
       "status": "ready",
       "width": 1280,
@@ -528,7 +546,7 @@
     },
     {
       "id": "tune-filter-meter",
-      "alt": "The Download tune Meter menu open with Any meter, 4/4, 2/2, 2/4, 6/8, 9/8, 12/8, and 3/4.",
+      "alt": "The Download tune screen with Meter set to 4/4 and matching results.",
       "caption": "Meter filters the ABC Session Tunes results before searching.",
       "status": "ready",
       "width": 1280,
@@ -536,7 +554,7 @@
     },
     {
       "id": "tune-filter-genre",
-      "alt": "The Download tune Genre menu open with reels, jigs, slip jigs, hornpipes, polkas, slides, strathspeys, and waltzes.",
+      "alt": "The Download tune screen with Genre set to reel and matching results.",
       "caption": "Genre is the ABC Session Tunes rhythm field.",
       "status": "ready",
       "width": 1280,
@@ -620,7 +638,7 @@
       "caption": "With ContraDB selected, the User filter matches the contributor name.",
       "status": "ready",
       "width": 1280,
-      "height": 800
+      "height": 1050
     },
     {
       "id": "dance-filter-hook",
@@ -628,15 +646,15 @@
       "caption": "With ContraDB selected, the Hook filter matches the short hook line on its cards.",
       "status": "ready",
       "width": 1280,
-      "height": 800
+      "height": 1050
     },
     {
       "id": "dance-filter-figure-type",
-      "alt": "The Download dance Figure type menu open with Swing, Allemande, Do-si-do, Balance, Chain, Circle, Star, Hey, Gyre, and the other move types.",
+      "alt": "The Download dance Figure menu set to Swing, above the matching results.",
       "caption": "Figure type sends a move-type filter and takes precedence over Figure contains.",
       "status": "ready",
       "width": 1280,
-      "height": 800
+      "height": 1050
     },
     {
       "id": "install-windows-release",

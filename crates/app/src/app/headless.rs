@@ -305,7 +305,10 @@ fn dance_picker_shots(
         app.picker.dance_preview = None;
         app.picker.dance_selected = None;
     }
+    // Results start below the fold at 800 px; show them with the form.
+    harness.set_size(Vec2::new(1280.0, 1050.0));
     capture(harness, out, "dance-picker-search")?;
+    harness.set_size(DESKTOP);
     {
         let app = harness.state_mut();
         app.picker.dance_query.sort = caller_sources::DanceSort::TitleAsc;
@@ -340,12 +343,17 @@ fn dance_picker_shots(
         });
         app.picker.dance_preview = Some(dance);
     }
+    // A taller viewport shows the preview buttons and the figure list below the
+    // long filter form.
+    harness.set_size(Vec2::new(1280.0, 1200.0));
     capture(harness, out, "dance-picker-preview")?;
+    harness.set_size(DESKTOP);
 
     {
         let app = harness.state_mut();
         app.picker.dance_query.user = "Koren".into();
     }
+    harness.set_size(Vec2::new(1280.0, 1050.0));
     capture(harness, out, "dance-filter-user")?;
     {
         let app = harness.state_mut();
@@ -370,7 +378,9 @@ fn dance_picker_shots(
         app.picker.dance_preview = Some(dance);
         app.rebuild_timeline();
     }
+    harness.set_size(Vec2::new(1280.0, 1200.0));
     capture(harness, out, "dance-preview-beats")?;
+    harness.set_size(DESKTOP);
     {
         let app = harness.state_mut();
         app.screen = Screen::Session;
@@ -452,7 +462,10 @@ fn tune_picker_shots(
             rhythm: "reel".into(),
         });
     }
+    // The engraved sheet music starts below the fold at 800 px.
+    harness.set_size(Vec2::new(1280.0, 1100.0));
     capture(harness, out, "tune-picker-preview")?;
+    harness.set_size(DESKTOP);
     {
         let app = harness.state_mut();
         app.picker.tune_preview = None;
@@ -557,10 +570,10 @@ fn preference_shots(
     }
     capture(harness, out, "prefs-alias-reset-all")?;
 
-    // Preferences sections that sit below the fold at 1280x800. The height
-    // leaves room for the whole form; `npm run screenshots` records the actual
-    // size for the manifest at release time.
-    harness.set_size(Vec2::new(1280.0, 2900.0));
+    // Preferences categories that sit below the fold at 1280x800. Each category
+    // is captured at a height that fits its whole form: a fixed tall canvas
+    // would leave a blank tail now that the settings are split by category.
+    harness.set_size(Vec2::new(1280.0, 2020.0));
     {
         let app = harness.state_mut();
         app.screen = Screen::Preferences;
@@ -635,20 +648,23 @@ fn preference_shots(
         app.prefs.accompaniment_rhythm = caller_core::AccompanimentRhythm::Auto;
         app.prefs.accompaniment_variations = true;
     }
+    harness.set_size(Vec2::new(1280.0, 1760.0));
     capture(harness, out, "prefs-accompaniment-variations")?;
     {
         let app = harness.state_mut();
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
         app.prefs.accompaniment_variations = false;
-        app.prefs.lead.auto = false;
+        // The guide calls this the default Lead setup, so show automatic lead.
+        app.prefs.lead.auto = true;
     }
+    harness.set_size(Vec2::new(1280.0, 1000.0));
     capture(harness, out, "prefs-timing-mode")?;
     {
         let app = harness.state_mut();
-        app.prefs.lead.auto = true;
         app.prefs.lead.min_beats = 1.5;
         app.prefs.lead.max_beats = 4.0;
     }
+    harness.set_size(Vec2::new(1280.0, 1540.0));
     capture(harness, out, "prefs-timing-bounds")?;
     {
         let app = harness.state_mut();
@@ -674,6 +690,7 @@ fn preference_shots(
             path: None,
         });
     }
+    harness.set_size(Vec2::new(1280.0, 2020.0));
     capture(harness, out, "prefs-sf2-loaded")?;
     {
         let app = harness.state_mut();
@@ -696,6 +713,7 @@ fn preference_shots(
         app.soundfont_error = None;
         app.cache_clear_confirm = true;
     }
+    harness.set_size(Vec2::new(1280.0, 1980.0));
     capture(harness, out, "prefs-cache-confirm")?;
     {
         let app = harness.state_mut();
@@ -719,6 +737,7 @@ fn preference_shots(
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::Calling);
         app.speech = crate::tts::Speech::stub_unavailable();
     }
+    harness.set_size(Vec2::new(1280.0, 1540.0));
     capture(harness, out, "prefs-tts-unavailable")?;
 
     Ok(())
@@ -751,7 +770,7 @@ fn remaining_shots(harness: &mut Harness<'_, CallerApp>, out: &Path) -> Result<(
         app.screen = Screen::Preferences;
         app.prefs_page = PreferencesPage::Category(PreferencesCategory::Appearance);
     }
-    // A taller viewport shows the Theme buttons below the Calling lead heading.
+    // A taller viewport shows the whole Appearance form.
     harness.set_size(Vec2::new(1280.0, 1000.0));
     capture(harness, out, "prefs-theme-light")?;
     harness.set_size(DESKTOP);
@@ -812,9 +831,7 @@ fn remaining_shots(harness: &mut Harness<'_, CallerApp>, out: &Path) -> Result<(
     }
     capture(harness, out, "session-mobile-controls")?;
 
-    // About is the last section of Preferences. This shot scrolls that page,
-    // so it comes after every other Preferences shot in the run: the scroll
-    // position is remembered and would move a later screenshot.
+    // About is a Preferences category, captured after the other categories.
     harness.set_size(DESKTOP);
     {
         let app = harness.state_mut();
