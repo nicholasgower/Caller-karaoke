@@ -21,7 +21,7 @@ npm install
 npm start            # builds the app, then http://localhost:3000/
 npm run start:docs   # docs only: skips the browser build; /play shows a placeholder
 npm run build:app    # requires Rust + Trunk; stages the WASM app under static/app
-npm test             # screenshot manifest, uniqueness, and emphasis regions
+npm test             # screenshot manifest, uniqueness, preload, and emphasis regions
 npm run check        # npm test + production build
 npm run preview:ios  # serve website/build in an iPhone frame (build first)
 npm run screenshots  # release prep only: headless renderer + PhotoCraft annotation
@@ -55,6 +55,14 @@ how to build the app, so `/play` degrades to that explanation instead of a bare
 `static/app/` are generated and ignored by Git; do not commit the staged build,
 even though the placeholder shares its path. A plain `npm run build` without
 Rust therefore produces a site whose `/play` frame shows the placeholder.
+
+Links to `/play` and `/app/` warm the app on hover. The site fetches the
+generated entry document, reads the hashed JavaScript and WASM names out of it,
+and downloads them into the browser cache at low priority without starting the
+app, so the frame reuses cached bytes. The extraction is covered by `npm test`
+through `scripts/check-web-preload.mjs`; the listener lives in
+`src/webAppPreload.ts` and is installed by `src/theme/Root.tsx`.
+
 Override the public URL with `CALLER_WEB_PUBLIC_URL` if you deploy the site at a
 different base path.
 

@@ -25,6 +25,9 @@ button opens this hosted copy too, because there is no iOS build yet.
 - Online search still needs a data proxy, as described below.
 - Preferences and cached source responses are stored in this site's
   `localStorage`, not shared with the desktop app or the downloaded bundle.
+- The site downloads the browser build in the background once your pointer rests
+  on a link to it, so the app usually opens from cache. On a slow or
+  data-saving connection it waits until you open it.
 
 To open the app without the documentation header, use the **Open full screen**
 link above the frame.

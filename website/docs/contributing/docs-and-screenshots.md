@@ -91,6 +91,16 @@ For docs-only work, `npm run start:docs` skips the build. A tracked
 The app is built with the public URL `/app/`; keep that in step with
 `baseUrl` in `docusaurus.config.ts` or set `CALLER_WEB_PUBLIC_URL`.
 
+The site warms the hosted app when the visitor rests the pointer on a link to
+`/play` or `/app/`, because the WASM bundle is many megabytes and the frame
+would otherwise start from nothing. The site-wide `src/theme/Root.tsx` installs
+the listener from `src/webAppPreload.ts`: it fetches the app's generated
+`index.html`, reads the hashed JavaScript and WASM names out of it, and
+downloads them at low priority into the browser cache without starting the app.
+Save-Data and 2G connections are skipped, and the `/play` page does not warm
+itself. `npm test` checks the asset extraction in
+`scripts/check-web-preload.mjs`.
+
 To review the hosted app at phone width, run
 `npm run preview:ios -- --path /play/` after building the site.
 

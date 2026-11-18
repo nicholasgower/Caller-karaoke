@@ -12,12 +12,13 @@
     "serve": "docusaurus serve",
     "clear": "docusaurus clear",
     "check:shots": "node scripts/check-screenshots.mjs",
-    "test": "node scripts/check-screenshots.mjs",
+    "check:preload": "node scripts/check-web-preload.mjs",
+    "test": "node scripts/check-screenshots.mjs && node scripts/check-web-preload.mjs",
     "build:app": "node scripts/build-web-app.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "annotate": "node scripts/annotate-screenshots.mjs",
     "preview:ios": "node scripts/ios-preview.mjs",
-    "check": "npm run check:shots && docusaurus build"
+    "check": "npm test && docusaurus build"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",
