@@ -400,16 +400,22 @@ const SETTINGS: &[PreferenceSetting] = &[
         keywords: "card figures wording",
     },
     PreferenceSetting {
-        title: "Humanize timing",
+        title: "Humanize the band",
         category: PreferencesCategory::Playback,
         section: "playback",
-        keywords: "drift spread human timing",
+        keywords: "drift spread human timing pitch intonation fiddle unfretted",
     },
     PreferenceSetting {
-        title: "Human timing amount",
+        title: "Timing amount",
         category: PreferencesCategory::Playback,
         section: "playback",
-        keywords: "drift amount human",
+        keywords: "drift amount human tempo",
+    },
+    PreferenceSetting {
+        title: "Tuning amount",
+        category: PreferencesCategory::Playback,
+        section: "playback",
+        keywords: "pitch amount intonation out of tune fiddle",
     },
     PreferenceSetting {
         title: "Tempo controller",
@@ -1811,12 +1817,12 @@ fn playback(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         });
     });
     ui.checkbox(&mut app.prefs.show_original, "Show original card text");
-    ui.checkbox(&mut app.prefs.humanize_timing, "Humanize timing");
+    ui.checkbox(&mut app.prefs.humanize_timing, "Humanize the band");
     ui.label(
         egui::RichText::new(
             "Each player drifts by a fraction of a percent and a controller gently settles it back on \
-             the tempo; chord notes start a few milliseconds apart. The count-in, the 64-beat grid, \
-             and the calls stay exact.",
+             the tempo; chord notes start a few milliseconds apart; a fiddle's fingers land a few \
+             cents off the nominal pitch. The count-in, the 64-beat grid, and the calls stay exact.",
         )
         .small()
         .color(theme::muted(ui)),
@@ -1827,24 +1833,38 @@ fn playback(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             let options = &mut app.prefs.humanize_options;
             ui.checkbox(&mut options.tempo_drift, "Tempo drift per player");
             ui.checkbox(&mut options.chord_spread, "Spread chord notes");
+            ui.checkbox(&mut options.pitch_drift, "Pitch drift (unfretted strings)");
             slider_row(
                 ui,
                 compact,
-                "Human timing amount",
+                "Timing amount",
                 &mut options.amount,
                 |ui, value| {
                     number_slider(
                         ui,
                         egui::Slider::new(value, 0.0..=MAX_HUMANIZE_AMOUNT).fixed_decimals(2),
                     )
-                    .accessible_name("Human timing amount")
+                    .accessible_name("Timing amount")
+                },
+            );
+            slider_row(
+                ui,
+                compact,
+                "Tuning amount",
+                &mut options.pitch_amount,
+                |ui, value| {
+                    number_slider(
+                        ui,
+                        egui::Slider::new(value, 0.0..=MAX_HUMANIZE_AMOUNT).fixed_decimals(2),
+                    )
+                    .accessible_name("Tuning amount")
                 },
             );
             ui.label(
                 egui::RichText::new(
-                    "One is the calibrated amount; higher values scale the drift and the chord \
-                     spread together. The onset bounds scale with it, so the setting stays even \
-                     rather than saturating.",
+                    "One is the calibrated amount for each control: timing scales the drift and \
+                     the chord spread, tuning scales the fiddle's intonation. The bounds scale \
+                     with each slider, so both stay even rather than saturating.",
                 )
                 .small()
                 .color(theme::muted(ui)),

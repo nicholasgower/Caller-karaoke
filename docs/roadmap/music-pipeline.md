@@ -292,11 +292,12 @@ separate gains, so turning the band down never hides a call.
   settings are shared with playback, where the same chain is applied to the
   rendered buffer; in the file they become General MIDI sends.
 
-### 6.11 Human timing
+### 6.11 Human timing and intonation
 
 Playback can humanize the band slightly; the preference is
 `humanize_timing`, on by default. The separate options are a tempo-drift switch,
-a chord-spread switch, and an amount from 0 to 5 that scales both. MIDI export
+a chord-spread switch, a pitch-drift switch for unfretted strings, a timing
+amount, and a separate tuning amount; both amounts run from 0 to 20. MIDI export
 is deliberately not humanized.
 
 - **Per-voice deviation.** Melody, accompaniment, and countermelody each get
@@ -317,13 +318,23 @@ is deliberately not humanized.
 - **Chord asynchrony.** Notes that start together within a section are spread
   by a deterministic ±6 ms pitch-level offset. A note that starts alone, such
   as a melody note, is left exactly on the voice's curve.
+- **Fiddle intonation.** Every note of an unfretted string voice (a fiddle) is
+  detuned from its nominal pitch. The error is drawn from a normal distribution
+  with a standard deviation of 4 cents at tuning amount 1 (a little under a
+  tenth of a semitone) and a three-sigma bound of 12 cents; the tuning amount
+  scales both, independently of the timing amount. Fretted strings, keyboards,
+  and winds keep their nominal pitch because frets, keys, or the instrument set
+  it. The built-in synth multiplies the note frequency by the cent ratio; the
+  sampled renderer sends a per-note pitch bend.
 - **Reproducible seed.** The seed is derived from the arrangement (meter, key,
   melody, chords) plus the voice and copy index, so two identical renders are
-  bit-identical and a tune keeps its feel between renders.
+  bit-identical and a tune keeps its feel between renders. Each intonation error
+  is a hash of that seed, the note's start, and its pitch, so the same note is
+  detuned the same way on every render.
 - **Excluded.** The count-in stays exactly four beats so the potatoes state the
   tempo; percussion stays grid-exact because it is the audible grid; the
-  once-only slow ending keeps its written ritardando. MIDI export writes the
-  un-deviated grid.
+  once-only slow ending keeps its written ritardando and nominal pitch. MIDI
+  export writes the un-deviated grid at the nominal pitch.
 - **Both renderers.** The built-in synth and the sampled soundfont renderer
   apply the same curves. A note's offset shifts its note-on and note-off
   together, so note durations stay sensible.

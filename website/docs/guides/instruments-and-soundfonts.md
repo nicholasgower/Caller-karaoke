@@ -221,11 +221,11 @@ melody play a bar alone**. Disabling one removes only that kind. The
 melody-alone bar is only chosen where the tune has enough notes to carry it, so
 a variation can never leave a silent measure.
 
-## Human timing
+## Humanize the band
 
-**Preferences → Playback → Humanize timing** is on by default. A contra band
+**Preferences → Playback → Humanize the band** is on by default. A contra band
 does not play to a click, so each player is allowed to drift a little against
-the beat:
+the beat, and a fiddle's fingers are never exactly on the nominal pitch:
 
 - every voice — melody, accompaniment, and countermelody, including each player
   in a section — has its own slow tempo deviation, never more than 0.35 % of the
@@ -234,31 +234,37 @@ the beat:
   the user-set tempo over about sixteen bars, so a player can wander but never
   settles into a permanent offset;
 - notes that begin together as a chord are spread by up to six milliseconds of
-  pitch-level asynchrony. A melody note sounding on its own is not smeared.
+  pitch-level asynchrony. A melody note sounding on its own is not smeared;
+- every note of an unfretted string voice (a fiddle) is detuned from its nominal
+  pitch by a small, normal-distributed intonation error: four cents of standard
+  deviation at tuning amount 1, bounded to twelve cents. Fretted strings,
+  keyboards, and winds keep their nominal pitch.
 
 The drift is deliberately tiny — under two milliseconds per beat at 240 BPM,
 and never more than a few milliseconds for a single onset. It makes a
 repeated loop feel played rather than sequenced without moving the dance: the
 count-in stays exactly four beats, the 64-beat grid and loop length are
-unchanged, the calls do not move, and an exported MIDI file stays grid-exact.
-Percussion is not humanized because it is the audible grid the band plays
-against.
+unchanged, the calls do not move, and an exported MIDI file stays grid-exact at
+the nominal pitch. Percussion is not humanized because it is the audible grid
+the band plays against.
 
 Turning the setting off prepares a new loop with every note exactly on the
-grid. The human timing is deterministic for a given tune, so the same tune
-sounds the same each time it is rendered.
+grid and at its nominal pitch. The human timing and intonation are
+deterministic for a given tune, so the same tune sounds the same each time it
+is rendered.
 
-Two switches below the master control choose which effects apply: **Tempo drift
-per player** and **Spread chord notes**. **Human timing amount** scales both
-from 0 to 5; 1 is the calibrated amount, 0 sounds exactly like turning humanize
-timing off, and the onset bounds scale with the amount, so higher settings keep
-growing evenly instead of saturating. The settings below it tune the **tempo
-controller** itself: **Kp**, **Ki**, and **Kd** are the proportional, integral,
-and derivative gains that pull a player's accumulated timing error back to the
-beat. Their defaults — 0.5, 0.05, and 0.02 — are the calibrated response; raise
-a gain to correct sooner, or lower it to let a player wander for longer. None of
-these controls moves the count-in, the 64-beat grid, the calls, or the loop
-length.
+Three switches below the master control choose which effects apply: **Tempo
+drift per player**, **Spread chord notes**, and **Pitch drift (unfretted
+strings)**. **Timing amount** scales the tempo drift and the chord spread;
+**Tuning amount** scales the fiddle's intonation. Both run from 0 to 20; 1 is
+the calibrated amount, 0 turns that group off, and the bounds scale with each
+slider, so higher settings keep growing evenly instead of saturating. The
+settings below them tune the **tempo controller** itself: **Kp**, **Ki**, and
+**Kd** are the proportional, integral, and derivative gains that pull a
+player's accumulated timing error back to the beat. Their defaults — 0.5, 0.05,
+and 0.02 — are the calibrated response; raise a gain to correct sooner, or
+lower it to let a player wander for longer. None of these controls moves the
+count-in, the 64-beat grid, the calls, or the loop length.
 
 ## Apply the change
 

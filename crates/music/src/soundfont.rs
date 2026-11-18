@@ -21,6 +21,16 @@ use crate::layout;
 use crate::render::{AudioBuffer, RenderError, RenderRequest};
 use crate::score::NoteEvent;
 
+/// Pitch bend range set on every sampled channel, in semitones.
+///
+/// Rustysynth's channel default is two semitones. The largest tuning amount
+/// bounds a note's intonation error at 20 x 12 = 240 cents, so widen the range
+/// once per channel and keep every deviation inside it.
+const PITCH_BEND_RANGE_SEMITONES: i32 = 12;
+
+/// The same range in cents, used to turn a deviation into a bend value.
+const PITCH_BEND_RANGE_CENTS: f64 = PITCH_BEND_RANGE_SEMITONES as f64 * 100.0;
+
 /// Load an SF2 file from memory.
 pub fn load_soundfont(bytes: &[u8]) -> Result<Arc<SoundFont>, RenderError> {
     let mut cursor = Cursor::new(bytes);
@@ -44,6 +54,12 @@ enum ScheduledKind {
     NoteOff {
         channel: i32,
         key: i32,
+    },
+    /// A per-note intonation change, sent just before its note-on.
+    PitchBend {
+        channel: i32,
+        /// The 14-bit MIDI value, centered at 8192.
+        value: i32,
     },
 }
 
@@ -270,12 +286,29 @@ impl SlotRenderer {
                     sample_rate,
                     voice,
                     &humanizer,
+                    slot.voice.is_unfretted_strings(),
                 );
             }
         }
         if let Some(ending) = ending {
             let notes = crate::band::ending_notes_for_slot(slot, ending);
             if !notes.is_empty() {
+                // The ending is not pitch-humanized, and a sampled renderer's
+                // pitch bend is channel state: center it before the ending so
+                // the last loop note's intonation does not carry into it.
+                if slot.voice.is_unfretted_strings() {
+                    let start = count_in_samples + pass_samples * passes as u64;
+                    for channel in 0..players as i32 {
+                        scheduled.push(Scheduled {
+                            sample: start,
+                            order: 0,
+                            kind: ScheduledKind::PitchBend {
+                                channel,
+                                value: 8192,
+                            },
+                        });
+                    }
+                }
                 schedule_ending_notes(
                     &mut scheduled,
                     notes,
@@ -320,6 +353,12 @@ impl SlotRenderer {
                         velocity,
                     } => self.synth.note_on(*channel, *key, *velocity),
                     ScheduledKind::NoteOff { channel, key } => self.synth.note_off(*channel, *key),
+                    ScheduledKind::PitchBend { channel, value } => self.synth.process_midi_message(
+                        *channel,
+                        0xE0,
+                        value & 0x7F,
+                        (value >> 7) & 0x7F,
+                    ),
                 }
                 self.event_index += 1;
             }
@@ -394,7 +433,24 @@ fn configure_slot(
         let level = (volume.clamp(0.0, 1.0) * 110.0 * voice.gain.sqrt()).clamp(0.0, 127.0) as i32;
         synth.process_midi_message(channel, 0xB0, 7, level);
         synth.process_midi_message(channel, 0xB0, 10, crate::copies::pan_cc(voice.pan));
+        // RPN 0 is the pitch bend sensitivity. Set it to the range used by
+        // `pitch_bend_value` so the largest tuning amount is representable.
+        synth.process_midi_message(channel, 0xB0, 101, 0);
+        synth.process_midi_message(channel, 0xB0, 100, 0);
+        synth.process_midi_message(channel, 0xB0, 6, PITCH_BEND_RANGE_SEMITONES);
+        synth.process_midi_message(channel, 0xB0, 38, 0);
     }
+}
+
+/// MIDI pitch-bend value for a deviation in cents.
+///
+/// The channel's bend range is set to [`PITCH_BEND_RANGE_CENTS`] when the slot
+/// is configured, so the full 8192-step excursion is that many cents. The value
+/// is centered at 8192 and clamped to the 14-bit range.
+fn pitch_bend_value(cents: f64) -> i32 {
+    (8192.0 + cents / PITCH_BEND_RANGE_CENTS * 8192.0)
+        .round()
+        .clamp(0.0, 16383.0) as i32
 }
 
 /// Schedule one slot's notes once per player, each on its own channel.
@@ -412,6 +468,7 @@ fn schedule_notes(
     sample_rate: u32,
     voice: Voice,
     humanizer: &Humanizer,
+    unfretted: bool,
 ) {
     let chord = crate::humanize::chord_members(notes);
     for (copy, player) in crate::copies::voices(0.0, players, sample_rate)
@@ -421,6 +478,7 @@ fn schedule_notes(
         let channel = copy as i32;
         let start_offset = offset_samples + player.delay_samples;
         let timing = humanizer.voice(voice, copy);
+        let pitch = humanizer.pitch(voice, copy).filter(|_| unfretted);
         for (index, note) in notes.iter().enumerate() {
             let humanized = timing.as_ref().map_or(0.0, |timing| {
                 timing.onset_offset_seconds(
@@ -437,6 +495,16 @@ fn schedule_notes(
                 continue;
             }
             let start = start as u64;
+            if let Some(pitch) = &pitch {
+                scheduled.push(Scheduled {
+                    sample: start,
+                    order: 0,
+                    kind: ScheduledKind::PitchBend {
+                        channel,
+                        value: pitch_bend_value(pitch.deviation_cents(note.start_beat, note.midi)),
+                    },
+                });
+            }
             let duration = (note.duration_beats * samples_per_beat).round().max(1.0) as u64;
             scheduled.push(Scheduled {
                 sample: start,
@@ -604,6 +672,47 @@ mod tests {
             ending: true,
             humanize_timing: true,
         }
+    }
+
+    #[test]
+    fn pitch_bend_value_covers_the_cent_range() {
+        assert_eq!(pitch_bend_value(0.0), 8192);
+        assert_eq!(pitch_bend_value(PITCH_BEND_RANGE_CENTS), 16383);
+        assert_eq!(pitch_bend_value(-PITCH_BEND_RANGE_CENTS), 0);
+        assert!(pitch_bend_value(4.0) > 8192);
+        assert!(pitch_bend_value(-4.0) < 8192);
+        // The largest tuning amount (20 x the 12-cent bound) is inside the
+        // configured range rather than pinned at the rail.
+        let largest = crate::humanize::PITCH_DEVIATION_LIMIT_CENTS * 20.0;
+        let value = pitch_bend_value(largest);
+        assert!(
+            value < 16383,
+            "the maximum tuning amount is clipped: {value}"
+        );
+    }
+
+    #[test]
+    fn pitch_humanization_changes_the_sampled_fiddle() {
+        let font = load_soundfont(TEST_FONT).expect("the bundled test font loads");
+        let mut nominal = request();
+        nominal.humanize_options.pitch_drift = false;
+        nominal.ending = false;
+        nominal.variation_passes = 1;
+        let mut detuned = nominal.clone();
+        detuned.humanize_options.pitch_drift = true;
+
+        let clean = render_soundfont_inner(&nominal, &font, 24_000, 1).expect("nominal render");
+        let bent = render_soundfont_inner(&detuned, &font, 24_000, 1).expect("detuned render");
+        assert_eq!(clean.frames(), bent.frames());
+        let difference = clean
+            .samples
+            .iter()
+            .zip(&bent.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-5,
+            "the sampled fiddles should be detuned, not {difference}"
+        );
     }
 
     #[test]

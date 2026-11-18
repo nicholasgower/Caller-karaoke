@@ -49,12 +49,13 @@ accent above the surrounding quarters. Four to eight successive eighth notes
 are written as one bow instead, each note held into the next. Later passes add
 deterministic melody ornaments, chord-tone harmony doubles, and an occasional
 octave lift. Existing note timing is unchanged, so the 64-beat grid still
-lines up with the dance. Players in a section are written on
-the same beats as their row — the millisecond spread the app uses for playback
-is a performance effect, not a change to the music — so the file stays
-grid-exact.
-The optional **Humanize timing** playback setting is likewise not written to
-the file: exported MIDI always describes the un-deviated beat grid.
+lines up with the dance.
+Players in a section are written on the same beats as their row — the
+millisecond spread the app uses for playback is a performance effect, not a
+change to the music — so the file stays grid-exact.
+The optional **Humanize the band** playback setting is likewise not written to
+the file: exported MIDI always describes the un-deviated beat grid at the
+nominal pitch, without the players' tempo drift or the fiddles' intonation.
 
 The MIDI does **not** include the four-beat count-in, the pickup notes, or the
 live slow ending. It is the arranged loop, not the full playback buffer. Because

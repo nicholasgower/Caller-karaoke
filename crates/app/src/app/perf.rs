@@ -1692,6 +1692,35 @@ fn profile_pure_functions(
     }
     {
         let arrangement = Arrangement::from_score(&score, 64.0);
+        let mut request = app
+            .render_settings(app.timeline.count_in_beats)
+            .request(arrangement.clone());
+        request.humanize_options.pitch_amount = MAX_HUMANIZE_AMOUNT;
+        let notes = arrangement.melody_notes_for_pass(0);
+        let times = timed(
+            || {
+                let humanizer = Humanizer::new(&request);
+                for voice in [Voice::Melody, Voice::Countermelody] {
+                    if let Some(pitch) = humanizer.pitch(voice, 0) {
+                        for note in &notes {
+                            std::hint::black_box(pitch.deviation_cents(note.start_beat, note.midi));
+                        }
+                    }
+                }
+            },
+            samples,
+        );
+        report.record(
+            "music",
+            "Detune the fiddle line",
+            "Humanizer::pitch + PitchHumanizer::deviation_cents (maximum amount)",
+            ACTION_BUDGET_MS,
+            times,
+            "one pass of melody and countermelody notes; the normal draw is per note at render time",
+        );
+    }
+    {
+        let arrangement = Arrangement::from_score(&score, 64.0);
         let original = app.prefs.accompaniment_variations;
         // The default settings play a variation pass set; measure that, and
         // then the single-pass path so the report shows how much of the cost

@@ -1,19 +1,25 @@
-//! Deterministic human timing for the audio renderers.
+//! Deterministic human performance for the audio renderers.
 //!
 //! A contra band does not hold a metronome. Each player drifts a little against
-//! the grid, and the section breathes together without losing the dance. This
+//! the grid, and a fiddler's fingers land a little off the nominal pitch. This
 //! module reproduces that at a deliberately small scale:
 //!
 //! - every voice (melody, accompaniment, countermelody) and every copy of a
 //!   voice has its own slow tempo deviation, bounded to
 //!   [`TEMPO_DEVIATION_LIMIT`] (0.35 %, under two milliseconds per beat at
-//!   240 BPM) times the human timing amount;
+//!   240 BPM) times the timing amount;
 //! - a PID controller pulls each voice's accumulated timing error back to the
 //!   un-deviated beat grid, so a player never leaves a permanent offset. Its
 //!   gains are the [`PidGains`] in the render request, so a caller can tune how
 //!   quickly a wandering player is pulled back;
 //! - notes that begin together as a chord are spread by a few milliseconds of
-//!   pitch-level asynchrony, while a melody note sounding alone is left alone.
+//!   pitch-level asynchrony, while a melody note sounding alone is left alone;
+//! - an unfretted string player (a fiddle) places every finger slightly off the
+//!   nominal pitch. Each note gets a small intonation error drawn from a normal
+//!   distribution, bounded to [`PITCH_DEVIATION_LIMIT_CENTS`] at a tuning amount
+//!   of 1. Only unfretted strings drift: frets, keys, and the instrument's own
+//!   tuning set the pitch of every other voice. The tuning amount is separate
+//!   from the timing amount.
 //!
 //! Everything is a pure function of a seed derived from the arrangement and the
 //! voice, so two identical renders are sample-identical.
@@ -23,11 +29,13 @@
 //! - the count-in is not humanized, so the four potatoes state the tempo;
 //! - percussion is not humanized, because it is the audible grid the rest of
 //!   the band plays against;
-//! - the once-only slow ending follows its own written ritardando;
-//! - MIDI export stays grid-exact (see [`crate::midi`]).
+//! - the once-only slow ending follows its own written ritardando and keeps its
+//!   written pitch;
+//! - MIDI export stays grid-exact and at the nominal pitch (see
+//!   [`crate::midi`]).
 //!
 //! Offsets are bounded twice: the tempo deviation bounds the rate, and
-//! [`ONSET_OFFSET_LIMIT_SECONDS`] times the human timing amount bounds every
+//! [`ONSET_OFFSET_LIMIT_SECONDS`] times the timing amount bounds every
 //! individual onset. An offset is also clamped inside the 64-beat loop, so a
 //! note never crosses the loop boundary and the loop's sample count never
 //! changes.
@@ -45,18 +53,32 @@ use crate::score::NoteEvent;
 ///
 /// 0.35 % is under two milliseconds per beat at 240 BPM. Without correction a
 /// whole 64-beat pass would drift by about 112 ms; the PID controller keeps
-/// each onset within a few milliseconds instead. The human timing amount
+/// each onset within a few milliseconds instead. The timing amount
 /// scales the deviation.
 pub const TEMPO_DEVIATION_LIMIT: f64 = 0.0035;
 
 /// Absolute limit on one note's humanized onset at amount 1, in seconds.
 ///
-/// The limit scales with the human timing amount, so the setting stays linear
+/// The limit scales with the timing amount, so the setting stays linear
 /// up to [`MAX_HUMANIZE_AMOUNT`].
 pub const ONSET_OFFSET_LIMIT_SECONDS: f64 = 0.012;
 
 /// Largest asynchrony applied to one note of a chord at amount 1, in seconds.
 pub const CHORD_ASYNCHRONY_LIMIT_SECONDS: f64 = 0.006;
+
+/// Standard deviation of one note's intonation error at tuning amount 1, in
+/// cents.
+///
+/// Four cents is a little under a tenth of a semitone: enough that a fiddler's
+/// line sounds played rather than tuned, without approaching a wrong note. The
+/// tuning amount scales it, separately from the timing amount.
+pub const PITCH_DEVIATION_SIGMA_CENTS: f64 = 4.0;
+
+/// Hard bound on one note's intonation error at tuning amount 1, in cents.
+///
+/// Three standard deviations keeps the normal distribution's rare tail from
+/// producing a note that reads as out of tune rather than human.
+pub const PITCH_DEVIATION_LIMIT_CENTS: f64 = 12.0;
 
 /// Control steps per dance beat for the deviation table.
 pub const STEPS_PER_BEAT: usize = 8;
@@ -178,8 +200,8 @@ impl TempoController {
     }
 }
 
-/// The human timing for one 64-beat loop, shared by the synth and soundfont
-/// renderers.
+/// The human performance for one 64-beat loop: timing and intonation, shared by
+/// the synth and soundfont renderers.
 #[derive(Clone, Debug)]
 pub struct Humanizer {
     seed: u64,
@@ -188,7 +210,9 @@ pub struct Humanizer {
     enabled: bool,
     tempo_drift: bool,
     chord_spread: bool,
+    pitch_drift: bool,
     amount: f64,
+    pitch_amount: f64,
     gains: PidGains,
 }
 
@@ -204,8 +228,14 @@ impl Humanizer {
             enabled: request.humanize_timing,
             tempo_drift: options.tempo_drift,
             chord_spread: options.chord_spread,
+            pitch_drift: options.pitch_drift,
             amount: if options.amount.is_finite() {
                 f64::from(options.amount.clamp(0.0, MAX_HUMANIZE_AMOUNT))
+            } else {
+                0.0
+            },
+            pitch_amount: if options.pitch_amount.is_finite() {
+                f64::from(options.pitch_amount.clamp(0.0, MAX_HUMANIZE_AMOUNT))
             } else {
                 0.0
             },
@@ -248,6 +278,24 @@ impl Humanizer {
             chord_spread: self.chord_spread,
             amount: self.amount,
             offset_limit_seconds: ONSET_OFFSET_LIMIT_SECONDS * self.amount,
+        })
+    }
+
+    /// The intonation error for one copy of an unfretted-string voice, or
+    /// `None` when pitch humanization is off.
+    ///
+    /// The caller decides whether the voice is an unfretted string (see
+    /// [`caller_core::BandVoice::is_unfretted_strings`]); this module only
+    /// supplies the distribution. Pitch drift has its own amount and is
+    /// independent of the timing switches, so a band can keep its timing tight
+    /// while the fiddle plays slightly out of tune.
+    pub fn pitch(&self, voice: Voice, copy: usize) -> Option<PitchHumanizer> {
+        if !self.enabled || !self.pitch_drift || self.pitch_amount <= 0.0 {
+            return None;
+        }
+        Some(PitchHumanizer {
+            seed: voice_seed(self.seed, voice, copy),
+            amount: self.pitch_amount,
         })
     }
 }
@@ -327,6 +375,43 @@ impl VoiceTiming {
         let hash = splitmix64(self.seed ^ beat_key.rotate_left(17) ^ (u64::from(midi) << 40));
         let unit = (hash >> 11) as f64 / (1u64 << 53) as f64;
         (unit * 2.0 - 1.0) * CHORD_ASYNCHRONY_LIMIT_SECONDS * self.amount
+    }
+}
+
+/// Deterministic intonation error for one unfretted-string player.
+///
+/// Each note's error is independent, as a fiddler's finger placement is, but it
+/// is a pure function of the player, the note's start, and its pitch. Two
+/// renders of the same tune therefore detune exactly the same notes by exactly
+/// the same amounts.
+#[derive(Clone, Debug)]
+pub struct PitchHumanizer {
+    seed: u64,
+    amount: f64,
+}
+
+impl PitchHumanizer {
+    /// Deviation from the nominal pitch for a note, in cents.
+    ///
+    /// The value comes from a standard normal distribution (Box-Muller). It is
+    /// clamped to three standard deviations and scaled by the tuning amount, so
+    /// tuning amount 0 is exactly in tune and amount 1 stays within
+    /// [`PITCH_DEVIATION_LIMIT_CENTS`].
+    pub fn deviation_cents(&self, start_beat: f64, midi: u8) -> f64 {
+        if self.amount <= 0.0 || !start_beat.is_finite() {
+            return 0.0;
+        }
+        // A signed key keeps a pickup before beat 0 distinct from beat 0.
+        let beat_key = (start_beat * 1_000_000.0).round() as i64 as u64;
+        let first = splitmix64(self.seed ^ beat_key.rotate_left(23) ^ (u64::from(midi) << 48));
+        let second = splitmix64(first);
+        // Both uniforms are inside (0, 1): the +0.5 keeps ln finite at the
+        // bottom of the range.
+        let first_unit = (((first >> 11) as f64) + 0.5) / (1u64 << 53) as f64;
+        let second_unit = (second >> 11) as f64 / (1u64 << 53) as f64;
+        let normal = (-2.0 * first_unit.ln()).sqrt() * (TAU * second_unit).cos();
+        let limit = PITCH_DEVIATION_LIMIT_CENTS * self.amount;
+        (normal.clamp(-3.0, 3.0) * PITCH_DEVIATION_SIGMA_CENTS * self.amount).clamp(-limit, limit)
     }
 }
 
@@ -461,7 +546,9 @@ mod tests {
             enabled: true,
             tempo_drift: true,
             chord_spread: true,
+            pitch_drift: true,
             amount: 1.0,
+            pitch_amount: 1.0,
             gains: PidGains::default(),
         }
     }
@@ -689,24 +776,27 @@ mod tests {
     #[test]
     fn the_maximum_amount_stays_linear_past_the_calibrated_bound() {
         let full = humanizer().voice(Voice::Melody, 0).expect("full");
-        let mut five_humanizer = humanizer();
-        five_humanizer.amount = f64::from(MAX_HUMANIZE_AMOUNT);
-        let five = five_humanizer.voice(Voice::Melody, 0).expect("five");
+        let max = f64::from(MAX_HUMANIZE_AMOUNT);
+        let mut maximum_humanizer = humanizer();
+        maximum_humanizer.amount = max;
+        let maximum = maximum_humanizer
+            .voice(Voice::Melody, 0)
+            .expect("maximum amount");
         for beat in [0.0, 1.0, 8.0, 31.5, 63.0] {
             let full_offset = full.base_offset_seconds(beat);
-            let five_offset = five.base_offset_seconds(beat);
+            let maximum_offset = maximum.base_offset_seconds(beat);
             assert!(
-                (five_offset - full_offset * 5.0).abs() < 1e-9,
-                "five times the amount should move five times as far at beat {beat}: \
-                 {five_offset} vs {full_offset}"
+                (maximum_offset - full_offset * max).abs() < 1e-9,
+                "twenty times the amount should move twenty times as far at beat {beat}: \
+                 {maximum_offset} vs {full_offset}"
             );
         }
-        // The onset bound scales too, so a full five-times amount is not
-        // clipped back to the amount-1 limit somewhere in the pass.
+        // The onset bound scales too, so the maximum amount is not clipped back
+        // to the amount-1 limit somewhere in the pass.
         let mut largest = 0.0_f64;
         let mut beat = 0.0;
         while beat < 64.0 {
-            largest = largest.max(five.onset_offset_seconds(beat, 0.5, 60, false).abs());
+            largest = largest.max(maximum.onset_offset_seconds(beat, 0.5, 60, false).abs());
             beat += 0.25;
         }
         assert!(
@@ -714,7 +804,7 @@ mod tests {
             "the amount-1 cap must not flatten the larger setting: {largest}"
         );
         assert!(
-            largest <= ONSET_OFFSET_LIMIT_SECONDS * 5.0 + 1e-9,
+            largest <= ONSET_OFFSET_LIMIT_SECONDS * max + 1e-9,
             "the scaled cap should still bound the onset: {largest}"
         );
     }
@@ -748,6 +838,127 @@ mod tests {
         assert!(
             calibrated.error_beats().abs() > stiff.error_beats().abs(),
             "stiffer gains should hold the grid more tightly"
+        );
+    }
+
+    #[test]
+    fn pitch_errors_are_normal_and_bounded() {
+        let pitch = humanizer().pitch(Voice::Melody, 0).expect("pitch");
+        let values: Vec<f64> = (0..10_000)
+            .map(|step| pitch.deviation_cents(step as f64 * 0.25, 60 + (step % 12) as u8))
+            .collect();
+        let mean = values.iter().sum::<f64>() / values.len() as f64;
+        let variance = values
+            .iter()
+            .map(|value| (value - mean) * (value - mean))
+            .sum::<f64>()
+            / values.len() as f64;
+        let deviation = variance.sqrt();
+        assert!(
+            mean.abs() < 0.15,
+            "the distribution should center on the nominal pitch, not {mean}"
+        );
+        assert!(
+            (deviation - PITCH_DEVIATION_SIGMA_CENTS).abs() < 0.2,
+            "the standard deviation should be the calibrated {PITCH_DEVIATION_SIGMA_CENTS} \
+             cents, not {deviation}"
+        );
+        assert!(
+            values
+                .iter()
+                .all(|value| value.abs() <= PITCH_DEVIATION_LIMIT_CENTS + 1e-9),
+            "no note may leave the three-sigma bound"
+        );
+        assert!(
+            values.iter().any(|value| *value < 0.0) && values.iter().any(|value| *value > 0.0),
+            "a fiddler plays both sharp and flat"
+        );
+    }
+
+    #[test]
+    fn pitch_errors_are_reproducible_and_per_player() {
+        let first = humanizer().pitch(Voice::Melody, 0).expect("first");
+        let second = humanizer().pitch(Voice::Melody, 0).expect("second");
+        let other_copy = humanizer().pitch(Voice::Melody, 1).expect("other copy");
+        assert_eq!(
+            first.deviation_cents(4.0, 60).to_bits(),
+            second.deviation_cents(4.0, 60).to_bits(),
+            "the same player must detune the same note the same way"
+        );
+        assert_ne!(
+            first.deviation_cents(4.0, 60).to_bits(),
+            other_copy.deviation_cents(4.0, 60).to_bits(),
+            "each player in a section has a different hand"
+        );
+        assert_ne!(
+            first.deviation_cents(4.0, 60).to_bits(),
+            first.deviation_cents(4.5, 60).to_bits(),
+            "every note is placed independently"
+        );
+    }
+
+    #[test]
+    fn pitch_humanization_follows_its_switch_and_its_own_amount() {
+        let mut off = humanizer();
+        off.pitch_drift = false;
+        assert!(off.pitch(Voice::Melody, 0).is_none());
+
+        let mut disabled = humanizer();
+        disabled.enabled = false;
+        assert!(disabled.pitch(Voice::Melody, 0).is_none());
+
+        let mut zero = humanizer();
+        zero.pitch_amount = 0.0;
+        assert!(zero.pitch(Voice::Melody, 0).is_none());
+
+        let full = humanizer().pitch(Voice::Melody, 0).expect("full");
+        let mut half_humanizer = humanizer();
+        half_humanizer.pitch_amount = 0.5;
+        let half = half_humanizer.pitch(Voice::Melody, 0).expect("half");
+        for step in 0..64 {
+            let beat = step as f64 * 0.25;
+            assert!(
+                (half.deviation_cents(beat, 67) - full.deviation_cents(beat, 67) * 0.5).abs()
+                    < 1e-12,
+                "half the amount should halve the intonation error at beat {beat}"
+            );
+        }
+    }
+
+    #[test]
+    fn timing_and_tuning_amounts_are_independent() {
+        let base = humanizer();
+        let base_timing = base.voice(Voice::Melody, 0).expect("timing");
+        let base_pitch = base.pitch(Voice::Melody, 0).expect("pitch");
+
+        // Turning the timing amount off leaves the intonation untouched.
+        let mut timing_off = humanizer();
+        timing_off.amount = 0.0;
+        assert!(timing_off.voice(Voice::Melody, 0).is_none());
+        let pitch = timing_off.pitch(Voice::Melody, 0).expect("pitch stays on");
+        assert_eq!(
+            pitch.deviation_cents(4.0, 60).to_bits(),
+            base_pitch.deviation_cents(4.0, 60).to_bits()
+        );
+
+        // Turning the tuning amount off leaves the timing untouched.
+        let mut tuning_off = humanizer();
+        tuning_off.pitch_amount = 0.0;
+        assert!(tuning_off.pitch(Voice::Melody, 0).is_none());
+        let timing = tuning_off.voice(Voice::Melody, 0).expect("timing stays on");
+        assert_eq!(
+            timing.base_offset_seconds(8.0).to_bits(),
+            base_timing.base_offset_seconds(8.0).to_bits()
+        );
+    }
+
+    #[test]
+    fn a_pickup_note_gets_its_own_pitch_error() {
+        let pitch = humanizer().pitch(Voice::Melody, 0).expect("pitch");
+        assert_ne!(
+            pitch.deviation_cents(-0.5, 62).to_bits(),
+            pitch.deviation_cents(0.0, 62).to_bits(),
+            "a pickup must not borrow the downbeat's intonation"
         );
     }
 }

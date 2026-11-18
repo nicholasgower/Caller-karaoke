@@ -205,7 +205,7 @@ const CONTROLS: &[Control] = &[
         },
     },
     Control {
-        name: "checkbox: humanize timing",
+        name: "checkbox: humanize the band",
         change: |prefs| prefs.humanize_timing = !prefs.humanize_timing,
     },
     Control {
@@ -215,6 +215,10 @@ const CONTROLS: &[Control] = &[
     Control {
         name: "checkbox: humanize chord spread",
         change: |prefs| prefs.humanize_options.chord_spread = !prefs.humanize_options.chord_spread,
+    },
+    Control {
+        name: "checkbox: humanize pitch drift",
+        change: |prefs| prefs.humanize_options.pitch_drift = !prefs.humanize_options.pitch_drift,
     },
     Control {
         name: "checkbox: show original",
@@ -426,9 +430,16 @@ const CONTROLS: &[Control] = &[
         change: |prefs| prefs.tune_rotation.passes_per_tune += 1,
     },
     Control {
-        name: "number: humanize amount",
+        name: "number: timing amount",
         change: |prefs| {
             prefs.humanize_options.amount = (prefs.humanize_options.amount - 0.1).max(0.0)
+        },
+    },
+    Control {
+        name: "number: tuning amount",
+        change: |prefs| {
+            prefs.humanize_options.pitch_amount =
+                (prefs.humanize_options.pitch_amount - 0.1).max(0.0)
         },
     },
     Control {
