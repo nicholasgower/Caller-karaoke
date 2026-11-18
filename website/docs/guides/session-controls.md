@@ -33,8 +33,8 @@ current value selectable.
 
 Changing tempo, count-in, an instrument row, a player count, a row's volume or
 direction, the band list, the output mode, a percussion rhythm, an
-accompaniment rhythm, a SoundFont, or **Humanize timing** marks the music for a
-rebuild. Playback settings apply without restarting the music: release the
+accompaniment rhythm, a SoundFont, or **Humanize the band** marks the music for
+a rebuild. Playback settings apply without restarting the music: release the
 control and the app prepares the new loop in the background, keeps the current
 beat, and installs the new loop when it is ready. The old loop keeps playing in
 the meantime. The session **Caller** and **Band** levels apply immediately. If
@@ -284,7 +284,8 @@ volume** master.
 
 **Preferences** has six categories: **Calling** (role terms, lead timing, spoken
 calls), **Band & Sound** (the band list, output mode, SoundFont, effects),
-**Playback** (loop, count-in, tempo range, variations, human timing),
+**Playback** (loop, count-in, tempo range, variations, humanized timing and
+intonation),
 **Appearance** (theme, motion, dance card padding, shortcuts, undo), **Data &
 Storage** (dance-source pointer, web proxy, cache, MIDI export, memory use), and
 **About** (version, credits, project links). A desktop shows the category list

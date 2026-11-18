@@ -15,7 +15,7 @@ use std::f32::consts::TAU;
 use caller_core::{AccompanimentInstrument, BandSlot, BandVoice, MelodyInstrument, OutputMode};
 
 use crate::arrange::EndingNote;
-use crate::humanize::{Humanizer, Voice, VoiceTiming, chord_members};
+use crate::humanize::{Humanizer, PitchHumanizer, Voice, VoiceTiming, chord_members};
 use crate::layout;
 use crate::render::{AudioBuffer, RenderRequest};
 use crate::score::NoteEvent;
@@ -92,6 +92,7 @@ pub fn render_builtin(request: &RenderRequest) -> AudioBuffer {
                 slot.player_count(),
                 voice,
                 &humanizer,
+                slot.voice.is_unfretted_strings(),
                 request.output,
                 slot.depth,
             );
@@ -262,6 +263,7 @@ fn render_section(
     players: usize,
     voice: Voice,
     humanizer: &Humanizer,
+    unfretted: bool,
     output: OutputMode,
     depth: f32,
 ) {
@@ -271,6 +273,7 @@ fn render_section(
         .enumerate()
     {
         let timing = humanizer.voice(voice, copy);
+        let pitch = humanizer.pitch(voice, copy).filter(|_| unfretted);
         render_notes(
             samples,
             channels,
@@ -283,6 +286,7 @@ fn render_section(
             player.pan,
             player.detune,
             timing.as_ref(),
+            pitch.as_ref(),
             &chord,
             output,
             depth,
@@ -303,6 +307,7 @@ fn render_notes(
     pan: f32,
     detune: f32,
     timing: Option<&VoiceTiming>,
+    pitch: Option<&PitchHumanizer>,
     chord: &[bool],
     output: OutputMode,
     depth: f32,
@@ -323,6 +328,9 @@ fn render_notes(
         if start < 0 {
             continue;
         }
+        let note_detune = pitch.map_or(detune, |pitch| {
+            detune * cents_to_ratio(pitch.deviation_cents(note.start_beat, note.midi))
+        });
         render_note(
             samples,
             channels,
@@ -336,7 +344,7 @@ fn render_notes(
             output,
             pan,
             depth,
-            detune,
+            note_detune,
         );
     }
 }
@@ -434,6 +442,11 @@ fn apply_ending_fade(
         ending_seconds,
         linger_seconds,
     );
+}
+
+/// Frequency ratio for a pitch deviation in cents (1200 cents per octave).
+fn cents_to_ratio(cents: f64) -> f32 {
+    2.0f64.powf(cents / 1200.0) as f32
 }
 
 /// Add one mono note to every output channel with the slot's placement.
@@ -1028,6 +1041,43 @@ mod tests {
         assert!(
             difference > 1e-4,
             "human timing should change the mix, not {difference}"
+        );
+    }
+
+    #[test]
+    fn pitch_humanization_detunes_only_unfretted_strings() {
+        let mut nominal = request();
+        nominal.humanize_options.pitch_drift = false;
+        let clean = render_builtin(&nominal);
+        let detuned = render_builtin(&request());
+        let again = render_builtin(&request());
+
+        assert_eq!(clean.frames(), detuned.frames());
+        assert_eq!(
+            detuned.samples, again.samples,
+            "pitch humanization must be reproducible"
+        );
+        let difference = clean
+            .samples
+            .iter()
+            .zip(&detuned.samples)
+            .fold(0.0f32, |worst, (a, b)| worst.max((a - b).abs()));
+        assert!(
+            difference > 1e-4,
+            "the fiddles should be detuned, not {difference}"
+        );
+
+        // A clarinet's pitch is set by its keys and bore, not a finger sliding
+        // along a string.
+        let mut clarinet = request();
+        clarinet.melody = MelodyInstrument::Clarinet;
+        clarinet.humanize_options.pitch_drift = false;
+        let mut clarinet_detuned = request();
+        clarinet_detuned.melody = MelodyInstrument::Clarinet;
+        assert_eq!(
+            render_builtin(&clarinet).samples,
+            render_builtin(&clarinet_detuned).samples,
+            "a fretted or fixed-pitch voice must keep its nominal pitch"
         );
     }
 

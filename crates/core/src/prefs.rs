@@ -494,6 +494,15 @@ impl BandVoice {
         matches!(self, Self::FootTaps | Self::Drumset)
     }
 
+    /// Whether the pitch comes from an unfretted string, where the player's
+    /// finger placement makes every note slightly out of tune.
+    ///
+    /// Fretted strings, keyboards, and winds are left at their nominal pitch:
+    /// their tuning is set by frets, keys, or the instrument itself.
+    pub fn is_unfretted_strings(self) -> bool {
+        matches!(self, Self::Fiddle)
+    }
+
     /// The melody instrument closest to this voice, for code that still works
     /// with the original three-role model.
     pub fn melody_instrument(self) -> Option<MelodyInstrument> {
@@ -803,12 +812,37 @@ impl VariationOptions {
     ];
 }
 
-/// Largest human timing amount the preferences expose.
+/// Which fiddle bowing rules shape the tune line.
 ///
-/// One is the calibrated amount; five scales the drift and chord spread to five
-/// times that, and the per-onset bounds scale with it so the setting stays
-/// linear all the way to the top. The dance grid stays exact either way.
-pub const MAX_HUMANIZE_AMOUNT: f32 = 5.0;
+/// Both rules follow the written rhythm and never move a note start, so the
+/// dance grid, the calls, and the 64-beat loop are unchanged. They apply to the
+/// melody and countermelody parts, which are the fiddle lines by default.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BowingOptions {
+    /// Accent the two eighths of a quarter-eighth-eighth-quarter figure and
+    /// re-strike them with a fresh bow.
+    pub bow_change: bool,
+    /// Tie four to eight successive eighth notes into one bow.
+    pub tied_runs: bool,
+}
+
+impl Default for BowingOptions {
+    fn default() -> Self {
+        Self {
+            bow_change: true,
+            tied_runs: true,
+        }
+    }
+}
+
+/// Largest humanize amount the preferences expose.
+///
+/// One is the calibrated amount; twenty scales the timing or tuning effects to
+/// twenty times that, and the per-onset and per-note bounds scale with it so
+/// the setting stays linear all the way to the top. The dance grid stays exact
+/// either way.
+pub const MAX_HUMANIZE_AMOUNT: f32 = 20.0;
 
 /// Largest proportional gain the tempo controller exposes.
 pub const MAX_PID_KP: f32 = 2.0;
@@ -830,8 +864,15 @@ pub struct HumanizeOptions {
     pub tempo_drift: bool,
     /// Spread notes that begin together as a chord by a few milliseconds.
     pub chord_spread: bool,
-    /// Scale for both effects, 0.0-5.0. One is the calibrated amount.
+    /// Detune every note of an unfretted string voice (a fiddle) by a small
+    /// normal-distributed intonation error.
+    pub pitch_drift: bool,
+    /// Scale for the timing effects (tempo drift and chord spread), 0.0-20.0.
+    /// One is the calibrated amount.
     pub amount: f32,
+    /// Scale for the fiddle intonation error, 0.0-20.0. One is the calibrated
+    /// amount; it is independent of the timing [`Self::amount`].
+    pub pitch_amount: f32,
     /// Proportional gain of the per-player tempo controller.
     pub pid_kp: f32,
     /// Integral gain of the per-player tempo controller, per beat.
@@ -845,7 +886,9 @@ impl Default for HumanizeOptions {
         Self {
             tempo_drift: true,
             chord_spread: true,
+            pitch_drift: true,
             amount: 1.0,
+            pitch_amount: 1.0,
             pid_kp: 0.5,
             pid_ki: 0.05,
             pid_kd: 0.02,
@@ -859,6 +902,7 @@ impl HumanizeOptions {
     /// the renderer produce NaN offsets.
     fn validate(&mut self) {
         self.amount = finite_clamped(self.amount, 1.0, MAX_HUMANIZE_AMOUNT);
+        self.pitch_amount = finite_clamped(self.pitch_amount, 1.0, MAX_HUMANIZE_AMOUNT);
         self.pid_kp = finite_clamped(self.pid_kp, 0.5, MAX_PID_KP);
         self.pid_ki = finite_clamped(self.pid_ki, 0.05, MAX_PID_KI);
         self.pid_kd = finite_clamped(self.pid_kd, 0.02, MAX_PID_KD);
@@ -1233,10 +1277,12 @@ pub struct Preferences {
     pub accompaniment_variations: bool,
     /// Which variation kinds are allowed; see [`VariationOptions`].
     pub variation_options: VariationOptions,
-    /// Give each player a tiny independent tempo drift, with a controller that
-    /// settles it back on the user's tempo, and spread chord notes by a few
-    /// milliseconds. Audio only; the count-in, the 64-beat grid, the calls, and
-    /// MIDI export stay exact.
+    /// Which fiddle bowing rules shape the melody and countermelody lines; see
+    /// [`BowingOptions`].
+    pub bowing_options: BowingOptions,
+    /// Give each player a tiny independent tempo drift, spread chord notes by a
+    /// few milliseconds, and detune unfretted strings. Audio only; the
+    /// count-in, the 64-beat grid, the calls, and MIDI export stay exact.
     #[serde(default = "default_humanize_timing")]
     pub humanize_timing: bool,
     /// Which human timing effects are allowed; see [`HumanizeOptions`].
@@ -1611,8 +1657,8 @@ fn default_tts_deliveries() -> u8 {
     DEFAULT_TTS_DELIVERIES
 }
 
-/// Human timing is on by default; it is part of the band's sound, not an
-/// effect the user has to discover.
+/// Humanized performance is on by default; it is part of the band's sound, not
+/// an effect the user has to discover.
 fn default_humanize_timing() -> bool {
     true
 }
@@ -1659,6 +1705,7 @@ impl Default for Preferences {
             count_in_enabled: true,
             accompaniment_variations: true,
             variation_options: VariationOptions::default(),
+            bowing_options: BowingOptions::default(),
             humanize_timing: default_humanize_timing(),
             humanize_options: HumanizeOptions::default(),
             ending_options: EndingOptions::default(),
@@ -1914,6 +1961,7 @@ impl Preferences {
                 || self.count_in_enabled != old.count_in_enabled
                 || self.accompaniment_variations != old.accompaniment_variations
                 || self.variation_options != old.variation_options
+                || self.bowing_options != old.bowing_options
                 || self.humanize_timing != old.humanize_timing
                 || self.humanize_options != old.humanize_options
                 || self.ending_options != old.ending_options
@@ -2159,31 +2207,72 @@ mod tests {
     }
 
     #[test]
+    fn fiddle_bowing_is_on_by_default_and_marks_the_music_for_render() {
+        let old = Preferences::default();
+        assert!(old.bowing_options.bow_change);
+        assert!(old.bowing_options.tied_runs);
+
+        let changed = Preferences {
+            bowing_options: BowingOptions {
+                bow_change: false,
+                ..old.bowing_options.clone()
+            },
+            ..old.clone()
+        };
+        let changes = changed.changes_since(&old);
+        assert!(changes.audio, "a bowing change must re-render the music");
+        assert!(!changes.timeline, "it must not rebuild the call timeline");
+
+        let json = changed.to_json().expect("serialize");
+        let restored = Preferences::from_json(&json).expect("deserialize");
+        assert!(!restored.bowing_options.bow_change);
+        assert!(restored.bowing_options.tied_runs);
+    }
+
+    #[test]
     fn older_files_get_human_timing_by_default() {
         let prefs = Preferences::from_json(r#"{"schema_version": 11}"#).expect("deserialize");
         assert!(prefs.humanize_timing);
+        assert!(prefs.humanize_options.pitch_drift);
         assert_eq!(prefs.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
-    fn the_human_timing_amount_allows_five_and_clamps_beyond_it() {
+    fn the_humanize_amounts_allow_twenty_and_clamp_beyond_it() {
         let mut prefs = Preferences::default();
         assert_eq!(prefs.humanize_options.amount, 1.0);
         assert_eq!(prefs.humanize_options.pid_kp, 0.5);
         assert_eq!(prefs.humanize_options.pid_ki, 0.05);
         assert_eq!(prefs.humanize_options.pid_kd, 0.02);
+        assert!(
+            prefs.humanize_options.pitch_drift,
+            "fiddle intonation is humanized by default"
+        );
+        assert_eq!(prefs.humanize_options.pitch_amount, 1.0);
 
-        prefs.humanize_options.amount = 5.0;
+        prefs.humanize_options.amount = 20.0;
         prefs.validate();
         assert_eq!(prefs.humanize_options.amount, MAX_HUMANIZE_AMOUNT);
 
-        prefs.humanize_options.amount = 9.0;
+        prefs.humanize_options.amount = 25.0;
         prefs.validate();
         assert_eq!(prefs.humanize_options.amount, MAX_HUMANIZE_AMOUNT);
 
         prefs.humanize_options.amount = f32::NAN;
         prefs.validate();
         assert_eq!(prefs.humanize_options.amount, 1.0);
+
+        prefs.humanize_options.pitch_amount = 20.0;
+        prefs.validate();
+        assert_eq!(prefs.humanize_options.pitch_amount, MAX_HUMANIZE_AMOUNT);
+
+        prefs.humanize_options.pitch_amount = 25.0;
+        prefs.validate();
+        assert_eq!(prefs.humanize_options.pitch_amount, MAX_HUMANIZE_AMOUNT);
+
+        prefs.humanize_options.pitch_amount = f32::NAN;
+        prefs.validate();
+        assert_eq!(prefs.humanize_options.pitch_amount, 1.0);
     }
 
     #[test]
@@ -3140,5 +3229,18 @@ mod tests {
         assert_eq!(BandVoice::Drumset.accompaniment_instrument(), None);
         assert!(BandVoice::Piano.is_pitched());
         assert!(!BandVoice::Drumset.is_pitched());
+        assert!(
+            BandVoice::Fiddle.is_unfretted_strings(),
+            "a fiddle's intonation comes from the player's fingers"
+        );
+        for voice in BandVoice::ALL
+            .into_iter()
+            .filter(|voice| *voice != BandVoice::Fiddle)
+        {
+            assert!(
+                !voice.is_unfretted_strings(),
+                "{voice:?} should keep its nominal pitch"
+            );
+        }
     }
 }
