@@ -19,6 +19,9 @@ All notable changes to Caller Karaoke are documented here.
 
 ### Features
 - **website:** Preload the hosted browser app on hover.
+- **music:** Accent and tie fiddle bowing figures.
+- **music:** Humanize fiddle intonation.
+- **settings:** Make fiddle bowing rules configurable.
 
 
 ### Fixes
