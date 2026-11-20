@@ -14,6 +14,7 @@ All notable changes to Caller Karaoke are documented here.
 
 ### Fixes
 - **screenshots:** Fit the callouts and the PNG budget.
+- **sheet:** Repair chord labels in the sheet preview.
 
 
 ## [0.2.1] — 2026-11-20
