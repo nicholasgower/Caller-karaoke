@@ -4,6 +4,20 @@ All notable changes to Caller Karaoke are documented here.
 
 ## [Unreleased]
 
+### Documentation
+- **screenshots:** Refresh the documentation screenshot set.
+
+
+### Features
+- **screenshots:** Draw documentation callouts in the app.
+
+
+### Fixes
+- **screenshots:** Fit the callouts and the PNG budget.
+
+
+## [0.2.1] — 2026-11-20
+
 ### Build
 - **crates:** Add crates.io metadata and publish script.
 
