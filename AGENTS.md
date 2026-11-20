@@ -394,6 +394,10 @@ engine.
   a fast action for a smaller cache or a faster launch.
 - Avoid flashing faster than 3 Hz.
 - Do not use images for text or icons that could be rendered as text.
+- The sheet-music preview stays vector: notation symbols are SVG paths from the
+  engraver, and chord labels are text. Do not substitute bitmap musical-symbol
+  images (including Wikimedia/Wikipedia files); fix the engraver output or the
+  preview's text-level pass instead.
 
 ---
 

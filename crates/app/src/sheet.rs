@@ -110,7 +110,10 @@ fn restyle_annotations(svg: &str) -> String {
         };
         let element_end = content_end + "</text>".len();
         out.push_str(&svg[cursor..start]);
-        match restyle_text_element(&svg[start..tag_end], &svg[tag_end..content_end]) {
+        // `tag_end` is one past the start tag's `>`; the rewrite helper takes
+        // the tag without it and adds its own terminator when it rebuilds the
+        // element.
+        match restyle_text_element(&svg[start..tag_end - 1], &svg[tag_end..content_end]) {
             Some(element) => out.push_str(&element),
             None => out.push_str(&svg[start..element_end]),
         }
@@ -132,6 +135,10 @@ fn restyle_text_element(tag: &str, text: &str) -> Option<String> {
             "font-size",
             &format!("{:.2}", size * CHORD_SYMBOL_SCALE),
         )?;
+        // A chord symbol is a label to scan, not a lyric: upright roman type is
+        // the tune-book convention and reads better at preview size than
+        // acorde's italic annotation default.
+        let tag = with_attribute(&tag, "font-style", "normal")?;
         return Some(format!("{tag}>{text}</text>"));
     }
     if classes.contains(&"acorde-measure-number") {
@@ -372,6 +379,16 @@ mod tests {
         for ((_, raw), (_, styled)) in raw_chords.iter().zip(&styled_chords) {
             let raw_size = attr_f32(raw, "font-size");
             let styled_size = attr_f32(styled, "font-size");
+            assert_eq!(
+                text_content(styled),
+                text_content(raw),
+                "restyling must not change the chord symbol's text"
+            );
+            assert_eq!(
+                attribute(styled, "font-style"),
+                Some("normal"),
+                "chord symbols use upright type"
+            );
             assert!(
                 (styled_size - CHORD_SYMBOL_SCALE * raw_size).abs() < 0.01,
                 "chord symbol {raw_size} should render at {styled_size}"
@@ -431,6 +448,11 @@ mod tests {
         for ((offset, raw), (_, styled)) in raw_numbers.iter().zip(&styled_numbers) {
             let offset = *offset;
             let (raw, styled) = (*raw, *styled);
+            assert_eq!(
+                text_content(styled),
+                text_content(raw),
+                "restyling must not change the measure number's text"
+            );
             let digits = text_content(raw).trim().chars().count();
             let size = attr_f32(raw, "font-size");
             let clef_left = treble_clef_left_edge(&raw_svg[..offset], attr_f32(raw, "y"), size);
