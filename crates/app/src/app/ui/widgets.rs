@@ -39,6 +39,36 @@ pub(in crate::app) fn action_width(
     ((available - spacing * (count - 1.0)) / count).max(0.0)
 }
 
+/// Width for one button of a row that fills the available width exactly.
+///
+/// In the mobile layout a set of buttons stays on one line only when each
+/// button can take an equal share and the last one ends at the content edge; a
+/// row that stops short leaves an empty strip on the right that reads as a
+/// broken layout. [`filled_button_row`] applies this width. Rows that may stack
+/// instead use [`action_width`].
+pub(in crate::app) fn filled_row_width(available: f32, spacing: f32, count: usize) -> f32 {
+    if !available.is_finite() || !spacing.is_finite() {
+        return 0.0;
+    }
+    let count = count.max(1) as f32;
+    ((available - spacing * (count - 1.0)) / count).max(0.0)
+}
+
+/// Lay a set of buttons side by side so the row ends at the content edge.
+///
+/// `add` receives the width every button must use (`add_sized` or
+/// `Button::min_size`), and is called once. A horizontal button set must not
+/// leave empty space on the right in the mobile layout, so the widths come out
+/// of the available width before the buttons are drawn.
+pub(in crate::app) fn filled_button_row<R>(
+    ui: &mut egui::Ui,
+    count: usize,
+    add: impl FnOnce(&mut egui::Ui, f32) -> R,
+) -> R {
+    let width = filled_row_width(ui.available_width(), ui.spacing().item_spacing.x, count);
+    ui.horizontal(|ui| add(ui, width)).inner
+}
+
 /// A full-width button: touch sized and spanning the available width.
 ///
 /// The folder panel and the stacked phone action rows use this so every
@@ -301,6 +331,21 @@ mod tests {
         assert!(width * 3.0 + 8.0 * 2.0 <= 600.0);
         // One button still fills the whole row.
         assert_eq!(action_width(600.0, 8.0, 1, false), 600.0);
+    }
+
+    #[test]
+    fn a_filled_button_row_ends_at_the_content_edge() {
+        // 360 points is the minimum window width; three equal buttons plus the
+        // two gaps must add up to the row exactly.
+        let width = filled_row_width(344.0, 8.0, 3);
+        assert!((width * 3.0 + 8.0 * 2.0 - 344.0).abs() < 0.01);
+        assert!((width - 109.333).abs() < 0.01);
+        // One button still fills the whole row.
+        assert_eq!(filled_row_width(344.0, 8.0, 1), 344.0);
+        // Degenerate rows stay finite instead of painting a negative width.
+        assert_eq!(filled_row_width(f32::NAN, 8.0, 3), 0.0);
+        assert_eq!(filled_row_width(10.0, 8.0, 3), 0.0);
+        assert_eq!(filled_row_width(344.0, f32::INFINITY, 3), 0.0);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::about::about;
 use super::{
-    apply_phone_spacing, compact, form_row, inline_field, number_slider, responsive_combo,
-    slider_row,
+    apply_phone_spacing, compact, filled_button_row, form_row, inline_field, number_slider,
+    responsive_combo, slider_row,
 };
 use crate::app::history::HistoryAction;
 use crate::app::*;
@@ -685,10 +685,6 @@ impl CallerApp {
         // focused the timeline rebuild is deferred; see `role_terms`.
         self.role_edit_active = false;
         preferences_header(self, ui, compact);
-        ui.label(
-            egui::RichText::new("Changes are saved automatically. Playback settings are applied without restarting the music; role and alias changes rebuild the call timeline.")
-                .color(theme::muted(ui)),
-        );
         ui.add_space(8.0);
 
         preferences_search_box(self, ui, compact);
@@ -1203,14 +1199,14 @@ fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                     volume_slider(ui, compact, index, slot);
                 });
             }
-            ui.horizontal_wrapped(|ui| {
+            let mut add_actions = |ui: &mut egui::Ui, size: egui::Vec2| {
                 let can_remove = if slot.is_pitched() {
                     pitched_count > 1
                 } else {
                     count > 1
                 };
                 let remove_button = ui
-                    .add_enabled(can_remove, egui::Button::new("Remove"))
+                    .add_enabled(can_remove, egui::Button::new("Remove").min_size(size))
                     .on_hover_text(if can_remove {
                         "Remove this instrument from the band"
                     } else {
@@ -1221,18 +1217,27 @@ fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                     remove = Some(index);
                 }
                 let up = ui
-                    .add_enabled(index > 0, egui::Button::new("Up"))
+                    .add_enabled(index > 0, egui::Button::new("Up").min_size(size))
                     .accessible_name(format!("Move instrument {} up", index + 1));
                 if up.clicked() {
                     move_up = Some(index);
                 }
                 let down = ui
-                    .add_enabled(index + 1 < count, egui::Button::new("Down"))
+                    .add_enabled(index + 1 < count, egui::Button::new("Down").min_size(size))
                     .accessible_name(format!("Move instrument {} down", index + 1));
                 if down.clicked() {
                     move_down = Some(index);
                 }
-            });
+            };
+            if compact {
+                // Every button in the instrument card's action row splits the
+                // row, so the set leaves no empty space on the right.
+                filled_button_row(ui, 3, |ui, width| {
+                    add_actions(ui, egui::vec2(width, theme::TOUCH_TARGET));
+                });
+            } else {
+                ui.horizontal_wrapped(|ui| add_actions(ui, egui::Vec2::ZERO));
+            }
         });
     }
     if let Some(index) = remove {
@@ -1488,11 +1493,30 @@ fn rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
 
 fn appearance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Theme");
-    ui.horizontal(|ui| {
-        for option in Theme::ALL {
-            ui.selectable_value(&mut app.prefs.theme, option, option.label());
-        }
-    });
+    if compact {
+        // A set of buttons on one phone line splits the width so the row ends
+        // at the content edge.
+        filled_button_row(ui, Theme::ALL.len(), |ui, width| {
+            for option in Theme::ALL {
+                let selected = app.prefs.theme == option;
+                if ui
+                    .add_sized(
+                        [width, theme::TOUCH_TARGET],
+                        egui::Button::selectable(selected, option.label()),
+                    )
+                    .clicked()
+                {
+                    app.prefs.theme = option;
+                }
+            }
+        });
+    } else {
+        ui.horizontal(|ui| {
+            for option in Theme::ALL {
+                ui.selectable_value(&mut app.prefs.theme, option, option.label());
+            }
+        });
+    }
     ui.heading("Interface");
     ui.checkbox(&mut app.prefs.animations_enabled, "Smooth animations");
     ui.label(
@@ -1503,11 +1527,28 @@ fn appearance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 .color(theme::muted(ui)),
             );
     form_row(ui, compact, "Dance card padding", |ui| {
-        ui.horizontal_wrapped(|ui| {
-            for option in CardPadding::ALL {
-                ui.selectable_value(&mut app.prefs.card_padding, option, option.label());
-            }
-        });
+        if compact {
+            filled_button_row(ui, CardPadding::ALL.len(), |ui, width| {
+                for option in CardPadding::ALL {
+                    let selected = app.prefs.card_padding == option;
+                    if ui
+                        .add_sized(
+                            [width, theme::TOUCH_TARGET],
+                            egui::Button::selectable(selected, option.label()),
+                        )
+                        .clicked()
+                    {
+                        app.prefs.card_padding = option;
+                    }
+                }
+            });
+        } else {
+            ui.horizontal_wrapped(|ui| {
+                for option in CardPadding::ALL {
+                    ui.selectable_value(&mut app.prefs.card_padding, option, option.label());
+                }
+            });
+        }
     });
     ui.label(
         egui::RichText::new(
@@ -1544,33 +1585,43 @@ fn appearance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
 /// discoverable and works on a touch screen, where there is no Ctrl key. Both
 /// carry an accessible name and are disabled when their stack is empty.
 fn undo_redo_buttons(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
-    let size = if compact {
-        egui::vec2(112.0, theme::TOUCH_TARGET)
-    } else {
-        egui::vec2(96.0, 24.0)
-    };
-    ui.horizontal_wrapped(|ui| {
-        let undo = ui
+    let mut undo = false;
+    let mut redo = false;
+    let mut add = |ui: &mut egui::Ui, undo_size: egui::Vec2, redo_size: egui::Vec2| {
+        let undo_response = ui
             .add_enabled(
                 app.history.can_undo(),
-                egui::Button::new("Undo").min_size(size),
+                egui::Button::new("Undo").min_size(undo_size),
             )
             .on_hover_text("Undo the last change (Ctrl+Z)")
             .accessible_name("Undo");
-        if undo.clicked() {
-            app.pending_history = Some(HistoryAction::Undo);
-        }
-        let redo = ui
+        undo = undo_response.clicked();
+        let redo_response = ui
             .add_enabled(
                 app.history.can_redo(),
-                egui::Button::new("Redo").min_size(size),
+                egui::Button::new("Redo").min_size(redo_size),
             )
             .on_hover_text("Redo the change (Ctrl+Y or Ctrl+Shift+Z)")
             .accessible_name("Redo");
-        if redo.clicked() {
-            app.pending_history = Some(HistoryAction::Redo);
-        }
-    });
+        redo = redo_response.clicked();
+    };
+    if compact {
+        // Both buttons split the phone row so the pair ends at the content
+        // edge instead of leaving empty space on the right.
+        filled_button_row(ui, 2, |ui, width| {
+            let size = egui::vec2(width, theme::TOUCH_TARGET);
+            add(ui, size, size);
+        });
+    } else {
+        let size = egui::vec2(96.0, 24.0);
+        ui.horizontal_wrapped(|ui| add(ui, size, size));
+    }
+    if undo {
+        app.pending_history = Some(HistoryAction::Undo);
+    }
+    if redo {
+        app.pending_history = Some(HistoryAction::Redo);
+    }
 }
 
 fn calling_lead(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
@@ -2060,7 +2111,7 @@ fn tempo_range(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
-fn soundfont(app: &mut CallerApp, ui: &mut egui::Ui, _compact: bool) {
+fn soundfont(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Soundfont");
     let current = app
         .prefs
@@ -2079,14 +2130,39 @@ fn soundfont(app: &mut CallerApp, ui: &mut egui::Ui, _compact: bool) {
     if let Some(error) = &app.soundfont_error {
         ui.colored_label(theme::error(ui), error);
     }
-    ui.horizontal(|ui| {
-        if ui.button("Load .sf2…").clicked() {
+    if compact {
+        // The visible actions split the phone row, so the set ends at the
+        // content edge whether or not a user font can be removed.
+        let buttons = if app.prefs.soundfont.is_some() { 2 } else { 1 };
+        let mut load = false;
+        let mut use_bundled = false;
+        filled_button_row(ui, buttons, |ui, width| {
+            let size = egui::vec2(width, theme::TOUCH_TARGET);
+            load = ui
+                .add_sized(size, egui::Button::new("Load .sf2…"))
+                .clicked();
+            if app.prefs.soundfont.is_some() {
+                use_bundled = ui
+                    .add_sized(size, egui::Button::new("Use bundled"))
+                    .clicked();
+            }
+        });
+        if load {
             app.load_soundfont();
         }
-        if app.prefs.soundfont.is_some() && ui.button("Use bundled").clicked() {
+        if use_bundled {
             app.remove_soundfont();
         }
-    });
+    } else {
+        ui.horizontal(|ui| {
+            if ui.button("Load .sf2…").clicked() {
+                app.load_soundfont();
+            }
+            if app.prefs.soundfont.is_some() && ui.button("Use bundled").clicked() {
+                app.remove_soundfont();
+            }
+        });
+    }
     ui.separator();
 }
 
@@ -2223,25 +2299,58 @@ fn web_proxy(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.separator();
 }
 
-fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, _compact: bool) {
+fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Maintenance");
-    ui.horizontal_wrapped(|ui| {
-        if ui.button("Export MIDI…").clicked() {
-            app.export_midi();
-        }
-        if app.cache_clear_confirm {
-            if ui.button("Confirm clear cache").clicked() {
-                app.source.clear_cache();
-                app.cache_clear_confirm = false;
-                app.status = "Cache cleared".into();
+    let buttons = if app.cache_clear_confirm { 3 } else { 2 };
+    if compact {
+        // The three maintenance actions split one phone row, so it ends at the
+        // content edge.
+        filled_button_row(ui, buttons, |ui, width| {
+            let size = egui::vec2(width, theme::TOUCH_TARGET);
+            if ui
+                .add_sized(size, egui::Button::new("Export MIDI…"))
+                .clicked()
+            {
+                app.export_midi();
             }
-            if ui.button("Cancel").clicked() {
-                app.cache_clear_confirm = false;
+            if app.cache_clear_confirm {
+                if ui
+                    .add_sized(size, egui::Button::new("Confirm clear cache").wrap())
+                    .clicked()
+                {
+                    app.source.clear_cache();
+                    app.cache_clear_confirm = false;
+                    app.status = "Cache cleared".into();
+                }
+                if ui.add_sized(size, egui::Button::new("Cancel")).clicked() {
+                    app.cache_clear_confirm = false;
+                }
+            } else if ui
+                .add_sized(size, egui::Button::new("Clear source cache").wrap())
+                .clicked()
+            {
+                app.cache_clear_confirm = true;
             }
-        } else if ui.button("Clear source cache").clicked() {
-            app.cache_clear_confirm = true;
-        }
-    });
+        });
+    } else {
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("Export MIDI…").clicked() {
+                app.export_midi();
+            }
+            if app.cache_clear_confirm {
+                if ui.button("Confirm clear cache").clicked() {
+                    app.source.clear_cache();
+                    app.cache_clear_confirm = false;
+                    app.status = "Cache cleared".into();
+                }
+                if ui.button("Cancel").clicked() {
+                    app.cache_clear_confirm = false;
+                }
+            } else if ui.button("Clear source cache").clicked() {
+                app.cache_clear_confirm = true;
+            }
+        });
+    }
     ui.label(
         egui::RichText::new(&app.status)
             .small()

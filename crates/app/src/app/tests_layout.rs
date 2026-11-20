@@ -190,6 +190,173 @@ fn assert_inside_horizontally(
     }
 }
 
+/// Height of the phone header: a 44-point tab row and its 8-point margins.
+/// Everything at or below this line is screen content rather than navigation.
+const PHONE_HEADER_HEIGHT: f32 = 60.0;
+
+/// Assert that every set of buttons sharing a phone row ends at the content
+/// edge.
+///
+/// A set is two or more buttons whose rectangles overlap vertically, so the
+/// buttons are stacked horizontally rather than wrapping into separate rows.
+/// Labels between the buttons are allowed: a paging row is still a set. Only
+/// rows that start at the page's left content edge are checked; a row inside a
+/// card has a narrower content edge of its own, which the accessibility tree
+/// does not expose.
+fn assert_button_sets_reach_the_right_edge(
+    nodes: &[(egui::Rect, accesskit::Role, String)],
+    size: egui::Vec2,
+    context: &str,
+) -> usize {
+    const EPSILON: f32 = 0.6;
+    let content: Vec<&(egui::Rect, accesskit::Role, String)> = nodes
+        .iter()
+        .filter(|(rect, role, _)| {
+            rect.top() >= PHONE_HEADER_HEIGHT - EPSILON && *role != accesskit::Role::ScrollBar
+        })
+        .collect();
+    if content.is_empty() {
+        return 0;
+    }
+    // The widest row on the screen reaches the content edge: every screen has
+    // at least one full-width field or action.
+    let right = content
+        .iter()
+        .map(|(rect, _, _)| rect.right())
+        .fold(f32::MIN, f32::max);
+    let left = content
+        .iter()
+        .filter(|(rect, _, _)| rect.right() >= right - 1.0)
+        .map(|(rect, _, _)| rect.left())
+        .fold(f32::MAX, f32::min);
+    assert!(
+        right - left > size.x / 2.0,
+        "{context}: the widest row is only {:.1} points wide",
+        right - left
+    );
+
+    let mut buttons: Vec<egui::Rect> = content
+        .iter()
+        .filter(|(_, role, _)| *role == accesskit::Role::Button)
+        .map(|(rect, _, _)| *rect)
+        .collect();
+    buttons.sort_by(|a, b| a.top().total_cmp(&b.top()));
+
+    let mut checked = 0;
+    let mut band: Vec<egui::Rect> = Vec::new();
+    let mut band_top = 0.0;
+    let mut band_bottom = 0.0;
+    let mut check_band = |band: &[egui::Rect], band_top: f32, band_bottom: f32| {
+        if band.len() < 2 {
+            return;
+        }
+        let band_left = content
+            .iter()
+            .filter(|(rect, _, _)| {
+                rect.top() < band_bottom - EPSILON && rect.bottom() > band_top + EPSILON
+            })
+            .map(|(rect, _, _)| rect.left())
+            .fold(f32::MAX, f32::min);
+        if (band_left - left).abs() > 1.0 {
+            // A nested row: its card ends before the page edge.
+            return;
+        }
+        let labels: Vec<&str> = band
+            .iter()
+            .filter_map(|rect| {
+                nodes
+                    .iter()
+                    .find(|(other, _, _)| other == rect)
+                    .map(|(_, _, label)| label.as_str())
+            })
+            .collect();
+        let used_right = band
+            .iter()
+            .map(|rect| rect.right())
+            .fold(f32::MIN, f32::max);
+        assert!(
+            used_right >= right - EPSILON,
+            "{context}: the button set {labels:?} ends at {used_right:.1}, \
+             leaving {:.1} points empty on the right of the {:.1}-point content edge",
+            right - used_right,
+            right
+        );
+        checked += 1;
+    };
+
+    for rect in buttons {
+        if band.is_empty() {
+            band_top = rect.top();
+        } else if rect.top() >= band_bottom - EPSILON {
+            check_band(&band, band_top, band_bottom);
+            band.clear();
+            band_top = rect.top();
+        }
+        band_bottom = if band.is_empty() {
+            rect.bottom()
+        } else {
+            band_bottom.max(rect.bottom())
+        };
+        band.push(rect);
+    }
+    check_band(&band, band_top, band_bottom);
+    checked
+}
+
+/// In the phone layout a set of buttons on one line must use the whole content
+/// width. A row that stops short leaves an empty strip on the right, which is
+/// the regression this catches; sets that stack into full-width rows are not
+/// horizontally stacked and are unaffected.
+#[test]
+fn phone_button_sets_leave_no_empty_space_on_the_right() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(390.0, 844.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(|cc| {
+            // The error banner is a bottom panel: its Dismiss button can share
+            // a band with scrolled content. This test is about content rows, so
+            // it renders the screens without the banner.
+            let mut app = demo_app(cc);
+            app.error = None;
+            app
+        });
+
+    let mut states: Vec<(String, Screen, PreferencesPage)> = SCREENS
+        .iter()
+        .map(|screen| (format!("{screen:?}"), *screen, PreferencesPage::Categories))
+        .collect();
+    for category in PreferencesCategory::ALL {
+        states.push((
+            format!("Preferences · {}", category.label()),
+            Screen::Preferences,
+            PreferencesPage::Category(category),
+        ));
+    }
+
+    let mut checked = 0;
+    for size in [egui::vec2(360.0, 560.0), egui::vec2(390.0, 844.0)] {
+        for (name, screen, page) in &states {
+            harness.set_size(size);
+            let app = harness.state_mut();
+            app.screen = *screen;
+            app.prefs_page = *page;
+            harness.run_steps(3);
+            checked += assert_button_sets_reach_the_right_edge(
+                &node_rects(&harness),
+                size,
+                &format!("{name} at {:.0}x{:.0}", size.x, size.y),
+            );
+        }
+    }
+    assert!(
+        checked > 0,
+        "the phone layout should have at least one horizontal button set to check"
+    );
+}
+
 /// Every button is at least as tall as the session tab's Play button.
 ///
 /// Play is the reference for an ordinary action button: 40 points on a desktop

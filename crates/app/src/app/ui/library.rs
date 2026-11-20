@@ -102,14 +102,6 @@ impl CallerApp {
         if import {
             self.choose_import(crate::files::ImportKind::DanceJson);
         }
-        ui.label(
-            egui::RichText::new(format!(
-                "Your saved dances, available offline. Search them here, or use Download dance \
-                 to fetch another card from {}.",
-                self.dance_source().display_name()
-            ))
-            .color(theme::muted(ui)),
-        );
         ui.add_space(4.0);
 
         let shown = self
@@ -565,13 +557,6 @@ impl CallerApp {
         if import {
             self.choose_import(crate::files::ImportKind::Abc);
         }
-        ui.label(
-            egui::RichText::new(
-                "Your saved tunes, available offline. Search them here, or use Download tune \
-                 to fetch another tune from ABC Session Tunes.",
-            )
-            .color(theme::muted(ui)),
-        );
         let source = &self.prefs.tune_rotation.source;
         let set_count = self.rotation_tunes().len();
         let cycle = if self.prefs.tune_rotation.enabled {
