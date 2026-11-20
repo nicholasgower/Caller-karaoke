@@ -22,10 +22,15 @@ All notable changes to Caller Karaoke are documented here.
 - **music:** Accent and tie fiddle bowing figures.
 - **music:** Humanize fiddle intonation.
 - **settings:** Make fiddle bowing rules configurable.
+- **ui:** Fill phone button rows to the content edge.
 
 
 ### Fixes
 - **glossary:** Outline the followed entry in the documentation yellow.
+
+
+### Refactoring
+- **ui:** Remove screen taglines.
 
 
 ## [0.2.0] — 2026-11-17
