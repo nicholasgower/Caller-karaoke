@@ -225,13 +225,6 @@ impl CallerApp {
 
     fn glossary_body(&mut self, ui: &mut egui::Ui, compact: bool) {
         ui.heading("Dance glossary");
-        ui.label(
-            egui::RichText::new(
-                "Select an underlined term in a call or on the dance card to open \
-                 its entry here. Use the filter to browse the whole list.",
-            )
-            .color(theme::muted(ui)),
-        );
         ui.add_space(4.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(

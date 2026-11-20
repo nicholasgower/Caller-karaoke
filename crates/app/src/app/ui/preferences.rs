@@ -685,10 +685,6 @@ impl CallerApp {
         // focused the timeline rebuild is deferred; see `role_terms`.
         self.role_edit_active = false;
         preferences_header(self, ui, compact);
-        ui.label(
-            egui::RichText::new("Changes are saved automatically. Playback settings are applied without restarting the music; role and alias changes rebuild the call timeline.")
-                .color(theme::muted(ui)),
-        );
         ui.add_space(8.0);
 
         preferences_search_box(self, ui, compact);
