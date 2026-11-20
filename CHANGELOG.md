@@ -4,8 +4,13 @@ All notable changes to Caller Karaoke are documented here.
 
 ## [Unreleased]
 
+### Build
+- **deps:** Clear the docs site's Dependabot alerts.
+
+
 ### Documentation
 - **screenshots:** Refresh the documentation screenshot set.
+- **agents:** Drop the retired dev integration branch.
 
 
 ### Features
