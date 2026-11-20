@@ -17,6 +17,9 @@ use super::ui::preferences::{PreferencesCategory, PreferencesPage};
 use super::{CallerApp, Screen};
 
 const DESKTOP: Vec2 = Vec2::new(1280.0, 800.0);
+/// The About category is slightly taller than [`DESKTOP`]; capturing it with
+/// the extra room keeps its heading clear of the scroll area's top edge.
+const ABOUT: Vec2 = Vec2::new(1280.0, 900.0);
 const MOBILE: Vec2 = Vec2::new(390.0, 844.0);
 
 /// Render all headless screenshots into `out`.
@@ -835,7 +838,10 @@ fn remaining_shots(harness: &mut Harness<'_, CallerApp>, out: &Path) -> Result<(
     capture(harness, out, "session-mobile-controls")?;
 
     // About is a Preferences category, captured after the other categories.
-    harness.set_size(DESKTOP);
+    // The page is a little taller than a 1280x800 window once its credits are
+    // shown, so give it room instead of scrolling the category heading under
+    // the search field.
+    harness.set_size(ABOUT);
     {
         let app = harness.state_mut();
         app.audio.stop();
@@ -847,6 +853,7 @@ fn remaining_shots(harness: &mut Harness<'_, CallerApp>, out: &Path) -> Result<(
         app.about_reveal = true;
     }
     capture(harness, out, "about-window")?;
+    harness.set_size(DESKTOP);
 
     // The glossary is a top-row tab and a reference page; open one entry so the
     // emphasis around the followed term is visible.
