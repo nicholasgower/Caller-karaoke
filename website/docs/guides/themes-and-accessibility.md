@@ -69,8 +69,12 @@ Below about 640 pixels wide the **Session** tab switches to that phone layout:
 the wordmark and long tab labels give way to four short tabs
 beside the pinned Preferences gear, which keeps the same 44-pixel target, the
 tempo, caller, and band sliders use the full width, and the transport buttons
-split the row evenly. On a short window the whole session page scrolls so the dance card is
-never pushed out of reach.
+split the row evenly. Any other set of buttons that stays on one phone row —
+the theme and dance-card padding choices, undo and redo, the maintenance
+actions, and the paging buttons — splits the width the same way, so the row ends
+at the content edge instead of leaving an empty strip on the right. A set that
+cannot share the width stacks as full-width buttons. On a short window the whole
+session page scrolls so the dance card is never pushed out of reach.
 
 Swipe left or right across empty content to change tabs on a touch screen, or
 use the **←** and **→** keys with a hardware keyboard. A press that starts on a

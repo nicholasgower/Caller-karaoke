@@ -75,6 +75,12 @@ already on screen, so the colour is a locator rather than the sole cue.
 - Session controls stack on narrow screens: tempo and volume sliders span the
   width, transport buttons split one row, and the remaining toggles wrap.
 - Minimum 44 px touch targets.
+- A set of buttons that stays on one phone row splits the available width
+  evenly, so the last button ends at the content edge and the row leaves no
+  empty space on the right. A set that cannot share the width stacks as
+  full-width buttons instead. The
+  `phone_button_sets_leave_no_empty_space_on_the_right` layout test fails on a
+  row that stops short.
 - Avoid hover-only interactions.
 - The dance area scrolls; the current call stays visible. On short windows
   (under about 800 px of session height, including a landscape phone) the whole

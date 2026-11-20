@@ -27,8 +27,8 @@ pub(in crate::app) use glossary::show_tooltip_preview;
 pub(in crate::app) use glossary::{clear_tooltip, glossary_text, glossary_tooltip};
 pub(in crate::app) use widgets::{
     RowPress, action_width, block_button, block_selectable, clamp_pane_width, combo_option,
-    empty_label, group_chip, long_press_row, pane_splitter, row_activated, row_menu_button,
-    submit_text_edit, submitted,
+    empty_label, filled_button_row, group_chip, long_press_row, pane_splitter, row_activated,
+    row_menu_button, submit_text_edit, submitted,
 };
 
 use super::*;
@@ -864,34 +864,60 @@ impl CallerApp {
                 results.map(|page| page.total).unwrap_or(0),
             )
         };
-        let pages = total.div_ceil(page_size);
-        ui.horizontal(|ui| {
-            if ui
-                .add_enabled(page > 1, egui::Button::new("Previous"))
-                .clicked()
-            {
-                if dance {
-                    self.picker.dance_query.page = page - 1;
-                    self.search_dances();
-                } else {
-                    self.picker.tune_query.page = page - 1;
-                    self.search_tunes();
-                }
+        let pages = total.div_ceil(page_size).max(1);
+        let label = format!("Page {page} of {pages}");
+        let mut previous = false;
+        let mut next = false;
+        if compact(ui) {
+            // The phone row keeps both buttons on one line: they split the room
+            // the page count leaves, so Next ends at the content edge instead of
+            // leaving an empty strip on the right.
+            let spacing = ui.spacing().item_spacing.x;
+            let galley = ui.painter().layout_no_wrap(
+                label.clone(),
+                egui::TextStyle::Body.resolve(ui.style()),
+                theme::muted(ui),
+            );
+            let width = ((ui.available_width() - galley.size().x - 2.0 * spacing) / 2.0).max(0.0);
+            let size = egui::vec2(width, theme::TOUCH_TARGET);
+            ui.horizontal(|ui| {
+                previous = ui
+                    .add_enabled(page > 1, egui::Button::new("Previous").min_size(size))
+                    .clicked();
+                ui.label(label.clone());
+                next = ui
+                    .add_enabled(page < pages, egui::Button::new("Next").min_size(size))
+                    .clicked();
+            });
+        } else {
+            ui.horizontal(|ui| {
+                previous = ui
+                    .add_enabled(page > 1, egui::Button::new("Previous"))
+                    .clicked();
+                ui.label(label.clone());
+                next = ui
+                    .add_enabled(page < pages, egui::Button::new("Next"))
+                    .clicked();
+            });
+        }
+        if previous {
+            if dance {
+                self.picker.dance_query.page = page - 1;
+                self.search_dances();
+            } else {
+                self.picker.tune_query.page = page - 1;
+                self.search_tunes();
             }
-            ui.label(format!("Page {page} of {}", pages.max(1)));
-            if ui
-                .add_enabled(page < pages, egui::Button::new("Next"))
-                .clicked()
-            {
-                if dance {
-                    self.picker.dance_query.page = page + 1;
-                    self.search_dances();
-                } else {
-                    self.picker.tune_query.page = page + 1;
-                    self.search_tunes();
-                }
+        }
+        if next {
+            if dance {
+                self.picker.dance_query.page = page + 1;
+                self.search_dances();
+            } else {
+                self.picker.tune_query.page = page + 1;
+                self.search_tunes();
             }
-        });
+        }
     }
 }
 

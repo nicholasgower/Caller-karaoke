@@ -84,11 +84,11 @@ fn session_controls(
             }
         });
 
-        // Equal-width transport buttons: no control hides behind hover and
-        // each is a full touch target. Play and Pause share one toggle button.
-        ui.horizontal(|ui| {
-            let spacing = ui.spacing().item_spacing.x;
-            let width = ((ui.available_width() - 2.0 * spacing) / 3.0).max(62.0);
+        // Equal-width transport buttons filling the row: no control hides
+        // behind hover, each is a full touch target, and the last button ends at
+        // the content edge instead of leaving empty space on the right. Play and
+        // Pause share one toggle button.
+        filled_button_row(ui, 3, |ui, width| {
             let size = egui::vec2(width, theme::TOUCH_TARGET);
             if play_pause_button(ui, audio.is_playing(), size).clicked() {
                 changes.action = Some("toggle");
