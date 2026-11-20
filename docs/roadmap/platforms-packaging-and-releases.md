@@ -58,8 +58,7 @@ hosted copy.
 
 ### 9.3 Versioning and branches
 
-- Feature work from worktrees and pull requests merges into `dev` first. Test it
-  on `dev`; only merge `dev` into `main` when a release is ready.
+- Feature work from worktrees and pull requests merges into `main`.
 - `main` is the source for official release builds.
 - The version only changes when the owner cuts a release with
   `scripts/release.mjs`.

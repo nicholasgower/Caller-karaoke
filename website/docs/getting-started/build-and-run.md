@@ -113,7 +113,7 @@ limitations.
 Releases are cut by hand from `main` with `node scripts/release.mjs`, which
 starts the release workflow; once every build passes it tags `v<version>` and
 attaches a Windows installer and portable ZIP, a Linux `.deb` and AppImage, a web
-ZIP, and an Android APK to that release. Feature work merges into `dev` first.
+ZIP, and an Android APK to that release. Feature work merges into `main`.
 Builds are not code-signed yet. Flatpak remains a source-tree packaging path. Use
 the [download page](/download) for the current release.
 

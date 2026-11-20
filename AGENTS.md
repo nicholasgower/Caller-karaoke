@@ -219,7 +219,7 @@ comment.
 The toolchain is pinned in `rust-toolchain.toml`. Do not run a repository-wide
 `cargo fmt` as part of an unrelated change: a formatting sweep rewrites files
 other branches are editing, so it belongs in its own commit, ideally in a quiet
-moment just after a merge into `dev`. When a dependency raises the toolchain,
+moment just after a merge into `main`. When a dependency raises the toolchain,
 bump the pin in a commit of its own, then run `cargo fmt --all` and commit that
 separately.
 
@@ -492,10 +492,7 @@ test(music): cover 6/8 arrangement
   one that already ends in `.`, `!`, or `?` is never doubled. A commit that only
   refreshes the changelog (for example `docs: update changelog [skip ci]`) is
   skipped by `cliff.toml` and never appears as an entry of its own.
-- Merge feature work from worktrees and pull requests into `dev` first. `dev` is
-  the integration branch where new code is tested.
-- Releases are cut by hand, only when the owner decides one is ready: merge
-  `dev` into `main`, then run
+- Releases are cut by hand, only when the owner decides one is ready: run
   `node scripts/release.mjs <patch|minor|major|X.Y.Z>`. The script bumps the
   workspace version, refreshes `Cargo.lock` and the changelog, commits, pushes
   `main`, and starts `.github/workflows/release.yml`. That workflow builds every

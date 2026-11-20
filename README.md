@@ -283,9 +283,8 @@ Development notes live in `docs/`.
 
 ## Branches and releases
 
-Feature work from worktrees and pull requests merges into `dev` first. `dev` is
-the integration branch where new code is tested. `main` only advances when a
-release is ready; official release builds come from `main`.
+Feature work from worktrees and pull requests merges into `main`, which is also
+where releases are cut; official release builds come from `main`.
 
 ## Library crates
 
