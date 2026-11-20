@@ -11,7 +11,6 @@ const root = path.resolve(import.meta.dirname, '..');
 const docsRoot = path.join(root, 'docs');
 const screensRoot = path.join(root, 'static', 'img', 'screens');
 const manifestPath = path.join(root, 'screenshots', 'manifest.json');
-const emphasisPath = path.join(root, 'screenshots', 'emphasis.json');
 
 const errors = [];
 const fail = (message) => errors.push(message);
@@ -48,82 +47,6 @@ for (const shot of manifest.shots ?? []) {
   }
   if (!['pending', 'ready'].includes(shot.status)) {
     fail(`manifest.json: "${shot.id}" status must be pending or ready`);
-  }
-}
-
-if (!fs.existsSync(emphasisPath)) {
-  fail(`Missing ${path.relative(root, emphasisPath)}`);
-} else {
-  const emphasis = JSON.parse(fs.readFileSync(emphasisPath, 'utf8'));
-  if (emphasis.schemaVersion !== 1) fail('emphasis.json: schemaVersion must be 1');
-  const configured = new Set();
-  for (const [id, entry] of Object.entries(emphasis.shots ?? {})) {
-    configured.add(id);
-    const shot = shots.get(id);
-    if (!shot) {
-      fail(`emphasis.json: "${id}" is not in the manifest`);
-      continue;
-    }
-    if (shot.status !== 'ready') continue;
-    if (!entry.size || entry.size[0] !== shot.width || entry.size[1] !== shot.height) {
-      fail(
-        `emphasis.json: "${id}" must declare size [${shot.width}, ${shot.height}] to match the screenshot`,
-      );
-    }
-    for (const region of entry.regions ?? []) {
-      const [x, y, w, h] = region;
-      if (![x, y, w, h].every((value) => Number.isInteger(value)) || w <= 0 || h <= 0) {
-        fail(`emphasis.json: "${id}" has an invalid region ${JSON.stringify(region)}`);
-      } else if (x < 0 || y < 0 || x + w > shot.width || y + h > shot.height) {
-        fail(`emphasis.json: "${id}" region ${JSON.stringify(region)} is outside the image`);
-      }
-    }
-    if (entry.labels !== undefined) {
-      if (!Array.isArray(entry.labels) || entry.labels.length !== (entry.regions ?? []).length) {
-        fail(`emphasis.json: "${id}" needs one label per emphasis region`);
-      } else {
-        for (const label of entry.labels) {
-          if (typeof label !== 'string' || !/^[1-9]$/.test(label)) {
-            fail(`emphasis.json: "${id}" has an invalid callout label ${JSON.stringify(label)}`);
-          }
-        }
-      }
-    }
-    if (entry.labelPositions !== undefined) {
-      if (
-        !Array.isArray(entry.labelPositions) ||
-        entry.labelPositions.length !== (entry.regions ?? []).length
-      ) {
-        fail(`emphasis.json: "${id}" needs one label position per emphasis region`);
-      } else {
-        for (const position of entry.labelPositions) {
-          if (!Array.isArray(position) || position.length !== 2) {
-            fail(
-              `emphasis.json: "${id}" has an invalid callout position ${JSON.stringify(position)}`,
-            );
-            continue;
-          }
-          const [x, y] = position;
-          if (
-            !Number.isInteger(x) ||
-            !Number.isInteger(y) ||
-            x < 0 ||
-            y < 0 ||
-            x > shot.width ||
-            y > shot.height
-          ) {
-            fail(
-              `emphasis.json: "${id}" has an invalid callout position ${JSON.stringify(position)}`,
-            );
-          }
-        }
-      }
-    }
-  }
-  for (const [id, shot] of shots) {
-    if (shot.status === 'ready' && !configured.has(id)) {
-      fail(`emphasis.json: ready shot "${id}" has no emphasis region`);
-    }
   }
 }
 

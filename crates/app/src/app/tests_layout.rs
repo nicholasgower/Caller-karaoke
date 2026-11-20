@@ -1237,3 +1237,37 @@ fn the_header_and_top_level_controls_stay_vertical_where_the_page_does_not_scrol
         }
     }
 }
+
+/// A documentation callout is registered by the widget that draws it, and a
+/// target that never draws is reported instead of silently losing its ring.
+#[test]
+fn a_documentation_callout_tracks_the_widget_that_draws_it() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .with_theme(egui::Theme::Dark)
+        .with_os(egui::os::OperatingSystem::Windows)
+        .allow_missing_glyphs()
+        .with_max_steps(10)
+        .build_eframe(demo_app);
+
+    harness.state_mut().set_callouts(&[
+        super::emphasis::Callout::new("prefs-button"),
+        super::emphasis::Callout::new("prompt-card"),
+    ]);
+    harness.run_steps(2);
+    assert_eq!(
+        harness.state().missing_callouts(),
+        Vec::<&'static str>::new(),
+        "the header gear and the prompt card register their callout rectangles"
+    );
+
+    harness
+        .state_mut()
+        .set_callouts(&[super::emphasis::Callout::new("not-a-target")]);
+    harness.run_steps(1);
+    assert_eq!(
+        harness.state().missing_callouts(),
+        vec!["not-a-target"],
+        "a target no screen draws must be reported"
+    );
+}

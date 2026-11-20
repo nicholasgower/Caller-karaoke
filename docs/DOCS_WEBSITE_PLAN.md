@@ -108,13 +108,13 @@ cd website
 npm run screenshots
 ```
 
-`website/scripts/capture-screenshots.mjs` renders the raw PNGs into
-`website/screenshots/raw/`, then `website/scripts/annotate-screenshots.mjs`
-drives `photocraft-cli` to draw the focus ring from
-`website/screenshots/emphasis.json` and writes the final PNGs to
-`website/static/img/screens/`. It generates all in-app shots; the nine
-remaining images are OS installer dialogs that are not part of the app. The old
-`xtask screenshots` design is superseded for in-app captures.
+`website/scripts/capture-screenshots.mjs` runs the headless renderer, which
+writes the final PNGs to `website/static/img/screens/`. The app draws the focus
+rings itself from the widget rectangles each shot's callout targets register,
+so there is no annotation pass and no pixel region list to maintain. It
+generates all in-app shots; the nine remaining images are OS installer dialogs
+that are not part of the app. The old `xtask screenshots` design is superseded
+for in-app captures.
 
 ---
 
@@ -634,12 +634,14 @@ Scenario rules:
 
 ### 4.8 Focus crops and callouts
 
-The implemented annotation pass uses `website/screenshots/emphasis.json`, a
-per-shot list of pixel rectangles, and `website/scripts/annotate-screenshots.mjs`
-drives `photocraft-cli` to draw a rounded amber focus ring with a soft shadow.
-The file also stores the expected image size; a layout change fails the pass
-instead of drawing the ring in the wrong place. `npm test` checks that every
-ready shot has a region and that every region is inside its image.
+The app draws a shot's callout rings itself. A shot lists the callout targets
+it wants (`Callout` in `crates/app/src/app/headless.rs`), each target's screen
+registers its widget rectangle while it draws, and the overlay paints the
+rounded amber ring and optional numbered badge after the frame. A layout change
+therefore moves the ring with the control; there is no per-shot pixel data and
+no PhotoCraft pass. The headless renderer fails a shot whose target never drew,
+so a renamed widget cannot silently lose its ring. `npm test` no longer checks
+callout regions, because there are none to check.
 
 Deriving the regions from AccessKit bounds remains future work, as do numbered
 callout badges for multi-step figures.
@@ -1239,9 +1241,8 @@ WSL/Docker or via the CI artifact.
 4. Fail on a step without `shot`, an unknown shot, or an unreferenced shot.
 5. Fail on a missing PNG, wrong dimensions, or > 300 KB.
 6. Hash every ready PNG with SHA-256 and fail if two screenshots are identical.
-7. Require an `emphasis.json` region for every ready shot and keep it in bounds.
-8. Reject raw `<img>`/Markdown images outside manual images.
-9. Print a compact summary.
+7. Reject raw `<img>`/Markdown images outside manual images.
+8. Print a compact summary.
 
 ### 8.2 Docs build
 

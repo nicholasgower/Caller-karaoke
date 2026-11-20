@@ -131,7 +131,7 @@ impl CallerApp {
                 );
             });
         } else {
-            ui.horizontal_wrapped(|ui| {
+            let search_row = ui.horizontal_wrapped(|ui| {
                 ui.label("Search saved");
                 ui.add(
                     egui::TextEdit::singleline(&mut self.dance_library_query)
@@ -147,6 +147,7 @@ impl CallerApp {
                         .color(theme::muted(ui)),
                 );
             });
+            self.callout("library-search", search_row.response.rect);
         }
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
@@ -359,6 +360,7 @@ impl CallerApp {
                                         );
                                     }
                                     for entry in &entries {
+                                        let row_top = ui.cursor().min;
                                         if let Some(next) = saved_dance_row(
                                             ui,
                                             entry,
@@ -368,6 +370,14 @@ impl CallerApp {
                                             false,
                                         ) {
                                             action = Some(next);
+                                        }
+                                        if selected_ref
+                                            == Some((
+                                                entry.item.source.provider.as_str(),
+                                                entry.item.source.id.as_str(),
+                                            ))
+                                        {
+                                            self.callout("library-result", row_rect(ui, row_top));
                                         }
                                     }
                                 });
@@ -608,7 +618,7 @@ impl CallerApp {
                 );
             });
         } else {
-            ui.horizontal_wrapped(|ui| {
+            let search_row = ui.horizontal_wrapped(|ui| {
                 ui.label("Search saved");
                 ui.add(
                     egui::TextEdit::singleline(&mut self.tune_library_query)
@@ -624,6 +634,7 @@ impl CallerApp {
                         .color(theme::muted(ui)),
                 );
             });
+            self.callout("library-search", search_row.response.rect);
         }
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
@@ -814,6 +825,7 @@ impl CallerApp {
                                         );
                                     }
                                     for entry in &entries {
+                                        let row_top = ui.cursor().min;
                                         if let Some(next) = saved_tune_row(
                                             ui,
                                             entry,
@@ -823,6 +835,11 @@ impl CallerApp {
                                             false,
                                         ) {
                                             action = Some(next);
+                                        }
+                                        if selected_id.as_deref()
+                                            == Some(entry.item.source.id.as_str())
+                                        {
+                                            self.callout("library-result", row_rect(ui, row_top));
                                         }
                                     }
                                 });
@@ -1053,6 +1070,7 @@ impl CallerApp {
             });
         });
         ui.separator();
+        let mut sheet_rect = None;
         match self.tune_view {
             TuneView::Sheet => {
                 if self.tune_sheet.is_none() {
@@ -1060,7 +1078,14 @@ impl CallerApp {
                 }
                 if let Some(result) = &self.tune_sheet {
                     match result {
-                        Ok(sheet) => sheet.ui(ui),
+                        Ok(sheet) => {
+                            let top = ui.cursor().min;
+                            sheet.ui(ui);
+                            sheet_rect = Some(egui::Rect::from_min_max(
+                                top,
+                                egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+                            ));
+                        }
                         Err(error) => {
                             ui.label(
                                 egui::RichText::new(format!(
@@ -1081,6 +1106,9 @@ impl CallerApp {
                         .desired_width(f32::INFINITY),
                 );
             }
+        }
+        if let Some(rect) = sheet_rect {
+            self.callout("library-sheet", rect);
         }
         ui.add_space(6.0);
         action
@@ -1241,6 +1269,11 @@ impl CallerApp {
 ///
 /// The count line keeps the search result count; the chip names the folder
 /// filter and its total so the two never repeat each other.
+/// The rectangle of one saved-library row, from its top to the cursor.
+fn row_rect(ui: &egui::Ui, top: egui::Pos2) -> egui::Rect {
+    egui::Rect::from_min_max(top, egui::pos2(ui.max_rect().right(), ui.cursor().min.y))
+}
+
 fn group_label(filter: &FolderFilter, all_label: &str, count: usize) -> String {
     match filter {
         FolderFilter::All => format!("{all_label} · {count}"),

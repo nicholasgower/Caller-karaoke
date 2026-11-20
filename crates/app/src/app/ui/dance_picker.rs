@@ -2,6 +2,17 @@ use super::*;
 use crate::app::*;
 use eframe::egui;
 
+/// The documentation target for a dance search field, if it has one.
+fn dance_filter_callout(key: &str) -> Option<&'static str> {
+    match key {
+        "title" => Some("dance-title"),
+        "user" => Some("dance-user"),
+        "hook" => Some("dance-hook"),
+        "figure_move" => Some("dance-figure"),
+        _ => None,
+    }
+}
+
 impl CallerApp {
     pub(in crate::app) fn dance_download_ui(&mut self, ui: &mut egui::Ui) {
         let compact = compact(ui);
@@ -46,35 +57,17 @@ impl CallerApp {
         // The source belongs beside the search it controls: a saved dance keeps
         // the source it came from, so this only chooses where the next download
         // comes from.
-        let mut chosen = None;
-        let current = self.dance_source();
-        if compact {
-            ui.label(
-                egui::RichText::new("Dance source")
-                    .small()
-                    .color(theme::muted(ui)),
-            );
-            let combo = egui::ComboBox::from_id_salt("download-dance-source");
-            responsive_combo(combo, ui, true)
-                .selected_text(current.display_name())
-                .show_ui(ui, |ui| {
-                    for provider in caller_sources::dance_providers() {
-                        if ui
-                            .selectable_label(
-                                provider.id() == current.id(),
-                                provider.display_name(),
-                            )
-                            .clicked()
-                        {
-                            chosen = Some(provider.id());
-                        }
-                    }
-                });
-        } else {
-            ui.horizontal(|ui| {
-                ui.label("Dance source");
+        let source_block = ui.scope(|ui| {
+            let mut chosen = None;
+            let current = self.dance_source();
+            if compact {
+                ui.label(
+                    egui::RichText::new("Dance source")
+                        .small()
+                        .color(theme::muted(ui)),
+                );
                 let combo = egui::ComboBox::from_id_salt("download-dance-source");
-                combo
+                responsive_combo(combo, ui, true)
                     .selected_text(current.display_name())
                     .show_ui(ui, |ui| {
                         for provider in caller_sources::dance_providers() {
@@ -89,26 +82,48 @@ impl CallerApp {
                             }
                         }
                     });
-            });
-        }
-        if let Some(id) = chosen {
+            } else {
+                ui.horizontal(|ui| {
+                    ui.label("Dance source");
+                    let combo = egui::ComboBox::from_id_salt("download-dance-source");
+                    combo
+                        .selected_text(current.display_name())
+                        .show_ui(ui, |ui| {
+                            for provider in caller_sources::dance_providers() {
+                                if ui
+                                    .selectable_label(
+                                        provider.id() == current.id(),
+                                        provider.display_name(),
+                                    )
+                                    .clicked()
+                                {
+                                    chosen = Some(provider.id());
+                                }
+                            }
+                        });
+                });
+            }
+            let provider = self.dance_source();
+            let display_name = provider.display_name();
+            let mut description = format!("{} — {}", display_name, provider.base_url());
+            match provider.result_limit() {
+                Some(limit) => description.push_str(&format!(
+                    ". Returns up to {limit} matches per search; narrow the search for a large result."
+                )),
+                None => description.push('.'),
+            }
+            ui.label(
+                egui::RichText::new(description)
+                    .small()
+                    .color(theme::muted(ui)),
+            );
+            ui.hyperlink_to("Open the source site", provider.base_url());
+            chosen
+        });
+        self.callout("dance-source", source_block.response.rect);
+        if let Some(id) = source_block.inner {
             self.set_dance_source(id);
         }
-        let provider = self.dance_source();
-        let display_name = provider.display_name();
-        let mut description = format!("{} — {}", display_name, provider.base_url());
-        match provider.result_limit() {
-            Some(limit) => description.push_str(&format!(
-                ". Returns up to {limit} matches per search; narrow the search for a large result."
-            )),
-            None => description.push('.'),
-        }
-        ui.label(
-            egui::RichText::new(description)
-                .small()
-                .color(theme::muted(ui)),
-        );
-        ui.hyperlink_to("Open the source site", provider.base_url());
         if let Some(status) = &self.library_status {
             ui.label(egui::RichText::new(status).small().color(theme::muted(ui)));
         }
@@ -136,26 +151,29 @@ impl CallerApp {
                     let Some(spec) = specs.iter().find(|spec| spec.key == key) else {
                         continue;
                     };
-                    match &spec.kind {
+                    let mut field_rect = None;
+                    ui.scope(|ui| match &spec.kind {
                         FilterKind::Text => {
                             if let Some(buffer) = query_text(&mut self.picker.dance_query, spec.key)
                             {
                                 form_row(ui, compact, spec.label, |ui| {
-                                    submit |= submit_text_edit(ui, buffer);
+                                    let field = ui.text_edit_singleline(buffer);
+                                    field_rect = Some(field.rect);
+                                    submit |= submitted(ui, &field);
                                 });
                             }
-                            ui.end_row();
                         }
                         FilterKind::Checkbox => {
                             if let Some(flag) = query_flag(&mut self.picker.dance_query, spec.key) {
                                 if compact {
-                                    ui.checkbox(flag, spec.label);
+                                    let check = ui.checkbox(flag, spec.label);
+                                    field_rect = Some(check.rect);
                                 } else {
                                     form_row(ui, compact, spec.label, |ui| {
-                                        ui.checkbox(flag, "");
+                                        let check = ui.checkbox(flag, "");
+                                        field_rect = Some(check.rect);
                                     });
                                 }
-                                ui.end_row();
                             }
                         }
                         FilterKind::Select(options) => {
@@ -170,7 +188,7 @@ impl CallerApp {
                             form_row(ui, compact, spec.label, |ui| {
                                 let combo =
                                     egui::ComboBox::from_id_salt(("dance-filter", spec.key));
-                                responsive_combo(combo, ui, compact)
+                                let shown = responsive_combo(combo, ui, compact)
                                     .selected_text(selected_label)
                                     .show_ui(ui, |ui| {
                                         for (value, label) in options {
@@ -186,15 +204,22 @@ impl CallerApp {
                                             }
                                         }
                                     });
+                                field_rect = Some(shown.response.rect);
                             });
-                            ui.end_row();
                         }
+                    });
+                    if let Some(target) = dance_filter_callout(spec.key)
+                        && let Some(rect) = field_rect
+                    {
+                        self.callout(target, rect);
                     }
+                    ui.end_row();
                 }
                 if provider.supports_sort() {
+                    let mut sort_rect = None;
                     form_row(ui, compact, "Sort", |ui| {
                         let combo = egui::ComboBox::from_id_salt("dance-sort");
-                        responsive_combo(combo, ui, compact)
+                        let shown = responsive_combo(combo, ui, compact)
                             .selected_text(self.picker.dance_query.sort.label())
                             .show_ui(ui, |ui| {
                                 for sort in DanceSort::ALL {
@@ -205,7 +230,11 @@ impl CallerApp {
                                     );
                                 }
                             });
+                        sort_rect = Some(shown.response.rect);
                     });
+                    if let Some(rect) = sort_rect {
+                        self.callout("dance-sort", rect);
+                    }
                     ui.end_row();
                 }
             });
@@ -266,16 +295,18 @@ impl CallerApp {
                 // The phone page scrolls: the stacked list and preview keep
                 // their natural height instead of reserving an empty box.
                 ui.label(egui::RichText::new("Results").strong());
-                self.dance_results_list(ui, true);
+                let results = ui.scope(|ui| self.dance_results_list(ui, true));
+                self.callout("dance-results", results.response.rect);
                 ui.separator();
                 ui.label(egui::RichText::new("Preview").strong());
-                self.dance_preview_panel(ui, true);
+                let preview = ui.scope(|ui| self.dance_preview_panel(ui, true));
+                self.callout("dance-preview", preview.response.rect);
             }
             Some(height) => {
                 let available = ui.available_width();
                 let list_width = clamp_pane_width(self.panes.dance_picker_list, available);
                 ui.horizontal_top(|ui| {
-                    ui.allocate_ui_with_layout(
+                    let list_pane = ui.allocate_ui_with_layout(
                         egui::vec2(list_width, height),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
@@ -289,6 +320,7 @@ impl CallerApp {
                                 .show(ui, |ui| self.dance_results_list(ui, false));
                         },
                     );
+                    self.callout("dance-results", list_pane.response.rect);
                     let splitter = pane_splitter(
                         ui,
                         "dance-results-splitter",
@@ -302,7 +334,7 @@ impl CallerApp {
                         );
                     }
                     let preview_width = ui.available_width();
-                    ui.allocate_ui_with_layout(
+                    let preview_pane = ui.allocate_ui_with_layout(
                         egui::vec2(preview_width, height),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
@@ -316,10 +348,12 @@ impl CallerApp {
                                 .show(ui, |ui| self.dance_preview_panel(ui, false));
                         },
                     );
+                    self.callout("dance-preview", preview_pane.response.rect);
                 });
             }
         }
-        self.pagination_ui(ui, true);
+        let pagination = ui.scope(|ui| self.pagination_ui(ui, true));
+        self.callout("dance-pagination", pagination.response.rect);
     }
 
     fn dance_results_list(&mut self, ui: &mut egui::Ui, compact: bool) {
@@ -391,6 +425,7 @@ impl CallerApp {
             });
         }
         if let Some(dance) = self.picker.dance_preview.clone() {
+            let summary_top = ui.cursor().min;
             ui.heading(&dance.title);
             ui.label(
                 egui::RichText::new(format!(
@@ -400,7 +435,7 @@ impl CallerApp {
                 ))
                 .color(theme::muted(ui)),
             );
-            ui.label(
+            let beats = ui.label(
                 egui::RichText::new(format!(
                     "{} figures · {} beats",
                     dance.figures.len(),
@@ -408,6 +443,13 @@ impl CallerApp {
                 ))
                 .small()
                 .color(theme::muted(ui)),
+            );
+            self.callout(
+                "dance-preview-beats",
+                egui::Rect::from_min_max(
+                    summary_top,
+                    egui::pos2(ui.max_rect().right(), beats.rect.bottom()),
+                ),
             );
             ui.hyperlink_to(
                 format!("Open on {}", source_label(&dance.source.provider)),

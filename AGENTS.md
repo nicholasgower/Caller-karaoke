@@ -117,11 +117,16 @@ the code, while PNGs are refreshed in one pass when preparing a release.
 - update `website/screenshots/manifest.json` when a shot is added or removed, or
   its alt text or caption no longer matches; record a new in-app shot as
   `pending` until the release refresh;
-- leave `website/screenshots/emphasis.json` and existing PNGs alone during
-  ordinary work; adjust them only as part of the release refresh, when the
-  rendered dimensions are known;
-- run the docs checks from `website/`: `npm test` for the manifest, callouts,
-  and unique screenshots, and `npm run check` for the production build;
+- the app draws the documentation focus rings itself, from the widget
+  rectangles each shot's callout targets register while drawing; a layout
+  change moves a ring with its control, so there are no pixel regions to
+  maintain. Add or rename a target in the shot's `Callout` list in
+  `crates/app/src/app/headless.rs` and register the same name where the widget
+  is drawn;
+- leave existing PNGs alone during ordinary work; regenerate them only as part
+  of the release refresh;
+- run the docs checks from `website/`: `npm test` for the manifest and unique
+  screenshots, and `npm run check` for the production build;
 - do not run `npm run screenshots` in a feature worktree. Regenerating every
   image for every change is slow and produces review noise; image refresh is a
   release step (see §13);
@@ -164,8 +169,8 @@ cargo run -p caller-mcp
 ```
 
 Release-only documentation screenshots (no window, audio device, or network;
-the `npm` script renders the raw PNGs and uses PhotoCraft to add the focus
-ring). Run this when preparing a release, not in feature worktrees; `npm test`
+the `npm` script renders the PNGs, and the app draws the focus rings itself).
+Run this when preparing a release, not in feature worktrees; `npm test`
 validates the manifest without rebuilding any PNG:
 
 ```sh
@@ -501,8 +506,8 @@ test(music): cover 6/8 arrangement
   crates.io. Running the script by hand is the fallback when CI is unavailable.
 - Before a release, refresh the documentation screenshots in one pass: run
   `cd website && npm run screenshots`, review every changed image, update the
-  manifest dimensions and `emphasis.json` regions, and commit the refreshed
-  PNGs. Ordinary feature work does not regenerate them.
+  manifest dimensions, and commit the refreshed PNGs. Ordinary feature work
+  does not regenerate them.
 - Release artifacts: Windows installer + portable ZIP; Linux `.deb`, AppImage,
   Flatpak; web ZIP; Android APK.
 - Do not publish a release, tag, or crate, or deploy the proxy, without the

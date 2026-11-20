@@ -1,6 +1,11 @@
 #!/usr/bin/env node
-// Regenerate the app screenshots with the headless renderer, then update the
-// manifest's ready entries with the new pixel dimensions.
+// Generate the documentation screenshots with the headless renderer.
+//
+// The app draws the yellow focus rings itself: each shot names the callout
+// targets it wants, the widgets register their own rectangles while the frame
+// draws, and the saved PNG already carries the rings. There is no second
+// annotation pass and no per-shot pixel coordinates to keep in step with the
+// layout.
 
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -8,12 +13,8 @@ import path from 'node:path';
 import process from 'node:process';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
-const rawDir = path.join(root, 'website', 'screenshots', 'raw');
 const out = path.join(root, 'website', 'static', 'img', 'screens');
 const manifestPath = path.join(root, 'website', 'screenshots', 'manifest.json');
-
-fs.rmSync(rawDir, {recursive: true, force: true});
-fs.mkdirSync(rawDir, {recursive: true});
 
 // `cargo` is not always on the PATH inherited by npm (for example when the
 // toolchain is installed only for the current user).
@@ -37,7 +38,7 @@ const result = spawnSync(
     '--bin',
     'caller-headless',
     '--',
-    rawDir,
+    out,
   ],
   {
     cwd: root,
@@ -57,17 +58,6 @@ if (result.error) {
   process.exit(1);
 }
 if (result.status !== 0) process.exit(result.status ?? 1);
-
-const annotate = spawnSync(
-  process.execPath,
-  [path.join(root, 'website', 'scripts', 'annotate-screenshots.mjs')],
-  {cwd: root, stdio: 'inherit', env: process.env},
-);
-if (annotate.error) {
-  console.error(annotate.error);
-  process.exit(1);
-}
-if (annotate.status !== 0) process.exit(annotate.status ?? 1);
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 let ready = 0;

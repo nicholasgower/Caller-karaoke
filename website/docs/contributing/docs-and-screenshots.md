@@ -20,8 +20,7 @@ the PNGs are refreshed in one pass when a release is prepared.
 - Add or remove shots in `website/screenshots/manifest.json`, and fix alt text
   or captions that no longer match. Mark a new in-app shot `pending` until the
   release refresh.
-- Leave existing PNGs, their dimensions, and `website/screenshots/emphasis.json`
-  alone during ordinary work.
+- Leave existing PNGs and their dimensions alone during ordinary work.
 - Run `npm test` and `npm run check` in `website/`.
 - Do not run `npm run screenshots` for an ordinary change.
 - If no page covers the new behavior, add or extend a reference page.
@@ -106,11 +105,12 @@ To review the hosted app at phone width, run
 
 ## Screenshots
 
-Screenshots are rendered by the real app through the headless entry point, then
-annotated with PhotoCraft so the control a step talks about is visually marked.
-The renderer uses `egui_kittest` with a silent transport, in-memory source cache,
-and no preference file. It does not open a window, audio device, TTS voice, or
-network connection.
+Screenshots are rendered by the real app through the headless entry point. The
+app draws the yellow focus ring itself, from the widget rectangle a shot's
+callout target registers while drawing, so the ring moves with the control when
+the layout changes. The renderer uses `egui_kittest` with a silent transport,
+in-memory source cache, and no preference file. It does not open a window,
+audio device, TTS voice, or network connection.
 
 Refresh them in one pass while preparing a release, not for every change:
 
@@ -119,31 +119,18 @@ cd website
 npm run screenshots
 ```
 
-That command:
+That command renders the final PNGs into `website/static/img/screens/` and
+updates the manifest dimensions. There is no separate annotation pass: the
+saved image already carries its callouts.
 
-1. renders the raw PNGs into `website/screenshots/raw/` (ignored by Git);
-2. asks `photocraft-cli` to draw the focus ring from
-   `website/screenshots/emphasis.json` and writes the final PNGs to
-   `website/static/img/screens/`;
-3. updates the manifest dimensions.
-
-`npm run annotate` repeats only step 2 from the existing raw files. PhotoCraft is
-found at the standard install location, in `PATH`, or through `PHOTOCRAFT_CLI`.
-
-`website/screenshots/emphasis.json` stores one or more pixel rectangles per
-ready shot, plus the expected image size. If the UI moves, update the rectangle
-and the size; the annotation step fails rather than drawing the ring in the
-wrong place. `npm test` checks that every ready shot has an entry and that every
-rectangle is inside its image.
-
-Add a `labels` array beside `regions` when a shot marks a sequence of controls:
-one digit from 1 to 9 per rectangle, for example `["1", "2", "3"]`. The
-annotation step then draws a numbered badge beside each ring, in the order the
-rings are listed, so the reader can follow the order of the steps. A badge sits
-to the left of its ring, or to the right when the ring touches the edge of the
-image; add `labelPositions` (one `[x, y]` centre per rectangle) when a dense
-screen leaves no free space and the badge would cover a label. Badge colour,
-size, and spacing live under `style.badge`.
+A shot's callouts are the `Callout` list passed with its `capture` call in
+`crates/app/src/app/headless.rs`, for example
+`&[Callout::numbered("library-search", 1), Callout::numbered("library-result", 2)]`.
+The screen draws the named target by calling `app.callout("library-search", rect)`
+where that widget is created. A callout that never draws fails the render with
+the shot's name, so a renamed widget cannot quietly lose its ring. Numbered
+callouts get their badge automatically: to the left of the ring, or to the
+right when the left edge would leave the window.
 
 Until a shot is generated, `website/screenshots/manifest.json` marks it
 `pending`. The `<Shot>` component renders a labelled placeholder rather than a

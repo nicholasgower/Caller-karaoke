@@ -290,12 +290,14 @@ cd website
 npm run screenshots
 ```
 
-That writes raw PNGs to `website/screenshots/raw/`, drives `photocraft-cli` to
-draw the focus ring from `website/screenshots/emphasis.json`, and writes the
-final images to `website/static/img/screens/`. `npm run annotate` repeats only
-the PhotoCraft pass. The renderer opens no window, audio device, network client,
-or system TTS. It is the deterministic path for documentation captures; MCP is
-for interactive live-app inspection.
+That runs the headless renderer and writes the final PNGs to
+`website/static/img/screens/`. The app draws each shot's yellow focus ring
+itself: the shot names callout targets, the widgets register their own
+rectangles while drawing, and the ring follows the widget when the layout
+changes. There is no separate annotation pass and no per-shot pixel data. The
+renderer opens no window, audio device, network client, or system TTS. It is
+the deterministic path for documentation captures; MCP is for interactive
+live-app inspection.
 
 Pass `mobile` as the second argument to render the phone inspection set into
 `<out>/mobile` without touching the documentation manifest:

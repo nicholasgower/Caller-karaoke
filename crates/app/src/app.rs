@@ -462,6 +462,10 @@ pub struct CallerApp {
     /// next frame. Set by the headless renderer so a documentation shot can
     /// show the section without rendering the whole scrolling page.
     about_reveal: bool,
+    /// Documentation callouts: named widget rectangles to outline after the
+    /// frame draws. Empty in a normal session; the headless renderer fills it
+    /// for each documentation shot.
+    emphasis: emphasis::Emphasis,
     /// The glossary filter text and the entry a term link asked to reveal.
     glossary_query: String,
     glossary_focus: Option<String>,
@@ -980,6 +984,7 @@ impl CallerApp {
             launch_focus: crate::window::LaunchFocus::default(),
             media_keys: crate::media_keys::MediaKeys::new(cc),
             about_reveal: false,
+            emphasis: emphasis::Emphasis::default(),
             glossary_query: String::new(),
             glossary_focus: None,
             glossary_focus_scrolled: false,
@@ -1673,6 +1678,7 @@ impl CallerApp {
             launch_focus: crate::window::LaunchFocus::default(),
             media_keys: None,
             about_reveal: false,
+            emphasis: emphasis::Emphasis::default(),
             glossary_query: String::new(),
             glossary_focus: None,
             glossary_focus_scrolled: false,
@@ -3528,6 +3534,10 @@ impl CallerApp {
 
     fn ui_contents(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        // A callout rectangle belongs to the frame that drew it; last frame's
+        // rectangles must not leak into a screen that no longer shows them.
+        self.emphasis.begin_frame();
+        ui::clear_tooltip_rect(&ctx);
         if !self.headless {
             self.launch_focus.update(&ctx);
         }
@@ -3568,6 +3578,7 @@ impl CallerApp {
         if header.preferences {
             self.screen = Screen::Preferences;
         }
+        self.callout("prefs-button", header.gear);
         if !self.headless
             && self.screen == Screen::Preferences
             && previous_screen != Screen::Preferences
@@ -3582,17 +3593,20 @@ impl CallerApp {
         }
 
         if let Some(error) = self.error.clone() {
+            let mut row_rect = egui::Rect::NOTHING;
             egui::Panel::bottom("error").show(ui, |ui| {
                 if compact {
                     ui.spacing_mut().interact_size.y = theme::TOUCH_TARGET;
                 }
-                ui.horizontal_wrapped(|ui| {
+                let row = ui.horizontal_wrapped(|ui| {
                     ui.colored_label(theme::error(ui), error);
                     if ui.button("Dismiss").clicked() {
                         self.error = None;
                     }
                 });
+                row_rect = row.response.rect;
             });
+            self.callout("error-banner", row_rect);
         }
 
         let screen_progress = self.screen_transition(&ctx);
@@ -3651,11 +3665,43 @@ impl CallerApp {
         // are on the stack.
         self.record_history(history_before, &ctx);
         self.apply_history_request(&ctx);
+
+        // Documentation callouts sit above every panel the frame drew. A
+        // glossary tooltip publishes its own rectangle while it draws, so the
+        // ring can follow it without measuring the tooltip's contents here.
+        if let Some(rect) = ui::tooltip_rect(&ctx) {
+            self.callout("glossary-tooltip", rect);
+        }
+        self.emphasis.paint(&ctx);
     }
 
     fn shutdown(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.speech.stop();
         self.save_prefs();
+    }
+
+    /// Ask for documentation callouts on the next frames.
+    ///
+    /// Only the headless renderer calls this: a shot names the targets it wants
+    /// outlined, and each target's rectangle comes from the widget that draws
+    /// it, so a layout change moves the ring with the control.
+    #[cfg(any(feature = "headless", test))]
+    pub(in crate::app) fn set_callouts(&mut self, callouts: &[emphasis::Callout]) {
+        self.emphasis.set(callouts);
+    }
+
+    /// The callouts a shot asked for that the last frame did not draw.
+    #[cfg(any(feature = "headless", test))]
+    pub(in crate::app) fn missing_callouts(&self) -> Vec<&'static str> {
+        self.emphasis.missing()
+    }
+
+    /// Register the rectangle a documentation callout targets.
+    ///
+    /// Inert in a normal session: with no callout active this is one lookup and
+    /// a return, so every screen can afford to register its targets.
+    pub(in crate::app) fn callout(&mut self, target: &'static str, rect: egui::Rect) {
+        self.emphasis.note(target, rect);
     }
 
     /// Build the per-category memory table shown in Preferences → Maintenance.
@@ -4049,6 +4095,9 @@ struct HeaderResponse {
     preferences_label: bool,
     /// The rect the header panel occupies, including its margins.
     rect: egui::Rect,
+    /// The rect of the Preferences button, so a documentation callout can
+    /// outline it without measuring the header again.
+    gear: egui::Rect,
     /// The rect the wordmark occupies, if it was drawn.
     ///
     /// Kept for the resize regression test, which compares the header against a
@@ -4071,6 +4120,7 @@ impl Default for HeaderResponse {
             preferences: false,
             preferences_label: false,
             rect: egui::Rect::NOTHING,
+            gear: egui::Rect::NOTHING,
             heading: None,
             #[cfg(test)]
             tabs: Vec::new(),
@@ -4173,6 +4223,7 @@ fn header_ui(
             // wordmark and tabs share the remaining width.
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 let gear = preferences_gear(ui, active, show_preferences_label);
+                header.gear = gear.rect;
                 if gear.clicked() {
                     header.preferences = true;
                 }
@@ -6448,6 +6499,9 @@ mod ui;
 
 // Undo/redo history over the preferences and the selected dance and tune.
 mod history;
+
+// Documentation callouts drawn around the live widget rectangles.
+mod emphasis;
 
 #[cfg(feature = "headless")]
 pub mod headless;

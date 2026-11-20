@@ -6,9 +6,9 @@ User documentation for Caller Karaoke, built with Docusaurus 3.10.
 
 The guide is written against the 0.1.0 development build (desktop + web MVP;
 Android configured but device-testing pending). In-app screenshots are rendered
-by the headless `caller-headless` binary and annotated with PhotoCraft. The
-remaining placeholders are the manual Windows, Linux, web, and Android
-installation captures.
+by the headless `caller-headless` binary, which also draws the focus rings from
+the widgets each shot names. The remaining placeholders are the manual Windows,
+Linux, web, and Android installation captures.
 
 The current manifest has 90 planned shots; 80 are ready. Three pending in-app
 shots cover the slow ending and the tune set; the headless renderer does not
@@ -22,11 +22,10 @@ npm install
 npm start            # builds the app, then http://localhost:3000/
 npm run start:docs   # docs only: skips the browser build; /play shows a placeholder
 npm run build:app    # requires Rust + Trunk; stages the WASM app under static/app
-npm test             # screenshot manifest, uniqueness, preload, and emphasis regions
+npm test             # screenshot manifest, uniqueness, and preload
 npm run check        # npm test + production build
 npm run preview:ios  # serve website/build in an iPhone frame (build first)
-npm run screenshots  # release prep only: headless renderer + PhotoCraft annotation
-npm run annotate     # release prep only: re-apply PhotoCraft to existing raw PNGs
+npm run screenshots  # release prep only: headless renderer with in-app callouts
 npm run build
 npm run serve
 npm run clear

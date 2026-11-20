@@ -57,13 +57,14 @@ fn session_controls(
     audio: &mut AudioEngine,
     speech: &mut Speech,
     compact: bool,
+    emphasis: &mut crate::app::emphasis::Emphasis,
 ) -> SessionControlChanges {
     let mut changes = SessionControlChanges::default();
     let (tempo_min, tempo_max) =
         tempo_slider_bounds(prefs.tempo_min_bpm, prefs.tempo_max_bpm, prefs.tempo_bpm);
 
     if compact {
-        ui.horizontal(|ui| {
+        let tempo_row = ui.horizontal(|ui| {
             ui.label("Tempo");
             // Leave room for the value box and the " BPM" suffix.
             ui.spacing_mut().slider_width = (ui.available_width() - 100.0).max(96.0);
@@ -83,6 +84,7 @@ fn session_controls(
                 changes.music_dirty = true;
             }
         });
+        emphasis.note("tempo", tempo_row.response.rect);
 
         // Equal-width transport buttons filling the row: no control hides
         // behind hover, each is a full touch target, and the last button ends at
@@ -126,7 +128,9 @@ fn session_controls(
         });
 
         ui.horizontal_wrapped(|ui| {
-            if ui.checkbox(&mut prefs.loop_enabled, "Loop").changed() {
+            let loop_toggle = ui.checkbox(&mut prefs.loop_enabled, "Loop");
+            emphasis.note("loop-toggle", loop_toggle.rect);
+            if loop_toggle.changed() {
                 audio.set_looping(prefs.loop_enabled);
                 changes.save = true;
             }
@@ -144,7 +148,9 @@ fn session_controls(
             {
                 changes.count_in_dirty = true;
             }
-            if ui.checkbox(&mut prefs.tts_enabled, "Speak calls").changed() {
+            let speak_toggle = ui.checkbox(&mut prefs.tts_enabled, "Speak calls");
+            emphasis.note("speak-toggle", speak_toggle.rect);
+            if speak_toggle.changed() {
                 speech.set_enabled(prefs.tts_enabled);
                 if !prefs.tts_enabled {
                     speech.stop();
@@ -180,8 +186,8 @@ fn session_controls(
         });
     } else {
         ui.horizontal_wrapped(|ui| {
-            ui.label("Tempo");
-            if scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
+            let tempo_label = ui.label("Tempo");
+            let tempo_response = scroll_safe_slider(ui, &mut prefs.tempo_bpm, |ui, tempo| {
                 number_slider(
                     ui,
                     egui::Slider::new(tempo, tempo_min..=tempo_max)
@@ -189,16 +195,18 @@ fn session_controls(
                         .fixed_decimals(0),
                 )
             })
-            .accessible_name("Tempo")
-            .changed()
-            {
+            .accessible_name("Tempo");
+            emphasis.note("tempo", tempo_label.rect.union(tempo_response.rect));
+            if tempo_response.changed() {
                 changes.timeline_dirty = true;
                 changes.music_dirty = true;
             }
             // One Play/Pause toggle: the icon is painted because the bundled
             // fonts have no play or pause glyph.
             let side = ui.spacing().interact_size.y;
-            if play_pause_button(ui, audio.is_playing(), egui::Vec2::splat(side)).clicked() {
+            let play = play_pause_button(ui, audio.is_playing(), egui::Vec2::splat(side));
+            emphasis.note("play-pause", play.rect);
+            if play.clicked() {
                 changes.action = Some("toggle");
             }
             if ui.button("Restart").on_hover_text("Restart (R)").clicked() {
@@ -225,7 +233,9 @@ fn session_controls(
             {
                 changes.action = Some(if ending { "cancel-ending" } else { "end" });
             }
-            if ui.checkbox(&mut prefs.loop_enabled, "Loop").changed() {
+            let loop_toggle = ui.checkbox(&mut prefs.loop_enabled, "Loop");
+            emphasis.note("loop-toggle", loop_toggle.rect);
+            if loop_toggle.changed() {
                 audio.set_looping(prefs.loop_enabled);
                 changes.save = true;
             }
@@ -243,7 +253,9 @@ fn session_controls(
             {
                 changes.count_in_dirty = true;
             }
-            if ui.checkbox(&mut prefs.tts_enabled, "Speak calls").changed() {
+            let speak_toggle = ui.checkbox(&mut prefs.tts_enabled, "Speak calls");
+            emphasis.note("speak-toggle", speak_toggle.rect);
+            if speak_toggle.changed() {
                 speech.set_enabled(prefs.tts_enabled);
                 if !prefs.tts_enabled {
                     speech.stop();
@@ -254,7 +266,7 @@ fn session_controls(
         // Caller and band levels sit on their own row so the two sliders keep
         // a usable width instead of overflowing the wrapped control row at a
         // wide window.
-        ui.horizontal(|ui| {
+        let volume_row = ui.horizontal(|ui| {
             ui.label("Caller");
             if scroll_safe_slider(ui, &mut prefs.caller_volume, |ui, volume| {
                 number_slider(ui, egui::Slider::new(volume, 0.0..=1.5))
@@ -276,6 +288,7 @@ fn session_controls(
                 changes.save = true;
             }
         });
+        emphasis.note("volume-row", volume_row.response.rect);
     }
 
     changes
@@ -606,6 +619,24 @@ fn dance_card_header(ui: &mut egui::Ui, compact: bool, glossary_enabled: bool) -
     open
 }
 
+/// What the prompt card drew, so the caller can outline its parts.
+///
+/// The card as a whole, the spoken call, and the lead line are separate
+/// documentation targets; recording their rectangles where the widgets are
+/// made keeps the callouts on the text even when the card moves.
+struct PromptCard {
+    click: Option<&'static caller_core::glossary::GlossaryEntry>,
+    rect: egui::Rect,
+    call: Option<egui::Rect>,
+    lead: Option<egui::Rect>,
+}
+
+/// What the dance card drew, so the session can outline the active figure.
+struct DanceCard {
+    click: Option<&'static caller_core::glossary::GlossaryEntry>,
+    active: Option<egui::Rect>,
+}
+
 impl CallerApp {
     pub(in crate::app) fn session_ui(&mut self, ui: &mut egui::Ui, beat: f64) {
         let layout = session_layout(ui.available_width(), ui.available_height());
@@ -641,8 +672,17 @@ impl CallerApp {
         // The prompt is the first thing under the tab row: it is what the caller
         // reads mid-dance, so it keeps one fixed place at the top instead of
         // sitting between the summary and the dance card.
-        let mut glossary_click = self.prompt_card(ui, beat, compact);
+        let prompt = self.prompt_card(ui, beat, compact);
+        let mut glossary_click = prompt.click;
+        self.callout("prompt-card", prompt.rect);
+        if let Some(rect) = prompt.call {
+            self.callout("prompt-call", rect);
+        }
+        if let Some(rect) = prompt.lead {
+            self.callout("prompt-lead", rect);
+        }
         ui.add_space(8.0);
+        let controls_top = ui.cursor().min;
         let SessionControlChanges {
             timeline_dirty,
             music_dirty,
@@ -656,11 +696,19 @@ impl CallerApp {
             &mut self.audio,
             &mut self.speech,
             compact,
+            &mut self.emphasis,
+        );
+        self.callout(
+            "session-controls",
+            egui::Rect::from_min_max(
+                controls_top,
+                egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+            ),
         );
         let mut rotation_changed = rotation_dirty;
 
         if self.needs_render {
-            ui.horizontal_wrapped(|ui| {
+            let row = ui.horizontal_wrapped(|ui| {
                 let message = if self.started {
                     "Playback settings will apply without restarting; press Play to apply them now."
                 } else {
@@ -668,15 +716,17 @@ impl CallerApp {
                 };
                 ui.label(egui::RichText::new(message).color(theme::muted(ui)));
             });
+            self.callout("changes-pending", row.response.rect);
         }
         if let Some(warning) = &self.length_warning {
-            ui.horizontal_wrapped(|ui| {
+            let row = ui.horizontal_wrapped(|ui| {
                 ui.label(
                     egui::RichText::new(warning)
                         .strong()
                         .color(theme::warning(ui)),
                 );
             });
+            self.callout("length-warning", row.response.rect);
         }
         if let Some(arrangement) = &self.arrangement {
             for warning in &arrangement.warnings {
@@ -684,7 +734,8 @@ impl CallerApp {
             }
         }
         if let Some(error) = &self.audio_error {
-            ui.colored_label(theme::error(ui), format!("Audio device: {error}"));
+            let label = ui.colored_label(theme::error(ui), format!("Audio device: {error}"));
+            self.callout("audio-error", label.rect);
         }
         if self.prefs.tts_enabled {
             let status = self.speech.status();
@@ -741,8 +792,12 @@ impl CallerApp {
                         .max_height((height - 44.0).max(120.0))
                         .auto_shrink([false, false])
                         .show(ui, |ui| {
-                            if let Some(entry) = self.dance_card_list(ui, beat, compact) {
+                            let card = self.dance_card_list(ui, beat, compact);
+                            if let Some(entry) = card.click {
                                 glossary_click = Some(entry);
+                            }
+                            if let Some(rect) = card.active {
+                                self.callout("dance-card-current", rect);
                             }
                         });
                 });
@@ -757,12 +812,22 @@ impl CallerApp {
                     .id_salt("dance-card")
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
-                        if let Some(entry) = self.dance_card_list(ui, beat, compact) {
+                        let card = self.dance_card_list(ui, beat, compact);
+                        if let Some(entry) = card.click {
                             glossary_click = Some(entry);
                         }
+                        if let Some(rect) = card.active {
+                            self.callout("dance-card-current", rect);
+                        }
                     });
-            } else if let Some(entry) = self.dance_card_list(ui, beat, compact) {
-                glossary_click = Some(entry);
+            } else {
+                let card = self.dance_card_list(ui, beat, compact);
+                if let Some(entry) = card.click {
+                    glossary_click = Some(entry);
+                }
+                if let Some(rect) = card.active {
+                    self.callout("dance-card-current", rect);
+                }
             }
         }
         if open_glossary {
@@ -807,6 +872,7 @@ impl CallerApp {
     /// Returns true when the tune-rotation interval changed, so the caller can
     /// discard work prepared for the old interval.
     fn session_summary(&mut self, ui: &mut egui::Ui, compact: bool) -> bool {
+        let summary_top = ui.cursor().min;
         let mut rotation_changed = false;
         if compact {
             ui.label(egui::RichText::new(&self.dance.title).size(22.0).strong());
@@ -826,7 +892,7 @@ impl CallerApp {
         if compact {
             // Two deliberate lines instead of one wrapped line, so the tune
             // and the instrument summary never break mid-phrase at phone width.
-            ui.label(
+            let tune = ui.label(
                 egui::RichText::new(format!(
                     "Tune: {} · {} · {}",
                     self.tune.title,
@@ -835,9 +901,10 @@ impl CallerApp {
                 ))
                 .strong(),
             );
-            ui.label(egui::RichText::new(&instruments).color(theme::muted(ui)));
+            let instruments = ui.label(egui::RichText::new(&instruments).color(theme::muted(ui)));
+            self.callout("dance-tune-summary", tune.rect.union(instruments.rect));
         } else {
-            ui.horizontal_wrapped(|ui| {
+            let row = ui.horizontal_wrapped(|ui| {
                 ui.label("Tune:");
                 ui.label(
                     egui::RichText::new(format!(
@@ -850,7 +917,15 @@ impl CallerApp {
                 );
                 ui.label(egui::RichText::new(&instruments).color(theme::muted(ui)));
             });
+            self.callout("dance-tune-summary", row.response.rect);
         }
+        self.callout(
+            "dance-summary",
+            egui::Rect::from_min_max(
+                summary_top,
+                egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+            ),
+        );
 
         if self.prefs.tune_rotation.enabled {
             let tunes = self.rotation_tunes();
@@ -1056,12 +1131,7 @@ impl CallerApp {
     /// Every state reserves the same rows (see [`prompt_card_min_height`]) so
     /// switching between CALL NOW, UPCOMING MOVE, and the final figure never
     /// resizes the panel.
-    fn prompt_card(
-        &self,
-        ui: &mut egui::Ui,
-        beat: f64,
-        compact: bool,
-    ) -> Option<&'static caller_core::glossary::GlossaryEntry> {
+    fn prompt_card(&self, ui: &mut egui::Ui, beat: f64, compact: bool) -> PromptCard {
         let active = if self.started {
             self.timeline
                 .scheduled_call_at(beat, self.prefs.loop_enabled)
@@ -1116,7 +1186,9 @@ impl CallerApp {
             None
         };
         let mut clicked = None;
-        egui::Frame::group(ui.style())
+        let mut call_rect = None;
+        let mut lead_rect = None;
+        let card = egui::Frame::group(ui.style())
             .fill(card_fill)
             .inner_margin(egui::Margin::same(if compact { 10 } else { 12 }))
             .show(ui, |ui| {
@@ -1171,17 +1243,20 @@ impl CallerApp {
                                         .color(theme::on_card(ui)),
                                 );
                                 let call_color = theme::on_card(ui);
-                                clicked = glossary_text(
-                                    ui,
-                                    &call.call.text,
-                                    self.prefs.glossary_enabled,
-                                    |text| {
-                                        egui::RichText::new(text)
-                                            .size(26.0)
-                                            .strong()
-                                            .color(call_color)
-                                    },
-                                );
+                                let call_text = ui.scope(|ui| {
+                                    clicked = glossary_text(
+                                        ui,
+                                        &call.call.text,
+                                        self.prefs.glossary_enabled,
+                                        |text| {
+                                            egui::RichText::new(text)
+                                                .size(26.0)
+                                                .strong()
+                                                .color(call_color)
+                                        },
+                                    );
+                                });
+                                call_rect = Some(call_text.response.rect);
                             } else {
                                 ui.label(
                                     egui::RichText::new("Listen for the first chord").size(20.0),
@@ -1275,19 +1350,22 @@ impl CallerApp {
                             } else {
                                 theme::on_card(ui)
                             };
-                            clicked = glossary_text(
-                                ui,
-                                &call.call.text,
-                                self.prefs.glossary_enabled,
-                                |text| {
-                                    egui::RichText::new(text)
-                                        .size(call_size)
-                                        .strong()
-                                        .color(call_color)
-                                },
-                            );
+                            let call_text = ui.scope(|ui| {
+                                clicked = glossary_text(
+                                    ui,
+                                    &call.call.text,
+                                    self.prefs.glossary_enabled,
+                                    |text| {
+                                        egui::RichText::new(text)
+                                            .size(call_size)
+                                            .strong()
+                                            .color(call_color)
+                                    },
+                                );
+                            });
+                            call_rect = Some(call_text.response.rect);
                             ui.horizontal_wrapped(|ui| {
-                                ui.label(
+                                let lead = ui.label(
                                     egui::RichText::new(executes_in_text(
                                         phase,
                                         call.execute_beat,
@@ -1295,6 +1373,7 @@ impl CallerApp {
                                     ))
                                     .color(theme::muted(ui)),
                                 );
+                                lead_rect = Some(lead.rect);
                                 if self.prefs.show_original {
                                     ui.label(
                                         egui::RichText::new("·").small().color(theme::muted(ui)),
@@ -1362,19 +1441,19 @@ impl CallerApp {
                     ui.add_space(min_height - used);
                 }
             });
-        clicked
+        PromptCard {
+            click: clicked,
+            rect: card.response.rect,
+            call: call_rect,
+            lead: lead_rect,
+        }
     }
 
     /// The dance card figures with their call text and beat counts.
     ///
     /// `full_width` makes each figure card span the panel on a phone, where a
     /// content-sized card leaves ragged edges and narrows the call text.
-    fn dance_card_list(
-        &self,
-        ui: &mut egui::Ui,
-        beat: f64,
-        full_width: bool,
-    ) -> Option<&'static caller_core::glossary::GlossaryEntry> {
+    fn dance_card_list(&self, ui: &mut egui::Ui, beat: f64, full_width: bool) -> DanceCard {
         let animate = self.prefs.animations_enabled;
         // The padding setting tightens both the box around each figure and the
         // gap between its lines, so a compact card fits the whole dance on
@@ -1402,9 +1481,10 @@ impl CallerApp {
         full_width: bool,
         padding: CardPadding,
         animate: bool,
-    ) -> Option<&'static caller_core::glossary::GlossaryEntry> {
+    ) -> DanceCard {
         let mut cursor = 0.0;
         let mut clicked = None;
+        let mut active = None;
         for (figure_index, figure) in self.dance.figures.iter().enumerate() {
             let figure_end = cursor + figure.beats;
             let active_figure = beat >= cursor && beat < figure_end;
@@ -1485,29 +1565,37 @@ impl CallerApp {
                             CallPhase::Executing => theme::executing(ui),
                         };
                         let size = if active_figure { 19.0 } else { 16.0 };
-                        if let Some(entry) =
-                            glossary_text(ui, &call.text, self.prefs.glossary_enabled, |text| {
-                                egui::RichText::new(text).size(size).color(color)
-                            })
-                        {
-                            clicked = Some(entry);
-                        }
-                        if self.prefs.show_original && call.original_text != call.text {
-                            let original_color = theme::subtle(ui);
-                            if let Some(entry) = glossary_text(
-                                ui,
-                                &call.original_text,
-                                self.prefs.glossary_enabled,
-                                |text| egui::RichText::new(text).small().color(original_color),
-                            ) {
+                        let call_row = ui.scope(|ui| {
+                            if let Some(entry) =
+                                glossary_text(ui, &call.text, self.prefs.glossary_enabled, |text| {
+                                    egui::RichText::new(text).size(size).color(color)
+                                })
+                            {
                                 clicked = Some(entry);
                             }
+                            if self.prefs.show_original && call.original_text != call.text {
+                                let original_color = theme::subtle(ui);
+                                if let Some(entry) = glossary_text(
+                                    ui,
+                                    &call.original_text,
+                                    self.prefs.glossary_enabled,
+                                    |text| egui::RichText::new(text).small().color(original_color),
+                                ) {
+                                    clicked = Some(entry);
+                                }
+                            }
+                        });
+                        if phase != CallPhase::Upcoming {
+                            active = Some(call_row.response.rect);
                         }
                     }
                 });
             cursor = figure_end;
         }
-        clicked
+        DanceCard {
+            click: clicked,
+            active,
+        }
     }
 }
 
