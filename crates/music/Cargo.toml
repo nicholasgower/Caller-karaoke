@@ -9,7 +9,7 @@ repository.workspace = true
 
 [dependencies]
 abc-parser.workspace = true
-caller-core = { version = "0.2.0", path = "../core" }
+caller-core = { version = "0.2.1", path = "../core" }
 midly.workspace = true
 rustysynth.workspace = true
 serde.workspace = true

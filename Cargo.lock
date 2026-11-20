@@ -757,7 +757,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "caller-app"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "acorde",
  "acorde-render-svg",
@@ -805,7 +805,7 @@ dependencies = [
 
 [[package]]
 name = "caller-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "regex",
  "serde",
@@ -815,7 +815,7 @@ dependencies = [
 
 [[package]]
 name = "caller-mcp"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -831,7 +831,7 @@ dependencies = [
 
 [[package]]
 name = "caller-music"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "abc-parser",
  "caller-core",
@@ -843,7 +843,7 @@ dependencies = [
 
 [[package]]
 name = "caller-sources"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "caller-core",
  "scraper",
@@ -857,7 +857,7 @@ dependencies = [
 
 [[package]]
 name = "caller-web"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "caller-app",
  "wasm-bindgen",

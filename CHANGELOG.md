@@ -2,7 +2,7 @@
 
 All notable changes to Caller Karaoke are documented here.
 
-## [Unreleased]
+## [0.2.1] — 2026-11-20
 
 ### Build
 - **crates:** Add crates.io metadata and publish script.
@@ -15,6 +15,7 @@ All notable changes to Caller Karaoke are documented here.
 ### Documentation
 - **screenshots:** Refresh the documentation screenshot set.
 - **screenshots:** Number the search and alias screenshots.
+- **screenshots:** Refresh the documentation screenshot set.
 
 
 ### Features

@@ -12,7 +12,7 @@ keywords = ["contra", "dance", "abc", "cache"]
 categories = ["web-programming", "parsing", "caching"]
 
 [dependencies]
-caller-core = { version = "0.2.0", path = "../core" }
+caller-core = { version = "0.2.1", path = "../core" }
 scraper.workspace = true
 serde.workspace = true
 serde_json.workspace = true

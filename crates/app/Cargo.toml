@@ -41,9 +41,9 @@ headless = ["dep:egui_kittest"]
 acorde.workspace = true
 acorde-render-svg.workspace = true
 arc-swap.workspace = true
-caller-core = { version = "0.2.0", path = "../core" }
-caller-music = { version = "0.2.0", path = "../music" }
-caller-sources = { version = "0.2.0", path = "../sources" }
+caller-core = { version = "0.2.1", path = "../core" }
+caller-music = { version = "0.2.1", path = "../music" }
+caller-sources = { version = "0.2.1", path = "../sources" }
 cpal.workspace = true
 directories.workspace = true
 egui_kittest = { workspace = true, optional = true }
