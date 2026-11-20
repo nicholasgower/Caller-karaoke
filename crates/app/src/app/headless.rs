@@ -1504,7 +1504,28 @@ fn capture(
     let image = harness
         .render()
         .map_err(|error| -> Box<dyn Error> { format!("render {id}: {error}").into() })?;
-    image.save(out.join(format!("{id}.png")))?;
+    save_screenshot(image, &out.join(format!("{id}.png")))?;
+    Ok(())
+}
+
+/// Write a shot as an opaque RGB PNG with the best compression.
+///
+/// The renderer's PNG writer trades size for speed, which pushed the tall
+/// Preferences and instrument shots past the documentation budget. The
+/// screenshots are opaque, so dropping the alpha channel and compressing as
+/// hard as the encoder can keeps them inside it.
+fn save_screenshot(image: image::RgbaImage, path: &Path) -> Result<(), Box<dyn Error>> {
+    use image::ImageEncoder as _;
+
+    let (width, height) = image.dimensions();
+    let rgb = image::DynamicImage::ImageRgba8(image).to_rgb8();
+    let file = std::fs::File::create(path)?;
+    image::codecs::png::PngEncoder::new_with_quality(
+        std::io::BufWriter::new(file),
+        image::codecs::png::CompressionType::Best,
+        image::codecs::png::FilterType::Adaptive,
+    )
+    .write_image(rgb.as_raw(), width, height, image::ExtendedColorType::Rgb8)?;
     Ok(())
 }
 

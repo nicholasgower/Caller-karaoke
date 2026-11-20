@@ -1878,44 +1878,41 @@ fn speech(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 .small()
                 .color(theme::muted(ui)),
             );
-    let status_top = ui.cursor().min;
     let status = app.speech.status().clone();
-    if let Some(progress) = status.progress {
-        ui.add(
+    let mut status_rect = if let Some(progress) = status.progress {
+        let bar = ui.add(
             egui::ProgressBar::new(progress)
                 .show_percentage()
                 .text(status.message.clone()),
         );
+        bar.rect
     } else {
         let color = if status.error.is_some() {
             theme::error(ui)
         } else {
             theme::muted(ui)
         };
-        ui.label(egui::RichText::new(&status.message).small().color(color));
-    }
+        ui.label(egui::RichText::new(&status.message).small().color(color))
+            .rect
+    };
     if let Some(error) = &status.error {
-        ui.label(
+        let label = ui.label(
             egui::RichText::new(format!("Using the platform voice: {error}"))
                 .small()
                 .color(theme::muted(ui)),
         );
+        status_rect = status_rect.union(label.rect);
     } else if !app.speech.available()
         && let Some(error) = app.speech.error()
     {
-        ui.label(
+        let label = ui.label(
             egui::RichText::new(format!("TTS unavailable: {error}"))
                 .small()
                 .color(theme::muted(ui)),
         );
+        status_rect = status_rect.union(label.rect);
     }
-    app.callout(
-        "tts-unavailable",
-        egui::Rect::from_min_max(
-            status_top,
-            egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
-        ),
-    );
+    app.callout("tts-unavailable", status_rect);
     if status.error.is_some() && app.speech.can_retry() && ui.button("Retry neural voice").clicked()
     {
         app.speech.retry();
@@ -2398,7 +2395,7 @@ fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Maintenance");
     let buttons_top = ui.cursor().min;
     let buttons = if app.cache_clear_confirm { 3 } else { 2 };
-    if compact {
+    let buttons_rect = if compact {
         // The three maintenance actions split one phone row, so it ends at the
         // content edge.
         filled_button_row(ui, buttons, |ui, width| {
@@ -2428,6 +2425,10 @@ fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 app.cache_clear_confirm = true;
             }
         });
+        egui::Rect::from_min_size(
+            buttons_top,
+            egui::vec2(ui.available_width(), theme::TOUCH_TARGET),
+        )
     } else {
         ui.horizontal_wrapped(|ui| {
             if ui.button("Export MIDI…").clicked() {
@@ -2445,25 +2446,17 @@ fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             } else if ui.button("Clear source cache").clicked() {
                 app.cache_clear_confirm = true;
             }
-        });
-    }
-    let buttons_rect = egui::Rect::from_min_max(
-        buttons_top,
-        egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
-    );
+        })
+        .response
+        .rect
+    };
     app.callout("cache-buttons", buttons_rect);
-    ui.label(
+    let status = ui.label(
         egui::RichText::new(&app.status)
             .small()
             .color(theme::muted(ui)),
     );
-    app.callout(
-        "cache-row",
-        egui::Rect::from_min_max(
-            buttons_top,
-            egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
-        ),
-    );
+    app.callout("cache-row", buttons_rect.union(status.rect));
     ui.add_space(8.0);
     let memory_intro = memory_use(app, ui);
     app.callout(
