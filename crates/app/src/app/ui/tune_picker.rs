@@ -46,20 +46,29 @@ impl CallerApp {
         ui.add_space(6.0);
 
         let mut submit = false;
+        let mut search_rect = None;
+        let mut composer_rect = None;
+        let mut key_rect = None;
+        let mut meter_rect = None;
+        let mut genre_rect = None;
         egui::Grid::new("tune-search-grid")
             .num_columns(if compact { 1 } else { 2 })
             .spacing([10.0, 8.0])
             .show(ui, |ui| {
                 form_row(ui, compact, "Search", |ui| {
-                    submit |= submit_text_edit(ui, &mut self.picker.tune_query.search);
+                    let field = ui.text_edit_singleline(&mut self.picker.tune_query.search);
+                    search_rect = Some(field.rect);
+                    submit |= submitted(ui, &field);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Composer", |ui| {
-                    submit |= submit_text_edit(ui, &mut self.picker.tune_query.composer);
+                    let field = ui.text_edit_singleline(&mut self.picker.tune_query.composer);
+                    composer_rect = Some(field.rect);
+                    submit |= submitted(ui, &field);
                 });
                 ui.end_row();
                 form_row(ui, compact, "Key", |ui| {
-                    combo_option(
+                    key_rect = Some(combo_option(
                         ui,
                         "tune-key",
                         &mut self.picker.tune_query.key,
@@ -79,11 +88,11 @@ impl CallerApp {
                             ("Amix", "A mixolydian"),
                         ],
                         compact,
-                    );
+                    ));
                 });
                 ui.end_row();
                 form_row(ui, compact, "Meter", |ui| {
-                    combo_option(
+                    meter_rect = Some(combo_option(
                         ui,
                         "tune-meter",
                         &mut self.picker.tune_query.meter,
@@ -98,11 +107,11 @@ impl CallerApp {
                             ("3/4", "3/4"),
                         ],
                         compact,
-                    );
+                    ));
                 });
                 ui.end_row();
                 form_row(ui, compact, "Genre", |ui| {
-                    combo_option(
+                    genre_rect = Some(combo_option(
                         ui,
                         "tune-rhythm",
                         &mut self.picker.tune_query.rhythm,
@@ -118,10 +127,25 @@ impl CallerApp {
                             ("waltz", "Waltz"),
                         ],
                         compact,
-                    );
+                    ));
                 });
                 ui.end_row();
             });
+        if let Some(rect) = search_rect {
+            self.callout("tune-search", rect);
+        }
+        if let (Some(search), Some(composer)) = (search_rect, composer_rect) {
+            self.callout("tune-text-fields", search.union(composer));
+        }
+        if let Some(rect) = key_rect {
+            self.callout("tune-key", rect);
+        }
+        if let Some(rect) = meter_rect {
+            self.callout("tune-meter", rect);
+        }
+        if let Some(rect) = genre_rect {
+            self.callout("tune-genre", rect);
+        }
         if submit {
             self.search_tunes();
         }
@@ -162,16 +186,18 @@ impl CallerApp {
                 // The phone page scrolls: the stacked list and sheet music
                 // keep their natural height instead of a fixed empty box.
                 ui.label(egui::RichText::new("Results").strong());
-                self.tune_results_list(ui, true);
+                let results = ui.scope(|ui| self.tune_results_list(ui, true));
+                self.callout("tune-results", results.response.rect);
                 ui.separator();
                 ui.label(egui::RichText::new("Preview").strong());
-                self.tune_preview_panel(ui, true);
+                let preview = ui.scope(|ui| self.tune_preview_panel(ui, true));
+                self.callout("tune-preview", preview.response.rect);
             }
             Some(height) => {
                 let available = ui.available_width();
                 let list_width = clamp_pane_width(self.panes.tune_picker_list, available);
                 ui.horizontal_top(|ui| {
-                    ui.allocate_ui_with_layout(
+                    let list_pane = ui.allocate_ui_with_layout(
                         egui::vec2(list_width, height),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
@@ -185,6 +211,7 @@ impl CallerApp {
                                 .show(ui, |ui| self.tune_results_list(ui, false));
                         },
                     );
+                    self.callout("tune-results", list_pane.response.rect);
                     let splitter = pane_splitter(
                         ui,
                         "tune-results-splitter",
@@ -198,7 +225,7 @@ impl CallerApp {
                         );
                     }
                     let preview_width = ui.available_width();
-                    ui.allocate_ui_with_layout(
+                    let preview_pane = ui.allocate_ui_with_layout(
                         egui::vec2(preview_width, height),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
@@ -212,6 +239,7 @@ impl CallerApp {
                                 .show(ui, |ui| self.tune_preview_panel(ui, false));
                         },
                     );
+                    self.callout("tune-preview", preview_pane.response.rect);
                 });
             }
         }

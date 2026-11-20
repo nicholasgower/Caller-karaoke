@@ -39,6 +39,27 @@ fn tip_id() -> egui::Id {
     egui::Id::unique("glossary-definition-tip")
 }
 
+fn tooltip_rect_id() -> egui::Id {
+    egui::Id::unique("glossary-tooltip-rect")
+}
+
+/// The rectangle the glossary tooltip drew this frame, if the app showed one.
+pub(in crate::app) fn tooltip_rect(ctx: &egui::Context) -> Option<egui::Rect> {
+    ctx.data(|data| data.get_temp(tooltip_rect_id()))
+}
+
+/// Forget the previous frame's tooltip rectangle.
+pub(in crate::app) fn clear_tooltip_rect(ctx: &egui::Context) {
+    ctx.data_mut(|data| data.remove::<egui::Rect>(tooltip_rect_id()));
+}
+
+/// Publish the tooltip's own rectangle for the documentation callout overlay.
+fn record_tooltip_rect(ui: &egui::Ui) {
+    let rect = ui.min_rect();
+    ui.ctx()
+        .data_mut(|data| data.insert_temp(tooltip_rect_id(), rect));
+}
+
 /// Show a definition at the top of the screen.
 ///
 /// The card is drawn after the active screen so a scroll area cannot clip it.
@@ -72,6 +93,7 @@ pub(in crate::app) fn glossary_tooltip(ctx: &egui::Context, top: f32) {
                 .show(ui, |ui| {
                     ui.set_max_width(width);
                     definition_body(ui, tip.entry);
+                    record_tooltip_rect(ui);
                 });
         });
 }
@@ -164,6 +186,7 @@ pub(in crate::app) fn glossary_text(
                 response.on_hover_ui_at_pointer(|ui| {
                     ui.set_max_width(300.0);
                     definition_body(ui, found.entry);
+                    record_tooltip_rect(ui);
                 })
             };
             if response.clicked() && !press.suppress_click {
@@ -309,6 +332,7 @@ impl CallerApp {
         );
 
         let mut scrolled = false;
+        let mut followed_rect = None;
         let body = |ui: &mut egui::Ui| {
             let mut focus_response = None;
             for entry in entries {
@@ -331,6 +355,9 @@ impl CallerApp {
                         ui.label(entry.definition);
                     })
                     .response;
+                if selected {
+                    followed_rect = Some(response.rect);
+                }
                 if scroll_to.as_deref() == Some(entry.term) {
                     focus_response = Some(response);
                 }
@@ -360,6 +387,9 @@ impl CallerApp {
         }
         if scrolled {
             self.glossary_focus_scrolled = true;
+        }
+        if let Some(rect) = followed_rect {
+            self.callout("glossary-entry", rect);
         }
     }
 }

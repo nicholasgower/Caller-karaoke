@@ -11,6 +11,9 @@ mod aliases;
 mod dance_picker;
 mod gesture;
 mod glossary;
+
+// The tooltip rectangle is published for the documentation callout overlay.
+pub(super) use glossary::{clear_tooltip_rect, tooltip_rect};
 mod library;
 // The shell tests read the section list to assert where About is drawn.
 pub(in crate::app) mod preferences;
@@ -28,7 +31,7 @@ pub(in crate::app) use glossary::{clear_tooltip, glossary_text, glossary_tooltip
 pub(in crate::app) use widgets::{
     RowPress, action_width, block_button, block_selectable, clamp_pane_width, combo_option,
     empty_label, filled_button_row, group_chip, long_press_row, pane_splitter, row_activated,
-    row_menu_button, submit_text_edit, submitted,
+    row_menu_button, submitted,
 };
 
 use super::*;

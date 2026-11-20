@@ -31,7 +31,7 @@ impl CallerApp {
             }
             ui.heading("Dance move aliases");
         });
-        ui.label(
+        let placeholders = ui.label(
             egui::RichText::new(concat!(
                 "These are the words shown and spoken during a session. Placeholders: ",
                 "{actor}, {actor_singular}, {actor_plural}, {actor_object}, ",
@@ -39,6 +39,7 @@ impl CallerApp {
             ))
             .color(theme::muted(ui)),
         );
+        self.callout("alias-placeholders", placeholders.rect);
         ui.label(
             egui::RichText::new("Alternatives are used only when \"Shuffle alternative call aliases\" is on in Preferences.")
                 .small()
@@ -53,14 +54,18 @@ impl CallerApp {
                     .color(theme::muted(ui)),
             );
             ui.add(egui::TextEdit::singleline(&mut self.alias_filter).desired_width(f32::INFINITY));
-            if ui.button("Reset all aliases").clicked() {
+            let reset_all = ui.button("Reset all aliases");
+            self.callout("alias-reset-all", reset_all.rect);
+            if reset_all.clicked() {
                 reset_aliases = true;
             }
         } else {
             ui.horizontal(|ui| {
                 ui.label("Filter");
                 ui.text_edit_singleline(&mut self.alias_filter);
-                if ui.button("Reset all aliases").clicked() {
+                let reset_all = ui.button("Reset all aliases");
+                self.callout("alias-reset-all", reset_all.rect);
+                if reset_all.clicked() {
                     reset_aliases = true;
                 }
             });
@@ -128,7 +133,7 @@ impl CallerApp {
                 self.add_custom_alias();
             }
         } else {
-            ui.horizontal(|ui| {
+            let custom_row = ui.horizontal(|ui| {
                 let key = ui.add(
                     egui::TextEdit::singleline(&mut self.custom_key)
                         .hint_text("card phrase")
@@ -148,12 +153,14 @@ impl CallerApp {
                     self.add_custom_alias();
                 }
             });
+            self.callout("alias-custom", custom_row.response.rect);
         }
     }
 
     fn alias_list(&mut self, ui: &mut egui::Ui, compact: bool) {
         let filter = self.alias_filter.to_lowercase();
         let mut changed = false;
+        let mut first_card = true;
         for kind in MoveKind::ALL {
             if kind == MoveKind::Other {
                 continue;
@@ -164,7 +171,7 @@ impl CallerApp {
             {
                 continue;
             }
-            egui::Frame::group(ui.style())
+            let card = egui::Frame::group(ui.style())
                 .inner_margin(egui::Margin::same(6))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
@@ -178,14 +185,19 @@ impl CallerApp {
                         }
                     });
                     let mut value = self.prefs.aliases.template(kind).to_string();
-                    if ui
-                        .add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY))
-                        .changed()
-                    {
+                    let field =
+                        ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
+                    if first_card {
+                        self.callout("alias-field", field.rect);
+                    }
+                    if field.changed() {
                         self.prefs.aliases.set_override(kind, value);
                         changed = true;
                     }
                     let reset = ui.button("Reset to default");
+                    if first_card {
+                        self.callout("alias-reset", reset.rect);
+                    }
                     if reset.clicked() {
                         self.prefs.aliases.reset(kind);
                         changed = true;
@@ -263,6 +275,10 @@ impl CallerApp {
                         },
                     );
                 });
+            if first_card {
+                self.callout("alias-list", card.response.rect);
+                first_card = false;
+            }
         }
         if changed {
             self.rebuild_timeline();

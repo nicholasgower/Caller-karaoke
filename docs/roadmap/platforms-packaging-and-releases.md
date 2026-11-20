@@ -98,7 +98,7 @@ fixed: core first, then sources.
 - [ ] `cargo fmt`, `clippy`, and tests pass on Windows and Linux.
 - [ ] Documentation screenshots are regenerated in one pass
       (`cd website && npm run screenshots`), reviewed, and committed with updated
-      manifest dimensions and emphasis regions.
+      manifest dimensions.
 - [ ] Web build loads and plays audio in Chrome and Firefox, both from the
       downloaded bundle and from the docs site `/play` page.
 - [ ] A web share link (`#set=…`) opens the same dance and tune set in a fresh

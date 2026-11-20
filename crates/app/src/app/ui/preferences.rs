@@ -763,6 +763,9 @@ impl CallerApp {
                             for category in PreferencesCategory::ALL {
                                 let response =
                                     ui.selectable_label(category == selected, category.label());
+                                if category == PreferencesCategory::Calling {
+                                    self.callout("prefs-nav-calling", response.rect);
+                                }
                                 if response.clicked() {
                                     self.prefs_page = PreferencesPage::Category(category);
                                 }
@@ -776,11 +779,19 @@ impl CallerApp {
                     .id_salt("preferences-settings")
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
+                        let header_top = ui.cursor().min;
                         ui.heading(selected.label());
                         ui.label(
                             egui::RichText::new(selected.summary())
                                 .small()
                                 .color(theme::muted(ui)),
+                        );
+                        self.callout(
+                            "prefs-category-header",
+                            egui::Rect::from_min_max(
+                                header_top,
+                                egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+                            ),
                         );
                         ui.add_space(4.0);
                         for section in SECTIONS
@@ -789,6 +800,7 @@ impl CallerApp {
                         {
                             let response =
                                 ui.push_id(section.anchor, |ui| (section.draw)(self, ui, compact));
+                            self.callout(section.anchor, response.response.rect);
                             if self.prefs_reveal == Some(section.anchor) {
                                 ui.scroll_to_rect(response.response.rect, Some(egui::Align::TOP));
                                 self.prefs_reveal = None;
@@ -822,11 +834,19 @@ impl CallerApp {
                 {
                     self.prefs_page = PreferencesPage::Categories;
                 }
+                let header_top = ui.cursor().min;
                 ui.heading(category.label());
                 ui.label(
                     egui::RichText::new(category.summary())
                         .small()
                         .color(theme::muted(ui)),
+                );
+                self.callout(
+                    "prefs-category-header",
+                    egui::Rect::from_min_max(
+                        header_top,
+                        egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+                    ),
                 );
                 egui::ScrollArea::vertical()
                     .id_salt("preferences-settings")
@@ -838,6 +858,7 @@ impl CallerApp {
                         {
                             let response =
                                 ui.push_id(section.anchor, |ui| (section.draw)(self, ui, compact));
+                            self.callout(section.anchor, response.response.rect);
                             if self.prefs_reveal == Some(section.anchor) {
                                 ui.scroll_to_rect(response.response.rect, Some(egui::Align::TOP));
                                 self.prefs_reveal = None;
@@ -1039,7 +1060,7 @@ fn role_terms(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     } else {
         egui::ComboBox::from_label("Role terms")
     };
-    responsive_combo(combo, ui, compact)
+    let preset_row = responsive_combo(combo, ui, compact)
         .selected_text(preset.label())
         .show_ui(ui, |ui| {
             for option in RolePreset::ALL {
@@ -1055,7 +1076,7 @@ fn role_terms(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         app.role_edit_pending = false;
     }
     if app.prefs.role_preset == RolePreset::Custom {
-        egui::Grid::new("custom-roles")
+        let grid = egui::Grid::new("custom-roles")
             .num_columns(if compact { 1 } else { 2 })
             .show(ui, |ui| {
                 form_row(ui, compact, "Left singular", |ui| {
@@ -1075,6 +1096,7 @@ fn role_terms(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 });
                 ui.end_row();
             });
+        app.callout("role-custom", grid.response.rect);
         // The example below and the next session frame read the edited terms
         // immediately, but the deferred rebuild waits until the field loses
         // focus so typing a long word does not rebuild the timeline and
@@ -1083,7 +1105,7 @@ fn role_terms(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             app.commit_role_terms();
         }
     }
-    ui.label(
+    let example = ui.label(
         egui::RichText::new(
             app.prefs
                 .role_terms
@@ -1092,7 +1114,10 @@ fn role_terms(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         .italics()
         .color(theme::muted(ui)),
     );
-    if ui.button("Edit dance move aliases…").clicked() {
+    app.callout("role-presets", preset_row.response.rect.union(example.rect));
+    let edit_aliases = ui.button("Edit dance move aliases…");
+    app.callout("aliases-edit", edit_aliases.rect);
+    if edit_aliases.clicked() {
         app.screen = Screen::Aliases;
     }
     ui.separator();
@@ -1134,6 +1159,16 @@ enum RoleField {
     RightPlural,
 }
 
+/// The documentation target for one band card.
+fn instrument_callout(part: BandPart) -> &'static str {
+    match part {
+        BandPart::Melody => "instrument-melody",
+        BandPart::Accompaniment => "instrument-accompaniment",
+        BandPart::Countermelody => "instrument-countermelody",
+        BandPart::Percussion => "instrument-percussion",
+    }
+}
+
 fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Instruments");
     ui.label(
@@ -1151,6 +1186,7 @@ fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     let mut remove = None;
     let mut move_up = None;
     let mut move_down = None;
+    let mut cards: Vec<(BandPart, egui::Rect)> = Vec::new();
     let pitched_count = app
         .prefs
         .band
@@ -1159,7 +1195,7 @@ fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         .count();
     let count = app.prefs.band.len();
     for (index, slot) in app.prefs.band.iter_mut().enumerate() {
-        ui.group(|ui| {
+        let card = ui.group(|ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(
                     egui::RichText::new(format!(
@@ -1239,6 +1275,10 @@ fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 ui.horizontal_wrapped(|ui| add_actions(ui, egui::Vec2::ZERO));
             }
         });
+        cards.push((slot.part, card.response.rect));
+    }
+    for (part, rect) in cards {
+        app.callout(instrument_callout(part), rect);
     }
     if let Some(index) = remove {
         app.prefs.band.remove(index);
@@ -1294,9 +1334,12 @@ fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    inline_field(ui, compact, "Percussion rhythm", |ui| {
-        percussion_rhythm_combo(ui, compact, &mut app.prefs);
+    let rhythm_row = ui.scope(|ui| {
+        inline_field(ui, compact, "Percussion rhythm", |ui| {
+            percussion_rhythm_combo(ui, compact, &mut app.prefs);
+        });
     });
+    app.callout("percussion-rhythm", rhythm_row.response.rect);
     inline_field(ui, compact, "Accompaniment rhythm", |ui| {
         rhythm_combo(ui, compact, &mut app.prefs);
     });
@@ -1309,38 +1352,41 @@ fn instruments(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         .color(theme::muted(ui)),
     );
 
-    ui.separator();
-    ui.label(egui::RichText::new("Mix").strong());
-    slider_row(
-        ui,
-        compact,
-        "Caller volume",
-        &mut app.prefs.caller_volume,
-        |ui, value| number_slider(ui, egui::Slider::new(value, 0.0..=1.5)),
-    );
-    ui.label(
-        egui::RichText::new(
-            "The spoken calls have their own level. Turning the band down never hides a call, \
-             and turning the caller down never changes the music.",
-        )
-        .small()
-        .color(theme::muted(ui)),
-    );
-    slider_row(
-        ui,
-        compact,
-        "Band volume",
-        &mut app.prefs.master_volume,
-        |ui, value| number_slider(ui, egui::Slider::new(value, 0.0..=1.5)),
-    );
-    ui.label(
-        egui::RichText::new(
-            "The band master sits on top of each row's volume. Both levels apply immediately.",
-        )
-        .small()
-        .color(theme::muted(ui)),
-    );
-    ui.separator();
+    let mix = ui.scope(|ui| {
+        ui.separator();
+        ui.label(egui::RichText::new("Mix").strong());
+        slider_row(
+            ui,
+            compact,
+            "Caller volume",
+            &mut app.prefs.caller_volume,
+            |ui, value| number_slider(ui, egui::Slider::new(value, 0.0..=1.5)),
+        );
+        ui.label(
+            egui::RichText::new(
+                "The spoken calls have their own level. Turning the band down never hides a call, \
+                 and turning the caller down never changes the music.",
+            )
+            .small()
+            .color(theme::muted(ui)),
+        );
+        slider_row(
+            ui,
+            compact,
+            "Band volume",
+            &mut app.prefs.master_volume,
+            |ui, value| number_slider(ui, egui::Slider::new(value, 0.0..=1.5)),
+        );
+        ui.label(
+            egui::RichText::new(
+                "The band master sits on top of each row's volume. Both levels apply immediately.",
+            )
+            .small()
+            .color(theme::muted(ui)),
+        );
+        ui.separator();
+    });
+    app.callout("mix", mix.response.rect);
 }
 
 fn part_combo(ui: &mut egui::Ui, compact: bool, index: usize, slot: &mut BandSlot) {
@@ -1492,31 +1538,35 @@ fn rhythm_combo(ui: &mut egui::Ui, compact: bool, prefs: &mut Preferences) {
 }
 
 fn appearance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
-    ui.heading("Theme");
-    if compact {
-        // A set of buttons on one phone line splits the width so the row ends
-        // at the content edge.
-        filled_button_row(ui, Theme::ALL.len(), |ui, width| {
-            for option in Theme::ALL {
-                let selected = app.prefs.theme == option;
-                if ui
-                    .add_sized(
-                        [width, theme::TOUCH_TARGET],
-                        egui::Button::selectable(selected, option.label()),
-                    )
-                    .clicked()
-                {
-                    app.prefs.theme = option;
+    let theme_block = ui.scope(|ui| {
+        ui.heading("Theme");
+        if compact {
+            // A set of buttons on one phone line splits the width so the row ends
+            // at the content edge.
+            filled_button_row(ui, Theme::ALL.len(), |ui, width| {
+                for option in Theme::ALL {
+                    let selected = app.prefs.theme == option;
+                    if ui
+                        .add_sized(
+                            [width, theme::TOUCH_TARGET],
+                            egui::Button::selectable(selected, option.label()),
+                        )
+                        .clicked()
+                    {
+                        app.prefs.theme = option;
+                    }
                 }
-            }
-        });
-    } else {
-        ui.horizontal(|ui| {
-            for option in Theme::ALL {
-                ui.selectable_value(&mut app.prefs.theme, option, option.label());
-            }
-        });
-    }
+            });
+        } else {
+            ui.horizontal(|ui| {
+                for option in Theme::ALL {
+                    ui.selectable_value(&mut app.prefs.theme, option, option.label());
+                }
+            });
+        }
+    });
+    app.callout("theme", theme_block.response.rect);
+    let interface_block = ui.scope(|ui| {
     ui.heading("Interface");
     ui.checkbox(&mut app.prefs.animations_enabled, "Smooth animations");
     ui.label(
@@ -1577,6 +1627,8 @@ fn appearance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 .color(theme::muted(ui)),
             );
     ui.separator();
+    });
+    app.callout("interface", interface_block.response.rect);
 }
 
 /// Undo and redo buttons for the last preference or picker change.
@@ -1628,27 +1680,35 @@ fn calling_lead(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Calling lead");
     ui.checkbox(&mut app.prefs.lead.auto, "Automatic syllable-based lead");
     if app.prefs.lead.auto {
-        slider_row(
-            ui,
-            compact,
-            "Minimum speech lead",
-            &mut app.prefs.lead.min_beats,
-            |ui, value| number_slider(ui, egui::Slider::new(value, 0.5..=4.0).text("beats")),
-        );
-        slider_row(
-            ui,
-            compact,
-            "Maximum speech lead",
-            &mut app.prefs.lead.max_beats,
-            |ui, value| number_slider(ui, egui::Slider::new(value, 1.0..=6.0).text("beats")),
-        );
-        slider_row(
-            ui,
-            compact,
-            "Speech rate",
-            &mut app.prefs.lead.syllables_per_second,
-            |ui, value| number_slider(ui, egui::Slider::new(value, 3.0..=10.0).text("syllables/s")),
-        );
+        let bounds = ui.scope(|ui| {
+            slider_row(
+                ui,
+                compact,
+                "Minimum speech lead",
+                &mut app.prefs.lead.min_beats,
+                |ui, value| number_slider(ui, egui::Slider::new(value, 0.5..=4.0).text("beats")),
+            );
+            slider_row(
+                ui,
+                compact,
+                "Maximum speech lead",
+                &mut app.prefs.lead.max_beats,
+                |ui, value| number_slider(ui, egui::Slider::new(value, 1.0..=6.0).text("beats")),
+            );
+        });
+        app.callout("lead-bounds", bounds.response.rect);
+        let rate = ui.scope(|ui| {
+            slider_row(
+                ui,
+                compact,
+                "Speech rate",
+                &mut app.prefs.lead.syllables_per_second,
+                |ui, value| {
+                    number_slider(ui, egui::Slider::new(value, 3.0..=10.0).text("syllables/s"))
+                },
+            );
+        });
+        app.callout("speech-rate", rate.response.rect);
     } else {
         slider_row(
             ui,
@@ -1683,7 +1743,9 @@ fn calling_lead(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
-    if ui.button("Rebuild call timing").clicked() {
+    let rebuild = ui.button("Rebuild call timing");
+    app.callout("rebuild-timing", rebuild.rect);
+    if rebuild.clicked() {
         app.rebuild_timeline();
         app.needs_render = true;
         app.save_prefs();
@@ -1741,6 +1803,7 @@ fn speech(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
+    let delivery_top = ui.cursor().min;
     let rate_response = slider_row(ui, compact, "Rate", &mut app.prefs.tts_rate, |ui, rate| {
         number_slider(
             ui,
@@ -1797,6 +1860,13 @@ fn speech(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
         .small()
         .color(theme::muted(ui)),
     );
+    app.callout(
+        "tts-delivery",
+        egui::Rect::from_min_max(
+            delivery_top,
+            egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+        ),
+    );
     ui.checkbox(
         &mut app.prefs.shuffle_alternatives,
         "Shuffle alternative call aliases",
@@ -1809,35 +1879,40 @@ fn speech(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 .color(theme::muted(ui)),
             );
     let status = app.speech.status().clone();
-    if let Some(progress) = status.progress {
-        ui.add(
+    let mut status_rect = if let Some(progress) = status.progress {
+        let bar = ui.add(
             egui::ProgressBar::new(progress)
                 .show_percentage()
                 .text(status.message.clone()),
         );
+        bar.rect
     } else {
         let color = if status.error.is_some() {
             theme::error(ui)
         } else {
             theme::muted(ui)
         };
-        ui.label(egui::RichText::new(&status.message).small().color(color));
-    }
+        ui.label(egui::RichText::new(&status.message).small().color(color))
+            .rect
+    };
     if let Some(error) = &status.error {
-        ui.label(
+        let label = ui.label(
             egui::RichText::new(format!("Using the platform voice: {error}"))
                 .small()
                 .color(theme::muted(ui)),
         );
+        status_rect = status_rect.union(label.rect);
     } else if !app.speech.available()
         && let Some(error) = app.speech.error()
     {
-        ui.label(
+        let label = ui.label(
             egui::RichText::new(format!("TTS unavailable: {error}"))
                 .small()
                 .color(theme::muted(ui)),
         );
+        status_rect = status_rect.union(label.rect);
     }
+    app.callout("tts-unavailable", status_rect);
     if status.error.is_some() && app.speech.can_retry() && ui.button("Retry neural voice").clicked()
     {
         app.speech.retry();
@@ -1847,50 +1922,53 @@ fn speech(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
 fn playback(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.checkbox(&mut app.prefs.loop_enabled, "Loop the dance and music");
     ui.checkbox(&mut app.prefs.count_in_enabled, "Four-beat count-in");
-    ui.checkbox(
-        &mut app.prefs.accompaniment_variations,
-        "Vary the music on each loop",
-    );
-    ui.label(
-        egui::RichText::new(
-            "Adds melody ornaments, emphasis notes, and the occasional bar with melody alone.",
-        )
-        .small()
-        .color(theme::muted(ui)),
-    );
-    let variations = app.prefs.accompaniment_variations;
-    ui.add_enabled_ui(variations, |ui| {
-        ui.indent("variation_options", |ui| {
-            let options = &mut app.prefs.variation_options;
-            ui.checkbox(&mut options.articulation, "Vary note lengths");
-            ui.checkbox(&mut options.double_stops, "Add chord-tone double stops");
-            ui.checkbox(&mut options.grace_notes, "Add grace notes");
-            ui.checkbox(&mut options.octave_lift, "Lift held notes an octave");
-            ui.checkbox(&mut options.chord_stabs, "Add chord stabs");
-            ui.checkbox(
-                &mut options.melody_alone_bar,
-                "Let the melody play a bar alone",
-            );
+    let variations_block = ui.scope(|ui| {
+        ui.checkbox(
+            &mut app.prefs.accompaniment_variations,
+            "Vary the music on each loop",
+        );
+        ui.label(
+            egui::RichText::new(
+                "Adds melody ornaments, emphasis notes, and the occasional bar with melody alone.",
+            )
+            .small()
+            .color(theme::muted(ui)),
+        );
+        let variations = app.prefs.accompaniment_variations;
+        ui.add_enabled_ui(variations, |ui| {
+            ui.indent("variation_options", |ui| {
+                let options = &mut app.prefs.variation_options;
+                ui.checkbox(&mut options.articulation, "Vary note lengths");
+                ui.checkbox(&mut options.double_stops, "Add chord-tone double stops");
+                ui.checkbox(&mut options.grace_notes, "Add grace notes");
+                ui.checkbox(&mut options.octave_lift, "Lift held notes an octave");
+                ui.checkbox(&mut options.chord_stabs, "Add chord stabs");
+                ui.checkbox(
+                    &mut options.melody_alone_bar,
+                    "Let the melody play a bar alone",
+                );
+            });
         });
+        ui.add_space(4.0);
+        ui.label("Fiddle bowing");
+        ui.label(
+            egui::RichText::new(
+                "Shape the melody and countermelody as a fiddler would. Both rules follow the written \
+                 rhythm, so no note moves off the beat.",
+            )
+            .small()
+            .color(theme::muted(ui)),
+        );
+        ui.checkbox(
+            &mut app.prefs.bowing_options.bow_change,
+            "Accent and re-strike the bow-change figure",
+        );
+        ui.checkbox(
+            &mut app.prefs.bowing_options.tied_runs,
+            "Tie four to eight running eighths",
+        );
     });
-    ui.add_space(4.0);
-    ui.label("Fiddle bowing");
-    ui.label(
-        egui::RichText::new(
-            "Shape the melody and countermelody as a fiddler would. Both rules follow the written \
-             rhythm, so no note moves off the beat.",
-        )
-        .small()
-        .color(theme::muted(ui)),
-    );
-    ui.checkbox(
-        &mut app.prefs.bowing_options.bow_change,
-        "Accent and re-strike the bow-change figure",
-    );
-    ui.checkbox(
-        &mut app.prefs.bowing_options.tied_runs,
-        "Tie four to eight running eighths",
-    );
+    app.callout("variations", variations_block.response.rect);
     ui.checkbox(&mut app.prefs.show_original, "Show original card text");
     ui.checkbox(&mut app.prefs.humanize_timing, "Humanize the band");
     ui.label(
@@ -1996,20 +2074,23 @@ fn playback(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             );
         });
     });
-    ui.checkbox(&mut app.prefs.ending_options.gradual, "Gradual ending");
-    ui.checkbox(
-        &mut app.prefs.ending_options.final_chord_down_fifth,
-        "Resolve the final chord a fifth lower",
-    );
-    ui.label(
-        egui::RichText::new(
-            "The last four dance beats ease and thin into a held final chord. Turning gradual ending \
-             off replaces only the final bar. The final chord and its closing melody note are a \
-             perfect fifth below the written ones unless the second option is off.",
-        )
-        .small()
-        .color(theme::muted(ui)),
-    );
+    let ending = ui.scope(|ui| {
+        ui.checkbox(&mut app.prefs.ending_options.gradual, "Gradual ending");
+        ui.checkbox(
+            &mut app.prefs.ending_options.final_chord_down_fifth,
+            "Resolve the final chord a fifth lower",
+        );
+        ui.label(
+            egui::RichText::new(
+                "The last four dance beats ease and thin into a held final chord. Turning gradual ending \
+                 off replaces only the final bar. The final chord and its closing melody note are a \
+                 perfect fifth below the written ones unless the second option is off.",
+            )
+            .small()
+            .color(theme::muted(ui)),
+        );
+    });
+    app.callout("gradual-ending", ending.response.rect);
     ui.heading("Output");
     inline_field(ui, compact, "Output mode", |ui| {
         let combo = egui::ComboBox::from_id_salt("output_mode");
@@ -2113,13 +2194,15 @@ fn tempo_range(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
 
 fn soundfont(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     ui.heading("Soundfont");
+    let block_top = ui.cursor().min;
     let current = app
         .prefs
         .soundfont
         .as_ref()
         .map(|setting| setting.name.clone())
         .unwrap_or_else(|| "Bundled: Fluid R3 GM".into());
-    ui.label(current);
+    let name = ui.label(current);
+    app.callout("soundfont-name", name.rect);
     ui.label(
         egui::RichText::new(
             "Sampled instruments from Fluid R3 GM (MIT, Frank Wen). Load an .sf2 to use a different bank.",
@@ -2163,6 +2246,13 @@ fn soundfont(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             }
         });
     }
+    app.callout(
+        "soundfont-block",
+        egui::Rect::from_min_max(
+            block_top,
+            egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+        ),
+    );
     ui.separator();
 }
 
@@ -2271,7 +2361,7 @@ fn web_proxy(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
     let mut proxy = app.prefs.web_proxy_url.clone().unwrap_or_default();
     let mut token = app.prefs.web_proxy_token.clone().unwrap_or_default();
     let mut proxy_changed = false;
-    egui::Grid::new("proxy")
+    let proxy_grid = egui::Grid::new("proxy")
         .num_columns(if compact { 1 } else { 2 })
         .show(ui, |ui| {
             form_row(ui, compact, "Proxy URL", |ui| {
@@ -2287,6 +2377,7 @@ fn web_proxy(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             });
             ui.end_row();
         });
+    app.callout("proxy-fields", proxy_grid.response.rect);
     if proxy_changed {
         app.prefs.web_proxy_url = (!proxy.trim().is_empty()).then_some(proxy);
         app.prefs.web_proxy_token = (!token.trim().is_empty()).then_some(token);
@@ -2300,9 +2391,11 @@ fn web_proxy(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
 }
 
 fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
+    let tools_top = ui.cursor().min;
     ui.heading("Maintenance");
+    let buttons_top = ui.cursor().min;
     let buttons = if app.cache_clear_confirm { 3 } else { 2 };
-    if compact {
+    let buttons_rect = if compact {
         // The three maintenance actions split one phone row, so it ends at the
         // content edge.
         filled_button_row(ui, buttons, |ui, width| {
@@ -2332,6 +2425,10 @@ fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
                 app.cache_clear_confirm = true;
             }
         });
+        egui::Rect::from_min_size(
+            buttons_top,
+            egui::vec2(ui.available_width(), theme::TOUCH_TARGET),
+        )
     } else {
         ui.horizontal_wrapped(|ui| {
             if ui.button("Export MIDI…").clicked() {
@@ -2349,22 +2446,34 @@ fn maintenance(app: &mut CallerApp, ui: &mut egui::Ui, compact: bool) {
             } else if ui.button("Clear source cache").clicked() {
                 app.cache_clear_confirm = true;
             }
-        });
-    }
-    ui.label(
+        })
+        .response
+        .rect
+    };
+    app.callout("cache-buttons", buttons_rect);
+    let status = ui.label(
         egui::RichText::new(&app.status)
             .small()
             .color(theme::muted(ui)),
     );
+    app.callout("cache-row", buttons_rect.union(status.rect));
     ui.add_space(8.0);
-    memory_use(app, ui);
+    let memory_intro = memory_use(app, ui);
+    app.callout(
+        "maintenance-tools",
+        egui::Rect::from_min_max(
+            tools_top,
+            egui::pos2(ui.max_rect().right(), memory_intro.max.y),
+        ),
+    );
 }
 
 /// The measured memory table, with an explicit refresh.
 ///
 /// The report walks the libraries and buffers, so it is built on demand rather
 /// than every frame. It is a diagnostic: nothing in the session depends on it.
-fn memory_use(app: &mut CallerApp, ui: &mut egui::Ui) {
+fn memory_use(app: &mut CallerApp, ui: &mut egui::Ui) -> egui::Rect {
+    let intro_top = ui.cursor().min;
     ui.label(egui::RichText::new("Memory use").strong());
     ui.label(
         egui::RichText::new(
@@ -2378,6 +2487,10 @@ fn memory_use(app: &mut CallerApp, ui: &mut egui::Ui) {
     if ui.button("Refresh memory use").clicked() {
         refresh = true;
     }
+    let intro = egui::Rect::from_min_max(
+        intro_top,
+        egui::pos2(ui.max_rect().right(), ui.cursor().min.y),
+    );
     if refresh {
         let ctx = ui.ctx().clone();
         app.memory_report = Some(app.memory_report(Some(&ctx)));
@@ -2412,6 +2525,7 @@ fn memory_use(app: &mut CallerApp, ui: &mut egui::Ui) {
             );
         });
     }
+    intro
 }
 
 #[cfg(test)]
