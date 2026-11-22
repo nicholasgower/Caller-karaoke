@@ -11,5 +11,5 @@ repository.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-caller-app = { version = "0.2.1", path = "../app" }
+caller-app = { version = "0.2.2", path = "../app" }
 wasm-bindgen = "0.2"

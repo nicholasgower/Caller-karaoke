@@ -6,7 +6,7 @@
  * this line in the commit that bumps the workspace version, which keeps every
  * button pointing at a file that exists.
  */
-export const RELEASE_VERSION = '0.2.1';
+export const RELEASE_VERSION = '0.2.2';
 
 export const REPO = 'nicholasgower/Caller-karaoke';
 
