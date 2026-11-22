@@ -4,6 +4,16 @@ All notable changes to Caller Karaoke are documented here.
 
 ## [Unreleased]
 
+### Features
+- **tts:** Use the pinned Kokoro asset release first.
+
+
+### Fixes
+- **tts:** Host the Linux ONNX Runtime fallback.
+
+
+## [kokoro-assets-v1.0] — 2026-11-22
+
 ### Build
 - **deps:** Clear the docs site's Dependabot alerts.
 
