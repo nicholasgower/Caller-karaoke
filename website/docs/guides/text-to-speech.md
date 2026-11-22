@@ -19,6 +19,11 @@ first time you enable **Speak calls**, the app downloads the 92 MB model and the
 selected voice file; use Wi-Fi if mobile data is limited. The files stay in the
 app cache and later runs are offline.
 
+The download tries Hugging Face first, then the checksum-verified mirror
+`hf-mirror.com`. Every file must match its pinned SHA-256, so a mirror cannot
+change the model. If the download still fails, the app keeps any cached files
+and falls back to the platform voice.
+
 ## Enable spoken calls
 
 <Steps>

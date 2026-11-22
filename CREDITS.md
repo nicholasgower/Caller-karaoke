@@ -74,7 +74,9 @@ See the `egui`/`epaint` source for the exact font files and notices.
   voice `.bin`, and `config.json` from
   <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX> on first use and
   cache them locally. They are not stored in this repository or in the source
-  tree.
+  tree. The download tries Hugging Face first, then the community mirror
+  <https://hf-mirror.com>; a mirror is used only when its bytes match the pinned
+  SHA-256.
 - **ONNX Runtime 1.31.0** - <https://onnxruntime.ai>. MIT licensed. The Windows
   build embeds the official `onnxruntime.dll` from the
   [`Microsoft.ML.OnnxRuntime` 1.31.0 NuGet package](https://www.nuget.org/packages/Microsoft.ML.OnnxRuntime/1.31.0)

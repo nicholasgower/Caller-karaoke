@@ -50,20 +50,29 @@ const SPEECH_CACHE_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
 
 struct Asset {
     name: &'static str,
-    url: &'static str,
+    /// Download sources, tried in order. The first is the canonical host; the
+    /// rest are checksum-verified mirrors that cover a 404 or an unreachable
+    /// primary.
+    sources: &'static [&'static str],
     sha256: &'static str,
     size: u64,
 }
 
 const MODEL: Asset = Asset {
     name: "model_quantized.onnx",
-    url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_quantized.onnx",
+    sources: &[
+        "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_quantized.onnx",
+        "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_quantized.onnx",
+    ],
     sha256: "fbae9257e1e05ffc727e951ef9b9c98418e6d79f1c9b6b13bd59f5c9028a1478",
     size: 92_361_116,
 };
 const CONFIG: Asset = Asset {
     name: "config.json",
-    url: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/config.json",
+    sources: &[
+        "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/config.json",
+        "https://hf-mirror.com/hexgrad/Kokoro-82M/resolve/main/config.json",
+    ],
     sha256: "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f",
     size: 2_351,
 };
@@ -122,7 +131,9 @@ fn android_runtime_bytes() -> u64 {
 #[cfg(target_os = "linux")]
 const ONNX_RUNTIME: Asset = Asset {
     name: "onnxruntime.tgz",
-    url: "https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-linux-x64-1.31.0.tgz",
+    sources: &[
+        "https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-linux-x64-1.31.0.tgz",
+    ],
     sha256: "cc5c72baf5ae5c8238a6841f0897227be2d02826b9cf98eaf02fdefaeeb03a57",
     size: 11_408_003,
 };
@@ -1224,7 +1235,7 @@ fn ensure_assets(
     let config = ensure_asset(&directory, &CONFIG, progress)?;
     let voice_asset = Asset {
         name: voice.file,
-        url: voice.url,
+        sources: voice.sources,
         sha256: voice.sha256,
         size: voice.size,
     };
@@ -1281,13 +1292,102 @@ fn download(
 ) -> Result<(), String> {
     let temporary = path.with_extension("part");
     let _ = fs::remove_file(&temporary);
-    let mut response = ureq::get(asset.url)
+    if let Err(error) = try_sources(asset, &temporary, progress) {
+        let _ = fs::remove_file(&temporary);
+        return Err(error);
+    }
+    fs::rename(&temporary, path)
+        .map_err(|error| format!("could not finish saving {}: {error}", asset.name))?;
+    progress(
+        &format!("Downloaded {}", asset.name),
+        asset.size,
+        asset.size,
+    );
+    Ok(())
+}
+
+/// Try each source until one delivers the complete, pinned file.
+///
+/// A mirror is only used when the previous source fails, including an HTTP
+/// error or an integrity check. Every source serves the same bytes, so a
+/// partial or substituted file is never kept.
+fn try_sources(
+    asset: &Asset,
+    temporary: &Path,
+    progress: &mut dyn FnMut(&str, u64, u64),
+) -> Result<(), String> {
+    try_sources_with(asset, progress, |source, progress| {
+        download_source(asset, source, temporary, progress)
+    })
+}
+
+fn try_sources_with(
+    asset: &Asset,
+    progress: &mut dyn FnMut(&str, u64, u64),
+    mut attempt: impl FnMut(&str, &mut dyn FnMut(&str, u64, u64)) -> Result<(), String>,
+) -> Result<(), String> {
+    let mut failures = Vec::new();
+    for (index, source) in asset.sources.iter().enumerate() {
+        if index > 0 {
+            progress(
+                &format!("Trying a backup source for {}", asset.name),
+                0,
+                asset.size,
+            );
+        }
+        match attempt(source, &mut *progress) {
+            Ok(()) => return Ok(()),
+            Err(error) => failures.push(format!("{}: {error}", source_host(source))),
+        }
+    }
+    if failures.is_empty() {
+        return Err(format!("{} has no download source", asset.name));
+    }
+    Err(format!(
+        "could not download {} from any source ({})",
+        asset.name,
+        failures.join("; ")
+    ))
+}
+
+fn source_host(url: &str) -> &str {
+    url.split("://")
+        .nth(1)
+        .and_then(|rest| rest.split('/').next())
+        .unwrap_or(url)
+}
+
+fn download_source(
+    asset: &Asset,
+    source: &str,
+    temporary: &Path,
+    progress: &mut dyn FnMut(&str, u64, u64),
+) -> Result<(), String> {
+    let result = fetch_source(asset, source, temporary, progress);
+    if result.is_err() {
+        // The next source must start from an empty file, not a partial body.
+        let _ = fs::remove_file(temporary);
+    }
+    result
+}
+
+fn fetch_source(
+    asset: &Asset,
+    source: &str,
+    temporary: &Path,
+    progress: &mut dyn FnMut(&str, u64, u64),
+) -> Result<(), String> {
+    let mut response = ureq::get(source)
         .header("User-Agent", "caller-karaoke/0.1.0")
         .call()
-        .map_err(|error| format!("could not download {}: {error}", asset.name))?;
+        .map_err(|error| format!("request failed: {error}"))?;
     let mut reader = response.body_mut().as_reader();
-    let mut file = fs::File::create(&temporary)
-        .map_err(|error| format!("could not write {}: {error}", temporary.display()))?;
+    let mut file = fs::File::create(temporary).map_err(|error| {
+        format!(
+            "could not write the partial download {}: {error}",
+            temporary.display()
+        )
+    })?;
     let mut hasher = Sha256::new();
     let mut done = 0u64;
     let mut reported = 0u64;
@@ -1295,18 +1395,17 @@ fn download(
     loop {
         let read = reader
             .read(&mut buffer)
-            .map_err(|error| format!("could not read {}: {error}", asset.name))?;
+            .map_err(|error| format!("could not read the response: {error}"))?;
         if read == 0 {
             break;
         }
         done += read as u64;
         if done > asset.size + 1024 * 1024 {
-            let _ = fs::remove_file(&temporary);
-            return Err(format!("{} was larger than expected", asset.name));
+            return Err("the download was larger than expected".into());
         }
         hasher.update(&buffer[..read]);
         file.write_all(&buffer[..read])
-            .map_err(|error| format!("could not save {}: {error}", asset.name))?;
+            .map_err(|error| format!("could not save the download: {error}"))?;
         if done - reported >= PROGRESS_STEP {
             reported = done;
             progress(
@@ -1317,26 +1416,17 @@ fn download(
         }
     }
     file.flush()
-        .map_err(|error| format!("could not save {}: {error}", asset.name))?;
+        .map_err(|error| format!("could not save the download: {error}"))?;
     let digest: String = hasher
         .finalize()
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect();
     if digest != asset.sha256 || done != asset.size {
-        let _ = fs::remove_file(&temporary);
         return Err(format!(
-            "{} failed its integrity check (got {done} bytes, sha256 {digest})",
-            asset.name
+            "failed its integrity check (got {done} bytes, sha256 {digest})"
         ));
     }
-    fs::rename(&temporary, path)
-        .map_err(|error| format!("could not finish saving {}: {error}", asset.name))?;
-    progress(
-        &format!("Downloaded {}", asset.name),
-        asset.size,
-        asset.size,
-    );
     Ok(())
 }
 
@@ -1791,6 +1881,107 @@ mod tests {
         assert_eq!(runtime_bytes_for_arch("x86_64"), 40_827_944);
         assert_eq!(runtime_bytes_for_arch("x86"), 40_741_404);
         assert_eq!(runtime_bytes_for_arch("riscv64"), 0);
+    }
+
+    #[test]
+    fn model_and_config_have_a_checked_mirror() {
+        for asset in [&MODEL, &CONFIG] {
+            assert!(asset.sources.len() >= 2, "{}", asset.name);
+            assert!(
+                asset
+                    .sources
+                    .iter()
+                    .any(|source| source.starts_with("https://huggingface.co/")),
+                "{}",
+                asset.name
+            );
+            assert!(
+                asset
+                    .sources
+                    .iter()
+                    .any(|source| source.starts_with("https://hf-mirror.com/")),
+                "{}",
+                asset.name
+            );
+            for source in asset.sources {
+                assert!(source.starts_with("https://"), "{}", asset.name);
+                assert!(source.ends_with(asset.name), "{}", asset.name);
+            }
+        }
+    }
+
+    fn test_asset() -> Asset {
+        Asset {
+            name: "model_quantized.onnx",
+            sources: &[
+                "https://primary.test/model_quantized.onnx",
+                "https://backup.test/model_quantized.onnx",
+            ],
+            sha256: "00",
+            size: 10,
+        }
+    }
+
+    #[test]
+    fn download_uses_the_backup_only_after_the_primary_fails() {
+        let asset = test_asset();
+        let mut messages = Vec::new();
+        let mut progress = |message: &str, done: u64, total: u64| {
+            messages.push((message.to_string(), done, total));
+        };
+        let mut tried = Vec::new();
+        let result = try_sources_with(&asset, &mut progress, |source, _| {
+            tried.push(source.to_string());
+            if source.starts_with("https://primary.test/") {
+                Err("http status: 404".to_string())
+            } else {
+                Ok(())
+            }
+        });
+        assert!(result.is_ok());
+        assert_eq!(
+            tried,
+            vec![
+                "https://primary.test/model_quantized.onnx",
+                "https://backup.test/model_quantized.onnx"
+            ]
+        );
+        assert!(messages.iter().any(|(message, done, total)| {
+            message.contains("backup source") && *done == 0 && *total == asset.size
+        }));
+    }
+
+    #[test]
+    fn download_stops_after_the_first_successful_source() {
+        let asset = test_asset();
+        let mut progress = |_: &str, _: u64, _: u64| {};
+        let mut tried = Vec::new();
+        let result = try_sources_with(&asset, &mut progress, |source, _| {
+            tried.push(source.to_string());
+            Ok(())
+        });
+        assert!(result.is_ok());
+        assert_eq!(tried, vec!["https://primary.test/model_quantized.onnx"]);
+    }
+
+    #[test]
+    fn download_reports_every_source_when_all_fail() {
+        let asset = test_asset();
+        let mut progress = |_: &str, _: u64, _: u64| {};
+        let error = try_sources_with(&asset, &mut progress, |_, _| {
+            Err("http status: 404".to_string())
+        })
+        .unwrap_err();
+        assert!(error.contains("could not download model_quantized.onnx from any source"));
+        assert!(error.contains("primary.test: http status: 404"));
+        assert!(error.contains("backup.test: http status: 404"));
+    }
+
+    #[test]
+    fn source_host_ignores_the_path_and_scheme() {
+        assert_eq!(source_host("https://huggingface.co/a/b"), "huggingface.co");
+        assert_eq!(source_host("https://hf-mirror.com/a"), "hf-mirror.com");
+        assert_eq!(source_host("not a url"), "not a url");
     }
 
     #[test]

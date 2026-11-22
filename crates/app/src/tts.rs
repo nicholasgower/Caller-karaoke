@@ -34,7 +34,7 @@ pub struct VoiceOption {
     #[allow(dead_code)] // desktop and Android Kokoro backend only
     pub file: &'static str,
     #[allow(dead_code)] // desktop and Android Kokoro backend only
-    pub url: &'static str,
+    pub sources: &'static [&'static str],
     #[allow(dead_code)] // desktop and Android Kokoro backend only
     pub sha256: &'static str,
     #[allow(dead_code)] // desktop and Android Kokoro backend only
@@ -51,7 +51,10 @@ pub const VOICES: &[VoiceOption] = &[
         label: "Heart (US female)",
         detail: "Warm, clear American English female voice.",
         file: "af_heart.bin",
-        url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_heart.bin",
+        sources: &[
+            "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_heart.bin",
+            "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_heart.bin",
+        ],
         sha256: "d583ccff3cdca2f7fae535cb998ac07e9fcb90f09737b9a41fa2734ec44a8f0b",
         size: 522_240,
     },
@@ -60,7 +63,10 @@ pub const VOICES: &[VoiceOption] = &[
         label: "Bella (US female)",
         detail: "Brighter American English female voice.",
         file: "af_bella.bin",
-        url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_bella.bin",
+        sources: &[
+            "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_bella.bin",
+            "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_bella.bin",
+        ],
         sha256: "f69d836209b78eb8c66e75e3cda491e26ea838a3674257e9d4e5703cbaf55c8b",
         size: 522_240,
     },
@@ -69,7 +75,10 @@ pub const VOICES: &[VoiceOption] = &[
         label: "Sarah (US female)",
         detail: "Clear, steady American English female voice.",
         file: "af_sarah.bin",
-        url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_sarah.bin",
+        sources: &[
+            "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_sarah.bin",
+            "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_sarah.bin",
+        ],
         sha256: "4409fbc125afabacc615d94db5398d847006a737b0247d6892b7a9a0007a2f0a",
         size: 522_240,
     },
@@ -78,7 +87,10 @@ pub const VOICES: &[VoiceOption] = &[
         label: "Michael (US male)",
         detail: "Calm American English male voice.",
         file: "am_michael.bin",
-        url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_michael.bin",
+        sources: &[
+            "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_michael.bin",
+            "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_michael.bin",
+        ],
         sha256: "1d1f21dd8da39c30705cd4c75d039d265e9bc4a2a93ed09bc9e1b1225eb95ba1",
         size: 522_240,
     },
@@ -87,7 +99,10 @@ pub const VOICES: &[VoiceOption] = &[
         label: "Fenrir (US male)",
         detail: "Deeper American English male voice.",
         file: "am_fenrir.bin",
-        url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_fenrir.bin",
+        sources: &[
+            "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_fenrir.bin",
+            "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_fenrir.bin",
+        ],
         sha256: "c27989f741f7ee34d273a39d8a595cc0837d35f5ced9a29b7cc162614616df43",
         size: 522_240,
     },
@@ -96,7 +111,10 @@ pub const VOICES: &[VoiceOption] = &[
         label: "Onyx (US male)",
         detail: "Deep, resonant American English male voice.",
         file: "am_onyx.bin",
-        url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_onyx.bin",
+        sources: &[
+            "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_onyx.bin",
+            "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_onyx.bin",
+        ],
         sha256: "da5d135b424164916d75a68ffb4c2abce3d7d5ccc82dd1ee6cf447ce286145e6",
         size: 522_240,
     },
@@ -777,7 +795,29 @@ mod tests {
         let mut ids = BTreeSet::new();
         for voice in VOICES {
             assert!(ids.insert(voice.id), "duplicate voice id {}", voice.id);
-            assert!(voice.url.starts_with("https://"), "{}", voice.id);
+            assert!(voice.sources.len() >= 2, "{}", voice.id);
+            let mut sources = BTreeSet::new();
+            for source in voice.sources {
+                assert!(source.starts_with("https://"), "{}", voice.id);
+                assert!(source.ends_with(voice.file), "{}", voice.id);
+                assert!(sources.insert(*source), "duplicate source for {}", voice.id);
+            }
+            assert!(
+                voice
+                    .sources
+                    .iter()
+                    .any(|source| source.starts_with("https://huggingface.co/")),
+                "{}",
+                voice.id
+            );
+            assert!(
+                voice
+                    .sources
+                    .iter()
+                    .any(|source| source.starts_with("https://hf-mirror.com/")),
+                "{}",
+                voice.id
+            );
             assert_eq!(voice.sha256.len(), 64, "{}", voice.id);
             assert!(voice.file.ends_with(".bin"), "{}", voice.id);
             assert_eq!(voice.size, 522_240, "{}", voice.id);

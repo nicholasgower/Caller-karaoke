@@ -33,7 +33,9 @@ The app contacts only the sources you use:
   newest published release;
 - a configured web proxy, if you set one;
 - Hugging Face, once, to download the Kokoro model and voice files for the
-  desktop and Android neural voice.
+  desktop and Android neural voice. If Hugging Face fails, the app tries the
+  community mirror `hf-mirror.com`; only files matching the pinned SHA-256 are
+  accepted.
 
 There are no analytics endpoints or crash reports, and the app does not check
 for updates at startup. The only update request is the one **Check for updates**
