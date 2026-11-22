@@ -12,6 +12,10 @@ All notable changes to Caller Karaoke are documented here.
 - **tts:** Host the Linux ONNX Runtime fallback.
 
 
+### Release
+- **release:** V0.2.2.
+
+
 ## [kokoro-assets-v1.0] — 2026-11-22
 
 ### Build
