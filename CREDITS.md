@@ -71,12 +71,13 @@ See the `egui`/`epaint` source for the exact font files and notices.
 - **Kokoro-82M** — <https://huggingface.co/hexgrad/Kokoro-82M>. Model weights and
   the voice styles (Heart, Bella, Sarah, Michael, Fenrir, Onyx) are Apache-2.0.
   The desktop and Android apps download `model_quantized.onnx`, the selected
-  voice `.bin`, and `config.json` from
-  <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX> on first use and
-  cache them locally. They are not stored in this repository or in the source
-  tree. The download tries Hugging Face first, then the community mirror
-  <https://hf-mirror.com>; a mirror is used only when its bytes match the pinned
-  SHA-256.
+  voice `.bin`, and `config.json` on first use and cache them locally. They are
+  not stored in this repository or in the source tree. The download uses the
+  project's pinned release assets
+  (<https://github.com/nicholasgower/Caller-karaoke/releases/tag/kokoro-assets-v1.0>)
+  first, then <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX>, then
+  the community mirror <https://hf-mirror.com>; every source is accepted only
+  when its bytes match the pinned SHA-256.
 - **ONNX Runtime 1.31.0** - <https://onnxruntime.ai>. MIT licensed. The Windows
   build embeds the official `onnxruntime.dll` from the
   [`Microsoft.ML.OnnxRuntime` 1.31.0 NuGet package](https://www.nuget.org/packages/Microsoft.ML.OnnxRuntime/1.31.0)

@@ -52,6 +52,7 @@ pub const VOICES: &[VoiceOption] = &[
         detail: "Warm, clear American English female voice.",
         file: "af_heart.bin",
         sources: &[
+            "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/af_heart.bin",
             "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_heart.bin",
             "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_heart.bin",
         ],
@@ -64,6 +65,7 @@ pub const VOICES: &[VoiceOption] = &[
         detail: "Brighter American English female voice.",
         file: "af_bella.bin",
         sources: &[
+            "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/af_bella.bin",
             "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_bella.bin",
             "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_bella.bin",
         ],
@@ -76,6 +78,7 @@ pub const VOICES: &[VoiceOption] = &[
         detail: "Clear, steady American English female voice.",
         file: "af_sarah.bin",
         sources: &[
+            "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/af_sarah.bin",
             "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_sarah.bin",
             "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_sarah.bin",
         ],
@@ -88,6 +91,7 @@ pub const VOICES: &[VoiceOption] = &[
         detail: "Calm American English male voice.",
         file: "am_michael.bin",
         sources: &[
+            "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/am_michael.bin",
             "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_michael.bin",
             "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_michael.bin",
         ],
@@ -100,6 +104,7 @@ pub const VOICES: &[VoiceOption] = &[
         detail: "Deeper American English male voice.",
         file: "am_fenrir.bin",
         sources: &[
+            "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/am_fenrir.bin",
             "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_fenrir.bin",
             "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_fenrir.bin",
         ],
@@ -112,6 +117,7 @@ pub const VOICES: &[VoiceOption] = &[
         detail: "Deep, resonant American English male voice.",
         file: "am_onyx.bin",
         sources: &[
+            "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/am_onyx.bin",
             "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_onyx.bin",
             "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_onyx.bin",
         ],
@@ -795,7 +801,14 @@ mod tests {
         let mut ids = BTreeSet::new();
         for voice in VOICES {
             assert!(ids.insert(voice.id), "duplicate voice id {}", voice.id);
-            assert!(voice.sources.len() >= 2, "{}", voice.id);
+            assert!(voice.sources.len() >= 3, "{}", voice.id);
+            assert!(
+                voice.sources[0].starts_with(
+                    "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/"
+                ),
+                "{}",
+                voice.id
+            );
             let mut sources = BTreeSet::new();
             for source in voice.sources {
                 assert!(source.starts_with("https://"), "{}", voice.id);

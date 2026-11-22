@@ -50,9 +50,9 @@ const SPEECH_CACHE_LIMIT_BYTES: u64 = 64 * 1024 * 1024;
 
 struct Asset {
     name: &'static str,
-    /// Download sources, tried in order. The first is the canonical host; the
-    /// rest are checksum-verified mirrors that cover a 404 or an unreachable
-    /// primary.
+    /// Download sources, tried in order. The first is the project's pinned
+    /// release asset; the rest are the upstream source and a checksum-verified
+    /// mirror for when that host is unavailable.
     sources: &'static [&'static str],
     sha256: &'static str,
     size: u64,
@@ -61,6 +61,7 @@ struct Asset {
 const MODEL: Asset = Asset {
     name: "model_quantized.onnx",
     sources: &[
+        "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/model_quantized.onnx",
         "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_quantized.onnx",
         "https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_quantized.onnx",
     ],
@@ -70,6 +71,7 @@ const MODEL: Asset = Asset {
 const CONFIG: Asset = Asset {
     name: "config.json",
     sources: &[
+        "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/config.json",
         "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/config.json",
         "https://hf-mirror.com/hexgrad/Kokoro-82M/resolve/main/config.json",
     ],
@@ -1884,9 +1886,16 @@ mod tests {
     }
 
     #[test]
-    fn model_and_config_have_a_checked_mirror() {
+    fn model_and_config_have_project_and_upstream_sources() {
         for asset in [&MODEL, &CONFIG] {
-            assert!(asset.sources.len() >= 2, "{}", asset.name);
+            assert!(asset.sources.len() >= 3, "{}", asset.name);
+            assert!(
+                asset.sources[0].starts_with(
+                    "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/"
+                ),
+                "{}",
+                asset.name
+            );
             assert!(
                 asset
                     .sources
