@@ -11,6 +11,7 @@ All notable changes to Caller Karaoke are documented here.
 ### Documentation
 - **screenshots:** Refresh the documentation screenshot set.
 - **agents:** Drop the retired dev integration branch.
+- **screenshots:** Add the Linux install screenshots.
 
 
 ### Features
