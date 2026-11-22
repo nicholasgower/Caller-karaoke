@@ -694,15 +694,19 @@
     },
     {
       "id": "install-linux-deb",
-      "alt": "A file manager or terminal showing the downloaded Caller Karaoke Debian package.",
+      "alt": "The Downloads folder in the Nemo file manager on Linux Mint with caller-app_0.2.1-1_amd64.deb selected, showing 31.8 MB, Archive, and -rw-rw-r-- permissions.",
       "caption": "Install the .deb with apt so dependencies are resolved.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1000,
+      "height": 200
     },
     {
       "id": "install-linux-appimage",
-      "alt": "A downloaded CallerKaraoke AppImage file marked executable.",
+      "alt": "The Downloads folder in Nemo with CallerKaraoke-0.2.1-x86_64.AppImage selected, showing 39.0 MB, Program, and executable -rwxrwxr-x permissions.",
       "caption": "Run the AppImage directly, or use --appimage-extract-and-run without FUSE.",
-      "status": "pending"
+      "status": "ready",
+      "width": 1000,
+      "height": 200
     },
     {
       "id": "install-web-browser",

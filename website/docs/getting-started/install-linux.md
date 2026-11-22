@@ -34,9 +34,9 @@ AppImage.
 
 <Steps>
   <Step shot="install-linux-deb">
-    Download `caller-app_0.1.0-1_amd64.deb` with the button above.
+    Download `caller-app_0.2.1-1_amd64.deb` with the button above.
   </Step>
-  <CommandStep command="sudo apt install ./caller-app_0.1.0-1_amd64.deb">
+  <CommandStep command="sudo apt install ./caller-app_0.2.1-1_amd64.deb">
     Install the package with apt so its dependencies are resolved. Use the
     actual downloaded filename; the version and architecture may differ.
   </CommandStep>
@@ -52,15 +52,15 @@ The package installs the binary under `/usr/bin` and a desktop entry under
 
 <Steps>
   <Step shot="install-linux-appimage">
-    Download `CallerKaraoke-0.1.0-x86_64.AppImage` and make it executable.
+    Download `CallerKaraoke-0.2.1-x86_64.AppImage` and make it executable.
   </Step>
-  <CommandStep command="chmod +x CallerKaraoke-0.1.0-x86_64.AppImage && ./CallerKaraoke-0.1.0-x86_64.AppImage">
+  <CommandStep command="chmod +x CallerKaraoke-0.2.1-x86_64.AppImage && ./CallerKaraoke-0.2.1-x86_64.AppImage">
     Run the AppImage.
   </CommandStep>
 </Steps>
 
 If FUSE is unavailable, run it with
-`./CallerKaraoke-0.1.0-x86_64.AppImage --appimage-extract-and-run`.
+`./CallerKaraoke-0.2.1-x86_64.AppImage --appimage-extract-and-run`.
 
 ## Flatpak from source
 
