@@ -33,9 +33,10 @@ The app contacts only the sources you use:
   newest published release;
 - a configured web proxy, if you set one;
 - This project's GitHub releases, once, to download the pinned Kokoro model and
-  voice files for the desktop and Android neural voice. The app tries Hugging
-  Face next, then the community mirror `hf-mirror.com`; only files matching the
-  pinned SHA-256 are accepted.
+  voice files, and on Linux the ONNX Runtime archive, for the desktop and
+  Android neural voice. The app tries Hugging Face next for the Kokoro files,
+  then the community mirror `hf-mirror.com`; only files matching the pinned
+  SHA-256 are accepted.
 
 There are no analytics endpoints or crash reports, and the app does not check
 for updates at startup. The only update request is the one **Check for updates**

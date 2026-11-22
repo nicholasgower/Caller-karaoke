@@ -134,6 +134,7 @@ fn android_runtime_bytes() -> u64 {
 const ONNX_RUNTIME: Asset = Asset {
     name: "onnxruntime.tgz",
     sources: &[
+        "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/onnxruntime-linux-x64-1.31.0.tgz",
         "https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-linux-x64-1.31.0.tgz",
     ],
     sha256: "cc5c72baf5ae5c8238a6841f0897227be2d02826b9cf98eaf02fdefaeeb03a57",
@@ -1916,6 +1917,25 @@ mod tests {
                 assert!(source.starts_with("https://"), "{}", asset.name);
                 assert!(source.ends_with(asset.name), "{}", asset.name);
             }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_runtime_uses_the_project_release_first() {
+        assert!(ONNX_RUNTIME.sources.len() >= 2);
+        assert!(ONNX_RUNTIME.sources[0].starts_with(
+            "https://github.com/nicholasgower/Caller-karaoke/releases/download/kokoro-assets-v1.0/"
+        ));
+        assert!(
+            ONNX_RUNTIME
+                .sources
+                .iter()
+                .any(|source| source.contains("microsoft/onnxruntime/releases/download/"))
+        );
+        for source in ONNX_RUNTIME.sources {
+            assert!(source.starts_with("https://"));
+            assert!(source.ends_with("onnxruntime-linux-x64-1.31.0.tgz"));
         }
     }
 

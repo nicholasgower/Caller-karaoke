@@ -82,10 +82,10 @@ See the `egui`/`epaint` source for the exact font files and notices.
   build embeds the official `onnxruntime.dll` from the
   [`Microsoft.ML.OnnxRuntime` 1.31.0 NuGet package](https://www.nuget.org/packages/Microsoft.ML.OnnxRuntime/1.31.0)
   in the executable and unpacks it
-  to the user cache on first use. Linux loads the official
-  `libonnxruntime.so` dynamically; the app downloads and caches it on first use,
-  so Flatpak and other offline package builds do not need a native runtime at
-  build time. The Android build packages `libonnxruntime.so` from the official
+  to the user cache on first use. Linux loads `libonnxruntime.so` dynamically;
+  the app downloads the pinned archive from the project's release assets first,
+  then Microsoft's upstream release, and caches it on first use, so Flatpak and
+  other offline package builds do not need a native runtime at build time. The Android build packages `libonnxruntime.so` from the official
   [`onnxruntime-android` 1.31.0 AAR](https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/1.31.0/onnxruntime-android-1.31.0.aar);
   `packaging/android/build-apk.py` downloads and verifies the AAR at build time,
   and the library is not stored in the repository.

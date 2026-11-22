@@ -25,6 +25,9 @@ match its pinned SHA-256, so another source cannot change the model. If the
 download still fails, the app keeps any cached files and falls back to the
 platform voice.
 
+On Linux the ONNX Runtime library is a separate download. It comes from the
+same pinned project release, with Microsoft's upstream archive as the fallback.
+
 ## Enable spoken calls
 
 <Steps>

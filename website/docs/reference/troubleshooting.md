@@ -84,9 +84,11 @@ instruments are used instead.
 
 On desktop and Android, the first use of a Kokoro voice downloads the model and
 style file. The app tries the project's pinned GitHub release assets first,
-then Hugging Face, then the checksum-verified mirror `hf-mirror.com`. If all
-fail, it shows the reason, offers **Retry neural voice**, and falls back to the
-platform voice. If neither voice is usable,
+then Hugging Face, then the checksum-verified mirror `hf-mirror.com`. On Linux
+the ONNX Runtime archive comes from the same project release, with Microsoft's
+upstream release as the fallback. If all sources fail, it shows the reason,
+offers **Retry neural voice**, and falls back to the platform voice. If neither
+voice is usable,
 **Speak calls** does not produce sound and the Preferences section shows the
 reason in muted text. Visual calls continue; see
 [Text to speech](/docs/guides/text-to-speech).
